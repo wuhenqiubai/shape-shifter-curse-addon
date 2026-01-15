@@ -1,0 +1,49 @@
+#本流程是基于onixary/shape-shifter-curse-fabric的工作流程改写
+# 手动构建Mod 一般用于发布测试版用 需要 Github Collaborators 里的 Write 权限启动
+# 爆警告不影响构建 不用管它 一般是清理缓存的警告 Github不用清理缓存 或许之后修一下
+
+name: main分支构建  # 开发版 在解决Issues或开发新功能后使用 用于测试
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      channel: "dev"
+      build_version: ${{ github.run_number }}
+    steps:
+      - name: 从仓库拉取代码
+        uses: actions/checkout@v4
+
+      - name: 读取配置文件
+        id: 'properties'
+        uses: christian-draeger/read-properties@1.1.1
+        with:
+          path: gradle.properties
+          properties: 'mod_version archives_base_name minecraft_version'
+
+      - name: 配置Java环境 使用Java17 # 由于Java版本在build.gradle中写的 无法获取到 如果修改了build.gradle需要手动修改下面的java-version
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 让./gradlew脚本在Linux环境中可执行
+        if: ${{ runner.os != 'Windows' }}
+        run: chmod +x ./gradlew  # 在Linux中 运行脚本需要x权限
+
+      - name: 初始化Gradle # 由于Github在国外 不用使用镜像源
+        uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+
+      - name: 构建Mod # 如果失败需检查代码是否有错误
+        run: ./gradlew build
+
+      - name: 发布构建产物 # 如果没有Action中没有发布Jar 需检查Gradle配置文件
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: "${{ steps.properties.outputs.archives_base_name }}-${{ steps.properties.outputs.mod_version }}-${{ env.channel }}.${{ env.build_version }}"
+          path: build/libs/${{ steps.properties.outputs.archives_base_name }}-${{ steps.properties.outputs.mod_version }}-${{ env.channel }}.${{ env.build_version }}.jar
