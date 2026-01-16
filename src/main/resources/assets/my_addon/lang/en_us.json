@@ -36,8 +36,7 @@
   "power.my_addon.form_axolotl_sp_play_dead.name": "Feign Death",
   "power.my_addon.form_axolotl_sp_play_dead.description": "When health drops to 4 hearts or less, play dead to heal rapidly and shed aggro. Cooldown resets on death.",
   "origin.my_addon.form_axolotl_sp.name": "SP Axolotl",
-  "origin.my_addon.form_axolotl_sp.description": "The evolved spirit form of the axolotl."
-},
+  "origin.my_addon.form_axolotl_sp.description": "The evolved spirit form of the axolotl.",
   "message.ssc_addon.evolution.fail.no_moon": "The metamorphosis to the essence requires the cursed moonlight as the final key. At this moment, the keyhole is empty—the evolutionary process has fallen into silence.",
   "message.ssc_addon.evolution.fail.bad_form": "The current form is insufficient to carry the echoes of the older contract. Evolution refuses to resonate in the depths of the bloodline, and a deeper link cannot be established.",
   "message.ssc_addon.evolution.fail.both": "The foundation of the form is too shallow, and the rain of the curse has not fallen. In this double barrenness, the seedlings of evolution have withered irretrievably.",

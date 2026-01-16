@@ -1,0 +1,32 @@
+{
+  "model": "my_addon:geo/axolotl_sp.geo.json",
+  "texture": "my_addon:textures/axolotl_sp/axolotl_sp.png",
+  "texture_mask": "my_addon:textures/axolotl_sp/axolotl_sp_colormask.png",
+  "hidden": [
+    "head",
+    "body",
+    "leftArm",
+    "rightArm",
+    "leftLeg",
+    "rightLeg",
+    "hat",
+    "jacket",
+    "leftSleeve",
+    "rightSleeve",
+    "leftPants",
+    "rightPants"
+  ],
+  "tail_chain": {
+    "tail": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "tail_chain_head": {
+    "tail_head_a": [
+      0
+    ]
+  }
+}

@@ -7,6 +7,9 @@ import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.FoxFireBurnEffect;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.BlueFireRingEffect;
+import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
+import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
+import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormPhase;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.command.SscAddonCommands;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions;
@@ -15,8 +18,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.ItemGroups;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
 
 public class SscAddon implements ModInitializer {
 
@@ -42,5 +43,9 @@ public class SscAddon implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             SscAddonCommands.register(dispatcher);
         });
+
+        // Register SP Forms
+        RegPlayerForms.registerPlayerForm(new PlayerFormBase(new Identifier("my_addon", "axolotl_sp")).setPhase(PlayerFormPhase.PHASE_SP));
+        RegPlayerForms.registerPlayerForm(new PlayerFormBase(new Identifier("my_addon", "familiar_fox_sp")).setPhase(PlayerFormPhase.PHASE_SP));
     }
 }
