@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "ssc_addon:portable_moisturizer"
+    },
+    {
+      "item": "minecraft:wet_sponge"
+    }
+  ],
+  "result": {
+    "item": "ssc_addon:portable_moisturizer",
+    "count": 1,
+    "nbt": "{Charge:600,Active:0b}"
+  }
+}

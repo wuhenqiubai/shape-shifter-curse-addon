@@ -98,6 +98,7 @@ dependencies {
 
     // Apoli & Dependencies
     modImplementation "com.github.apace100:apoli:${project.apoli_version}"
+    modImplementation "dev.emi:trinkets:${project.trinkets_version}"
     modImplementation "com.jamieswhiteshirt:reach-entity-attributes:${project.reach_version}"
     
     // Config & Components (Usually needed by Apoli/Origins)
