@@ -10,6 +10,12 @@ base {
     archivesName = project.archives_base_name
 }
 
+loom {
+    mixin {
+        defaultRefmapName = "ssc-addon.refmap.json"
+    }
+}
+
 repositories {
     mavenLocal()
     // Aliyun
@@ -77,6 +83,9 @@ dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Mixin Annotation Processor
+    annotationProcessor "net.fabricmc:fabric-mixin-compile-extensions:0.6.0"
 
     // Fabric API
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"

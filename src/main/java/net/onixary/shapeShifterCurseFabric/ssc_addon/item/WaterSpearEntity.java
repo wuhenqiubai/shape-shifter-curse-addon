@@ -53,26 +53,7 @@ public class WaterSpearEntity extends TridentEntity {
             target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 100, 1));
             
             // Area damage
-            double x = target.getX();
-            double y = target.getY() + target.getHeight() / 2;
-            double z = target.getZ();
-            
-            // Get entities within 1.5 block radius (3 block diameter)
-            List<Entity> nearbyEntities = world.getOtherEntities(this.getOwner(), new Box(x - 1.5, y - 1.5, z - 1.5, x + 1.5, y + 1.5, z + 1.5));
-            for (Entity nearEntity : nearbyEntities) {
-                if (nearEntity instanceof LivingEntity living && nearEntity != this.getOwner() && nearEntity != target) {
-                    living.damage(this.getDamageSources().trident(this, this.getOwner()), 4.0f);
-                }
-            }
-            
-            // Play splash sound and particles
-            world.playSound(null, x, y, z, SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 1.0F, 0.8F);
-            
-            // Spawn particles on server
-            if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
-                serverWorld.spawnParticles(ParticleTypes.SPLASH, x, y, z, 30, 1.0, 0.5, 1.0, 0.1);
-                serverWorld.spawnParticles(ParticleTypes.BUBBLE, x, y, z, 20, 1.0, 0.5, 1.0, 0.05);
-            }
+            doAreaDamage(target.getPos().add(0, target.getHeight() / 2, 0), target);
         }
         
         // Remove the spear after hitting
@@ -84,17 +65,35 @@ public class WaterSpearEntity extends TridentEntity {
         World world = this.getWorld();
         
         if (!world.isClient) {
-            // Play splash sound (no area damage for block hits)
-            world.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 0.8F, 1.0F);
-            
-            // Spawn particles
-            if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
-                serverWorld.spawnParticles(ParticleTypes.SPLASH, this.getX(), this.getY(), this.getZ(), 20, 0.5, 0.3, 0.5, 0.1);
+            doAreaDamage(this.getPos(), null);
+        }
+        
+        // Remove the spear after hitting block
+        this.discard();
+    }
+
+    private void doAreaDamage(Vec3d pos, Entity directTarget) {
+        World world = this.getWorld();
+        double x = pos.x;
+        double y = pos.y;
+        double z = pos.z;
+        
+        // Get entities within 1.5 block radius (3 block diameter)
+        List<Entity> nearbyEntities = world.getOtherEntities(this.getOwner(), new Box(x - 1.5, y - 1.5, z - 1.5, x + 1.5, y + 1.5, z + 1.5));
+        for (Entity nearEntity : nearbyEntities) {
+            if (nearEntity instanceof LivingEntity living && nearEntity != this.getOwner() && nearEntity != directTarget) {
+                living.damage(this.getDamageSources().trident(this, this.getOwner()), 4.0f);
             }
         }
         
-        // Remove the spear after hitting block (no area damage)
-        this.discard();
+        // Play splash sound and particles
+        world.playSound(null, x, y, z, SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 1.0F, 0.8F);
+        
+        // Spawn particles on server
+        if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
+            serverWorld.spawnParticles(ParticleTypes.SPLASH, x, y, z, 30, 1.0, 0.5, 1.0, 0.1);
+            serverWorld.spawnParticles(ParticleTypes.BUBBLE, x, y, z, 20, 1.0, 0.5, 1.0, 0.05);
+        }
     }
     
     @Override

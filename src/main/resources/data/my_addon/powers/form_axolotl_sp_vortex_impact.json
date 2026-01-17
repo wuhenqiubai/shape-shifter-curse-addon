@@ -19,6 +19,9 @@
     "key_activation": {
         "type": "origins:active_self",
         "cooldown": 400,
+        "hud_render": {
+            "should_render": false
+        },
         "entity_action": {
             "type": "origins:and",
             "actions": [
@@ -117,15 +120,6 @@
             "value": -0.5,
             "name": "Vortex speed reduction"
         },
-        "condition": {
-            "type": "origins:resource",
-            "resource": "*:*_vortex_state",
-            "comparison": ">",
-            "compare_to": 0
-        }
-    },
-    "prevent_push": {
-        "type": "origins:prevent_entity_collision",
         "condition": {
             "type": "origins:resource",
             "resource": "*:*_vortex_state",
