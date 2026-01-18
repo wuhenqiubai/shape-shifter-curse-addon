@@ -93,7 +93,7 @@ public class SpUpgradeItem extends Item {
                 player.sendMessage(Text.translatable("message.ssc_addon.evolution.fail.already_sp").formatted(Formatting.RED, Formatting.ITALIC), false);
                 world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0F, 1.0F);
                 world.createExplosion(player, player.getX(), player.getY(), player.getZ(), 6.0f, World.ExplosionSourceType.BLOCK);
-                player.damage(world.getDamageSources().create(CURSED_BURST), Float.MAX_VALUE);
+                player.damage(world.getDamageSources().create(CURSED_BURST), 100000.0f);
                 if (!player.getAbilities().creativeMode) {
                     stack.decrement(1);
                 }
