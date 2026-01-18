@@ -11,7 +11,8 @@
   ],
   "client": [
     "InstinctBarRendererMixin",
-    "OriginFurModelMixin"
+    "OriginFurMixin",
+    "SscPlayerEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
