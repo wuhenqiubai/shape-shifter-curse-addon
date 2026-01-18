@@ -104,9 +104,15 @@ public class PortableMoisturizerItem extends Item {
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
         
+        // Calculate max time string dynamically
+        int maxTotalSeconds = MAX_CHARGE;
+        int maxMinutes = maxTotalSeconds / 60;
+        int maxSeconds = maxTotalSeconds % 60;
+        String maxTimeString = String.format("%02d:%02d", maxMinutes, maxSeconds);
+        
         tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.charge", 
                 String.format("%02d:%02d", minutes, seconds), 
-                "10:00").formatted(Formatting.AQUA));
+                maxTimeString).formatted(Formatting.AQUA));
                 
         // Instructions
         tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.usage").formatted(Formatting.GRAY));
