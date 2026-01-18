@@ -1,5 +1,12 @@
 # 幻形者诅咒附属模组
 
+> **📖 玩法指南 / Gameplay Guide**  
+> 如果您正在寻找关于 SP 形态、月髓十字环等进阶内容的玩法介绍，请查看：  
+> **[👉 进阶玩法指南 (TUTORIAL.md)](TUTORIAL.md)**  
+>
+> If you are looking for gameplay instructions regarding SP Forms, the Moon Marrow Cross Ring, etc., please view:  
+> **[👉 Advanced Gameplay Guide (TUTORIAL.md)](TUTORIAL.md)**
+
 这是一个基于 Fabric 的附属模组项目，用于为《幻形者诅咒》模组添加新形态。
 
 ## 目录结构说明
