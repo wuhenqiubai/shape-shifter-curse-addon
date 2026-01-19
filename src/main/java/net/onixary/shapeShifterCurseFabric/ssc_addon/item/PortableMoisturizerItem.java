@@ -2,7 +2,6 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -100,9 +99,9 @@ public class PortableMoisturizerItem extends Item {
         
         // Charge
         int charge = getCharge(stack);
-        int totalSeconds = charge; // 1 charge = 1 second
-        int minutes = totalSeconds / 60;
-        int seconds = totalSeconds % 60;
+        // 1 charge = 1 second
+        int minutes = charge / 60;
+        int seconds = charge % 60;
         
         // Calculate max time string dynamically
         int maxTotalSeconds = MAX_CHARGE;
