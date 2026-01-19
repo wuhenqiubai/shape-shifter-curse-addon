@@ -11,12 +11,7 @@ import net.minecraft.world.World;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.Formatting;
-import net.onixary.shapeShifterCurseFabric.integration.origins.origin.Origin;
 import net.onixary.shapeShifterCurseFabric.cursed_moon.CursedMoon;
-import net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginRegistry;
-import net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginLayers;
-import net.onixary.shapeShifterCurseFabric.integration.origins.component.OriginComponent;
-import net.onixary.shapeShifterCurseFabric.integration.origins.registry.ModComponents;
 import net.minecraft.util.Identifier;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,7 +19,6 @@ import net.minecraft.text.Text;
 import net.minecraft.client.item.TooltipContext;
 import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
-import net.onixary.shapeShifterCurseFabric.player_form.ability.FormAbilityManager;
 import net.onixary.shapeShifterCurseFabric.player_form.ability.PlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.ability.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.transform.TransformManager;
@@ -172,6 +166,7 @@ public class SpUpgradeItem extends Item {
         // }
         // return false;
         Identifier playerFormID = getPlayerFormID(player);
+        if (playerFormID == null) return false;
         for (Identifier id : UPGRADE_MAP.values()) {
             if (id.equals(playerFormID)) {
                 return true;
@@ -181,8 +176,16 @@ public class SpUpgradeItem extends Item {
     }
 
     private Identifier getPlayerFormID(PlayerEntity player) {
+        // 玩家本身为null返回null
+        if (player == null) return null;
+        // 组件为null直接返回null
         PlayerFormComponent playerFormComponent = RegPlayerFormComponent.PLAYER_FORM.get(player);
-        return playerFormComponent.getCurrentForm().FormID;
+        if (playerFormComponent == null) return null;
+        // 获取当前形态，形态为null返回null
+        PlayerFormBase currentForm = playerFormComponent.getCurrentForm();
+        if (currentForm == null) return null;
+        // 形态的FormID为null返回null
+        return currentForm.FormID;
     }
 
     private Identifier getTargetFormId(PlayerEntity player) {
@@ -202,11 +205,12 @@ public class SpUpgradeItem extends Item {
         // }
         // return null;
         Identifier playerFormID = getPlayerFormID(player);
+        // playerFormID为null时，直接返回null，不进入遍历
+        if (playerFormID == null) return null;
         for (Map.Entry<Identifier, Identifier> entry : UPGRADE_MAP.entrySet()) {
             Identifier currentFormId = entry.getKey();
-            Identifier targetFormId = entry.getValue();
             if (playerFormID.equals(currentFormId)) {
-                return targetFormId;
+                return entry.getValue();
             }
         }
         return null;
