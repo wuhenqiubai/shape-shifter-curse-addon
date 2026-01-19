@@ -108,6 +108,32 @@ public class SscAddonActions {
                 } catch (IllegalArgumentException ignored) {}
             }));
 
+        registerEntity(new ActionFactory<>(new Identifier("my_addon", "adaptive_water_jump"),
+            new SerializableData()
+                .add("base_y", SerializableDataTypes.FLOAT, 0.4f)
+                .add("horizontal_momentum", SerializableDataTypes.FLOAT, 1.2f)
+                .add("vertical_conversion", SerializableDataTypes.FLOAT, 0.5f),
+            (data, entity) -> {
+                if (entity instanceof LivingEntity living) {
+                    float baseY = data.getFloat("base_y");
+                    float hMom = data.getFloat("horizontal_momentum");
+                    float vConv = data.getFloat("vertical_conversion");
+
+                    Vec3d velocity = living.getVelocity();
+                    double hSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+                    
+                    // New Y: Base jump + portion of horizontal speed converted to lift + existing vertical velocity
+                    double newY = baseY + (hSpeed * vConv) + (velocity.y > 0 ? velocity.y : 0);
+                    
+                    // New Horizontal: maintain and boost momentum
+                    double newX = velocity.x * hMom;
+                    double newZ = velocity.z * hMom;
+
+                    living.setVelocity(newX, newY, newZ);
+                    living.velocityModified = true;
+                }
+            }));
+
         registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "clear_aggro"),
             new SerializableData()
                 .add("radius", SerializableDataTypes.DOUBLE, 64.0),

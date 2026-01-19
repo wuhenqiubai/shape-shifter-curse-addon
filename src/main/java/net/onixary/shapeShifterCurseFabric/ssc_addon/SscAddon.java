@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.command.SscAddonCommands;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.condition.SscAddonConditions;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.power.SscAddonPowers;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
@@ -70,6 +71,7 @@ public class SscAddon implements ModInitializer {
         
         SscAddonActions.register();
         SscAddonConditions.register();
+        SscAddonPowers.register();
 
         SscAddonNetworking.registerServerReceivers();
 
