@@ -35,13 +35,37 @@ import java.util.List;
 
 public class WaterSpearEntity extends TridentEntity {
 
+    private ItemStack waterSpearStack = new ItemStack(SscAddon.WATER_SPEAR);
+
     public WaterSpearEntity(EntityType<? extends TridentEntity> entityType, World world) {
-        super(entityType, world);
+        super(SscAddon.WATER_SPEAR_ENTITY, world);
     }
 
     public WaterSpearEntity(World world, LivingEntity owner, ItemStack stack) {
-        super(world, owner, stack);
+        super(SscAddon.WATER_SPEAR_ENTITY, world);
+        this.setOwner(owner);
+        this.setPosition(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
+        this.waterSpearStack = stack.copy();
     }
+
+    public ItemStack getWeaponStack() {
+        return this.waterSpearStack;
+    }
+
+    @Override
+    public void readCustomDataFromNbt(NbtCompound nbt) {
+        super.readCustomDataFromNbt(nbt);
+        if (nbt.contains("WaterSpear", 10)) {
+            this.waterSpearStack = ItemStack.fromNbt(nbt.getCompound("WaterSpear"));
+        }
+    }
+
+    @Override
+    public void writeCustomDataToNbt(NbtCompound nbt) {
+        super.writeCustomDataToNbt(nbt);
+        nbt.put("WaterSpear", this.waterSpearStack.writeNbt(new NbtCompound()));
+    }
+
 
     @Override
     protected void onEntityHit(EntityHitResult entityHitResult) {

@@ -174,13 +174,66 @@ public class SscAddonActions {
                     System.out.println("SSC ADDON: Triggered Play Dead (Composite Java Action)");
                 }
             }));
+            
+        registerEntity(new ActionFactory<>(new Identifier("my_addon", "adaptive_water_jump"),
+            new SerializableData().add("multiplier", SerializableDataTypes.FLOAT, 2.0F),
+            (data, entity) -> {
+                // Must be in swimming pose (sprinting in water) to trigger
+                if (entity.isSwimming()) {
+                    Vec3d velocity = entity.getVelocity();
+                    double vy = velocity.y;
+                    
+                    // Only boost if moving upwards
+                    // AND looking up (Pitch < -20) for the special "Jump Out" mechanics
+                    if (vy > 0) {
+                         double newVy = vy;
+                         double newVx = velocity.x;
+                         double newVz = velocity.z;
+                         
+                         // Special Jump Boost: Only when looking up (Pitch < -20)
+                         // Triggers explosive jump out of water
+                         if (entity.getPitch() < -20.0f) {
+                             newVy = vy * data.getFloat("multiplier");
+                             
+                             // Height limit constraints (Considering Air Resistance 0.98 and Gravity 0.08)
+                             // Min: 7 Blocks Height -> requires ~1.1 velocity
+                             // Max: 12 Blocks Height -> requires ~1.5 velocity
+                             double minVy = 1.1; 
+                             double maxVy = 1.7;
+                             
+                             if (newVy < minVy) newVy = minVy;
+                             if (newVy > maxVy) newVy = maxVy;
+                             
+                             // Maintain Horizontal Acceleration (Fix "stutter/stop" when looking up)
+                             newVx = velocity.x * 1.5;
+                             newVz = velocity.z * 1.5;
+                         } else {
+                             // Normal Swimming Leap (Flat/Looking Down):
+                             // Vertical speed (Rising/Sinking) 1.5x boost
+                             newVy = vy * 1.5;
+                             // Horizontal boost (1.5x) to create composite vector acceleration
+                             newVx = velocity.x * 1.5;
+                             newVz = velocity.z * 1.5;
+                         }
+
+                         // Always apply velocity to preserve momentum against water exit drag
+                         // This ensures smooth transition for both cases
+                         entity.setVelocity(newVx, newVy, newVz);
+                         entity.velocityModified = true;
+                    }
+                }
+            }));
     }
 
     private static void registerBiEntity(ActionFactory<Pair<Entity, Entity>> actionFactory) {
-        Registry.register(ApoliRegistries.BIENTITY_ACTION, actionFactory.getSerializerId(), actionFactory);
+        if (!ApoliRegistries.BIENTITY_ACTION.containsId(actionFactory.getSerializerId())) {
+             Registry.register(ApoliRegistries.BIENTITY_ACTION, actionFactory.getSerializerId(), actionFactory);
+        }
     }
     
     private static void registerEntity(ActionFactory<Entity> actionFactory) {
-        Registry.register(ApoliRegistries.ENTITY_ACTION, actionFactory.getSerializerId(), actionFactory);
+        if (!ApoliRegistries.ENTITY_ACTION.containsId(actionFactory.getSerializerId())) {
+            Registry.register(ApoliRegistries.ENTITY_ACTION, actionFactory.getSerializerId(), actionFactory);
+        }
     }
 }

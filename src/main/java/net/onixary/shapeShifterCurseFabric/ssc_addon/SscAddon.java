@@ -33,12 +33,27 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.RefillMoisturizerRec
 import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormGroup;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 
+import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.SpawnGroup;
+import net.minecraft.entity.EntityDimensions;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.item.WaterSpearEntity;
+
 public class SscAddon implements ModInitializer {
 
     public static final StatusEffect FOX_FIRE_BURN = new FoxFireBurnEffect();
     public static final StatusEffect BLUE_FIRE_RING = new BlueFireRingEffect();
     public static final StatusEffect PLAYING_DEAD = new PlayingDeadEffect();
     
+    public static final EntityType<WaterSpearEntity> WATER_SPEAR_ENTITY = Registry.register(
+            Registries.ENTITY_TYPE,
+            new Identifier("ssc_addon", "water_spear"),
+            FabricEntityTypeBuilder.<WaterSpearEntity>create(SpawnGroup.MISC, WaterSpearEntity::new)
+                    .dimensions(EntityDimensions.fixed(0.5f, 0.5f))
+                    .trackRangeBlocks(4).trackedUpdateRate(20)
+                    .build()
+    );
+
     public static final Item SP_UPGRADE_THING = new SpUpgradeItem(new Item.Settings().maxCount(1));
     public static final Item PORTABLE_MOISTURIZER = new PortableMoisturizerItem(new Item.Settings().maxCount(1));
     public static final RecipeSerializer<RefillMoisturizerRecipe> REFILL_MOISTURIZER_SERIALIZER = new SpecialRecipeSerializer<>(RefillMoisturizerRecipe::new);

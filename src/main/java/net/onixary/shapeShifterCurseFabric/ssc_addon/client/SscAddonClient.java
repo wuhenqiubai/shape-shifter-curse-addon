@@ -17,7 +17,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.PacketByteBuf;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
+import net.minecraft.client.item.ModelPredicateProviderRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WaterSpearEntityRenderer;
 
 public class SscAddonClient implements ClientModInitializer {
     public static final String CATEGORY = "key.categories.ssc_addon";
@@ -78,18 +80,17 @@ public class SscAddonClient implements ClientModInitializer {
         KeyBindingHelper.registerKeyBinding(KEY_VORTEX);
         KeyBindingHelper.registerKeyBinding(KEY_PLAY_DEAD);
 
-        // Register Water Spear Item Renderer to look like a Trident
-        BuiltinItemRendererRegistry.INSTANCE.register(SscAddon.WATER_SPEAR, (stack, mode, matrices, vertexConsumers, light, overlay) -> {
-            if (tridentModel == null) {
-                // Initialize model only when client is fully ready and has loaded models
-                tridentModel = new TridentEntityModel(MinecraftClient.getInstance().getEntityModelLoader().getModelPart(EntityModelLayers.TRIDENT));
-            }
-            matrices.push();
-            matrices.scale(1.0F, -1.0F, -1.0F);
-            VertexConsumer vertexConsumer = ItemRenderer.getDirectItemGlintConsumer(vertexConsumers, tridentModel.getLayer(new Identifier("textures/entity/trident.png")), false, stack.hasGlint());
-            tridentModel.render(matrices, vertexConsumer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-            matrices.pop();
-        });
+        EntityRendererRegistry.register(SscAddon.WATER_SPEAR_ENTITY, WaterSpearEntityRenderer::new);
+
+        // Register predicate for 3D model when held (0.0 = inventory/ground, 1.0 = held)
+        ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "held"), (stack, world, entity, seed) -> 
+            entity != null && (entity.getMainHandStack() == stack || entity.getOffHandStack() == stack) ? 1.0F : 0.0F
+        );
+        
+        // Also register "throwing" predicate for trident animation support if needed
+        ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "throwing"), (stack, world, entity, seed) -> 
+            entity != null && entity.isUsingItem() && entity.getActiveItem() == stack ? 1.0F : 0.0F
+        );
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
