@@ -1,5 +1,8 @@
 {
     "type": "origins:active_self",
+    "key": {
+        "key": "key.ssc_addon.sp_secondary"
+    },
     "entity_action": {
         "type": "origins:and",
         "actions": [
@@ -59,9 +62,7 @@
     "hud_render": {
         "should_render": false
     },
-    "key": {
-        "key": "key.ssc_addon.fox_fire"
-    },
+
     "name": "狐火吐息",
     "description": "消耗20点法力，向前方6格范围喷吐灵魂狐火，造成6点伤害并点燃敌人5秒。"
 }

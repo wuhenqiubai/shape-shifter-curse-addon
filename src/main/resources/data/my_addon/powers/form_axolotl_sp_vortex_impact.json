@@ -18,6 +18,9 @@
     },
     "key_activation": {
         "type": "origins:active_self",
+        "key": {
+            "key": "key.ssc_addon.sp_primary"
+        },
         "cooldown": 400,
         "hud_render": {
             "should_render": false
@@ -66,7 +69,7 @@
             ]
         },
         "key": {
-            "key": "key.ssc_addon.vortex"
+            "key": "key.ssc_addon.sp_primary"
         }
     },
     "vortex_decay": {

@@ -7,7 +7,7 @@
         },
         "cooldown": 720,
         "key": {
-            "key": "key.ssc_addon.play_dead"
+            "key": "key.ssc_addon.sp_secondary"
         },
         "name": "Play Dead",
         "description": "Feign death to escape danger. Clears mob aggro, reduces damage by 90%, but locks you in place for 6 seconds."

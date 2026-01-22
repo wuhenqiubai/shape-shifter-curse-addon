@@ -46,6 +46,9 @@
     },
     "key_activation": {
         "type": "origins:active_self",
+        "key": {
+            "key": "key.ssc_addon.sp_primary"
+        },
         "cooldown": 20,
         "entity_action": {
             "type": "origins:and",
@@ -149,9 +152,6 @@
                     "inverted": true
                 }
             ]
-        },
-        "key": {
-            "key": "key.ssc_addon.blue_ring"
         },
         "name": "Blue Fire Ring (Normal)",
         "description": "Create a ring of blue fire.",
