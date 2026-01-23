@@ -22,5 +22,45 @@
             "type": "origins:status_effect",
             "effect": "ssc_addon:playing_dead"
         }
+    },
+    "prevent_jump": {
+        "type": "origins:modify_jump",
+        "modifier": {
+            "operation": "multiply_total",
+            "value": -1.0
+        },
+        "condition": {
+            "type": "origins:status_effect",
+            "effect": "ssc_addon:playing_dead"
+        }
+    },
+    "prevent_item_use": {
+        "type": "origins:prevent_item_use",
+        "condition": {
+            "type": "origins:status_effect",
+            "effect": "ssc_addon:playing_dead"
+        }
+    },
+    "prevent_attack": {
+        "type": "origins:modify_damage_dealt",
+        "modifier": {
+            "operation": "multiply_total",
+            "value": -1.0
+        },
+        "condition": {
+            "type": "origins:status_effect",
+            "effect": "ssc_addon:playing_dead"
+        }
+    },
+    "prevent_mining": {
+        "type": "origins:modify_break_speed",
+        "modifier": {
+            "operation": "multiply_total",
+            "value": -1.0
+        },
+        "condition": {
+            "type": "origins:status_effect",
+            "effect": "ssc_addon:playing_dead"
+        }
     }
 }
