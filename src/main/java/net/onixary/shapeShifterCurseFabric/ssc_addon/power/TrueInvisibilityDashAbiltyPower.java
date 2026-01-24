@@ -68,9 +68,18 @@ public class TrueInvisibilityDashAbiltyPower extends ActiveCooldownPower {
     @Override
     public void onUse() {
         if (entity == null || entity.getWorld().isClient) return;
+
+        // Double check: MUST be invisible to use this
+        // Note: Apoli might call onUse without checking canUse() in some network contexts
+        if (!this.canUse()) {
+            return;
+        }
         
         // Remove invisibility immediately
         entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY);
+
+        // Apply 50% slow (Slowness III = -45%, close enough) for 1 second
+        entity.addStatusEffect(new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS, 20, 2, false, false, false));
         
         // Play Cat Hiss Sound (周围人能听见)
         entity.getWorld().playSound(null, entity.getX(), entity.getY(), entity.getZ(), 
@@ -120,8 +129,8 @@ public class TrueInvisibilityDashAbiltyPower extends ActiveCooldownPower {
     private void performStunEffect() {
         ServerWorld world = (ServerWorld) entity.getWorld();
         
-        // Apply stun to nearby entities (8 blocks range)
-        net.minecraft.util.math.Box box = entity.getBoundingBox().expand(8.0, 4.0, 8.0);
+        // Apply stun to nearby entities (5 blocks radius for 10 blocks diameter sphere)
+        net.minecraft.util.math.Box box = entity.getBoundingBox().expand(5.0, 5.0, 5.0);
         world.getEntitiesByClass(LivingEntity.class, box, (e) -> {
             // Filter Logic:
             // 1. Not self
@@ -132,7 +141,7 @@ public class TrueInvisibilityDashAbiltyPower extends ActiveCooldownPower {
             if (PowerHolderComponent.getPowers(e, TrueInvisibilityAbilityPower.class).size() > 0) return false;
             if (PowerHolderComponent.getPowers(e, TrueInvisibilityDashAbiltyPower.class).size() > 0) return false;
 
-            return e.distanceTo(entity) <= 8.0;
+            return e.distanceTo(entity) <= 5.0;
         })
         .forEach(target -> {
             // Apply Stun: 1.5s = 30 ticks

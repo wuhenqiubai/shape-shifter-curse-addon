@@ -22,7 +22,8 @@ public class StunEffect extends StatusEffect {
 
     @Override
     public void applyUpdateEffect(LivingEntity entity, int amplifier) {
-        entity.setVelocity(0, entity.getVelocity().y, 0);
-        entity.velocityModified = true;
+        // Removed explicit velocity reset to allow gravity/knockback to work
+        // entity.setVelocity(0, entity.getVelocity().y, 0);
+        // entity.velocityModified = true;
     }
 }

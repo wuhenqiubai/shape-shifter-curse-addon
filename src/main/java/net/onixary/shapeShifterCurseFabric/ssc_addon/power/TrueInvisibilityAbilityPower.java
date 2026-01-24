@@ -150,8 +150,13 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
             // Key Cancel: Cat Hiss
             serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(), 
                 SoundEvents.ENTITY_CAT_HISS, SoundCategory.PLAYERS, 1.0f, 1.0f);
+            
+            // Add Buffs: Guaranteed Crit & Speed II for 5 seconds
+            entity.addStatusEffect(new StatusEffectInstance(SscAddon.GUARANTEED_CRIT, 100, 0, false, false, true));
+            entity.addStatusEffect(new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SPEED, 100, 1, false, false, true));
+            
             if (entity instanceof PlayerEntity player) {
-                player.sendMessage(Text.of("§a隐身已主动解除"), true);
+                player.sendMessage(Text.of("§a隐身已主动解除，获得爆发增益!"), true);
             }
         } else {
             // Action Break: Glass Break
