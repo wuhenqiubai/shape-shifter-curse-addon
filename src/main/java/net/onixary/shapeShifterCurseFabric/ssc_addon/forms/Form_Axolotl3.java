@@ -32,6 +32,7 @@ public class Form_Axolotl3 extends PlayerFormBase {
     private static AnimationHolder anim_crawling_tool_swing = AnimationHolder.EMPTY;
     private static AnimationHolder anim_crawling_jump = AnimationHolder.EMPTY;
     private static AnimationHolder anim_rush_jump = AnimationHolder.EMPTY;
+    private static AnimationHolder anim_sleep = AnimationHolder.EMPTY;
 
 
     public AnimationHolder Anim_getFormAnimToPlay(PlayerAnimState currentState) {
@@ -66,7 +67,7 @@ public class Form_Axolotl3 extends PlayerFormBase {
                 return anim_crawling_idle;
 
             case ANIM_SLEEP:
-                return anim_swimming_idle;
+                return anim_sleep;
 
             case ANIM_SNEAK_ATTACK_ONCE:
                 return anim_crawling_attack_once;
@@ -92,6 +93,7 @@ public class Form_Axolotl3 extends PlayerFormBase {
         anim_jump = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_jump"), true);
         anim_idle = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_idle"), true);
         anim_rush_jump = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_rush_jump"), true, 1, 10);
+        anim_sleep = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_idle"), true, 0f);
     }
 
     public static final AbstractAnimStateController SWIM_CONTROLLER = new SwimAnimController(new AnimUtils.AnimationHolderData(ShapeShifterCurseFabric.identifier("axolotl_2_swimming_idle")), new AnimUtils.AnimationHolderData(ShapeShifterCurseFabric.identifier("axolotl_2_swimming")));

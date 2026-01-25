@@ -1,0 +1,25 @@
+{
+    "type": "origins:modify_damage_dealt",
+    "modifier": {
+        "operation": "addition",
+        "value": 1.0,
+        "name": "Wild Cat SP Night Strength"
+    },
+    "condition": {
+        "type": "origins:and",
+        "conditions": [
+            {
+                "type": "origins:time_of_day",
+                "compare_to": 13000,
+                "comparison": ">="
+            },
+            {
+                "type": "origins:time_of_day",
+                "compare_to": 23000,
+                "comparison": "<="
+            }
+        ]
+    },
+    "name": "Night Force",
+    "description": "You deal more damage at night. (Note: This bonus applies on hit and may not appear in the inventory)."
+}

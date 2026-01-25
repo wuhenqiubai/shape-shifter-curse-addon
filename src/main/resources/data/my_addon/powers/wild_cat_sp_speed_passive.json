@@ -1,0 +1,65 @@
+{
+    "type": "origins:multiple",
+    "night_boost": {
+        "type": "origins:action_over_time",
+        "interval": 20,
+        "entity_action": {
+            "type": "origins:apply_effect",
+            "effect": {
+                "effect": "minecraft:speed",
+                "duration": 40,
+                "amplifier": 0,
+                "is_ambient": true,
+                "show_particles": false,
+                "show_icon": false
+            }
+        },
+        "condition": {
+            "type": "origins:and",
+            "conditions": [
+                {
+                    "type": "origins:time_of_day",
+                    "compare_to": 13000,
+                    "comparison": ">="
+                },
+                {
+                    "type": "origins:time_of_day",
+                    "compare_to": 23000,
+                    "comparison": "<="
+                }
+            ]
+        }
+    },
+    "day_debuff": {
+        "type": "origins:action_over_time",
+        "interval": 20,
+        "entity_action": {
+            "type": "origins:apply_effect",
+            "effect": {
+                "effect": "minecraft:slowness",
+                "duration": 40,
+                "amplifier": 0,
+                "is_ambient": true,
+                "show_particles": false,
+                "show_icon": false
+            }
+        },
+        "condition": {
+            "type": "origins:or",
+            "conditions": [
+                {
+                    "type": "origins:time_of_day",
+                    "compare_to": 13000,
+                    "comparison": "<"
+                },
+                {
+                    "type": "origins:time_of_day",
+                    "compare_to": 23000,
+                    "comparison": ">"
+                }
+            ]
+        }
+    },
+    "name": "Night Walker",
+    "description": "You are faster at night but slower during the day."
+}
