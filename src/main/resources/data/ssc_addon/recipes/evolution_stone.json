@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "ssc_addon:shadow_shard"
+    },
+    {
+      "item": "ssc_addon:night_vision_shard"
+    },
+    {
+      "item": "ssc_addon:ender_shard"
+    },
+    {
+      "item": "ssc_addon:hunt_shard"
+    },
+    {
+      "item": "ssc_addon:sculk_shard"
+    }
+  ],
+  "result": {
+    "item": "ssc_addon:evolution_stone",
+    "count": 1
+  }
+}

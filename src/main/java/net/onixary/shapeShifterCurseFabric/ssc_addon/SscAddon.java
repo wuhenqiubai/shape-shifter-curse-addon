@@ -26,6 +26,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.item.BlueFireAmuletItem;
 import net.minecraft.item.ToolMaterials;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.forms.Form_Axolotl3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.forms.Form_FamiliarFox3;
+import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_FeralCatSP;
 //import net.onixary.shapeShifterCurseFabric.ssc_addon.forms.Form_Allay;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialRecipeSerializer;
@@ -68,6 +69,14 @@ public class SscAddon implements ModInitializer {
     // 60 durability like wooden sword, auto-consumed over 60 seconds
     public static final Item WATER_SPEAR = new WaterSpearItem(new Item.Settings().maxCount(1).maxDamage(60));
 
+    // Evolution Stone and Shards
+    public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Settings().maxCount(1).fireproof());
+    public static final Item SHADOW_SHARD = new Item(new Item.Settings().maxCount(1));
+    public static final Item NIGHT_VISION_SHARD = new Item(new Item.Settings().maxCount(1));
+    public static final Item ENDER_SHARD = new Item(new Item.Settings().maxCount(1));
+    public static final Item HUNT_SHARD = new Item(new Item.Settings().maxCount(1));
+    public static final Item SCULK_SHARD = new Item(new Item.Settings().maxCount(1));
+
     @Override
     public void onInitialize() {
         Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "fox_fire_burn"), FOX_FIRE_BURN);
@@ -82,6 +91,13 @@ public class SscAddon implements ModInitializer {
         Registry.register(Registries.ITEM, new Identifier("ssc_addon", "portable_moisturizer"), PORTABLE_MOISTURIZER);
         Registry.register(Registries.ITEM, new Identifier("ssc_addon", "blue_fire_amulet"), BLUE_FIRE_AMULET);
         Registry.register(Registries.ITEM, new Identifier("ssc_addon", "water_spear"), WATER_SPEAR);
+
+        Registry.register(Registries.ITEM, new Identifier("ssc_addon", "evolution_stone"), EVOLUTION_STONE);
+        Registry.register(Registries.ITEM, new Identifier("ssc_addon", "shadow_shard"), SHADOW_SHARD);
+        Registry.register(Registries.ITEM, new Identifier("ssc_addon", "night_vision_shard"), NIGHT_VISION_SHARD);
+        Registry.register(Registries.ITEM, new Identifier("ssc_addon", "ender_shard"), ENDER_SHARD);
+        Registry.register(Registries.ITEM, new Identifier("ssc_addon", "hunt_shard"), HUNT_SHARD);
+        Registry.register(Registries.ITEM, new Identifier("ssc_addon", "sculk_shard"), SCULK_SHARD);
         
         Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "refill_moisturizer"), REFILL_MOISTURIZER_SERIALIZER);
         Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
@@ -97,6 +113,15 @@ public class SscAddon implements ModInitializer {
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(content -> {
             content.add(PORTABLE_MOISTURIZER);
             content.add(BLUE_FIRE_AMULET);
+            content.add(EVOLUTION_STONE);
+        });
+
+        ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(content -> {
+            content.add(SHADOW_SHARD);
+            content.add(NIGHT_VISION_SHARD);
+            content.add(ENDER_SHARD);
+            content.add(HUNT_SHARD);
+            content.add(SCULK_SHARD);
         });
         
         SscAddonActions.register();
@@ -122,6 +147,13 @@ public class SscAddon implements ModInitializer {
         //allayForm.setPhase(PlayerFormPhase.PHASE_SP);
         //RegPlayerForms.registerPlayerForm(allayForm);
         //RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_form_allay_sp")).addForm(allayForm, 5));
+
+        Form_FeralCatSP wildCatForm = new Form_FeralCatSP(new Identifier("my_addon", "wild_cat_sp"));
+        wildCatForm.setPhase(PlayerFormPhase.PHASE_SP);
+        wildCatForm.setBodyType(net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType.FERAL);
+        wildCatForm.setCanSneakRush(true);
+        RegPlayerForms.registerPlayerForm(wildCatForm);
+        RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_wild_cat_sp")).addForm(wildCatForm, 5));
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             SscAddonCommands.register(dispatcher);
