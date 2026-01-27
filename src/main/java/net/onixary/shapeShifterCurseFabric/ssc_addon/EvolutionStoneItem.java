@@ -71,7 +71,7 @@ public class EvolutionStoneItem extends Item {
                     player.sendMessage(Text.literal("Error: Target form not found! ID: " + targetFormId).formatted(Formatting.RED), false);
                 }
             } else {
-                player.sendMessage(Text.literal("This form cannot evolve! Current ID: " + playerFormID).formatted(Formatting.RED), true);
+                player.sendMessage(Text.translatable("message.ssc_addon.evolution_stone.no_response").formatted(Formatting.RED), true);
                 world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0F, 1.0F);
             }
         }
