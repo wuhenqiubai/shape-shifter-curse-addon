@@ -191,7 +191,127 @@ public class SscAddonCommands {
 								.executes(SscAddonCommands::listBlockedSkills)
 						)
 				)
+				.then(CommandManager.literal("resistance")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.literal("get")
+								.executes(ctx -> resistanceGet(ctx, ctx.getSource().getPlayer()))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> resistanceGet(ctx, EntityArgumentType.getPlayer(ctx, "player")))
+								)
+						)
+						.then(CommandManager.literal("set")
+								.then(CommandManager.argument("value", IntegerArgumentType.integer(0))
+										.executes(ctx -> resistanceSet(ctx, ctx.getSource().getPlayer(), IntegerArgumentType.getInteger(ctx, "value")))
+										.then(CommandManager.argument("player", EntityArgumentType.player())
+												.executes(ctx -> resistanceSet(ctx, EntityArgumentType.getPlayer(ctx, "player"), IntegerArgumentType.getInteger(ctx, "value")))
+										)
+								)
+						)
+						.then(CommandManager.literal("add")
+								.then(CommandManager.argument("delta", IntegerArgumentType.integer())
+										.executes(ctx -> resistanceAdd(ctx, ctx.getSource().getPlayer(), IntegerArgumentType.getInteger(ctx, "delta")))
+										.then(CommandManager.argument("player", EntityArgumentType.player())
+												.executes(ctx -> resistanceAdd(ctx, EntityArgumentType.getPlayer(ctx, "player"), IntegerArgumentType.getInteger(ctx, "delta")))
+										)
+								)
+						)
+				)
+				// ============== /ssc_addon mancianima_assault ==============
+				// 控制玩家"今日是否可触发契灵敲钟袭击"的每日冷却（持久化）
+				.then(CommandManager.literal("mancianima_assault")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.literal("reset")
+								.executes(ctx -> mancianimaAssaultReset(ctx, ctx.getSource().getPlayer()))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> mancianimaAssaultReset(ctx, EntityArgumentType.getPlayer(ctx, "player")))
+								)
+						)
+						.then(CommandManager.literal("lock")
+								.executes(ctx -> mancianimaAssaultLock(ctx, ctx.getSource().getPlayer()))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> mancianimaAssaultLock(ctx, EntityArgumentType.getPlayer(ctx, "player")))
+								)
+						)
+						.then(CommandManager.literal("status")
+								.executes(ctx -> mancianimaAssaultStatus(ctx, ctx.getSource().getPlayer()))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> mancianimaAssaultStatus(ctx, EntityArgumentType.getPlayer(ctx, "player")))
+								)
+						)
+				)
 		);
+	}
+
+	// ============== /ssc_addon mancianima_assault ==============
+	private static final long MANCIANIMA_ASSAULT_COOLDOWN_TICKS = 24000L;
+
+	private static int mancianimaAssaultReset(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("无目标玩家")); return 0; }
+		net.minecraft.server.MinecraftServer srv = ctx.getSource().getServer();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState state =
+				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState.get(srv);
+		if (state.lastRoll.remove(player.getUuid()) != null) {
+			state.markDirty();
+		}
+		ctx.getSource().sendFeedback(() -> Text.literal("§a[契灵袭击]§r 已重置 " + player.getName().getString() + " 的每日冷却（现在可触发）"), true);
+		return 1;
+	}
+
+	private static int mancianimaAssaultLock(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("无目标玩家")); return 0; }
+		net.minecraft.server.MinecraftServer srv = ctx.getSource().getServer();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState state =
+				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState.get(srv);
+		state.lastRoll.put(player.getUuid(), srv.getOverworld().getTime());
+		state.markDirty();
+		ctx.getSource().sendFeedback(() -> Text.literal("§e[契灵袭击]§r 已锁定 " + player.getName().getString() + " 的当日触发权限（24000 tick 内不可再发动）"), true);
+		return 1;
+	}
+
+	private static int mancianimaAssaultStatus(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("无目标玩家")); return 0; }
+		net.minecraft.server.MinecraftServer srv = ctx.getSource().getServer();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState state =
+				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState.get(srv);
+		Long last = state.lastRoll.get(player.getUuid());
+		long now = srv.getOverworld().getTime();
+		if (last == null || now - last >= MANCIANIMA_ASSAULT_COOLDOWN_TICKS) {
+			ctx.getSource().sendFeedback(() -> Text.literal("§a[契灵袭击]§r " + player.getName().getString() + " 当前可触发"), false);
+		} else {
+			long remain = MANCIANIMA_ASSAULT_COOLDOWN_TICKS - (now - last);
+			ctx.getSource().sendFeedback(() -> Text.literal("§c[契灵袭击]§r " + player.getName().getString() + " 冷却中：剩余 " + remain + " tick (" + (remain / 20) + "s)"), false);
+		}
+		return 1;
+	}
+
+	// ============== /ssc_addon resistance ==============
+	private static int resistanceGet(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("无目标玩家")); return 0; }
+		int cur = PowerUtils.getResourceValue(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
+		int max = PowerUtils.getResourceMax(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
+		ctx.getSource().sendFeedback(() -> Text.literal("§b[抵抗值]§r " + player.getName().getString() + " : " + cur + " / " + max), false);
+		return 1;
+	}
+
+	private static int resistanceSet(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player, int value) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("无目标玩家")); return 0; }
+		int max = PowerUtils.getResourceMax(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
+		if (max <= 0) { ctx.getSource().sendError(Text.literal("该玩家未持有契灵抗伤 power（非契灵形态？）")); return 0; }
+		int clamped = Math.max(0, Math.min(value, max));
+		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.MANCIANIMA_RESISTANCE, clamped);
+		ctx.getSource().sendFeedback(() -> Text.literal("§a[抵抗值]§r 设置 " + player.getName().getString() + " = " + clamped + " / " + max), true);
+		return 1;
+	}
+
+	private static int resistanceAdd(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player, int delta) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("无目标玩家")); return 0; }
+		int max = PowerUtils.getResourceMax(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
+		if (max <= 0) { ctx.getSource().sendError(Text.literal("该玩家未持有契灵抗伤 power（非契灵形态？）")); return 0; }
+		int cur = PowerUtils.getResourceValue(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
+		int next = Math.max(0, Math.min(cur + delta, max));
+		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.MANCIANIMA_RESISTANCE, next);
+		ctx.getSource().sendFeedback(() -> Text.literal("§a[抵抗值]§r " + player.getName().getString() + " : " + cur + " → " + next + " / " + max), true);
+		return 1;
 	}
 
 	private static int setMana(CommandContext<ServerCommandSource> context, Collection<ServerPlayerEntity> targets, int amount) {

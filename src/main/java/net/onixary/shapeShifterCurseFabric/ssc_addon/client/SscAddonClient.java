@@ -20,9 +20,12 @@ import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ErosionBrandClientState;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkClientState;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.mana.AllaySPManaBar;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.mana.AnubisWolfSPSoulBar;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.mana.SnowFoxSPManaBar;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.client.mana.MancianimaResistanceBar;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.hud.SkillCooldownBarRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WaterSpearEntityRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WitchFamiliarRenderer;
@@ -55,10 +58,13 @@ public class SscAddonClient implements ClientModInitializer {
 		// 包裹 try-catch 防止任何意外（如类加载失败）静默吞掉异常导致客机无反应。
 		try {
 			SscAddonKeybindings.register();
-			// 注册SP技能按键到Apoli框架，确保多人游戏中客机的active_self能力能正确发送激活包到服务器
-			ApoliClient.registerPowerKeybinding("key.ssc_addon.sp_primary", SscAddonKeybindings.KEY_SP_PRIMARY);
-			ApoliClient.registerPowerKeybinding("key.ssc_addon.sp_secondary", SscAddonKeybindings.KEY_SP_SECONDARY);
-			LOGGER.info("[SSC_ADDON] Client KeyBindings registered successfully (sp_primary=G, sp_secondary=R)");
+			// 关键修复：复用 SSC 原版的 primary_active / secondary_active 键位对象，
+			// 不再单独注册 G 键，避免与 SSC 的 KEY_TO_BINDINGS 注册冲突
+			// （冲突会导致 SSC 与 SSCA 的主动技能在 G 键上互相覆盖、按键失效）。
+			// Apoli 端仍以 ssc_addon.sp_primary / sp_secondary 作为 ID，所有 powers JSON 无需改动。
+			ApoliClient.registerPowerKeybinding("key.ssc_addon.sp_primary", SscAddonKeybindings.getPrimaryKey());
+			ApoliClient.registerPowerKeybinding("key.ssc_addon.sp_secondary", SscAddonKeybindings.getSecondaryKey());
+			LOGGER.info("[SSC_ADDON] SP keybindings bound to SSC primary_active / secondary_active (shared with SSC to avoid G-key conflict)");
 		} catch (Throwable t) {
 			LOGGER.error("[SSC_ADDON] CRITICAL: Failed to register client keybindings - SP skills will not work on this client!", t);
 		}
@@ -66,7 +72,11 @@ public class SscAddonClient implements ClientModInitializer {
 		// 客户端断线时清理侵蚀烙印缓存，防止重连后残留旧发光数据
 		ClientPlayConnectionEvents.DISCONNECT.register((handler2, client2) -> {
 			ErosionBrandClientState.clear();
+			MancianimaMarkClientState.clear();
 		});
+
+		// 注册契灵准星射线追踪（每客户端 tick 更新当前瞄准目标）
+		try { MancianimaCrosshairTracker.register(); } catch (Throwable t) { LOGGER.error("[SSC_ADDON] CrosshairTracker register failed", t); }
 
 		// 注册侵蚀烙印 S2C 同步包接收器
 		ClientPlayNetworking.registerGlobalReceiver(GoldenSandstormErosionBrand.PACKET_BRAND_SYNC, (client, handler, buf, responseSender) -> {
@@ -78,6 +88,18 @@ public class SscAddonClient implements ClientModInitializer {
 				brands.put(uuid, color);
 			}
 			client.execute(() -> ErosionBrandClientState.update(brands));
+		});
+
+		// 注册契灵标记 S2C 同步包接收器
+		ClientPlayNetworking.registerGlobalReceiver(MancianimaMarkManager.PACKET_MARK_SYNC, (client, handler, buf, responseSender) -> {
+			int count = buf.readInt();
+			java.util.Map<java.util.UUID, String> marks = new java.util.HashMap<>();
+			for (int i = 0; i < count; i++) {
+				java.util.UUID uuid = buf.readUuid();
+				String color = buf.readString();
+				marks.put(uuid, color);
+			}
+			client.execute(() -> MancianimaMarkClientState.update(marks));
 		});
 
 		ItemTooltipCallback.EVENT.register((stack, context, lines) -> {
@@ -118,6 +140,12 @@ public class SscAddonClient implements ClientModInitializer {
 		HudRenderCallback.EVENT.register(new AllaySPManaBar());
 		HudRenderCallback.EVENT.register(new AnubisWolfSPSoulBar());
 		HudRenderCallback.EVENT.register(new SkillCooldownBarRenderer());
+		HudRenderCallback.EVENT.register(new MancianimaResistanceBar());
+
+		// 契灵 - 次要技能瞬移：客户端按键监听 + 紫色粒子预览
+		MancianimaTeleportClient.register();
+		// 契灵 - 主要技能：三段标记
+		MancianimaPrimaryClient.register();
 
 		HandledScreens.register(SscAddon.POTION_BAG_SCREEN_HANDLER, PotionBagScreen::new);
 	}
