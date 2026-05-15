@@ -100,12 +100,12 @@
 ---
 
 > ⚠️ **非官方维护分支 — Minecraft 1.21.1 / Fabric 移植**
-> 此分支由 [wuhenqiubai](https://github.com/wuhenqiubai) 移植并维护至 **Minecraft 1.21.1 + Fabric 0.19.2 + Java 21**。
+> 此分支由 [wuhenqiubai](https://github.com/wuhenqiubai) 移植并维护至 **Minecraft 1.21.1**。
 > 如需原始版本请查看上游 [MangZai-120/shape-shifter-curse-addon](https://github.com/MangZai-120/shape-shifter-curse-addon)。
 > 
-> 目前此模组的移植处于计划阶段，需要等待我对主模组 [Shape-Shifter-Curse](https://github.com/wuhenqiubai/shape-shifter-curse-fabric/tree/ver/1.21.1) 移植完成。
+> 目前主模组 [Shape-Shifter-Curse](https://github.com/wuhenqiubai/shape-shifter-curse-fabric) 移植完成，预计在主模组的稳定性打磨完全后开始移植本mod（预计三周内开始移植）
 
-## Q/A
+## Q&A
 - Q:这个模组和Xu233的模组能不能共用？
 - A:可以共用，因为Xu233的模组写的很标准，完全可以和这个模组共用。
 
