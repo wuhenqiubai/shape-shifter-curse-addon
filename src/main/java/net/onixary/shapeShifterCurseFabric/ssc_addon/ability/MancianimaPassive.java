@@ -77,7 +77,6 @@ public final class MancianimaPassive {
 		final BlockPos villageCenter;
 		RaiderPhase phase = RaiderPhase.ACTIVE;
 		long phaseEndTime = Long.MAX_VALUE;
-		BlockPos marchTarget;
 		RaiderGroup(net.minecraft.util.Identifier dim, BlockPos center) {
 			this.dimensionId = dim;
 			this.villageCenter = center;
@@ -239,7 +238,6 @@ public final class MancianimaPassive {
 		boolean raidersSpawned = false;
 		// —— 离开/暂停机制 ——
 		boolean paused = false; // true：玩家离开村庄，bossbar 灰色显示
-		long startTime;          // 触发袭击时的 world.getTime()
 		long expireTime;         // 触发后 24000 ticks（一日）后自动失败
 		AssaultData(Set<UUID> targets, ServerBossBar bossBar,
 				net.minecraft.util.Identifier dimensionId, Vec3d origin, long startTime) {
@@ -248,7 +246,6 @@ public final class MancianimaPassive {
 			this.bossBar = bossBar;
 			this.dimensionId = dimensionId;
 			this.origin = origin;
-			this.startTime = startTime;
 			this.expireTime = startTime + 24000L;
 		}
 	}
@@ -504,7 +501,9 @@ public final class MancianimaPassive {
 			if (remaining == 0) {
 				ServerPlayerEntity p = dead.getWorld().getServer() == null ? null
 						: dead.getWorld().getServer().getPlayerManager().getPlayer(e.getKey());
-				if (p != null) {
+				// 跨维度防御：若玩家不在 dead 所在的世界（比如已传送走），不在该世界给奖励/播音，
+				// 但仍要清除袭击状态，避免数据残留
+				if (p != null && p.getWorld() == dead.getWorld()) {
 					// 袭击成功完成：在此记录当天冷却（持久化）
 					net.minecraft.server.MinecraftServer srv = p.getServer();
 					if (srv != null) {
@@ -613,7 +612,6 @@ public final class MancianimaPassive {
 						BlockPos target = group.villageCenter.add(
 								(int) (Math.cos(ang) * RAIDER_MARCH_DISTANCE), 0,
 								(int) (Math.sin(ang) * RAIDER_MARCH_DISTANCE));
-						group.marchTarget = target;
 						group.phase = RaiderPhase.MARCH;
 						for (MobEntity m : alive) {
 							// 解除 home，让他们能离开村庄
@@ -692,5 +690,20 @@ public final class MancianimaPassive {
 		FLEE_AFFECTED.clear();
 		// raider 组在 server 重启时丢弃跟踪（实体本身已带 Persistent 持久化），避免悬空状态
 		RAIDER_GROUPS.clear();
+	}
+
+	/**
+	 * 单个玩家退服时清理与其绑定的内存状态，避免长期累积。
+	 * - 撤销 raid bossBar 的玩家订阅并清空 ASSAULTS 中该玩家的条目；
+	 * - 立即丢弃 RAIDER_GROUPS 中该玩家的 group 跟踪（raider 实体本身已持久化，世界会继续保留）。
+	 * 注意：本方法仅清内存索引，不会移除世界中已生成的 raider 实体。
+	 */
+	public static void onPlayerDisconnect(UUID uuid) {
+		AssaultData data = ASSAULTS.remove(uuid);
+		if (data != null && data.bossBar != null) {
+			data.bossBar.clearPlayers();
+			data.bossBar.setVisible(false);
+		}
+		RAIDER_GROUPS.remove(uuid);
 	}
 }

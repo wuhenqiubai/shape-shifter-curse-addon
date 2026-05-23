@@ -144,6 +144,8 @@ public class SscAddon implements ModInitializer {
 	public static final Item ACTIVE_CORAL_NECKLACE = new ActiveCoralNecklaceItem(new Item.Settings().maxCount(1));
 	public static final Item ANUBIS_CRYSTAL = new AnubisCrystalItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item ANKH_STONE = new AnkhStoneItem(new Item.Settings().maxCount(1).fireproof());
+	// 契灵专属：绑定脚环（feet/aglet 槽，与守御脚环互斥）
+	public static final Item BINDING_ANKLET = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem(new Item.Settings().maxCount(1).fireproof());
 	// SP Golden Sandstorm items
 	public static final Item EROSION_SAND_PRISM = new ErosionSandPrismItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item WITHERED_SAND_RING = new WitheredSandRingItem(new Item.Settings().maxCount(1).fireproof());
@@ -201,6 +203,7 @@ public class SscAddon implements ModInitializer {
 						entries.add(ACTIVE_CORAL_NECKLACE);
 						entries.add(ANUBIS_CRYSTAL);
 						entries.add(ANKH_STONE);
+						entries.add(BINDING_ANKLET);
 						entries.add(EROSION_SAND_PRISM);
 						entries.add(WITHERED_SAND_RING);
 						entries.add(ALLAY_HEAL_WAND);
@@ -294,6 +297,8 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "active_coral_necklace"), ACTIVE_CORAL_NECKLACE);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "anubis_crystal"), ANUBIS_CRYSTAL);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "ankh_stone"), ANKH_STONE);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "binding_anklet"), BINDING_ANKLET);
+		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem.registerLootTable();
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "erosion_sand_prism"), EROSION_SAND_PRISM);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "withered_sand_ring"), WITHERED_SAND_RING);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "allay_heal_wand"), ALLAY_HEAL_WAND);
@@ -588,6 +593,9 @@ public class SscAddon implements ModInitializer {
 	}
 
 	private void registerPlayerEventHandlers() {
+		// 兜底：玩家加入服务器时清理孤儿 mana 数据，修复老存档残留导致能量条不消失的 bug
+		net.onixary.shapeShifterCurseFabric.ssc_addon.util.StaleManaCleaner.register();
+
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
 			if (!alive) {
 				newPlayer.getItemCooldownManager().remove(LIFESAVING_CAT_TAIL);
@@ -613,7 +621,10 @@ public class SscAddon implements ModInitializer {
 				player.addCommandTag(welcomeTag);
 				final java.util.UUID playerUuid = player.getUuid();
 				java.util.concurrent.CompletableFuture.delayedExecutor(3, java.util.concurrent.TimeUnit.SECONDS)
-						.execute(() -> server.execute(() -> {
+						.execute(() -> {
+							// 3 秒延迟到达时服务端可能已关闭/重启 —— 防御性检查，避免 IllegalStateException
+							if (!server.isRunning()) return;
+							server.execute(() -> {
 							var p = server.getPlayerManager().getPlayer(playerUuid);
 							if (p == null) return;
 							String url = "https://github.com/MangZai-120/shape-shifter-curse-addon/issues";
@@ -653,7 +664,8 @@ public class SscAddon implements ModInitializer {
 								p.sendMessage(Text.literal("Please do NOT only send screenshots, thank you!").formatted(Formatting.RED));
 								p.sendMessage(Text.literal("PS: This message will only be shown once.").formatted(Formatting.GRAY));
 							}
-						}));
+							});
+						});
 			}
 		});
 
@@ -677,6 +689,10 @@ public class SscAddon implements ModInitializer {
 			UndeadNeutralState.clearPlayer(uuid);
 			net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions.clearPlayer(uuid);
 			PLAYER_LANGUAGES.remove(uuid);
+			// 契灵：清理袭击 bossBar + raid 状态，防止 bossBar 残留与 Map 泄漏
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.onPlayerDisconnect(uuid);
+			// 白名单 GUI 限频表：移除退出玩家的时间戳，防止僵尸 UUID 积累
+			net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.onPlayerDisconnect(uuid);
 			System.out.println("[SSC_ADDON] DISCONNECT cleanup completed");
 		});
 	}
