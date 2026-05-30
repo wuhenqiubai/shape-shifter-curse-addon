@@ -92,6 +92,10 @@ public class SscAddon implements ModInitializer {
 	public static final StatusEffect FROST_FREEZE = new FrostFreezeEffect();
 	public static final StatusEffect FROST_FALL = new FrostFallEffect();
 	public static final StatusEffect PURIFIED = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.PurifiedEffect();
+	// 幽雾化形 - 雾化状态标记效果
+	public static final StatusEffect MIST_FORM = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.MistFormEffect();
+	// 幽雾化形 - 凝聚爆破蓄力标记效果（客户端据此减速 50%）
+	public static final StatusEffect MIST_CHARGING = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.MistChargingEffect();
 	public static final StatusEffect SAND_BLIND = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.SandBlindEffect();
 	/** 侵蚀烙印标记效果 - 1层(黄色) */
 	public static final StatusEffect EROSION_BRAND_MARKER_1 = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.ErosionBrandMarkerEffect(0xFFD700);
@@ -273,6 +277,8 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "frost_freeze"), FROST_FREEZE);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "frost_fall"), FROST_FALL);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "purified"), PURIFIED);
+		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "mist_form"), MIST_FORM);
+		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "mist_charging"), MIST_CHARGING);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "sand_blind"), SAND_BLIND);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_1"), EROSION_BRAND_MARKER_1);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_2"), EROSION_BRAND_MARKER_2);
@@ -389,6 +395,14 @@ public class SscAddon implements ModInitializer {
 		goldenSandstormForm.setCanSneakRush(true);
 		RegPlayerForms.registerPlayerForm(goldenSandstormForm);
 		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_golden_sandstorm_sp")).addForm(goldenSandstormForm, 12));
+
+		// 吸血蝙蝠（Desmodus）SP形态 - 复用蝙蝠模型/动画，经月髓环在诅咒之月夜进化获得
+		Form_BatDesmodus batDesmodusForm = new Form_BatDesmodus(FormIdentifiers.BAT_DESMODUS);
+		batDesmodusForm.setPhase(PlayerFormPhase.PHASE_SP);
+		batDesmodusForm.setHasSlowFall(true);
+		batDesmodusForm.setOverrideHandAnim(true);
+		RegPlayerForms.registerPlayerForm(batDesmodusForm);
+		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_bat_desmodus")).addForm(batDesmodusForm, 12));
 	}
 
 	private void registerCommands() {
@@ -426,6 +440,7 @@ public class SscAddon implements ModInitializer {
 				GoldenSandstormErosionBrand.tick(player);
 				GoldenSandstormWitherSand.tick(player);
 				GoldenSandstormRegen.tick(player);
+				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tick(player);
 			}
 		});
@@ -444,6 +459,7 @@ public class SscAddon implements ModInitializer {
 			GoldenSandstormErosionBrand.clearAll();
 			GoldenSandstormWitherSand.clearAll(server);
 			GoldenSandstormRegen.clearAll();
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.clearAll();
 			UndeadNeutralState.clearAll();
 			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.clearAll();
 			net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions.clearAll();
@@ -472,6 +488,7 @@ public class SscAddon implements ModInitializer {
 			GoldenSandstormErosionBrand.clearAll();
 			GoldenSandstormWitherSand.clearAll(server);
 			GoldenSandstormRegen.clearAll();
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.clearAll();
 			UndeadNeutralState.clearAll();
 			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.clearAll();
 			net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions.clearAll();
@@ -538,6 +555,50 @@ public class SscAddon implements ModInitializer {
 			if (!(state.getBlock() instanceof net.minecraft.block.BellBlock)) return net.minecraft.util.ActionResult.PASS;
 			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tryTriggerAssaultByBell(sp);
 			// 让钟声照常播放
+			return net.minecraft.util.ActionResult.PASS;
+		});
+
+		// 吸血蝙蝠血雾期间禁用一切右键交互（用物品/放方块/与生物互动/吃喝/盾牌副手等）
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+			if (player.hasStatusEffect(MIST_FORM)
+					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
+				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
+			}
+			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+		});
+		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			if (player.hasStatusEffect(MIST_FORM)
+					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
+			return net.minecraft.util.ActionResult.PASS;
+		});
+		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+			if (player.hasStatusEffect(MIST_FORM)
+					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
+			return net.minecraft.util.ActionResult.PASS;
+		});
+		// 同时禁用左键破坏方块
+		net.fabricmc.fabric.api.event.player.AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {
+			if (player.hasStatusEffect(MIST_FORM)
+					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
+			return net.minecraft.util.ActionResult.PASS;
+		});
+		// 禁用左键攻击实体（含挥剑/普攻起手动作本身）
+		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+			if (player.hasStatusEffect(MIST_FORM)
+					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
 			return net.minecraft.util.ActionResult.PASS;
 		});
 	}
@@ -616,6 +677,12 @@ public class SscAddon implements ModInitializer {
 		// 玩家首次进入世界时发送欢迎消息（延迟3秒，等待客户端语言设置到达服务端后根据语言发送对应文本）
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			var player = handler.player;
+			// 重连/换维度回归后：强制把契灵标记 + 金沙岚侵蚀印记状态重新同步给客户端，
+			// 避免重连后客户端 HUD/渲染缓存为空，直到下一次状态变更才被动恢复。
+			server.execute(() -> {
+				try { net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.resyncToPlayer(player); } catch (Throwable ignored) {}
+				try { net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand.resyncToPlayer(player); } catch (Throwable ignored) {}
+			});
 			String welcomeTag = "ssc_addon_welcomed";
 			if (!player.getCommandTags().contains(welcomeTag)) {
 				player.addCommandTag(welcomeTag);
