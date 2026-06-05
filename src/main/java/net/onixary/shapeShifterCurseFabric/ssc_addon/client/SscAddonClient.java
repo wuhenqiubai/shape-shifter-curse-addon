@@ -95,6 +95,9 @@ public class SscAddonClient implements ClientModInitializer {
 				net.onixary.shapeShifterCurseFabric.config.PlayerCustomConfig cfg =
 						net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric.playerCustomConfig;
 				net.minecraft.network.PacketByteBuf cbuf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+				// 主包 onUpdatePlayerCustomColor 首位读的是 extraData boolean，
+				// 漏写这一字节会导致服务端读越界、玩家被踢。
+				cbuf.writeBoolean(false);
 				cbuf.writeInt(net.onixary.shapeShifterCurseFabric.util.FormTextureUtils.ARGB2ABGR(cfg.primaryColor));
 				cbuf.writeInt(net.onixary.shapeShifterCurseFabric.util.FormTextureUtils.ARGB2ABGR(cfg.accentColor1Color));
 				cbuf.writeInt(net.onixary.shapeShifterCurseFabric.util.FormTextureUtils.ARGB2ABGR(cfg.accentColor2Color));
@@ -179,7 +182,11 @@ public class SscAddonClient implements ClientModInitializer {
 		EntityRendererRegistry.register(SscAddon.FROST_STORM_ENTITY, EmptyEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.FRIEND_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.CLEAR_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
+		EntityRendererRegistry.register(SscAddon.INFECTION_SPORE_BOMB_ENTITY, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.WITCH_FAMILIAR_ENTITY, WitchFamiliarRenderer::new);
+
+		// 寄生果蝠形态种子量能量条 HUD
+		SeedEnergyHudRenderer.register();
 
 		// 女巫使魔刷怪蛋颜色注册
 		ColorProviderRegistry.ITEM.register(

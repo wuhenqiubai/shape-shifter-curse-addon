@@ -1,0 +1,23 @@
+{
+    "type": "my_addon:parasitic_fruit_seed",
+    "cooldown": 20,
+    "duration": 240,
+    "hud_render": {
+        "should_render": false
+    },
+    "key": {
+        "key": "key.ssc_addon.sp_primary"
+    },
+    "badges": [
+        {
+            "type": "origins:tooltip",
+            "sprite": "my_addon:textures/gui/powers/true_invisibility.png",
+            "text": {
+                "translate": "power.my_addon.form_bat_parasitic_fruit_parasitic_seed.name",
+                "fallback": "Parasitic Spiritfruit"
+            }
+        }
+    ],
+    "name": "灵果寄生",
+    "description": "向准星方向播出灵果种子（6 格内且不可穿墙）。命中生物后在其身上生根，周期性结果：友方安装蛜露/刺梨/风莓/清香果提供治疗与辅助，敌方安装缠藤/苦涩/腐熟/酸涩果施加减速、虚弱、发光、中毒等削弱。果实只对被命中的宿主生效，不再向周围扩散。冷却 1 秒，消耗 1 点种子量，未命中生物时进入半冷却且不扣能量。"
+}

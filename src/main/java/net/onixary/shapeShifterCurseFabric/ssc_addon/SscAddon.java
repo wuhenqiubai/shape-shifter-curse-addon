@@ -49,6 +49,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.AllayClearMarkerEnti
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.AllayFriendMarkerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FrostBallEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FrostStormEntity;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.InfectionSporeBombEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.forms.*;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.*;
@@ -113,6 +114,15 @@ public class SscAddon implements ModInitializer {
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
 					.build()
+	);
+	// 寄生果蝠「感染孢子炸弹」投掷物
+	public static final EntityType<InfectionSporeBombEntity> INFECTION_SPORE_BOMB_ENTITY = Registry.register(
+			Registries.ENTITY_TYPE,
+			new Identifier("ssc_addon", "infection_spore_bomb"),
+			FabricEntityTypeBuilder.<InfectionSporeBombEntity>create(SpawnGroup.MISC, InfectionSporeBombEntity::new)
+					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
+					.trackRangeBlocks(64).trackedUpdateRate(10)
+					.build()
 	);	public static final ScreenHandlerType<PotionBagScreenHandler> POTION_BAG_SCREEN_HANDLER = new ScreenHandlerType<>(PotionBagScreenHandler::new, FeatureSet.empty());
 	public static final EntityType<FrostStormEntity> FROST_STORM_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
@@ -138,6 +148,11 @@ public class SscAddon implements ModInitializer {
 	public static final Item LIFESAVING_CAT_TAIL = new LifesavingCatTailItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item PHANTOM_BELL = new PhantomBellItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item FROST_AMULET = new FrostAmuletItem(new Item.Settings().maxCount(1).fireproof());
+	// 吸血蝙蝠 / 果蝠 专属饰品（半好半坏）
+	public static final Item BLOOD_GARNET = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodGarnetItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item BLOODLUST_RING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodlustRingItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item HUMUS_RING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.HumusRingItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item TWIN_POD = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.TwinPodItem(new Item.Settings().maxCount(1).fireproof());
 	public static final RecipeSerializer<RefillMoisturizerRecipe> REFILL_MOISTURIZER_SERIALIZER = new SpecialRecipeSerializer<>(RefillMoisturizerRecipe::new);
 	public static final RecipeSerializer<ReloadSnowballLauncherRecipe> RELOAD_SNOWBALL_LAUNCHER_SERIALIZER = new SpecialRecipeSerializer<>(ReloadSnowballLauncherRecipe::new);
 	public static final RecipeSerializer<BlizzardTankRechargeRecipe> BLIZZARD_TANK_RECHARGE_SERIALIZER = new SpecialRecipeSerializer<>(BlizzardTankRechargeRecipe::new);
@@ -212,6 +227,10 @@ public class SscAddon implements ModInitializer {
 						entries.add(BINDING_ANKLET);
 						entries.add(EROSION_SAND_PRISM);
 						entries.add(WITHERED_SAND_RING);
+						entries.add(BLOOD_GARNET);
+						entries.add(BLOODLUST_RING);
+						entries.add(HUMUS_RING);
+						entries.add(TWIN_POD);
 						entries.add(ALLAY_HEAL_WAND);
 						entries.add(ALLAY_JUKEBOX);
 						entries.add(FRIEND_MARKER);
@@ -258,6 +277,8 @@ public class SscAddon implements ModInitializer {
 		registerTickHandlers();
 		registerEntitySpawnHandlers();
 		registerPlayerEventHandlers();
+		registerStunOrphanCleanup();
+		registerFeralBodyYawSync();
 		registerServerLifecycleHandlers();
 		registerMancianimaEvents();
 		AnubisWolfSpSoulEnergy.registerEvents();
@@ -299,6 +320,10 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "portable_fridge"), PORTABLE_FRIDGE);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "blue_fire_amulet"), BLUE_FIRE_AMULET);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "frost_amulet"), FROST_AMULET);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "blood_garnet"), BLOOD_GARNET);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "bloodlust_ring"), BLOODLUST_RING);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "humus_ring"), HUMUS_RING);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "twin_pod"), TWIN_POD);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "invisibility_cloak"), INVISIBILITY_CLOAK);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "lifesaving_cat_tail"), LIFESAVING_CAT_TAIL);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "phantom_bell"), PHANTOM_BELL);
@@ -346,6 +371,8 @@ public class SscAddon implements ModInitializer {
 		SscAddonNetworking.registerServerReceivers();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.init();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPTotem.init();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager.init();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SeedEnergyEatingHandler.register();
 		LifesavingCatTailItem.registerLootTable();
 		AnkhStoneItem.registerLootTable();
 	}
@@ -410,6 +437,14 @@ public class SscAddon implements ModInitializer {
 		batDesmodusForm.setOverrideHandAnim(true);
 		RegPlayerForms.registerPlayerForm(batDesmodusForm);
 		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_bat_desmodus")).addForm(batDesmodusForm, 12));
+
+		// 寄生果蝠 - 原版三阶段蝙蝠使用进化石进化获得，复用蝙蝠模型/动画
+		Form_BatParasiticFruit batParasiticFruitForm = new Form_BatParasiticFruit(FormIdentifiers.BAT_PARASITIC_FRUIT);
+		batParasiticFruitForm.setPhase(PlayerFormPhase.PHASE_SP);
+		batParasiticFruitForm.setHasSlowFall(true);
+		batParasiticFruitForm.setOverrideHandAnim(true);
+		RegPlayerForms.registerPlayerForm(batParasiticFruitForm);
+		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_bat_parasitic_fruit")).addForm(batParasiticFruitForm, 12));
 	}
 
 	private void registerCommands() {
@@ -449,6 +484,72 @@ public class SscAddon implements ModInitializer {
 				GoldenSandstormRegen.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tick(player);
+			}
+		});
+	}
+
+	/**
+	 * 兜底：清除残留的「定身(STUN)」攻击力/移速孤儿属性修正。
+	 * STUN 用固定 UUID 的属性修正实现「攻击力 -100% / 移速 -100%」。由于
+	 * GENERIC_ATTACK_DAMAGE 不是被同步追踪的属性、且换形态时不会被重建，一旦 STUN 经
+	 * 非正常路径（如换形态清状态效果）被移除而未触发 onStatusEffectRemoved，这个 -100%
+	 * 修正会以孤儿形式残留在玩家身上，导致「任意武器0伤、无图标、跨形态保留、过会才自愈」的bug。
+	 * 此处每服务端 tick 对在线玩家做校正：没有 STUN 效果却仍带 STUN 的固定 UUID 修正 → 立即移除。
+	 * （同时清理已存在于老存档的孤儿残留。）
+	 */
+	private void registerStunOrphanCleanup() {
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+			for (net.minecraft.server.network.ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+				if (player.hasStatusEffect(STUN)) continue;
+				net.minecraft.entity.attribute.EntityAttributeInstance atk =
+						player.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);
+				if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {
+					atk.removeModifier(StunEffect.ATTACK_MODIFIER_UUID);
+				}
+				net.minecraft.entity.attribute.EntityAttributeInstance spd =
+						player.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);
+				if (spd != null && spd.getModifier(StunEffect.SPEED_MODIFIER_UUID) != null) {
+					spd.removeModifier(StunEffect.SPEED_MODIFIER_UUID);
+				}
+			}
+		});
+	}
+
+	/**
+	 * 修复多人下客机看主机时四足(FERAL)形态头部偶尔「转过身后」的视觉异常。
+	 * 根因：vanilla 服务端 ServerPlayerEntity.bodyYaw 只在玩家「移动」时才被 tickHeadTurn 拉向 headYaw。
+	 * 玩家站着只转鼠标时，移动包只上报 pos+yaw(=headYaw)+pitch，不带 bodyYaw，服务端 bodyYaw 保持陈旧值；
+	 * 服务端再把「新 headYaw + 陈旧 bodyYaw」一起发给远端客机，远端 OtherClientPlayerEntity 直接采信，
+	 * head−body 夹角于是很大。人形头骨绕颈部偏转视觉不明显，但四足形态头骨水平前伸，看上去就是「头扭过身后」。
+	 * 主机走一步路 → 服务端 bodyYaw 被 tickHeadTurn 拉正 → 自愈。生物 bodyYaw 由服务端持续维护所以不受影响。
+	 * 这里每服务端 tick 给已激活 Mod 的 FERAL 形态玩家补一个 tickHeadTurn 等效收敛：把 bodyYaw 限速拉向 headYaw，
+	 * 并夹住头身夹角 ≤ 75°（与 vanilla LivingEntity.tickHeadTurn 一致），使服务端发出的 bodyYaw 不再陈旧。
+	 * 仅作用于玩家自身的 bodyYaw（服务端权威字段），主客机都靠它，零客机预测冲突。
+	 */
+	private void registerFeralBodyYawSync() {
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+			for (net.minecraft.server.network.ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+				net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase form =
+						net.onixary.shapeShifterCurseFabric.player_form.ability.RegPlayerFormComponent.PLAYER_FORM
+								.get(player).getCurrentForm();
+				if (form == null
+						|| form.getBodyType() != net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType.FERAL) {
+					continue;
+				}
+				// 把 bodyYaw 朝 headYaw 收敛（vanilla tickHeadTurn 同款：限速 + 夹角钳制）。
+				float headYaw = player.getHeadYaw();
+				float bodyYaw = player.bodyYaw;
+				float diff = net.minecraft.util.math.MathHelper.wrapDegrees(headYaw - bodyYaw);
+				// 头身夹角钳制到 ±75°（超出部分立即并入身体朝向，避免极端扭头）
+				float clampedDiff = net.minecraft.util.math.MathHelper.clamp(diff, -75.0f, 75.0f);
+				float overflow = diff - clampedDiff;
+				// 收敛速度：每 tick 最多转 10°，模拟身体平滑跟随视角
+				float step = net.minecraft.util.math.MathHelper.clamp(clampedDiff, -10.0f, 10.0f);
+				float newBodyYaw = bodyYaw + step + overflow;
+				if (newBodyYaw != bodyYaw) {
+					player.bodyYaw = newBodyYaw;
+					player.prevBodyYaw = newBodyYaw;
+				}
 			}
 		});
 	}
@@ -743,8 +844,26 @@ public class SscAddon implements ModInitializer {
 			}
 		});
 
+		// #13 修复：后加入的客机看「先在场玩家(含主机)」是 vanilla 玩家模型而非形态模型。
+		// 根因：主包 PlayerFormComponent 是 Cardinal Components 的「玩家组件」(registerForPlayers)，
+		// CCA 只在玩家「自己登录」时做一次初始同步，不会在其它玩家开始追踪该玩家时自动补发，
+		// 导致新观察者追踪到先在场玩家时拿不到其形态数据，于是渲染成原版模型。
+		// 方案：监听实体「开始追踪」事件——任一玩家开始追踪另一名玩家时，对被追踪玩家重发其形态组件，
+		// 让新观察者(以及跨维度/远距离重新进入视野的玩家)及时拿到正确形态。
+		net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents.START_TRACKING.register((trackedEntity, player) -> {
+			if (trackedEntity instanceof net.minecraft.server.network.ServerPlayerEntity tracked) {
+				try {
+					net.onixary.shapeShifterCurseFabric.player_form.ability.RegPlayerFormComponent.PLAYER_FORM.sync(tracked);
+				} catch (Throwable ignored) {
+					// 极端时序下组件容器可能尚未就绪，忽略即可，下次状态变更会自动同步
+				}
+			}
+		});
+
+
 		// 玩家断线时清理所有静态状态Map，防止内存泄漏和重连后状态错乱
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+
 			java.util.UUID uuid = handler.player.getUuid();
 			System.out.println("[SSC_ADDON] DISCONNECT event fired for player: " + handler.player.getName().getString());
 			SnowFoxSpMeleeAbility.clearPlayer(uuid);
