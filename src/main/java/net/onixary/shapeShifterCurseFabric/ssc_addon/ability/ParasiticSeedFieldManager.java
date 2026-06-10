@@ -8,6 +8,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -20,6 +21,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.power.ParasiticFruitSeedPower;
@@ -55,16 +57,20 @@ public final class ParasiticSeedFieldManager {
         final UUID casterUuid;
         final RegistryKey<World> worldKey;
         final Vec3d pos;
+        final long spawnTick;
         final long endTick;
         final UUID standUuid;
+        final boolean twinPod;
         float ringProgress;
 
-        SeedField(UUID casterUuid, RegistryKey<World> worldKey, Vec3d pos, long endTick, UUID standUuid) {
+        SeedField(UUID casterUuid, RegistryKey<World> worldKey, Vec3d pos, long spawnTick, long endTick, UUID standUuid, boolean twinPod) {
             this.casterUuid = casterUuid;
             this.worldKey = worldKey;
             this.pos = pos;
+            this.spawnTick = spawnTick;
             this.endTick = endTick;
             this.standUuid = standUuid;
+            this.twinPod = twinPod;
         }
     }
 
@@ -72,10 +78,10 @@ public final class ParasiticSeedFieldManager {
         ServerTickEvents.END_WORLD_TICK.register(ParasiticSeedFieldManager::onWorldTick);
     }
 
-    /** 投掷物落地时调用：在落点生成一个灵果种子圈，寿命 = lifeTicks。 */
-    public static void spawnField(ServerPlayerEntity caster, ServerWorld world, Vec3d pos, int lifeTicks) {
+    /** 投掷物落地时调用：在落点生成一个灵果种子圈，寿命 = lifeTicks。双生种荷时核心图标为双生种荷。 */
+    public static void spawnField(ServerPlayerEntity caster, ServerWorld world, Vec3d pos, int lifeTicks, boolean twinPod) {
         long now = world.getTime();
-        // 悬浮的火把花种子（small armor_stand 头戴，仿 RC4 healing_crystal）
+        // 悬浮的核心图标（small armor_stand 头戴，仿 RC4 healing_crystal）：双生种荷时为双生种荷，否则火把花种子
         ArmorStandEntity stand = new ArmorStandEntity(world, pos.x, pos.y, pos.z);
         stand.setInvisible(true);
         stand.setNoGravity(true);
@@ -87,10 +93,12 @@ public final class ParasiticSeedFieldManager {
         nbt.putBoolean("Marker", true);
         nbt.putBoolean("NoBasePlate", true);
         stand.readCustomDataFromNbt(nbt);
-        stand.equipStack(EquipmentSlot.HEAD, new ItemStack(Items.TORCHFLOWER_SEEDS));
+        stand.equipStack(EquipmentSlot.HEAD, new ItemStack(twinPod
+                ? net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.TWIN_POD
+                : Items.TORCHFLOWER_SEEDS));
         world.spawnEntity(stand);
 
-        FIELDS.add(new SeedField(caster.getUuid(), world.getRegistryKey(), pos, now + Math.max(20, lifeTicks), stand.getUuid()));
+        FIELDS.add(new SeedField(caster.getUuid(), world.getRegistryKey(), pos, now, now + Math.max(20, lifeTicks), stand.getUuid(), twinPod));
         world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.BLOCK_GRASS_PLACE, SoundCategory.PLAYERS, 0.8f, 1.2f);
         world.spawnParticles(ParticleTypes.WARPED_SPORE, pos.x, pos.y + 0.2, pos.z, 30, 0.5, 0.3, 0.5, 0.02);
     }
@@ -113,26 +121,26 @@ public final class ParasiticSeedFieldManager {
             // 视觉：绿色混凝土核心 + 旋转绿色治疗环
             drawField(world, f, now);
 
-            // 半径 1 内任意存活玩家拾取
-            List<ServerPlayerEntity> nearby = new ArrayList<>();
-            for (ServerPlayerEntity p : world.getPlayers()) {
-                if (p.isAlive() && !p.isSpectator()
-                        && p.squaredDistanceTo(f.pos) <= FIELD_RADIUS * FIELD_RADIUS) {
-                    nearby.add(p);
-                }
-            }
+            // 半径 1 内任意存活生物触发（玩家+怪物+动物，友/敌果由白名单判定）；排除种子圈 armor_stand。
+            // 允许施法者本人触发（客机可吃自己种子），但需种子落地 ≥10t 后，避免刚扔出被自己立即踩发
+            ServerPlayerEntity caster = server.getPlayerManager().getPlayer(f.casterUuid);
+            if (caster == null) continue;   // 施法者离线则保留种子圈，等其上线或自然到期
+            boolean casterArmed = now - f.spawnTick >= 10;
+            Box box = new Box(f.pos.subtract(FIELD_RADIUS, FIELD_RADIUS, FIELD_RADIUS),
+                    f.pos.add(FIELD_RADIUS, FIELD_RADIUS, FIELD_RADIUS));
+            double sqRadius = FIELD_RADIUS * FIELD_RADIUS;
+            List<LivingEntity> nearby = world.getEntitiesByClass(LivingEntity.class, box,
+                    e -> e.isAlive() && !e.getUuid().equals(f.standUuid) && !e.isSpectator()
+                            && (casterArmed || e != caster)
+                            && e.squaredDistanceTo(f.pos) <= sqRadius);
             if (!nearby.isEmpty()) {
-                ServerPlayerEntity caster = server.getPlayerManager().getPlayer(f.casterUuid);
-                if (caster != null) {
-                    for (ServerPlayerEntity picker : nearby) {
-                        // 拾取后按拾取者交战状态定寿命（非交战 15s / 交战 5s，同命中）
-                        ParasiticFruitSeedPower.plantSeedFrom(caster, picker);
-                    }
-                    spawnPickupParticles(world, f.pos);
-                    killStand(world, f);
-                    FIELDS.remove(f);
+                for (LivingEntity picker : nearby) {
+                    // 触发后按生物交战状态定寿命（非交战 15s / 交战 5s，同命中）；双生种荷时扩散额外 1 人/无人叠 2 层
+                    ParasiticFruitSeedPower.plantSeedSpread(caster, picker, f.twinPod);
                 }
-                // caster 离线则保留种子圈，等其上线或自然到期
+                spawnPickupParticles(world, f.pos);
+                killStand(world, f);
+                FIELDS.remove(f);
             }
         }
     }
