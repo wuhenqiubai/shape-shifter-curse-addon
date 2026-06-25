@@ -6,7 +6,7 @@ bin/
 /out/
 /.idea/
 .github
-story
+/story/
 /.settings/org.eclipse.buildship.core.prefs
 /.settings/org.eclipse.jdt.core.prefs
 /.settings/org.eclipse.jdt.apt.core.prefs
@@ -15,11 +15,13 @@ story
 /.project
 /设定集
 /备忘录
+/unused_backup
 # AI agent tooling
 /.opencode/
 /.sisyphus/
 /openspec/
 AGENTS.md
+/记忆/
 
 # JVM crash dumps
 hs_err_pid*.log

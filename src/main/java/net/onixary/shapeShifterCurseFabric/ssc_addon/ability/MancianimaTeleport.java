@@ -20,9 +20,9 @@ import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.mana.ManaComponent;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
-import net.onixary.shapeShifterCurseFabric.player_form.ability.FormAbilityManager;
+import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 
@@ -51,7 +51,7 @@ public final class MancianimaTeleport {
 	public static final double RED_MARK_DAMAGE_PERCENT = 0.50;
 	/** 传送后冻结自然回蓝的 tick 数（5 秒） */
 	public static final int MANA_REGEN_PAUSE_TICKS = 100;
-	/** sp_mana_regen 的暂停计时子资源（origins:multiple 子键 → power_id + "_" + sub_key） */
+	/** sp_mana_regen 的暂停计时子资源（apoli:multiple 子键 → power_id + "_" + sub_key） */
 	private static final net.minecraft.util.Identifier MANA_REGEN_PAUSE_RES =
 			new net.minecraft.util.Identifier("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
 
@@ -143,8 +143,8 @@ public final class MancianimaTeleport {
 	}
 
 	private static boolean isMancianima(PlayerEntity player) {
-		PlayerFormBase form = FormAbilityManager.getForm(player);
-		return form != null && FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(form.FormID);
+		IForm form = FormUtils.getCurrentForm(player);
+		return form != null && FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(form.getFormID());
 	}
 
 	/** 准星上是否有被本玩家红标的目标？返回该目标，否则 null。 */

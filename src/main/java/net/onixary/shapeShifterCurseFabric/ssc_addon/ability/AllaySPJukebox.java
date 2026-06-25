@@ -7,20 +7,19 @@ import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlaySoundFromEntityS2CPacket;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
-import net.onixary.shapeShifterCurseFabric.player_form.ability.FormAbilityManager;
+import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.AllayJukeboxItem;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SkillBlocker;
 
 import java.util.List;
@@ -94,9 +93,9 @@ public class AllaySPJukebox {
             audience.networkHandler.sendPacket(new StopSoundS2CPacket(SscAddon.ALLAY_HEAL_MUSIC_ID, SoundCategory.RECORDS));
             audience.networkHandler.sendPacket(new StopSoundS2CPacket(SscAddon.ALLAY_SPEED_MUSIC_ID, SoundCategory.RECORDS));
             audience.networkHandler.sendPacket(new StopSoundS2CPacket((Identifier) null, SoundCategory.RECORDS));
-            // 音量 0.06（原 0.2 的 30%，#1 音量调整）；以持有者坐标为声源，客户端按距离衰减
-            audience.networkHandler.sendPacket(new PlaySoundS2CPacket(entry, SoundCategory.RECORDS,
-                    player.getX(), player.getY(), player.getZ(), 0.06f, 1.0f, seed));
+            // 音量 0.12（原 0.06 的 2 倍）；用实体跟踪音效包，让音乐声源跟随持有者移动（而非钉在释放位置）
+            audience.networkHandler.sendPacket(new PlaySoundFromEntityS2CPacket(entry, SoundCategory.RECORDS,
+                    player, 0.25f, 1.0f, seed));
         }
 
         playerMusicState.put(player.getUuid(), newMode);
@@ -110,8 +109,8 @@ public class AllaySPJukebox {
         if (SkillBlocker.isSkillBlocked(player, "allay", "jukebox_charge")) {
             return;
         }
-        PlayerFormBase currentForm = FormAbilityManager.getForm(player);
-        boolean isAllaySp = currentForm != null && currentForm.FormID.equals(new Identifier("my_addon", "allay_sp"));
+        IForm currentForm = FormUtils.getCurrentForm(player);
+        boolean isAllaySp = currentForm != null && currentForm.getFormID().equals(new Identifier("my_addon", "allay_sp"));
 
         // Check if cleanup is needed (if form changed OR item is missing/inactive)
         // Note: we check form first. If not Allay SP, we just cleanup and return.

@@ -4,9 +4,9 @@
         "shape-shifter-curse:form_feral_cat_sp_scale",
         "shape-shifter-curse:form_disable_leg_armor",
         "shape-shifter-curse:form_disable_feet_armor",
-        "origins:velvet_paws",
-        "origins:scare_creepers",
-        "origins:fall_immunity",
+        "shape-shifter-curse:velvet_paws",
+        "shape-shifter-curse:scare_creepers",
+        "shape-shifter-curse:fall_immunity",
         "shape-shifter-curse:form_ocelot_sound",
         "shape-shifter-curse:form_ocelot_sound_hurt",
         "shape-shifter-curse:form_ocelot_hiss_phantom",
@@ -25,7 +25,9 @@
         "my_addon:form_sp_primary_cd",
         "my_addon:form_sp_secondary_cd",
         "my_addon:form_sp_primary_cd_tick",
-        "my_addon:form_sp_secondary_cd_tick"
+        "my_addon:form_sp_secondary_cd_tick",
+        "shape-shifter-curse:form_tan_prevent_dirty_water_thirst",
+        "shape-shifter-curse:form_tan_cold_resistance_mild"
     ],
     "icon": {
         "item": "minecraft:ocelot_spawn_egg"

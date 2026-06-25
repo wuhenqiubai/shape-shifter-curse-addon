@@ -1,9 +1,9 @@
 {
-    "type": "origins:action_over_time",
+    "type": "apoli:action_over_time",
     "interval": 20,
     "entity_action": {
-        "type": "origins:heal",
-        "amount": 0.25
+        "type": "apoli:heal",
+        "amount": 0.75
     },
     "condition": {
         "type": "ssc_addon:skill_disabled",

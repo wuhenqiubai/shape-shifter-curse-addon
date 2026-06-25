@@ -7,6 +7,10 @@
     "mixins":  [
                    "effect.AllaySPTotemMixin",
                    "AnkhStoneTotemMixin",
+                   "item.BrewingStandInfinitePotionMixin",
+                   "item.BrewingPotionSlotMixin",
+                   "item.BrewingRegistryInfiniteMixin",
+                   "client.PotionBagCooldownBypassMixin",
                    "CursedMoonSpMessageMixin",
                    "entity.BindingAnkletAuraMixin",
                    "entity.FallenAllayVexMixin",
@@ -14,6 +18,7 @@
                    "entity.GoldenSandstormHungerMixin",
                    "IronsSpellbooksAnimationMixin",
                    "item.AmuletBraceletTrinketMixin",
+                   "item.CharmOfNightCrystalTrinketMixin",
                    "item.ItemEntityMixin",
                    "entity.MobEntityMixin",
                    "entity.IronGolemAllayFlowerMixin",
@@ -51,8 +56,10 @@
                    "input.StunnedMouseMixin",
                    "render.TrueInvisibilityArmorMixin",
                    "render.MistFormHeldItemMixin",
-                   "client.MinecraftClientSetScreenMixin",
-                   "client.SoundManagerDeafenMixin"
+                    "client.MinecraftClientSetScreenMixin",
+                   "client.SoundManagerDeafenMixin",
+                   "client.TransformingControllerFeralAnimMixin",
+                   "client.CreativePotionStackMixin"
                ],
     "injectors":  {
                       "defaultRequire":  1

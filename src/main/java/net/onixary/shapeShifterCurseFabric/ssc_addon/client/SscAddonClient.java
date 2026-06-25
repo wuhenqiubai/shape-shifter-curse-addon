@@ -180,7 +180,7 @@ public class SscAddonClient implements ClientModInitializer {
 		// 注册冰球渲染器（使用雪球材质）和冰风暴渲染器（粒子效果，空渲染器）
 		EntityRendererRegistry.register(SscAddon.FROST_BALL_ENTITY, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.FROST_STORM_ENTITY, EmptyEntityRenderer::new);
-		EntityRendererRegistry.register(SscAddon.FOX_FIREBALL_ENTITY, ctx -> new net.minecraft.client.render.entity.FlyingItemEntityRenderer<>(ctx, 0.7F, true));
+		EntityRendererRegistry.register(SscAddon.FOX_FIREBALL_ENTITY, ctx -> new net.minecraft.client.render.entity.FlyingItemEntityRenderer<>(ctx, 1F, true));
 		EntityRendererRegistry.register(SscAddon.FRIEND_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.CLEAR_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.INFECTION_SPORE_BOMB_ENTITY, FlyingItemEntityRenderer::new);
@@ -206,6 +206,18 @@ public class SscAddonClient implements ClientModInitializer {
 				entity != null && entity.isUsingItem() && entity.getActiveItem() == stack ? 1.0F : 0.0F
 		);
 
+		// 无限压缩能量药水：empty 谓词（1=空瓶充能中，切换为空瓶材质）。优先用世界时间戳判断，无世界时退回 NBT 标记
+		net.minecraft.client.item.ClampedModelPredicateProvider infiniteEnergyEmptyPredicate = (stack, world, entity, seed) -> {
+			net.minecraft.world.World w = world != null ? world : (entity != null ? entity.getWorld() : null);
+			if (w != null) {
+				return net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.isRecharging(stack, w) ? 1.0F : 0.0F;
+			}
+			return net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.isEmptyByNbt(stack) ? 1.0F : 0.0F;
+		};
+		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION, new Identifier("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_SPLASH, new Identifier("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_LINGERING, new Identifier("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+
 		// SP技能键位现在由Apoli框架自动处理，无需手动轮询
 		// 如需添加新的非Apoli键位检测，可在此处注册
 
@@ -222,5 +234,11 @@ public class SscAddonClient implements ClientModInitializer {
 		MancianimaPrimaryClient.register();
 
 		HandledScreens.register(SscAddon.POTION_BAG_SCREEN_HANDLER, PotionBagScreen::new);
+
+		// SSCA 美西螈装死 - 提前结束检测器
+		PlayDeadEndClient.register();
+
+		// SSCA 美西螈漩涡蓄力 - 按键检测器
+		VortexChargeClient.register();
 	}
 }

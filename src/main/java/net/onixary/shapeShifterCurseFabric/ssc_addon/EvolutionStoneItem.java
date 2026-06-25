@@ -2,6 +2,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon;
 
 import net.minecraft.client.resource.language.I18n;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -10,9 +11,10 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.*;
 import net.minecraft.world.World;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
+import net.onixary.shapeShifterCurseFabric.player_form.IForm;
+import net.onixary.shapeShifterCurseFabric.data.StaticParams;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
-import net.onixary.shapeShifterCurseFabric.player_form.transform.TransformManager;
+import net.onixary.shapeShifterCurseFabric.player_form.utils.TransformManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.AdvancementUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -80,9 +82,12 @@ public class EvolutionStoneItem extends Item {
 			}
 
 			if (canEvolve) {
-				PlayerFormBase formBase = RegPlayerForms.getPlayerForm(targetFormId);
+				IForm formBase = RegPlayerForms.getPlayerForm(targetFormId);
 				if (formBase != null) {
-					TransformManager.handleDirectTransform(player, formBase, false);
+					TransformManager.immediatelyTransform(player, formBase);
+					// 变身演出（黑屏淡入 IN + 淡出 OUT，共 160 tick）期间定身玩家，避免演出过程中走动
+					player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN,
+							StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT, 0, false, false, false));
 					player.sendMessage(Text.translatable("message.ssc_addon.evolution_stone.success").formatted(Formatting.GREEN, Formatting.BOLD), false);
 					world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
 					if (!player.getAbilities().creativeMode) {
@@ -117,18 +122,7 @@ public class EvolutionStoneItem extends Item {
 	}
 
 	private Identifier getPlayerFormID(PlayerEntity player) {
-        /*
-        // 旧代码
-        if (player == null) return null;
-        PlayerFormComponent playerFormComponent = RegPlayerFormComponent.PLAYER_FORM.get(player);
-        if (playerFormComponent == null) return null;
-        PlayerFormBase currentForm = playerFormComponent.getCurrentForm();
-        if (currentForm == null) return null;
-        return currentForm.FormID;
-        */
-
-		// 新代码
-		PlayerFormBase currentForm = FormUtils.getCurrentForm(player);
-		return currentForm != null ? currentForm.FormID : null;
+		IForm currentForm = FormUtils.getCurrentForm(player);
+		return currentForm != null ? currentForm.getFormID() : null;
 	}
 }

@@ -175,10 +175,7 @@ public class SscAddonActions {
 
 					Vec3d eyePos = living.getEyePos();
 					Vec3d lookVec = living.getRotationVec(1.0F);
-					Vec3d targetPos = eyePos.add(lookVec.multiply(distance));
-
 					Box box = living.getBoundingBox().expand(distance).stretch(lookVec.multiply(distance));
-
 					living.getWorld().getEntitiesByClass(LivingEntity.class, box, target -> target != living).forEach(target -> {
 						if (living instanceof ServerPlayerEntity sPlayer && WhitelistUtils.isProtected(sPlayer, target))
 							return;
@@ -401,15 +398,10 @@ public class SscAddonActions {
 							}
 						}
 
-						if (hasNecklace) {
-							regenAmp = 0; // Regeneration I (Level 1)
-							// Absorption V (Amp 4) for 25s (500 ticks)
-							living.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, 500, 4, false, false));
-						}
+						// 项链黄心改由 PlayingDeadEffect 每10tick累积，不再用 Absorption 效果
 
-						// visible=false to hide icon
+						// visible=false to hide icon（回血改由 PlayingDeadEffect 每10tick结算）
 						living.addStatusEffect(new StatusEffectInstance(SscAddon.PLAYING_DEAD, duration, 0, false, false, false));
-						living.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, duration, regenAmp, false, true));
 						living.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, duration, 0, false, false));
 						living.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, duration, 10, false, false));
 
@@ -426,7 +418,7 @@ public class SscAddonActions {
 
 						// 4. 设置CD显示资源
 						if (living instanceof ServerPlayerEntity sp) {
-							PowerUtils.setResourceValueAndSync(sp, FormIdentifiers.SP_SECONDARY_CD, 720);
+							PowerUtils.setResourceValueAndSync(sp, FormIdentifiers.SP_SECONDARY_CD, 620);
 						}
 
 					}
@@ -572,6 +564,20 @@ public class SscAddonActions {
 							t.damage(t.getDamageSources().create(magicKey, player, player), 5.0f);
 						}
 					});
+				}));
+
+		// ==== SP阿努比斯之狼 - 空手凋零打击（凋零I，命中累加续时：每次+10秒，上限30秒） ====
+		registerBiEntity(new ActionFactory<>(new Identifier("ssc_addon", "anubis_wolf_sp_wither_attack"),
+				new SerializableData(),
+				(data, pair) -> {
+					Entity target = pair.getRight();
+					if (target instanceof LivingEntity living && !living.getWorld().isClient()) {
+						// 读取目标当前凋零剩余时间，累加200tick(10秒)，上限600tick(30秒)，等级恒为凋零I(amplifier 0)
+						StatusEffectInstance current = living.getStatusEffect(StatusEffects.WITHER);
+						int baseDuration = current != null ? current.getDuration() : 0;
+						int newDuration = Math.min(baseDuration + 200, 600);
+						living.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, newDuration, 0));
+					}
 				}));
 	}
 

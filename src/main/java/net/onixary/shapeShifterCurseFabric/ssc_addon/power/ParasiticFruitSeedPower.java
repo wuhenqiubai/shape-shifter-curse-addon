@@ -53,8 +53,6 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     private static final int ROOTING_TICKS = 20;
     private static final int FRUIT_INTERVAL_TICKS = 25;
     private static final int DEFAULT_LIFE_TICKS = 240;
-    private static final int MIN_LIFE_TICKS = 80;
-    private static final float SELF_DURATION_MULTIPLIER = 0.6f;
     private static final int ENERGY_COST = 1;
 
     private static final DustParticleEffect FRIEND_DUST = new DustParticleEffect(new Vector3f(0.35f, 0.95f, 0.30f), 1.1f);
@@ -62,7 +60,6 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     private static final DustParticleEffect SEED_DUST = new DustParticleEffect(new Vector3f(0.95f, 0.72f, 0.24f), 1.0f);
 
     private final int cooldownTicks;
-    private final int lifeTicks;
     private long internalCooldownEndTime = 0L;
     private final LinkedHashMap<UUID, SeedData> seeds = new LinkedHashMap<>();
 
@@ -97,7 +94,6 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         super(type, entity, cooldownTicks, hudRender, (e) -> {
         });
         this.cooldownTicks = cooldownTicks;
-        this.lifeTicks = lifeTicks;
         this.setKey(key);
         this.setTicking(true);
     }
@@ -357,19 +353,6 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         }
     }
 
-    private int getEnvironmentAdjustedLife(LivingEntity host, int baseLife) {
-        if (!(host.getWorld() instanceof ServerWorld world)) return baseLife;
-        boolean openSky = world.isSkyVisible(host.getBlockPos());
-        boolean day = world.isDay();
-        int blockLight = world.getLightLevel(host.getBlockPos());
-        if (day && openSky) {
-            return Math.max(MIN_LIFE_TICKS, Math.round(baseLife * 0.7f));
-        }
-        if (!day || blockLight <= 7) {
-            return Math.round(baseLife * 1.2f);
-        }
-        return baseLife;
-    }
 
     private void bearFruit(ServerPlayerEntity caster, LivingEntity host, SeedData seed) {
         boolean friend = WhitelistUtils.isBuffTarget(caster, host);
@@ -380,13 +363,11 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         if (friend) {
             this.currentHumusFactor = humus ? 0.7f : 1.0f;
             applyFriendBuff(host, host == caster, seed.stack);
-            seed.lastFruitName = "friend_buff";
             spawnFruitParticles(host, FRIEND_DUST, seed.stack);
         } else if (!WhitelistUtils.isProtected(caster, host)) {
             this.currentHumusFactor = humus ? 1.5f : 1.0f;
             EnemyFruit fruit = selectEnemyFruit(host);
             applyEnemyFruit(host, fruit, seed.stack);
-            seed.lastFruitName = fruit.name();
             spawnFruitParticles(host, ENEMY_DUST, seed.stack);
         }
         this.currentHumusFactor = 1.0f;
@@ -403,10 +384,6 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
             return EnemyFruit.ROTTEN;
         }
         return EnemyFruit.SOUR;
-    }
-
-    private void applyEnemyFruit(LivingEntity target, EnemyFruit fruit) {
-        applyEnemyFruit(target, fruit, 1, 1);
     }
 
     private void applyEnemyFruit(LivingEntity target, EnemyFruit fruit, int stack) {
@@ -443,7 +420,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         }
     }
 
-    /** 立即回血（触发血条回血动画）+ 生命恢复图标显示。TODO: 后续改为专属独立「生命恢复」buff（只回一次）。 */
+    /** 立即回血（触发血条回血动画）+ 生命恢复图标显示。 */
     private void healWithFx(LivingEntity target, int hearts) {
         target.heal(hearts * 2.0f);
         // 专属「生命恢复」buff：立即回血由上面 heal 完成（血条动画），此 buff 仅显示图标、不周期回血（只回一次）
@@ -555,7 +532,6 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     private static class SeedData {
         private long endTick;
         private long nextFruitTick;
-        private String lastFruitName = "ROOTING";
         /** 堆叠层数 1～3，决定资源加成与粒子密度 */
         private int stack = 1;
 

@@ -5,11 +5,11 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
-import net.onixary.shapeShifterCurseFabric.player_form.ability.FormAbilityManager;
+import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPGroupHeal;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaTeleport;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPrimary;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
 import java.util.List;
@@ -37,6 +37,14 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_WHITELIST_GUI_MODE = new Identifier("my_addon", "whitelist_gui_mode");
 	/** C2S：玩家从生物白名单中移除一个 UUID。payload: UUID */
 	public static final Identifier PACKET_WHITELIST_GUI_MOB_REMOVE = new Identifier("my_addon", "whitelist_gui_mob_remove");
+
+	/** C2S：美西螈装死期间按技能键请求提前结束装死。无 payload。 */
+	public static final Identifier PACKET_PLAY_DEAD_END = new Identifier("my_addon", "play_dead_end");
+
+	/** C2S：美西螈漩涡开始蓄力。无 payload。 */
+	public static final Identifier PACKET_VORTEX_START = new Identifier("my_addon", "vortex_start");
+	/** C2S：美西螈漩涡释放（提前释放）。无 payload。 */
+	public static final Identifier PACKET_VORTEX_RELEASE = new Identifier("my_addon", "vortex_release");
 
 	/** C2S 限频：每玩家每个事件类型记录上一次服务端接收时间，防外挂客户端 spam。 */
 	private static final Map<UUID, Long> LAST_WHITELIST_PACKET_TICK = new ConcurrentHashMap<>();
@@ -121,6 +129,27 @@ public class SscAddonNetworking {
 				sendWhitelistSync(player);
 			});
 		});
+
+		// SSCA 美西螈装死 - 提前结束（装死期间按 sp_secondary）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_PLAY_DEAD_END, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> {
+				if (!player.hasStatusEffect(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.PLAYING_DEAD)) return;
+				player.removeStatusEffect(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.PLAYING_DEAD);
+				player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
+				player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.SLOWNESS);
+				player.setPose(net.minecraft.entity.EntityPose.STANDING);
+				// 提前结束：CD 从此刻起算 25 秒
+				net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils.setResourceValueAndSync(player, net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.SP_SECONDARY_CD, 500);
+			});
+		});
+
+		// SSCA 美西螈漩涡蓄力 - 开始 / 释放
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_START, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.start(player));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_RELEASE, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.release(player));
+		});
 	}
 
 	/** 服务端：把指定玩家当前白名单推送到其客户端，用于打开/刷新白名单 GUI。 */
@@ -147,7 +176,7 @@ public class SscAddonNetworking {
 
 	private static void handleKeyPress(ServerPlayerEntity player, int keyId) {
 		// Find current form
-		PlayerFormBase form = FormAbilityManager.getForm(player);
+		IForm form = FormUtils.getCurrentForm(player);
 		if (form == null) return;
 
 		// formId 暂未使用（旧 Ability_AllayHeal 已废弃），保留 form 引用以便后续按形态分发

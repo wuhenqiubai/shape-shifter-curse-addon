@@ -16,9 +16,11 @@ import net.minecraft.text.Text;
 import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.cursed_moon.CursedMoon;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase;
+import net.onixary.shapeShifterCurseFabric.data.StaticParams;
+import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
-import net.onixary.shapeShifterCurseFabric.player_form.transform.TransformManager;
+import net.onixary.shapeShifterCurseFabric.player_form.utils.TransformManager;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.AdvancementUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.MoonMarrowFormAdvancements;
@@ -77,8 +79,12 @@ public class SpUpgradeItem extends Item {
 	@Override
 	public ItemStack finishUsing(ItemStack stack, World world, LivingEntity user) {
 		if (!world.isClient && user instanceof PlayerEntity player) {
+			// 剧情「月痕之力」：处于剧情触发的 red 形态时，月髓环可随时免费变回 sp 使魔（不消耗）
+			if (MoonScarStoryManager.tryFreeRevertFromStoryRed(player)) {
+				return stack;
+			}
 			Identifier targetFormId = getTargetFormId(player);
-			boolean isCursedMoon = CursedMoon.isCursedMoon(world) && CursedMoon.isNight(world);
+			boolean isCursedMoon = CursedMoon.isCursedMoonDay(world) && CursedMoon.isNight(world);
 			boolean isValidForm = targetFormId != null;
 			boolean isAlreadySP = isAlreadySP(player);
 
@@ -99,9 +105,9 @@ public class SpUpgradeItem extends Item {
 				// 5% Chance for Red Form (when upgrading to SP Fox)
 				if (targetFormId != null && targetFormId.equals(new Identifier("my_addon", "familiar_fox_sp")) && world.random.nextFloat() < 0.05f) {
 					Identifier redFormId = new Identifier("my_addon", "familiar_fox_red");
-					PlayerFormBase redForm = RegPlayerForms.getPlayerForm(redFormId);
+					IForm redForm = RegPlayerForms.getPlayerForm(redFormId);
 					if (redForm != null) {
-						TransformManager.handleDirectTransform(player, redForm, false);
+						TransformManager.immediatelyTransform(player, redForm);
 
 						// 10 Minutes = 12000 ticks
 						long expireTime = world.getTime() + 12000;
@@ -112,9 +118,12 @@ public class SpUpgradeItem extends Item {
 				}
 
 
-				PlayerFormBase formBase = RegPlayerForms.getPlayerForm(targetFormId);
+				IForm formBase = RegPlayerForms.getPlayerForm(targetFormId);
 				if (formBase != null) {
-					TransformManager.handleDirectTransform(player, formBase, false);
+					TransformManager.immediatelyTransform(player, formBase);
+					// 变身演出（黑屏淡入 IN + 淡出 OUT，共 160 tick）期间定身玩家，避免演出过程中走动
+					player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN,
+							StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT, 0, false, false, false));
 					player.sendMessage(Text.translatable("message.ssc_addon.evolution.success").formatted(Formatting.GREEN, Formatting.ITALIC), false);
 					world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
 					if (!player.getAbilities().creativeMode) {
@@ -181,19 +190,8 @@ public class SpUpgradeItem extends Item {
 	}
 
 	private Identifier getPlayerFormID(PlayerEntity player) {
-        /*
-        // 旧代码
-        if (player == null) return null;
-        PlayerFormComponent playerFormComponent = RegPlayerFormComponent.PLAYER_FORM.get(player);
-        if (playerFormComponent == null) return null;
-        PlayerFormBase currentForm = playerFormComponent.getCurrentForm();
-        if (currentForm == null) return null;
-        return currentForm.FormID;
-        */
-
-		// 新代码
-		PlayerFormBase currentForm = FormUtils.getCurrentForm(player);
-		return currentForm != null ? currentForm.FormID : null;
+		IForm currentForm = FormUtils.getCurrentForm(player);
+		return currentForm != null ? currentForm.getFormID() : null;
 	}
 
 	private Identifier getTargetFormId(PlayerEntity player) {

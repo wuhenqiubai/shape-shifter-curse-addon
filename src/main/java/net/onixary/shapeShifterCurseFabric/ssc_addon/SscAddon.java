@@ -29,10 +29,14 @@ import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormGroup;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormPhase;
+import net.onixary.shapeShifterCurseFabric.player_form.NormalGroup;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
 import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_FeralCatSP;
+import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.NoInstinct;
+import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.NoCursedMoonEffect;
+import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.SpecialForm;
+import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.InhibitorImmune;
+import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.HasSlowFall;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.command.SscAddonCommands;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.condition.SscAddonConditions;
@@ -58,6 +62,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.power.SscAddonPowers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.BlizzardTankRechargeRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.RefillMoisturizerRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.ReloadSnowballLauncherRecipe;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.InfiniteEnergyPotionRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.SpUpgradeRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.screen.PotionBagScreenHandler;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -181,6 +186,13 @@ public class SscAddon implements ModInitializer {
 	public static final RecipeSerializer<SpUpgradeRecipe> SP_UPGRADE_SERIALIZER = new SpecialRecipeSerializer<>(SpUpgradeRecipe::new);
 	// 60 durability like wooden sword, auto-consumed over 60 seconds
 	public static final Item WATER_SPEAR = new WaterSpearItem(new Item.Settings().maxCount(1).maxDamage(60));
+	// SP美西螈水矛合成内部冷却（服务端权威）：UUID -> 冷却结束的服务器 tick；与箭冷却条显示同步
+	private static final java.util.Map<java.util.UUID, Long> WATER_SPEAR_CRAFT_CD = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final int WATER_SPEAR_CRAFT_CD_TICKS = 70; // 3.5 秒（与 Apoli 合成能力 cooldown 对齐；水矛消失后起算）
+	// [DEBUG] 水矛合成监测日志
+	private static final org.slf4j.Logger WS_DBG = org.slf4j.LoggerFactory.getLogger("WaterSpearDebug");
+	// [DEBUG] 每玩家上次水矛数（用于监测水矛出现时刻）
+	private static final java.util.Map<java.util.UUID, Integer> WS_LAST_SPEAR_COUNT = new java.util.concurrent.ConcurrentHashMap<>();
 	// Evolution Stone
 	public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item CORAL_BALL = new Item(new Item.Settings().maxCount(64));
@@ -225,6 +237,14 @@ public class SscAddon implements ModInitializer {
 	);
 	// 女巫使魔怪物蛋（主色狐狸沙棕 #D5B48F，次色青蓝 #31C8CC）
 	public static final Item WITCH_FAMILIAR_SPAWN_EGG = new SpawnEggItem(WITCH_FAMILIAR_ENTITY, 0xD5B48F, 0x31C8CC, new Item.Settings());
+	// 无限压缩能量药水（饮用/喷溅/滞留三型；使用后空瓶自充能，效果同压缩能量药水 feed_potion）
+	public static final Item INFINITE_ENERGY_POTION = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
+			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.DRINK);
+	public static final Item INFINITE_ENERGY_POTION_SPLASH = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
+			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.SPLASH);
+	public static final Item INFINITE_ENERGY_POTION_LINGERING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
+			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.LINGERING);
+	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SpecialRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
 	public static final ItemGroup SSC_ADDON_GROUP = Registry.register(Registries.ITEM_GROUP,
 			new Identifier("ssc_addon", "group"),
 			FabricItemGroup.builder()
@@ -258,6 +278,9 @@ public class SscAddon implements ModInitializer {
 						entries.add(FRIEND_MARKER);
 						entries.add(CLEAR_FRIEND_MARKER);
 						entries.add(WITCH_FAMILIAR_SPAWN_EGG);
+						entries.add(INFINITE_ENERGY_POTION);
+						entries.add(INFINITE_ENERGY_POTION_SPLASH);
+						entries.add(INFINITE_ENERGY_POTION_LINGERING);
 					})
 					.build());
 	// SP Allay sound events
@@ -306,6 +329,7 @@ public class SscAddon implements ModInitializer {
 		AnubisWolfSpSoulEnergy.registerEvents();
 		GoldenSandstormRegen.init();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.register();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager.register();
 	}
 
 
@@ -369,6 +393,12 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "friend_marker"), FRIEND_MARKER);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "clear_friend_marker"), CLEAR_FRIEND_MARKER);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "witch_familiar_spawn_egg"), WITCH_FAMILIAR_SPAWN_EGG);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion"), INFINITE_ENERGY_POTION);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion_splash"), INFINITE_ENERGY_POTION_SPLASH);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion_lingering"), INFINITE_ENERGY_POTION_LINGERING);
+		// 酿造（饮用+火药→喷溅；喷溅+龙息→滞留）完全由 BrewingRegistryInfiniteMixin 接管：
+		// 直接拦截 hasRecipe/craft 驱动产出，槽位放行由 BrewingStandInfinitePotionMixin 处理。
+		// 旧的 ITEM_RECIPES 注册需构造 PotionBrewing$Mix，在 Forge/Sinytra Connector 下构造签名不同会崩溃，已移除。
 	}
 
 	private void registerRecipeSerializers() {
@@ -376,6 +406,7 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "reload_snowball_launcher"), RELOAD_SNOWBALL_LAUNCHER_SERIALIZER);
 		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
 		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "infinite_energy_potion_crafting"), INFINITE_ENERGY_POTION_SERIALIZER);
 	}
 
 	// 拆分的私有方法
@@ -404,76 +435,77 @@ public class SscAddon implements ModInitializer {
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SeedEnergyEatingHandler.register();
 		LifesavingCatTailItem.registerLootTable();
 		AnkhStoneItem.registerLootTable();
+		AnubisCrystalItem.registerLootTable();
+		ErosionSandPrismItem.registerLootTable();
+		WitheredSandRingItem.registerLootTable();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodGarnetItem.registerLootTable();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodlustRingItem.registerLootTable();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.item.HumusRingItem.registerLootTable();
 	}
 
 	private void registerForms() {
 		Form_Axolotl3 axolotlForm = new Form_Axolotl3(FormIdentifiers.AXOLOTL_SP);
-		axolotlForm.setPhase(PlayerFormPhase.PHASE_SP);
+		axolotlForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		RegPlayerForms.registerPlayerForm(axolotlForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_axolotl_sp")).addForm(axolotlForm, 5));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_sp")).registerForm(1, 5, axolotlForm));
 
 		Form_FamiliarFox3 familiarFoxForm = new Form_FamiliarFox3(FormIdentifiers.FAMILIAR_FOX_SP);
-		familiarFoxForm.setPhase(PlayerFormPhase.PHASE_SP);
+		familiarFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		RegPlayerForms.registerPlayerForm(familiarFoxForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_familiar_fox_sp")).addForm(familiarFoxForm, 5));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_sp")).registerForm(1, 5, familiarFoxForm));
 
 		Form_FamiliarFoxRed familiarFoxRedForm = new Form_FamiliarFoxRed(FormIdentifiers.FAMILIAR_FOX_RED);
-		familiarFoxRedForm.setPhase(PlayerFormPhase.PHASE_SP);
+		familiarFoxRedForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		RegPlayerForms.registerPlayerForm(familiarFoxRedForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_familiar_fox_red")).addForm(familiarFoxRedForm, 5));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_red")).registerForm(1, 5, familiarFoxRedForm));
 
 		Form_SnowFoxSP snowFoxForm = new Form_SnowFoxSP(FormIdentifiers.SNOW_FOX_SP);
-		snowFoxForm.setPhase(PlayerFormPhase.PHASE_SP);
+		snowFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		RegPlayerForms.registerPlayerForm(snowFoxForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_snow_fox_sp")).addForm(snowFoxForm, 7));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_snow_fox_sp")).registerForm(1, 7, snowFoxForm));
 
 		Form_Allay allayForm = new Form_Allay(FormIdentifiers.ALLAY_SP);
-		allayForm.setPhase(PlayerFormPhase.PHASE_SP);
+		allayForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		RegPlayerForms.registerPlayerForm(allayForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_allay_sp")).addForm(allayForm, 8));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_allay_sp")).registerForm(1, 8, allayForm));
 
 		Form_FeralCatSP wildCatForm = new Form_FeralCatSP(FormIdentifiers.WILD_CAT_SP);
-		wildCatForm.setPhase(PlayerFormPhase.PHASE_SP);
-		wildCatForm.setBodyType(net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType.FERAL);
-		wildCatForm.setCanSneakRush(true);
+		wildCatForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		wildCatForm.canSneakRush = true;
 		RegPlayerForms.registerPlayerForm(wildCatForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_wild_cat_sp")).addForm(wildCatForm, 5));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_wild_cat_sp")).registerForm(1, 5, wildCatForm));
 
 		// Fallen Allay SP
 		Form_FallenAllaySP fallenAllayForm = new Form_FallenAllaySP(FormIdentifiers.FALLEN_ALLAY_SP);
-		fallenAllayForm.setPhase(PlayerFormPhase.PHASE_SP);
+		fallenAllayForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		RegPlayerForms.registerPlayerForm(fallenAllayForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_fallen_allay_sp")).addForm(fallenAllayForm, 8));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_fallen_allay_sp")).registerForm(1, 8, fallenAllayForm));
 
 		// Anubis Wolf SP
 		Form_AnubisWolfSP anubisWolfForm = new Form_AnubisWolfSP(FormIdentifiers.ANUBIS_WOLF_SP);
-		anubisWolfForm.setPhase(PlayerFormPhase.PHASE_SP);
-		anubisWolfForm.setCanSneakRush(true);
+		anubisWolfForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		anubisWolfForm.canSneakRush = true;
 		RegPlayerForms.registerPlayerForm(anubisWolfForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_anubis_wolf_sp")).addForm(anubisWolfForm, 12));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_anubis_wolf_sp")).registerForm(1, 12, anubisWolfForm));
 
 		// Golden Sandstorm SP (金沙岚)
 		Form_GoldenSandstormSP goldenSandstormForm = new Form_GoldenSandstormSP(FormIdentifiers.GOLDEN_SANDSTORM_SP);
-		goldenSandstormForm.setPhase(PlayerFormPhase.PHASE_SP);
-		goldenSandstormForm.setCanSneakRush(true);
+		goldenSandstormForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		goldenSandstormForm.canSneakRush = true;
 		RegPlayerForms.registerPlayerForm(goldenSandstormForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_golden_sandstorm_sp")).addForm(goldenSandstormForm, 12));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_golden_sandstorm_sp")).registerForm(1, 12, goldenSandstormForm));
 
 		// 吸血蝙蝠（Desmodus）SP形态 - 复用蝙蝠模型/动画，经月髓环在诅咒之月夜进化获得
 		Form_BatDesmodus batDesmodusForm = new Form_BatDesmodus(FormIdentifiers.BAT_DESMODUS);
-		batDesmodusForm.setPhase(PlayerFormPhase.PHASE_SP);
-		batDesmodusForm.setHasSlowFall(true);
-		batDesmodusForm.setOverrideHandAnim(true);
+		batDesmodusForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune, HasSlowFall);
 		RegPlayerForms.registerPlayerForm(batDesmodusForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_bat_desmodus")).addForm(batDesmodusForm, 12));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_bat_desmodus")).registerForm(1, 12, batDesmodusForm));
 
 		// 寄生果蝠 - 原版三阶段蝙蝠使用进化石进化获得，复用蝙蝠模型/动画
 		Form_BatParasiticFruit batParasiticFruitForm = new Form_BatParasiticFruit(FormIdentifiers.BAT_PARASITIC_FRUIT);
-		batParasiticFruitForm.setPhase(PlayerFormPhase.PHASE_SP);
-		batParasiticFruitForm.setHasSlowFall(true);
-		batParasiticFruitForm.setOverrideHandAnim(true);
+		batParasiticFruitForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune, HasSlowFall);
 		RegPlayerForms.registerPlayerForm(batParasiticFruitForm);
-		RegPlayerForms.registerPlayerFormGroup(new PlayerFormGroup(new Identifier("my_addon", "group_bat_parasitic_fruit")).addForm(batParasiticFruitForm, 12));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_bat_parasitic_fruit")).registerForm(1, 12, batParasiticFruitForm));
 	}
 
 	private void registerCommands() {
@@ -513,6 +545,8 @@ public class SscAddon implements ModInitializer {
 				GoldenSandstormRegen.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tick(player);
+				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.tick(player);
+				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.PlayDeadAbsorptionManager.tick(player);
 			}
 		});
 	}
@@ -529,6 +563,39 @@ public class SscAddon implements ModInitializer {
 	private void registerStunOrphanCleanup() {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
 			for (net.minecraft.server.network.ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+				// [DEBUG] 水矛出现监测 + 硬上限：背包最多 1 把水矛，多余立即移除（兜底任何未知产出路径）
+				if (net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isAxolotlSP(player)) {
+					net.minecraft.entity.player.PlayerInventory inv = player.getInventory();
+					int wsCnt = 0;
+					for (int i = 0; i < inv.size(); i++) {
+						if (inv.getStack(i).isOf(WATER_SPEAR)) {
+							wsCnt++;
+							if (wsCnt > 1) {
+								inv.setStack(i, net.minecraft.item.ItemStack.EMPTY);
+								WS_DBG.warn("[WS-CAP] 移除多余水矛 slot={} @tick {}", i, server.getTicks());
+								wsCnt--;
+							}
+						}
+					}
+					Integer wsPrev = WS_LAST_SPEAR_COUNT.put(player.getUuid(), wsCnt);
+					if (wsPrev != null && wsCnt > wsPrev) {
+						long wsT = server.getTicks();
+						Long wsUntil = WATER_SPEAR_CRAFT_CD.get(player.getUuid());
+						WS_DBG.warn("[WS-MONITOR] 水矛数 {}->{} @tick {} ; internalCD until={} cooling={} ; arrowCD={}",
+								wsPrev, wsCnt, wsT, wsUntil, (wsUntil != null && wsT < wsUntil),
+								player.getItemCooldownManager().isCoolingDown(net.minecraft.item.Items.ARROW));
+					}
+					// 水矛从「有」变「无」(扛出/消耗) → 重启 Apoli 合成冷却，使「合成CD」从水矛消失那刻起算
+					// 否则持矛期间 active_self 的 cooldown 会走完，扛出后可立即秒合成（用户反馈的 bug）
+					if (wsPrev != null && wsPrev > 0 && wsCnt == 0) {
+						long wsT = server.getTicks();
+						WATER_SPEAR_CRAFT_CD.put(player.getUuid(), wsT + WATER_SPEAR_CRAFT_CD_TICKS);
+						player.getItemCooldownManager().set(net.minecraft.item.Items.ARROW, WATER_SPEAR_CRAFT_CD_TICKS);
+						net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils.resetCooldown(player,
+								new net.minecraft.util.Identifier("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
+						WS_DBG.warn("[WS-CD] 水矛消失 @tick {} → 重启合成冷却(从消失起算 {}t)", wsT, WATER_SPEAR_CRAFT_CD_TICKS);
+					}
+				}
 				if (player.hasStatusEffect(STUN)) continue;
 				net.minecraft.entity.attribute.EntityAttributeInstance atk =
 						player.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);
@@ -558,9 +625,8 @@ public class SscAddon implements ModInitializer {
 	private void registerFeralBodyYawSync() {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
 			for (net.minecraft.server.network.ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-				net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBase form =
-						net.onixary.shapeShifterCurseFabric.player_form.ability.RegPlayerFormComponent.PLAYER_FORM
-								.get(player).getCurrentForm();
+				net.onixary.shapeShifterCurseFabric.player_form.IForm form =
+						net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.getPlayerForm(player);
 				if (form == null
 						|| form.getBodyType() != net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType.FERAL) {
 					continue;
@@ -696,11 +762,82 @@ public class SscAddon implements ModInitializer {
 		});
 
 		// 吸血蝙蝠血雾期间禁用一切右键交互（用物品/放方块/与生物互动/吃喝/盾牌副手等）
-		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (player.hasStatusEffect(MIST_FORM)
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {			if (player.hasStatusEffect(MIST_FORM)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
 				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
+			}			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+		});
+
+		WS_DBG.info("[WS] ===== DEBUG BUILD LOADED (v2): 水矛合成+最多1把 监测启用 =====");
+		// SP美西螈：选中快捷栏(主手)为空 + 副手持箭 + 右键 → 消耗 1 支箭“合成”获得水矛（5 秒CD；身上最多 1 把）
+		// 注：主手为空时 MC 只触发副手(OFF_HAND)交互，故用副手回调
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+			boolean axo = net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isAxolotlSP(player);
+			net.minecraft.item.ItemStack mainStack = player.getMainHandStack();
+			net.minecraft.item.ItemStack offStack = player.getOffHandStack();
+			boolean arrowCd = player.getItemCooldownManager().isCoolingDown(net.minecraft.item.Items.ARROW);
+			int spearCount = 0;
+			if (axo) {
+				net.minecraft.entity.player.PlayerInventory inv = player.getInventory();
+				for (int i = 0; i < inv.size(); i++) {
+					if (inv.getStack(i).isOf(WATER_SPEAR)) spearCount++;
+				}
+				WS_DBG.info("[WS] side={} hand={} main={} mainEmpty={} off={} offIsArrow={} arrowCD={} spearInInv={}",
+						world.isClient() ? "CLIENT" : "SERVER", hand,
+						net.minecraft.registry.Registries.ITEM.getId(mainStack.getItem()), mainStack.isEmpty(),
+						net.minecraft.registry.Registries.ITEM.getId(offStack.getItem()), offStack.isOf(net.minecraft.item.Items.ARROW), arrowCd, spearCount);
+			}
+			if (hand != net.minecraft.util.Hand.OFF_HAND || !axo || !mainStack.isEmpty()
+					|| !offStack.isOf(net.minecraft.item.Items.ARROW)) {
+				return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+			}
+			// 身上最多一把水矛：背包已有则不合成
+			if (spearCount > 0) {
+				WS_DBG.info("[WS][{}] BLOCKED: already has {} water_spear (max 1)", world.isClient() ? "CLIENT" : "SERVER", spearCount);
+				return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+			}
+			if (world.isClient()) {
+				WS_DBG.info("[WS][CLIENT] gate-passed arrowCD={} -> {}", arrowCd, arrowCd ? "PASS(cooling)" : "SUCCESS");
+				return arrowCd ? net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand))
+						: net.minecraft.util.TypedActionResult.success(player.getStackInHand(hand));
+			}
+			if (player instanceof net.minecraft.server.network.ServerPlayerEntity sp) {
+				int slot = sp.getInventory().selectedSlot;
+				net.minecraft.item.ItemStack selStack = sp.getInventory().getStack(slot);
+				int srvSpears = 0;
+				for (int i = 0; i < sp.getInventory().size(); i++) {
+					if (sp.getInventory().getStack(i).isOf(WATER_SPEAR)) srvSpears++;
+				}
+				long now = sp.getServer().getTicks();
+				Long until = WATER_SPEAR_CRAFT_CD.get(sp.getUuid());
+				boolean cooling = until != null && now < until;
+				WS_DBG.info("[WS][SERVER] gate cooling={} now={} until={} selSlot={} selStack={} selEmpty={} srvSpears={}",
+						cooling, now, until, slot,
+						net.minecraft.registry.Registries.ITEM.getId(selStack.getItem()), selStack.isEmpty(), srvSpears);
+				if (cooling) {
+					return net.minecraft.util.TypedActionResult.pass(sp.getStackInHand(hand));
+				}
+				// 服务端二次硬校验（防御）：选中槽必须真空、且身上无水矛
+				if (!selStack.isEmpty()) {
+					WS_DBG.warn("[WS][SERVER] ABORT: 选中槽非空({})，不合成", net.minecraft.registry.Registries.ITEM.getId(selStack.getItem()));
+					return net.minecraft.util.TypedActionResult.pass(sp.getStackInHand(hand));
+				}
+				if (srvSpears > 0) {
+					WS_DBG.warn("[WS][SERVER] ABORT: 身上已有 {} 把水矛", srvSpears);
+					return net.minecraft.util.TypedActionResult.pass(sp.getStackInHand(hand));
+				}
+				sp.getOffHandStack().decrement(1);
+				net.minecraft.item.ItemStack spear = new net.minecraft.item.ItemStack(WATER_SPEAR);
+				sp.getInventory().setStack(slot, spear);
+				sp.getInventory().markDirty();
+				WS_DBG.info("[WS][SERVER] >>> CRAFTED into selSlot={} ; offhandEmptyNow={} (CD改为水矛消失后触发)", slot, sp.getOffHandStack().isEmpty());
+				if (sp.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) {
+					sw.playSound(null, sp.getX(), sp.getY(), sp.getZ(),
+							net.minecraft.sound.SoundEvents.ITEM_BOTTLE_FILL, sp.getSoundCategory(), 0.8f, 1.0f);
+					net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnWaterBurst(sw, sp.getX(), sp.getY() + 1.0, sp.getZ(), 0.5);
+				}
+				return net.minecraft.util.TypedActionResult.success(sp.getStackInHand(hand));
 			}
 			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
 		});
@@ -882,7 +1019,7 @@ public class SscAddon implements ModInitializer {
 		net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents.START_TRACKING.register((trackedEntity, player) -> {
 			if (trackedEntity instanceof net.minecraft.server.network.ServerPlayerEntity tracked) {
 				try {
-					net.onixary.shapeShifterCurseFabric.player_form.ability.RegPlayerFormComponent.PLAYER_FORM.sync(tracked);
+					net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.sync(tracked);
 				} catch (Throwable ignored) {
 					// 极端时序下组件容器可能尚未就绪，忽略即可，下次状态变更会自动同步
 				}
