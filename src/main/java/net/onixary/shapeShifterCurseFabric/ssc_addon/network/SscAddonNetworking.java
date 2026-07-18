@@ -9,6 +9,7 @@ import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPGroupHeal;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaTeleport;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPrimary;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
@@ -25,6 +26,14 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_MANCIANIMA_TELEPORT = new Identifier("my_addon", "mancianima_teleport");
 	/** 契灵 - 主要技能：三段标记。无 payload，服务端根据当前状态分支。 */
 	public static final Identifier PACKET_MANCIANIMA_PRIMARY = new Identifier("my_addon", "mancianima_primary");
+	/** 风灵「疾风连爪」：C2S 上报左键按住(boolean)；S2C 同步爪击阶段(int)+准星条进度(float)。 */
+	public static final Identifier PACKET_CLAW_HOLD = new Identifier("my_addon", "claw_hold");
+	public static final Identifier PACKET_CLAW_STATE = new Identifier("my_addon", "claw_state");
+	/** 风灵副技能：C2S 按 sp_secondary 触发 +50% 增伤 buff。无 payload。 */
+	public static final Identifier PACKET_CLAW_BUFF = new Identifier("my_addon", "claw_buff");
+	/** 风灵「风之冲刺」：C2S 按主技能键（无 payload，服务端按阶段分支）；S2C 同步阶段(int)+targetY(double)。 */
+	public static final Identifier PACKET_WIND_DASH = new Identifier("my_addon", "wind_dash");
+	public static final Identifier PACKET_DASH_STATE = new Identifier("my_addon", "dash_state");
 
 	// ===== 白名单 GUI 网络包 =====
 	/** S2C：服务端把调用者当前白名单 UUID 集合推给客户端，用于打开/刷新 GUI。payload: int n + n*UUID */
@@ -46,6 +55,39 @@ public class SscAddonNetworking {
 	/** C2S：美西螈漩涡释放（提前释放）。无 payload。 */
 	public static final Identifier PACKET_VORTEX_RELEASE = new Identifier("my_addon", "vortex_release");
 
+	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = new Identifier("my_addon", "upgrade_axolotl_spear");
+	/** C2S：进化美西螈次技能「涡流引导」按键。无 payload。 */
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_VORTEX = new Identifier("my_addon", "upgrade_axolotl_vortex");
+	/** S2C：进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（对追踪者+自身广播）。payload: UUID + boolean charging */
+	public static final Identifier PACKET_SPEAR_CHARGE_STATE = new Identifier("my_addon", "spear_charge_state");
+
+	// ===== 荧光幼灵技能网络包 =====
+	/** C2S：荧光幼灵主要技能（法阵激光）按键。无 payload。 */
+	public static final Identifier PACKET_FLUO_LASER = new Identifier("my_addon", "fluo_laser_key");
+	/** C2S：荧光幼灵次要技能（潮汐波动）按键。无 payload。 */
+	public static final Identifier PACKET_FLUO_TIDAL = new Identifier("my_addon", "fluo_tidal_key");
+	/** S2C：荧光幼灵「潮汐束缚」把被拴目标的 entityId 同步给客机，用于渲染守卫者激光。payload: varint orbId + varint count + count*varint entityId */
+	public static final Identifier PACKET_TIDAL_TETHER = new Identifier("my_addon", "tidal_tether");
+
+	// ===== SSCA 进化加点系统网络包（框架） =====
+	/** C2S：玩家选择进化路线。payload: String routeId */
+	public static final Identifier PACKET_EVO_SELECT_ROUTE = new Identifier("my_addon", "evo_select_route");
+	/** C2S：玩家选择 SP 分支。payload: String branchId */
+	public static final Identifier PACKET_EVO_SELECT_BRANCH = new Identifier("my_addon", "evo_select_branch");
+	/** C2S：玩家请求解锁一个天赋节点。payload: String nodeId */
+	public static final Identifier PACKET_EVO_UNLOCK = new Identifier("my_addon", "evo_unlock");
+	/** C2S：一次性提交多个待确认节点（按点击顺序），服务端限频一次后顺序逐个解锁。payload: int count + count*String */
+	public static final Identifier PACKET_EVO_UNLOCK_BATCH = new Identifier("my_addon", "evo_unlock_batch");
+	/** C2S：开局选形态界面选定一个 SSCA 进化形态、直接走 SSCA 路线进化。payload: String formId */
+	public static final Identifier PACKET_SSCA_START_ROUTE = new Identifier("my_addon", "ssca_start_route");
+	/** C2S：客机加入后请求服务端把所有在场玩家的形态+皮肤同步过来（修复客机看其它玩家默认白模型）。无 payload */
+	public static final Identifier PACKET_REQUEST_ALL_FORM_SYNC = new Identifier("my_addon", "request_all_form_sync");
+	/** S2C：服务端广播所有在场玩家的形态 ID。payload: int count + count*(UUID + String formId) */
+	public static final Identifier PACKET_BROADCAST_FORMS = new Identifier("my_addon", "broadcast_forms");
+	/** S2C：把所有 SSCA 进化路线定义（JSON）同步给客户端，供进化树 UI 渲染。payload: int count + count*(routeId + rawJson) */
+	public static final Identifier PACKET_EVO_ROUTES_SYNC = new Identifier("my_addon", "evo_routes_sync");
+
 	/** C2S 限频：每玩家每个事件类型记录上一次服务端接收时间，防外挂客户端 spam。 */
 	private static final Map<UUID, Long> LAST_WHITELIST_PACKET_TICK = new ConcurrentHashMap<>();
 	/** 同一玩家两次白名单操作的最小间隔，单位：millis。 */
@@ -64,6 +106,34 @@ public class SscAddonNetworking {
 	/** 玩家退服时调用：清理限频时间戳，防止僵尸 UUID 长期积累。 */
 	public static void onPlayerDisconnect(UUID uuid) {
 		LAST_WHITELIST_PACKET_TICK.remove(uuid);
+	}
+
+	/** 风灵「疾风连爪」：同步爪击阶段(phase)与准星条进度给客户端。 */
+	public static void syncClawState(net.minecraft.server.network.ServerPlayerEntity player, int phase, float crosshairProgress) {
+		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+		buf.writeInt(phase);
+		buf.writeFloat(crosshairProgress);
+		ServerPlayNetworking.send(player, PACKET_CLAW_STATE, buf);
+	}
+
+	/** 风灵「风之冲刺」：同步阶段(phase)与目标悬浮 Y 给客户端（驱动落点预览）。 */
+	public static void syncDashState(net.minecraft.server.network.ServerPlayerEntity player, int phase, double targetY) {
+		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+		buf.writeInt(phase);
+		buf.writeDouble(targetY);
+		ServerPlayNetworking.send(player, PACKET_DASH_STATE, buf);
+	}
+
+	/** 进化美西螈「投掷水矛」：向追踪该玩家的客户端 + 玩家自身广播蓄力手持水矛渲染状态。 */
+	public static void syncSpearChargeState(net.minecraft.server.network.ServerPlayerEntity player, boolean charging) {
+		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+		buf.writeUuid(player.getUuid());
+		buf.writeBoolean(charging);
+		for (net.minecraft.server.network.ServerPlayerEntity viewer :
+				net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(player)) {
+			ServerPlayNetworking.send(viewer, PACKET_SPEAR_CHARGE_STATE, net.fabricmc.fabric.api.networking.v1.PacketByteBufs.copy(buf));
+		}
+		ServerPlayNetworking.send(player, PACKET_SPEAR_CHARGE_STATE, buf);
 	}
 
 	public static void registerServerReceivers() {
@@ -149,6 +219,127 @@ public class SscAddonNetworking {
 		});
 		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_RELEASE, (server, player, handler, buf, responseSender) -> {
 			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.release(player));
+		});
+
+		// SSCA 进化美西螈技能：主「投掷水矛」 / 次「涡流引导」
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_UPGRADE_AXOLOTL_SPEAR, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.onKeyPress(player));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_UPGRADE_AXOLOTL_VORTEX, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.onKeyPress(player));
+		});
+
+		// 风灵「疾风连爪」：客户端上报左键按住状态
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_CLAW_HOLD, (server, player, handler, buf, responseSender) -> {
+			boolean hold = buf.readBoolean();
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.setHolding(player, hold));
+		});
+
+		// 风灵副技能：sp_secondary 触发 +50% 增伤 buff
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_CLAW_BUFF, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.activateSecondaryBuff(player));
+		});
+
+		// 风灵「风之冲刺」：主技能键（服务端按当前阶段分支：起飞 / 悬浮中冲刺）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_WIND_DASH, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.onKeyPress(player));
+		});
+
+		// 荧光幼灵技能按键：主要（法阵激光）/ 次要（潮汐波动）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_FLUO_LASER, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentLaserManager.onKeyPress(player));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_FLUO_TIDAL, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.onKeyPress(player));
+		});
+
+		// ===== SSCA 进化加点系统 =====
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_SELECT_ROUTE, (server, player, handler, buf, responseSender) -> {
+			String routeId = buf.readString(256);
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				EvolutionManager.selectRoute(player, routeId);
+			});
+		});
+
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_SELECT_BRANCH, (server, player, handler, buf, responseSender) -> {
+			String branchId = buf.readString(256);
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				EvolutionManager.selectBranch(player, branchId);
+			});
+		});
+
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_UNLOCK, (server, player, handler, buf, responseSender) -> {
+			String nodeId = buf.readString(256);
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				EvolutionManager.tryUnlock(player, nodeId);
+			});
+		});
+
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_UNLOCK_BATCH, (server, player, handler, buf, responseSender) -> {
+			int count = Math.max(0, Math.min(64, buf.readInt()));
+			java.util.List<String> ids = new java.util.ArrayList<>(count);
+			for (int i = 0; i < count; i++) ids.add(buf.readString(256));
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				for (String id : ids) EvolutionManager.tryUnlock(player, id);
+			});
+		});
+
+		// 开局选形态界面：直接走 SSCA 进化路线进入选定形态
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SSCA_START_ROUTE, (server, player, handler, buf, responseSender) -> {
+			String formId = buf.readString(256);
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				EvolutionManager.startSscaRoute(player, formId);
+			});
+		});
+
+		// 客机加入后请求：把所有在场玩家的形态 ID + 皮肤数据广播给「所有在线玩家」（含请求者与已在线客机），
+		// 绕过 CCA 同步的不确定性，修复刚进游戏 / 新玩家加入时看其它玩家是默认白模型。
+		// 形态模型由客机据 formId 重建 origin 决定，颜色据皮肤数据上色。
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_REQUEST_ALL_FORM_SYNC, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> {
+				java.util.List<net.minecraft.server.network.ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
+				for (net.minecraft.server.network.ServerPlayerEntity recipient : players) {
+					net.minecraft.network.PacketByteBuf out = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+					out.writeInt(players.size());
+					for (net.minecraft.server.network.ServerPlayerEntity p : players) {
+						out.writeUuid(p.getUuid());
+						net.minecraft.util.Identifier fid =
+								net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.get(p).nowFormID;
+						out.writeString(fid == null ? "" : fid.toString());
+						// 皮肤数据：保留原皮 / 是否启用形态颜色 / 五种颜色(ABGR) / 灰度反转 / 随机音效
+						net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent skin =
+								net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
+						out.writeBoolean(skin.shouldKeepOriginalSkin());
+						out.writeBoolean(skin.isEnableFormColor());
+						net.onixary.shapeShifterCurseFabric.util.FormTextureUtils.ColorSetting c = skin.getFormColor();
+						out.writeInt(c.getPrimaryColor());
+						out.writeInt(c.getAccentColor1());
+						out.writeInt(c.getAccentColor2());
+						out.writeInt(c.getEyeColorA());
+						out.writeInt(c.getEyeColorB());
+						out.writeBoolean(c.getPrimaryGreyReverse());
+						out.writeBoolean(c.getAccent1GreyReverse());
+						out.writeBoolean(c.getAccent2GreyReverse());
+						out.writeBoolean(skin.isEnableFormRandomSound());
+					}
+					ServerPlayNetworking.send(recipient, PACKET_BROADCAST_FORMS, out);
+				}
+				// 同步 SSCA 进化路线定义给请求者（客户端进化树 UI 渲染需要，多人环境客户端无 datapack 数据）
+				net.minecraft.network.PacketByteBuf routesOut = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+				java.util.Map<String, String> rawRoutes =
+						net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE.getRawJson();
+				routesOut.writeInt(rawRoutes.size());
+				for (java.util.Map.Entry<String, String> e : rawRoutes.entrySet()) {
+					routesOut.writeString(e.getKey(), 256);
+					routesOut.writeString(e.getValue(), 2000000);
+				}
+				ServerPlayNetworking.send(player, PACKET_EVO_ROUTES_SYNC, routesOut);
+			});
 		});
 	}
 

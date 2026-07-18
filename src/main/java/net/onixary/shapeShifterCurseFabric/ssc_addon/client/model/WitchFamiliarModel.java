@@ -1,14 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.model;
 
-import mod.azure.azurelib.model.GeoModel;
+import software.bernie.geckolib.model.GeoModel;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
 
 /**
  * 女巫使魔模型 - 复用原版使魔的3D模型，使用专属纹理
  */
-// 抑制 AzureLib 上游旧包名 [removal] 警告，待主包统一迁移到 mod.azure.azurelib.common.* 时再处理
-@SuppressWarnings({"removal", "deprecation"})
 public class WitchFamiliarModel extends GeoModel<WitchFamiliarEntity> {
 
 	@Override

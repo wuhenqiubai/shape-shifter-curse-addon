@@ -17,11 +17,15 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPRangedHitPas
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NineLivesManager;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NovaSkillManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.power.EffectEfficiencyReductionPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.UndeadNeutralState;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.FamiliarFoxTree;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -59,6 +63,35 @@ public abstract class SscAddonLivingEntityMixin {
 	 */
 	@Inject(method = "damage", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$onUndeadDamaged(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {		LivingEntity self = (LivingEntity) (Object) this;
+		// 朔望九命：被动死亡触发复活 + 复活后 1s 无敌 + 攻击/受伤标记战斗
+		if (!self.getWorld().isClient()) {
+			if (self instanceof ServerPlayerEntity nova && FormUtils.isForm(nova, FormIdentifiers.OCELOT_NOVA)) {
+				if (NineLivesManager.isInvulnerable(nova)) {
+					cir.setReturnValue(false);
+					return;
+				}
+				if (NovaSkillManager.rollDodge(nova)) {
+					cir.setReturnValue(false);
+					return; // 闪避：概率免疫本次伤害（不受伤、不击退）
+				}
+				NineLivesManager.markCombat(nova);
+				if (!source.isOf(DamageTypes.OUT_OF_WORLD) && amount >= nova.getHealth() + nova.getAbsorptionAmount()) {
+					if (NineLivesManager.tryRevive(nova)) {
+						// 复活仍正常受到本次攻击的击退
+						Entity kbSource = source.getSource();
+						if (kbSource != null) {
+							nova.takeKnockback(0.4, kbSource.getX() - nova.getX(), kbSource.getZ() - nova.getZ());
+							nova.velocityModified = true;
+						}
+						cir.setReturnValue(false);
+						return;
+					}
+				}
+			}
+			if (source.getAttacker() instanceof ServerPlayerEntity attacker && FormUtils.isForm(attacker, FormIdentifiers.OCELOT_NOVA)) {
+				NineLivesManager.markCombat(attacker);
+			}
+		}
 		if (self instanceof MobEntity mob
 				&& source.getAttacker() instanceof PlayerEntity player) {
 			// 裁决者: 所有亡灵触发挑衅
@@ -116,6 +149,27 @@ public abstract class SscAddonLivingEntityMixin {
 		if (!cir.getReturnValue()) return;
 		LivingEntity self = (LivingEntity) (Object) this;
 		AllaySPRangedHitPassive.onDamageApplied(self, source);
+		// 冥裁者「凋零传染」：玩家本人或其冥狼攻击命中时，消耗自身凋零时间转移给目标。
+		// 玩家本人攻击
+		if (!self.getWorld().isClient()
+				&& source.getAttacker() instanceof ServerPlayerEntity attacker
+				&& FormUtils.isForm(attacker, FormIdentifiers.ANUBIS_WOLF_SP)) {
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.tryWitherInfect(attacker, self);
+			return;
+		}
+		// 冥狼攻击 → 找主人，以主人的凋零状态传染
+		if (!self.getWorld().isClient()
+				&& source.getAttacker() instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf
+				&& self.getWorld() instanceof net.minecraft.server.world.ServerWorld serverWorld) {
+			java.util.UUID ownerUuid = wolf.getMinionOwnerUUID();
+			if (ownerUuid != null) {
+				net.minecraft.entity.player.PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
+				if (owner instanceof ServerPlayerEntity ownerPlayer
+						&& FormUtils.isForm(ownerPlayer, FormIdentifiers.ANUBIS_WOLF_SP)) {
+					net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.tryWitherInfect(ownerPlayer, self);
+				}
+			}
+		}
 	}
 
 	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
@@ -146,6 +200,62 @@ public abstract class SscAddonLivingEntityMixin {
 		if (!InfectionSporeManager.isInfected(living.getUuid())) return;
 		float amount = args.get(1);
 		args.set(1, InfectionSporeManager.reduceDamageIfInfected(living, amount));
+	}
+
+	/**
+	 * 冥裁者「凋零阶梯」：自身有凋零时，按凋零持续时长分阶增伤（+10%/+20%/+30%）。
+	 * 覆盖两类攻击者：
+	 *   1. SP阿努比斯玩家本人造成的伤害
+	 *   2. 该玩家召唤的冥狼（AnubisWolfMinionEntity）造成的伤害 —— 经 getMinionOwnerUUID() 找主人
+	 * 增伤倍率由 WitherFrenzyManager.getDamageMultiplier 统一给出。仅服务端判定。
+	 */
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
+	private void ssc_addon$anubisWolfWitherFrenzy(Args args) {
+		LivingEntity self = (LivingEntity) (Object) this;
+		if (self.getWorld().isClient()) return;
+		DamageSource source = args.get(0);
+		Entity attacker = source.getAttacker();
+		float amount = args.get(1);
+
+		// 1) 玩家本人攻击
+		if (attacker instanceof ServerPlayerEntity sp
+				&& FormUtils.isForm(sp, FormIdentifiers.ANUBIS_WOLF_SP)) {
+			args.set(1, amount * net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.getDamageMultiplier(sp));
+			return;
+		}
+		// 2) 冥狼攻击 → 找主人
+		if (attacker instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf) {
+			java.util.UUID ownerUuid = wolf.getMinionOwnerUUID();
+			if (ownerUuid == null) return;
+			if (!(self.getWorld() instanceof net.minecraft.server.world.ServerWorld serverWorld)) return;
+			net.minecraft.entity.player.PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
+			if (owner instanceof ServerPlayerEntity ownerPlayer
+					&& FormUtils.isForm(ownerPlayer, FormIdentifiers.ANUBIS_WOLF_SP)) {
+				args.set(1, amount * net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.getDamageMultiplier(ownerPlayer));
+			}
+		}
+	}
+
+	/**
+	 * 冥裁者「凋零抗性」：凋零对 SP阿努比斯造成的伤害减免 20%，且伤害间隔延长 40%
+	 * （每 7 次 tick 跳过 2 次，等效间隔 ×1.4）。净伤害 ≈ 原值 57%。
+	 * 凋零伤害来源 = DamageTypes.WITHER。
+	 */
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
+	private void ssc_addon$anubisWolfWitherResistance(Args args) {
+		LivingEntity self = (LivingEntity) (Object) this;
+		if (self.getWorld().isClient()) return;
+		if (!(self instanceof ServerPlayerEntity sp)) return;
+		if (!FormUtils.isForm(sp, FormIdentifiers.ANUBIS_WOLF_SP)) return;
+		DamageSource source = args.get(0);
+		if (!source.isOf(DamageTypes.WITHER)) return;
+		float scale = net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.getWitherDamageScale(sp);
+		if (scale <= 0f) {
+			// 本次凋零 tick 跳过（间隔延长）
+			args.set(1, 0.0f);
+		} else {
+			args.set(1, (float) args.get(1) * scale);
+		}
 	}
 
 	@ModifyVariable(method = "addStatusEffect(Lnet/minecraft/entity/effect/StatusEffectInstance;Lnet/minecraft/entity/Entity;)Z", at = @At("HEAD"), argsOnly = true)
@@ -259,6 +369,9 @@ public abstract class SscAddonLivingEntityMixin {
 
 	/**
 	 * 蝙蝠玩家受到/造成伤害时的战斗打点（HEAD）。
+
+	/**
+	 * 蝙蝠玩家受到/造成伤害时的战斗打点（HEAD）。
 	 * - 攻击方为蝙蝠玩家：标记战斗
 	 * - 受害方为蝙蝠玩家：标记战斗
 	 * 实际命中累计 +8 走 RETURN 分支（保证伤害真正生效）。
@@ -275,6 +388,16 @@ public abstract class SscAddonLivingEntityMixin {
 				&& source.getAttacker() != null && source.getAttacker() != sp
 				&& FormUtils.isForm(sp, FormIdentifiers.BAT_DESMODUS)) {
 			BatDesmodusBloodThirst.markCombat(sp);
+		}
+		// 进化使魔战斗打点（受击或主动伤敌）：用于脱战 mana 回复判定，复用契灵的 LAST_COMBAT 计时
+		if (source.getAttacker() instanceof ServerPlayerEntity atkFox
+				&& FormUtils.isForm(atkFox, FormIdentifiers.UPGRADE_FAMILIAR_FOX)) {
+			MancianimaMarkManager.markCombat(atkFox.getUuid(), atkFox.getServerWorld().getTime());
+		}
+		if (self instanceof ServerPlayerEntity defFox
+				&& source.getAttacker() != null && source.getAttacker() != defFox
+				&& FormUtils.isForm(defFox, FormIdentifiers.UPGRADE_FAMILIAR_FOX)) {
+			MancianimaMarkManager.markCombat(defFox.getUuid(), defFox.getServerWorld().getTime());
 		}
 	}
 
@@ -350,6 +473,42 @@ public abstract class SscAddonLivingEntityMixin {
 			if (BatDesmodusBloodThirst.getStage(ap) == 3) {
 				args.set(1, amount * 1.15f);
 			}
+		}
+	}
+
+	// ============== 进化使魔 - 药水伤害减免（magic伤害，按加点梯度） ==============
+	/**
+	 * 进化使魔受到 magic 伤害（含伤害药水）时，按加点提供与 ssc 使魔一致的药水免伤：
+	 * - 解锁 buff_immunity 节点：提供一半免伤（25% 减伤）
+	 * - 解锁 alchemy 节点：提供另一半免伤（25% 减伤）
+	 * - 两者都解锁：25% + 25% = 50% 减伤（相加，与 ssc 使魔的 50% 药水免伤一致，
+	 *   而非两个 0.75 相乘得到的 43.75%）。
+	 * 用 Java mixin 而非 Apoli condition，确保严格按加点生效（condition 在 modify_damage_taken 中可能不阻止 modifier）。
+	 */
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
+	private void ssc_addon$upgradeFoxPotionResist(Args args) {
+		LivingEntity self = (LivingEntity) (Object) this;
+		if (self.getWorld().isClient()) return;
+		if (!(self instanceof ServerPlayerEntity sp)) return;
+		if (!FormUtils.isForm(sp, FormIdentifiers.UPGRADE_FAMILIAR_FOX)) return;
+		DamageSource source = args.get(0);
+		// 仅对魔法伤害（含伤害药水）生效
+		if (!source.isOf(DamageTypes.MAGIC) && !source.isOf(DamageTypes.INDIRECT_MAGIC)) return;
+		net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionComponent comp = RegEvolutionComponent.EVOLUTION.get(sp);
+		// 门控：仅当玩家已正式走上 SSCA 进化路线（route 非空 + 已真正变身进入过进化形态）才生效，
+		// 避免异常状态（如 route 未设置或尚未完成初始变身）下误判。
+		if (!comp.isOnSscaRoute() || !comp.hasStarted()) return;
+		// 两节点各提供 25% 减伤，相加（而非相乘），两者齐备时合计 50%
+		float reduction = 0f;
+		if (comp.isUnlocked(FamiliarFoxTree.NODE_BUFF_IMMUNITY)) {
+			reduction += 0.25f;
+		}
+		if (comp.isUnlocked(FamiliarFoxTree.NODE_ALCHEMY)) {
+			reduction += 0.25f;
+		}
+		if (reduction > 0f) {
+			float amount = args.get(1);
+			args.set(1, amount * (1f - reduction));
 		}
 	}
 }

@@ -1,8 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer;
 
-import mod.azure.azurelib.cache.object.BakedGeoModel;
-import mod.azure.azurelib.cache.object.GeoBone;
-import mod.azure.azurelib.renderer.GeoEntityRenderer;
+import software.bernie.geckolib.cache.object.BakedGeoModel;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.renderer.GeoEntityRenderer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRendererFactory;
@@ -26,8 +26,6 @@ import java.util.Optional;
  * - SSC从BipedEntityModel读取旋转值，此处用等效公式直接计算
  * - SSC使用static尾巴拖拽字段（单玩家），此处使用per-entity Map
  */
-// 抑制 AzureLib 上游旧包名 [removal] 警告，待主包统一迁移到 mod.azure.azurelib.common.* 时再处理
-@SuppressWarnings({"removal", "deprecation"})
 public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity> {
 
 	private static final float MODEL_SCALE = 0.45f;
@@ -98,8 +96,8 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 
 	@Override
 	protected void applyRotations(WitchFamiliarEntity animatable, MatrixStack poseStack,
-	                              float ageInTicks, float rotationYaw, float partialTick, float nativeScale) {
-		super.applyRotations(animatable, poseStack, ageInTicks, rotationYaw, partialTick, nativeScale);
+	                              float ageInTicks, float rotationYaw, float partialTick) {
+		super.applyRotations(animatable, poseStack, ageInTicks, rotationYaw, partialTick);
 		// 基岩版模型面朝+Z，追加Ry(180°)修正朝向
 		poseStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f));
 	}

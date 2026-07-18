@@ -41,10 +41,6 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 	private static final Identifier TEX_FULL = new Identifier("my_addon", "textures/gui/skill_cd_bar_full.png");
 	private static final String SSCA_FORM_NAMESPACE = "my_addon";
 
-	// 快捷栏尺寸
-	private static final int HOTBAR_WIDTH = 182;
-	// CD条与快捷栏间距
-	private static final int GAP = 3;
 	// 技能触发偏差阈值：实际值与期望衰减值偏差超过此值视为技能触发
 	private static final int DEVIATION_THRESHOLD = 2;
 
@@ -99,6 +95,12 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 			return;
 		}
 
+		// SSCA 进化使魔：不显示 CD 条（技能 CD 由 Apoli 内部管理，无需 HUD）
+		if (formId.equals(FormIdentifiers.UPGRADE_FAMILIAR_FOX)) {
+			resetCooldownTracking();
+			return;
+		}
+
 		// 根据形态确定要显示的CD资源
 		Identifier primaryCdId = FormIdentifiers.SP_PRIMARY_CD;
 		Identifier secondaryCdId = FormIdentifiers.SP_SECONDARY_CD;
@@ -141,21 +143,46 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 			lastFrameValues.put(secondaryCdId, getResourceValue(player, secondaryCdId));
 		}
 
-		// 计算快捷栏位置
+		// CD 条位置：由 SSCAddonClientConfig 的九宫格锚点 + 偏移决定（与本能/能量条一致的可视化编辑）
+		// 主条用配置的锚点+偏移；副条 X 相对屏幕中线镜像。
+
+		int cdType = config.cdBarPosType;
+		int cdOffX = config.cdBarPosOffsetX;
+		int cdOffY = config.cdBarPosOffsetY;
+		net.minecraft.util.Pair<Integer, Integer> anchor =
+				net.onixary.shapeShifterCurseFabric.util.UIPositionUtils.getCorrectPosition(cdType, 0, 0);
 		int scaledWidth = mc.getWindow().getScaledWidth();
-		int scaledHeight = mc.getWindow().getScaledHeight();
-		int hotbarX = (scaledWidth - HOTBAR_WIDTH) / 2;
+		int primaryX = anchor.getLeft() + cdOffX;
+		int barY = anchor.getRight() + cdOffY;
+		// 副条：对称时相对屏幕垂直中线镜像主条 X；非对称时用独立偏移
+		int secondaryX;
+		int secondaryY;
+		if (config.cdSymmetric) {
+			secondaryX = scaledWidth - primaryX - TEX_W;
+			secondaryY = barY;
+		} else {
+			secondaryX = anchor.getLeft() + config.cdSecondaryBarPosOffsetX;
+			secondaryY = anchor.getRight() + config.cdSecondaryBarPosOffsetY;
+		}
 
-		// CD条Y坐标：底部对齐快捷栏底部，整体上移1像素
-		int barY = scaledHeight - TEX_H - 1;
+		// 进化美西螈：主动技能未解锁前不显示对应 CD 条（主=投掷水矛 / 副=涡流引导）
+		boolean showPrimary = true;
+		boolean showSecondary = true;
+		if (formId.equals(FormIdentifiers.UPGRADE_AXOLOTL)) {
+			try {
+				net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionComponent evo =
+						net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent.EVOLUTION.get(player);
+				showPrimary = evo.isUnlocked(net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.AxolotlTree.NODE_WATER_SPEAR);
+				showSecondary = evo.isUnlocked(net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.AxolotlTree.NODE_VORTEX_GUIDE);
+			} catch (Exception ignored) {
+				// 组件暂不可用：保守不显示，避免误显示空 CD 条
+				showPrimary = false;
+				showSecondary = false;
+			}
+		}
 
-		// 主要技能CD条（快捷栏左侧）
-		int leftBarX = hotbarX - GAP - TEX_W;
-		renderCdBarWithNumber(context, player, primaryCdId, leftBarX, barY, true, false);
-
-		// 次要技能CD条（快捷栏右侧）
-		int rightBarX = hotbarX + HOTBAR_WIDTH + GAP;
-		renderCdBarWithNumber(context, player, secondaryCdId, rightBarX, barY, false, false);
+		if (showPrimary) renderCdBarWithNumber(context, player, primaryCdId, primaryX, barY, true, false);
+		if (showSecondary) renderCdBarWithNumber(context, player, secondaryCdId, secondaryX, secondaryY, false, false);
 	}
 
 	/**

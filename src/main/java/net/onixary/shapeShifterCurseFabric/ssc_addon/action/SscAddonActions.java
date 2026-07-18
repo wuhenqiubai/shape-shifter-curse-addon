@@ -1,7 +1,5 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.action;
 
-import dev.emi.trinkets.api.TrinketComponent;
-import dev.emi.trinkets.api.TrinketsApi;
 import io.github.apace100.apoli.power.factory.action.ActionFactory;
 import io.github.apace100.apoli.registry.ApoliRegistries;
 import io.github.apace100.calio.data.SerializableData;
@@ -45,7 +43,6 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SkillBlocker;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public class SscAddonActions {
@@ -384,20 +381,6 @@ public class SscAddonActions {
 						// Duration 6s = 120 ticks
 						int duration = 120;
 
-						int regenAmp = 2; // Default Regeneration III (Regen I=0, II=1, III=2)
-						boolean hasNecklace = false;
-
-						if (living instanceof PlayerEntity player) {
-							try {
-								Optional<TrinketComponent> component = TrinketsApi.getTrinketComponent(player);
-								if (component.isPresent()) {
-									hasNecklace = component.get().isEquipped(SscAddon.ACTIVE_CORAL_NECKLACE);
-								}
-							} catch (Exception e) {
-								// Ignore if trinkets not available or error
-							}
-						}
-
 						// 项链黄心改由 PlayingDeadEffect 每10tick累积，不再用 Absorption 效果
 
 						// visible=false to hide icon（回血改由 PlayingDeadEffect 每10tick结算）
@@ -564,20 +547,6 @@ public class SscAddonActions {
 							t.damage(t.getDamageSources().create(magicKey, player, player), 5.0f);
 						}
 					});
-				}));
-
-		// ==== SP阿努比斯之狼 - 空手凋零打击（凋零I，命中累加续时：每次+10秒，上限30秒） ====
-		registerBiEntity(new ActionFactory<>(new Identifier("ssc_addon", "anubis_wolf_sp_wither_attack"),
-				new SerializableData(),
-				(data, pair) -> {
-					Entity target = pair.getRight();
-					if (target instanceof LivingEntity living && !living.getWorld().isClient()) {
-						// 读取目标当前凋零剩余时间，累加200tick(10秒)，上限600tick(30秒)，等级恒为凋零I(amplifier 0)
-						StatusEffectInstance current = living.getStatusEffect(StatusEffects.WITHER);
-						int baseDuration = current != null ? current.getDuration() : 0;
-						int newDuration = Math.min(baseDuration + 200, 600);
-						living.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, newDuration, 0));
-					}
 				}));
 	}
 

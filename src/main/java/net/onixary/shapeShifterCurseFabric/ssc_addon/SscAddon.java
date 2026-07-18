@@ -29,9 +29,11 @@ import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.player_form.NormalForm;
 import net.onixary.shapeShifterCurseFabric.player_form.NormalGroup;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
 import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_FeralCatSP;
+import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_Ocelot3;
 import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.NoInstinct;
 import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.NoCursedMoonEffect;
 import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.SpecialForm;
@@ -94,6 +96,7 @@ public class SscAddon implements ModInitializer {
 	public static final StatusEffect TRUE_INVISIBILITY = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.TrueInvisibilityEffect();
 	public static final StatusEffect PRE_INVISIBILITY = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.PreInvisibilityEffect();
 	public static final StatusEffect STUN = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.StunEffect();
+	public static final StatusEffect ROOTED = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.RootedEffect();
 	public static final StatusEffect GUARANTEED_CRIT = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.GuaranteedCritEffect();
 	public static final StatusEffect FROST_FREEZE = new FrostFreezeEffect();
 	public static final StatusEffect FROST_FALL = new FrostFallEffect();
@@ -108,6 +111,8 @@ public class SscAddon implements ModInitializer {
 	public static final StatusEffect SAND_BLIND = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.SandBlindEffect();
 	// 失聪：客机 SoundManagerDeafenMixin 据此静音受影响玩家自身的所有声音
 	public static final StatusEffect DEAFEN = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.DeafenEffect();
+	// 潮汐波动吸附减速（荧光幼灵）- 15% 移速降低
+	public static final StatusEffect TIDAL_SLOW = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.TidalSlowEffect();
 	/** 侵蚀烙印标记效果 - 1层(黄色) */
 	public static final StatusEffect EROSION_BRAND_MARKER_1 = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.ErosionBrandMarkerEffect(0xFFD700);
 	/** 侵蚀烙印标记效果 - 2层(橙色) */
@@ -120,6 +125,15 @@ public class SscAddon implements ModInitializer {
 			new Identifier("ssc_addon", "frost_ball"),
 			FabricEntityTypeBuilder.<FrostBallEntity>create(SpawnGroup.MISC, FrostBallEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
+					.trackRangeBlocks(64).trackedUpdateRate(10)
+					.build()
+	);
+	// 进化美西螈「投掷水矛」直线水矛投射物（无重力匀速）
+	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY = Registry.register(
+			Registries.ENTITY_TYPE,
+			new Identifier("ssc_addon", "thrown_water_spear"),
+			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity::new)
+					.dimensions(EntityDimensions.fixed(0.4f, 0.4f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
 					.build()
 	);
@@ -157,6 +171,24 @@ public class SscAddon implements ModInitializer {
 			FabricEntityTypeBuilder.<FrostStormEntity>create(SpawnGroup.MISC, FrostStormEntity::new)
 					.dimensions(EntityDimensions.fixed(1.0f, 2.0f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
+					.build()
+	);
+	// 荧光幼灵 - 潮汐波动粒子球实体
+	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity> TIDAL_ORB_ENTITY = Registry.register(
+			Registries.ENTITY_TYPE,
+			new Identifier("ssc_addon", "tidal_orb"),
+			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity::new)
+					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
+					.trackRangeBlocks(64).trackedUpdateRate(1)
+					.build()
+	);
+	// 荧光幼灵 - 法阵激光实体
+	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity> LASER_BEAM_ENTITY = Registry.register(
+			Registries.ENTITY_TYPE,
+			new Identifier("ssc_addon", "laser_beam"),
+			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity::new)
+					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
+					.trackRangeBlocks(96).trackedUpdateRate(1)
 					.build()
 	);
 	public static final Item SP_UPGRADE_THING = new SpUpgradeItem(new Item.Settings().maxCount(1));
@@ -197,6 +229,9 @@ public class SscAddon implements ModInitializer {
 	public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item CORAL_BALL = new Item(new Item.Settings().maxCount(64));
 	public static final Item ACTIVE_CORAL_NECKLACE = new ActiveCoralNecklaceItem(new Item.Settings().maxCount(1));
+	// 风灵专属项链：加快疾风连爪耐力回复；朔望专属项链：强化九命复活
+	public static final Item WIND_SPIRIT_STAMINA_NECKLACE = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WindSpiritStaminaNecklaceItem(new Item.Settings().maxCount(1));
+	public static final Item NOVA_REVIVE_NECKLACE = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.NovaReviveNecklaceItem(new Item.Settings().maxCount(1));
 	public static final Item ANUBIS_CRYSTAL = new AnubisCrystalItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item ANKH_STONE = new AnkhStoneItem(new Item.Settings().maxCount(1).fireproof());
 	// 契灵专属：绑定脚环（feet/aglet 槽，与守御脚环互斥）
@@ -244,6 +279,14 @@ public class SscAddon implements ModInitializer {
 			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.SPLASH);
 	public static final Item INFINITE_ENERGY_POTION_LINGERING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
 			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.LINGERING);
+	// 凋零药水（饮用/喷溅/滞留三型，任何人可用，凋零II 20秒；瓶身附魔光效）
+	// 堆叠：默认不可叠(maxCount 1)；使魔系叠8 / SP阿努比斯叠3（由 WitherPotionStackMixin 按形态抬高）
+	public static final Item WITHER_POTION = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem(
+			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.DRINK);
+	public static final Item WITHER_POTION_SPLASH = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem(
+			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.SPLASH);
+	public static final Item WITHER_POTION_LINGERING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem(
+			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.LINGERING);
 	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SpecialRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
 	public static final ItemGroup SSC_ADDON_GROUP = Registry.register(Registries.ITEM_GROUP,
 			new Identifier("ssc_addon", "group"),
@@ -264,6 +307,8 @@ public class SscAddon implements ModInitializer {
 						entries.add(WATER_SPEAR);
 						entries.add(CORAL_BALL);
 						entries.add(ACTIVE_CORAL_NECKLACE);
+						entries.add(WIND_SPIRIT_STAMINA_NECKLACE);
+						entries.add(NOVA_REVIVE_NECKLACE);
 						entries.add(ANUBIS_CRYSTAL);
 						entries.add(ANKH_STONE);
 						entries.add(BINDING_ANKLET);
@@ -281,6 +326,10 @@ public class SscAddon implements ModInitializer {
 						entries.add(INFINITE_ENERGY_POTION);
 						entries.add(INFINITE_ENERGY_POTION_SPLASH);
 						entries.add(INFINITE_ENERGY_POTION_LINGERING);
+						// 凋零药水（饮用/喷溅/滞留）
+						entries.add(WITHER_POTION);
+						entries.add(WITHER_POTION_SPLASH);
+						entries.add(WITHER_POTION_LINGERING);
 					})
 					.build());
 	// SP Allay sound events
@@ -323,6 +372,8 @@ public class SscAddon implements ModInitializer {
 		registerEntitySpawnHandlers();
 		registerPlayerEventHandlers();
 		registerStunOrphanCleanup();
+		// 风灵被动：落地风涌（事件监听）；风压领域由 mixin（WindSpiritProjectilePressureMixin）驱动
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager.register();
 		registerFeralBodyYawSync();
 		registerServerLifecycleHandlers();
 		registerMancianimaEvents();
@@ -330,6 +381,10 @@ public class SscAddon implements ModInitializer {
 		GoldenSandstormRegen.init();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.register();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager.register();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.story.TideSpiritStoryManager.register();
+		// SSCA 进化路线数据驱动加载器（datapack reload，扫描 data/<ns>/ssca_evolution/routes/*.json）
+		net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.SERVER_DATA)
+				.registerReloadListener(net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE);
 	}
 
 
@@ -346,6 +401,7 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "true_invisibility"), TRUE_INVISIBILITY);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "pre_invisibility"), PRE_INVISIBILITY);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "stun"), STUN);
+		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "rooted"), ROOTED);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "guaranteed_crit"), GUARANTEED_CRIT);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "frost_freeze"), FROST_FREEZE);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "frost_fall"), FROST_FALL);
@@ -360,6 +416,7 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_1"), EROSION_BRAND_MARKER_1);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_2"), EROSION_BRAND_MARKER_2);
 		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_3"), EROSION_BRAND_MARKER_3);
+		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "tidal_slow"), TIDAL_SLOW);
 	}
 
 	private void registerItems() {
@@ -382,6 +439,8 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "evolution_stone"), EVOLUTION_STONE);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "coral_ball"), CORAL_BALL);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "active_coral_necklace"), ACTIVE_CORAL_NECKLACE);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wind_spirit_stamina_necklace"), WIND_SPIRIT_STAMINA_NECKLACE);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "nova_revive_necklace"), NOVA_REVIVE_NECKLACE);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "anubis_crystal"), ANUBIS_CRYSTAL);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "ankh_stone"), ANKH_STONE);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "binding_anklet"), BINDING_ANKLET);
@@ -396,6 +455,9 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion"), INFINITE_ENERGY_POTION);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion_splash"), INFINITE_ENERGY_POTION_SPLASH);
 		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion_lingering"), INFINITE_ENERGY_POTION_LINGERING);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wither_potion"), WITHER_POTION);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wither_potion_splash"), WITHER_POTION_SPLASH);
+		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wither_potion_lingering"), WITHER_POTION_LINGERING);
 		// 酿造（饮用+火药→喷溅；喷溅+龙息→滞留）完全由 BrewingRegistryInfiniteMixin 接管：
 		// 直接拦截 hasRecipe/craft 驱动产出，槽位放行由 BrewingStandInfinitePotionMixin 处理。
 		// 旧的 ITEM_RECIPES 注册需构造 PotionBrewing$Mix，在 Forge/Sinytra Connector 下构造签名不同会崩溃，已移除。
@@ -432,6 +494,8 @@ public class SscAddon implements ModInitializer {
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticCombatTracker.init();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticAbsorptionManager.init();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticSeedEnergyRegen.init();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NineLivesManager.init();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NovaSkillManager.init();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SeedEnergyEatingHandler.register();
 		LifesavingCatTailItem.registerLootTable();
 		AnkhStoneItem.registerLootTable();
@@ -446,38 +510,118 @@ public class SscAddon implements ModInitializer {
 	private void registerForms() {
 		Form_Axolotl3 axolotlForm = new Form_Axolotl3(FormIdentifiers.AXOLOTL_SP);
 		axolotlForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 美西螈SP为人形不缩放(scale=1.0)，但仍需 RESET 兜底清除变身前残留的缩放值
+		axolotlForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(1.0f, 1.0f));
 		RegPlayerForms.registerPlayerForm(axolotlForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_sp")).registerForm(1, 5, axolotlForm));
 
+		// 进化美西螈（Upgrade Axolotl）- SSCA 进化加点路线起点形态，复用 SP 美西螈模型/动画，能力按进化树解锁
+		Form_Axolotl3 upgradeAxolotlForm = new Form_Axolotl3(FormIdentifiers.UPGRADE_AXOLOTL);
+		upgradeAxolotlForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		upgradeAxolotlForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(1.0f, 1.0f));
+		RegPlayerForms.registerPlayerForm(upgradeAxolotlForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_upgrade_axolotl")).registerForm(1, 5, upgradeAxolotlForm));
+
+		// 荧光幼灵（Axolotl Fluorescent）- SP美西螈经进化石进化获得，复用美西螈模型/动画，体型缩小到 0.75
+		Form_AxolotlFluorescent fluorescentForm = new Form_AxolotlFluorescent(FormIdentifiers.AXOLOTL_FLUORESCENT);
+		fluorescentForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 体型等比缩小到 0.75（宽高/眼高/碰撞箱一致），兜底清除变身前残留缩放
+		fluorescentForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.75f));
+		RegPlayerForms.registerPlayerForm(fluorescentForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_fluorescent")).registerForm(1, 5, fluorescentForm));
+
+		// 阿澪（Aling）- 特殊形态，基于荧光幼灵（技能完全一致），专属模型/贴图，颜色不可改。复用 Form_AxolotlFluorescent 类。
+		Form_AxolotlFluorescent alingForm = new Form_AxolotlFluorescent(FormIdentifiers.AXOLOTL_ALING);
+		alingForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		alingForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.75f));
+		RegPlayerForms.registerPlayerForm(alingForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_aling")).registerForm(1, 5, alingForm));
+
 		Form_FamiliarFox3 familiarFoxForm = new Form_FamiliarFox3(FormIdentifiers.FAMILIAR_FOX_SP);
 		familiarFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 四足形态变身后重置玩家缩放到本形态大小（值与 origin power form_familiar_fox_sp_scale 一致）
+		familiarFoxForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
+
 		RegPlayerForms.registerPlayerForm(familiarFoxForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_sp")).registerForm(1, 5, familiarFoxForm));
 
+		// 进化使魔（复用使魔模型/动画，能力按进化解锁——批次2 形态骨架）
+		Form_FamiliarFox3 upgradeFamiliarFoxForm = new Form_FamiliarFox3(FormIdentifiers.UPGRADE_FAMILIAR_FOX);
+		upgradeFamiliarFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 进化使魔为四足形态，变身后重置玩家缩放到本形态大小（值与 origin power form_familiar_fox_sp_scale 一致）
+		upgradeFamiliarFoxForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
+
+		RegPlayerForms.registerPlayerForm(upgradeFamiliarFoxForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_upgrade_familiar_fox")).registerForm(1, 5, upgradeFamiliarFoxForm));
+
+		// 契灵（Mancianima）—— 复用使魔模型/动画，经月髓环/进化石进化获得。
+		// 之前是纯数据驱动(ssc_form json)，但原版新版 DynamicForm 缺 originLayerID 字段会 NPE 致其注册失败消失，
+		// 故改为与其它 SP 形态一致的代码注册（不再依赖数据驱动），模型由 FormID 查 ssc_form_model 自动得到契灵外观。
+		Form_FamiliarFox3 mancianimaForm = new Form_FamiliarFox3(FormIdentifiers.FAMILIAR_FOX_MANCIANIMA);
+		mancianimaForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 四足形态变身后重置玩家缩放到本形态大小（值与 origin power form_familiar_fox_3_scale 一致）
+		mancianimaForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.45f, 0.6f));
+
+		RegPlayerForms.registerPlayerForm(mancianimaForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_mancianima")).registerForm(1, 5, mancianimaForm));
+
 		Form_FamiliarFoxRed familiarFoxRedForm = new Form_FamiliarFoxRed(FormIdentifiers.FAMILIAR_FOX_RED);
 		familiarFoxRedForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 四足形态变身后重置玩家缩放到本形态大小（值与 origin power form_familiar_fox_red_scale 一致）
+		familiarFoxRedForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.55f, 0.6f));
+
 		RegPlayerForms.registerPlayerForm(familiarFoxRedForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_red")).registerForm(1, 5, familiarFoxRedForm));
 
 		Form_SnowFoxSP snowFoxForm = new Form_SnowFoxSP(FormIdentifiers.SNOW_FOX_SP);
 		snowFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 四足形态变身后重置玩家缩放到本形态大小（值与 origin power form_familiar_fox_3_scale 一致）
+		snowFoxForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.45f, 0.6f));
+
 		RegPlayerForms.registerPlayerForm(snowFoxForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_snow_fox_sp")).registerForm(1, 7, snowFoxForm));
 
 		Form_Allay allayForm = new Form_Allay(FormIdentifiers.ALLAY_SP);
 		allayForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 悦灵缩放与原版 ALLAY_SP 代码注册一致(scale=0.35, eye_scale=1.0 保持正常视角高度)
+		allayForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.35f, 1.0f));
 		RegPlayerForms.registerPlayerForm(allayForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_allay_sp")).registerForm(1, 8, allayForm));
 
 		Form_FeralCatSP wildCatForm = new Form_FeralCatSP(FormIdentifiers.WILD_CAT_SP);
 		wildCatForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		wildCatForm.canSneakRush = true;
+		// 四足形态变身后重置玩家缩放到本形态大小（值与原版野猫 form_feral_cat_sp_scale 一致）
+		wildCatForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.55f, 0.6f));
+
 		RegPlayerForms.registerPlayerForm(wildCatForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_wild_cat_sp")).registerForm(1, 5, wildCatForm));
+
+		// 风灵（月髓环豹猫）——完全复用原版豹猫 Form_Ocelot3 的模型与动画，四足兽形，可疾跑；核心为「疾风连爪」左键连击技能
+		Form_Ocelot3 ocelotSpForm = new Form_Ocelot3(FormIdentifiers.OCELOT_SP);
+		ocelotSpForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 标记为 FERAL 四足兽体——原版 AdjustItemHoldFeatureRendererMixin/MouthItemFeature 依此把副手物品渲染到背上而非手臂
+		ocelotSpForm.bodyType(net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType.FERAL);
+		// 缩放与原版豹猫 ocelot_3 一致（RegPlayerForms 里 OCELOT_3 用 0.75f/0.6f）
+		ocelotSpForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.6f));
+		RegPlayerForms.registerPlayerForm(ocelotSpForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_ocelot_wind_spirit")).registerForm(1, 5, ocelotSpForm));
+
+		// 朔望（月髓环豹猫）——与风灵同源，复用原版豹猫 Form_Ocelot3 模型动画，四足兽形；定位九命灵猫（生存/不死），技能待设计
+		Form_Ocelot3 ocelotNovaForm = new Form_Ocelot3(FormIdentifiers.OCELOT_NOVA);
+		ocelotNovaForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 标记为 FERAL 四足兽体——与风灵同理，触发原版副手→背渲染
+		ocelotNovaForm.bodyType(net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType.FERAL);
+		// 缩放与原版豹猫 ocelot_3 一致（与风灵相同 0.75f/0.6f）
+		ocelotNovaForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.6f));
+		RegPlayerForms.registerPlayerForm(ocelotNovaForm);
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_ocelot_nova")).registerForm(1, 5, ocelotNovaForm));
 
 		// Fallen Allay SP
 		Form_FallenAllaySP fallenAllayForm = new Form_FallenAllaySP(FormIdentifiers.FALLEN_ALLAY_SP);
 		fallenAllayForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
+		// 堕落悦灵复用悦灵模型，缩放与原版 ALLAY_SP 一致(scale=0.35, eye_scale=1.0)
+		fallenAllayForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.35f, 1.0f));
 		RegPlayerForms.registerPlayerForm(fallenAllayForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_fallen_allay_sp")).registerForm(1, 8, fallenAllayForm));
 
@@ -485,6 +629,9 @@ public class SscAddon implements ModInitializer {
 		Form_AnubisWolfSP anubisWolfForm = new Form_AnubisWolfSP(FormIdentifiers.ANUBIS_WOLF_SP);
 		anubisWolfForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		anubisWolfForm.canSneakRush = true;
+		// 四足形态变身后重置玩家缩放到本形态大小（值与 origin power form_anubis_wolf_3_scale 一致）
+		anubisWolfForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.8f, 0.6f));
+
 		RegPlayerForms.registerPlayerForm(anubisWolfForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_anubis_wolf_sp")).registerForm(1, 12, anubisWolfForm));
 
@@ -492,18 +639,24 @@ public class SscAddon implements ModInitializer {
 		Form_GoldenSandstormSP goldenSandstormForm = new Form_GoldenSandstormSP(FormIdentifiers.GOLDEN_SANDSTORM_SP);
 		goldenSandstormForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		goldenSandstormForm.canSneakRush = true;
+		// 金沙岚复用阿努比斯之狼四足模型，缩放与原版 ANUBIS_WOLF_3 一致(scale=0.8, eye_scale=0.6)
+		goldenSandstormForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.8f, 0.6f));
 		RegPlayerForms.registerPlayerForm(goldenSandstormForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_golden_sandstorm_sp")).registerForm(1, 12, goldenSandstormForm));
 
 		// 吸血蝙蝠（Desmodus）SP形态 - 复用蝙蝠模型/动画，经月髓环在诅咒之月夜进化获得
 		Form_BatDesmodus batDesmodusForm = new Form_BatDesmodus(FormIdentifiers.BAT_DESMODUS);
 		batDesmodusForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune, HasSlowFall);
+		// 蝙蝠缩放需与原版 bat_3 一致（宽度/高度0.5、眼睛/碰撞箱0.6），否则保持上个形态大小不缩放
+		batDesmodusForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
 		RegPlayerForms.registerPlayerForm(batDesmodusForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_bat_desmodus")).registerForm(1, 12, batDesmodusForm));
 
 		// 寄生果蝠 - 原版三阶段蝙蝠使用进化石进化获得，复用蝙蝠模型/动画
 		Form_BatParasiticFruit batParasiticFruitForm = new Form_BatParasiticFruit(FormIdentifiers.BAT_PARASITIC_FRUIT);
 		batParasiticFruitForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune, HasSlowFall);
+		// 蝙蝠缩放需与原版 bat_3 一致（宽度/高度0.5、眼睛/碰撞箱0.6），否则保持上个形态大小不缩放
+		batParasiticFruitForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
 		RegPlayerForms.registerPlayerForm(batParasiticFruitForm);
 		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_bat_parasitic_fruit")).registerForm(1, 12, batParasiticFruitForm));
 	}
@@ -545,11 +698,27 @@ public class SscAddon implements ModInitializer {
 				GoldenSandstormRegen.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.tick(player);
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tick(player);
-				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.tick(player);
-				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.PlayDeadAbsorptionManager.tick(player);
-			}
-		});
-	}
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.PlayDeadAbsorptionManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.tick(player);
+			// 冥裁者凋零阶梯 / 凋零抗性追踪（凋零持续时长分层 + tick 跳过计数）
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.tick(player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager.tickPlayer(player);
+		}
+	});
+
+	// END_SERVER_TICK：荧光幼灵技能 pendingCd 补设（球/盾消失后回调无法直接拿到 player）
+	net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+		java.util.Collection<net.minecraft.server.network.ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
+		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.tickPendingCd(players);
+	});
+}
 
 	/**
 	 * 兜底：清除残留的「定身(STUN)」攻击力/移速孤儿属性修正。
@@ -841,6 +1010,19 @@ public class SscAddon implements ModInitializer {
 			}
 			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
 		});
+		// SP阿努比斯吃凋零玫瑰：进食效果由 custom_edible(form_anubis_wolf_sp_eat_wither_rose) + eatFood mixin 处理。
+		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			// SP阿努比斯手持凋零玫瑰看向方块右键时，原版会放置花；返回 FAIL 取消放置，
+			// 让交互落到 use() → 由 custom_edible(form_anubis_wolf_sp_eat_wither_rose) 驱动进食(32t 读条，同吃牛排)。
+			// 看向空气时不经过 UseBlockCallback，use() 直接进食，无需在此处理。
+			if (hand == net.minecraft.util.Hand.MAIN_HAND
+					&& player.getMainHandStack().isOf(net.minecraft.item.Items.WITHER_ROSE)
+					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.ANUBIS_WOLF_SP)) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
+			return net.minecraft.util.ActionResult.PASS;
+		});
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
 			if (player.hasStatusEffect(MIST_FORM)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
@@ -1026,6 +1208,20 @@ public class SscAddon implements ModInitializer {
 			}
 		});
 
+		// 进化美西螈「投掷水矛」蓄力期：服务端禁用右键放置方块 / 使用方块与物品（蓄力时不能做其它交互）
+		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			if (!world.isClient && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUuid())) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
+			return net.minecraft.util.ActionResult.PASS;
+		});
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+			if (!world.isClient && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUuid())) {
+				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
+			}
+			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+		});
+
 
 		// 玩家断线时清理所有静态状态Map，防止内存泄漏和重连后状态错乱
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -1035,13 +1231,19 @@ public class SscAddon implements ModInitializer {
 			SnowFoxSpMeleeAbility.clearPlayer(uuid);
 			SnowFoxSpTeleportAttack.clearPlayer(uuid);
 			SnowFoxSpFrostStorm.clearPlayer(uuid);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.onPlayerDisconnect(handler.player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.onPlayerDisconnect(handler.player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager.onPlayerDisconnect(handler.player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.onPlayerDisconnect(handler.player);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.onPlayerDisconnect(uuid);
+			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler.onPlayerDisconnect(uuid);
 			AnubisWolfSpDeathDomain.clearPlayer(handler.player);
 			AnubisWolfSpSummonWolves.clearPlayer(uuid);
 			AllaySPTotem.clearPlayer(handler.player);
 			GoldenSandstormErosionBrand.clearPlayer(handler.player);
 			GoldenSandstormWitherSand.clearPlayer(handler.player);
 			GoldenSandstormRegen.clearPlayer(uuid);
-			AnubisWolfSpSoulEnergy.clearPlayer(handler.player);
+			// 灵魂能量：Apoli resource 本身会随玩家NBT持久化，不再在断线时清零
 			ErosionSandPrismItem.clearPlayer(uuid);
 			WitheredSandRingItem.clearPlayer(uuid);
 			AllaySPJukebox.onPlayerDisconnect(handler.player);

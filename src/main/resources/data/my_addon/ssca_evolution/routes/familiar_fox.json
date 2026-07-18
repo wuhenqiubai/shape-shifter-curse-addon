@@ -1,0 +1,28 @@
+{
+  "_comment": "SSCA 进化路线（数据驱动）：使魔 familiar_fox。文件名=route id。节点 name/desc 省略时自动用 evolution.my_addon.familiar_fox.node.<id>.name/.desc。加/改进化树只改本文件，无需改 Java。",
+
+  "enabled": true,
+  "display_name": "evolution.my_addon.familiar_fox.name",
+  "start_form": "my_addon:upgrade_familiar_fox",
+  "base_node": "familiar_fox_base",
+  "level_milestones": [5, 10, 15, 20, 30, 40, 45],
+  "auto_branch_level": 50,
+
+  "nodes": [
+    { "id": "familiar_fox_base", "icon": "minecraft:fox_spawn_egg",  "cost": 0, "prereqs": [],                          "col": 0, "row": 1, "auto_unlock": true },
+    { "id": "mana_system",       "icon": "minecraft:experience_bottle", "cost": 1, "prereqs": ["familiar_fox_base"],    "col": 1, "row": 1 },
+    { "id": "spark",             "icon": "minecraft:fire_charge",   "cost": 1, "prereqs": ["mana_system"],              "col": 2, "row": 0 },
+    { "id": "rocket",            "icon": "minecraft:arrow",         "cost": 1, "prereqs": ["mana_system"],              "col": 2, "row": 1 },
+    { "id": "buff_immunity",     "icon": "minecraft:milk_bucket",   "cost": 1, "prereqs": ["mana_system"],              "col": 2, "row": 2 },
+    { "id": "alchemy",           "icon": "minecraft:brewing_stand", "cost": 1, "prereqs": ["spark", "rocket"],          "col": 3, "row": 0 },
+    { "id": "spirit_vision",     "icon": "minecraft:spider_eye",    "cost": 1, "prereqs": ["buff_immunity"],            "col": 3, "row": 2 },
+    { "id": "fire_ring",         "icon": "minecraft:blaze_powder",  "cost": 1, "prereqs": ["alchemy", "spirit_vision"], "col": 4, "row": 1 },
+    { "id": "branch_spirit_lord", "icon": "minecraft:soul_lantern", "cost": 0, "prereqs": ["fire_ring"], "col": 5, "row": 0, "auto_unlock": true, "branch": "spirit_lord" },
+    { "id": "branch_mancianima",  "icon": "minecraft:nether_star",  "cost": 0, "prereqs": ["fire_ring"], "col": 5, "row": 2, "auto_unlock": true, "branch": "mancianima" }
+  ],
+
+  "branches": {
+    "spirit_lord": { "sp_form": "my_addon:familiar_fox_sp",          "requires_nodes": ["fire_ring"] },
+    "mancianima":  { "sp_form": "my_addon:familiar_fox_mancianima",  "requires_nodes": ["fire_ring"] }
+  }
+}

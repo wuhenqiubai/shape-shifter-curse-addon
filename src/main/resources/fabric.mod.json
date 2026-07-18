@@ -22,7 +22,7 @@
     "sources": "https://github.com/MangZai-120/shape-shifter-curse-addon",
     "issues": "https://github.com/MangZai-120/shape-shifter-curse-addon/issues"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "icon": "assets/ssc_addon/icon.png",
   "environment": "*",
   "entrypoints": {
@@ -37,6 +37,9 @@
     ],
     "modmenu": [
       "net.onixary.shapeShifterCurseFabric.ssc_addon.compat.ModMenuIntegration"
+    ],
+    "cardinal-components-entity": [
+      "net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent"
     ]
   },
   "mixins": [
@@ -51,7 +54,9 @@
     "trinkets": ">=3.7.2"
   },
   "suggests": {
-    "modmenu": "*"
+    "modmenu": "*",
+    "lambdynlights": "*",
+    "asyncparticles": "*"
   },
   "contributors": [
     {
@@ -60,5 +65,10 @@
         "github": "https://github.com/wuhenqiubai"
       }
     }
-  ]
+  ],
+  "custom": {
+    "cardinal-components": [
+      "ssc_addon:evolution"
+    ]
+  }
 }

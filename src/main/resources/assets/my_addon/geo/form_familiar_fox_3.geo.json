@@ -47,6 +47,15 @@
 					]
 				},
 				{
+					"name": "eyeRoot",
+					"parent": "bipedHead",
+					"pivot": [0, 26, 4],
+					"cubes": [
+						{"origin": [-3, 26, 4.1], "size": [2, 2, 0], "uv": [30, 45]},
+						{"origin": [1, 26, 4.1], "size": [2, 2, 0], "uv": [26, 45]}
+					]
+				},
+				{
 					"name": "bipedBody",
 					"pivot": [0, 24, 0],
 					"cubes": [
@@ -157,7 +166,7 @@
 					]
 				},
 				{
-					"name": "bipedRightLeg",
+					"name": "bipedLeftLeg",
 					"pivot": [-2, 12, 0],
 					"cubes": [
 						{"origin": [-2.29, 3.74877, -2.73517], "size": [3.5, 6, 4], "pivot": [-1.3, 8.88649, 0.84042], "rotation": [-132.5, 0, 180], "uv": [0, 34], "mirror": true},
@@ -169,7 +178,7 @@
 					]
 				},
 				{
-					"name": "bipedLeftLeg",
+					"name": "bipedRightLeg",
 					"pivot": [2, 12, 0],
 					"cubes": [
 						{"origin": [-1.21, 3.74877, -2.73517], "size": [3.5, 6, 4], "pivot": [1.3, 8.88649, 0.84042], "rotation": [-132.5, 0, -180], "uv": [0, 34]},

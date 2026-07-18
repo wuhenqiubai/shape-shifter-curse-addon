@@ -4,12 +4,27 @@ import net.minecraft.util.Identifier;
 
 public class FormIdentifiers {
 	public static final Identifier FAMILIAR_FOX_SP = new Identifier("my_addon", "familiar_fox_sp");
+	public static final Identifier UPGRADE_FAMILIAR_FOX = new Identifier("my_addon", "upgrade_familiar_fox");
 	public static final Identifier FAMILIAR_FOX_RED = new Identifier("my_addon", "familiar_fox_red");
 	public static final Identifier FAMILIAR_FOX_MANCIANIMA = new Identifier("my_addon", "familiar_fox_mancianima");
 	public static final Identifier SNOW_FOX_SP = new Identifier("my_addon", "snow_fox_sp");
 	public static final Identifier ALLAY_SP = new Identifier("my_addon", "allay_sp");
 	public static final Identifier WILD_CAT_SP = new Identifier("my_addon", "wild_cat_sp");
+	// 风灵（月髓环豹猫）——原版豹猫永久形态 ocelot_3 经月髓环进化获得；注册名 ocelot_wind_spirit
+	public static final Identifier OCELOT_SP = new Identifier("my_addon", "ocelot_wind_spirit");
+	// 朔望（月髓环豹猫）——与风灵同为原版豹猫 ocelot_3 线；定位：九命灵猫（极限生存/不死）
+	public static final Identifier OCELOT_NOVA = new Identifier("my_addon", "ocelot_nova");
+	// 朔望九命资源（0-9，被动死亡触发复活；HUD 用 NineLivesHudRenderer）
+	public static final Identifier OCELOT_NOVA_NINE_LIVES = new Identifier("my_addon", "form_ocelot_nova_nine_lives");
+	// 朔望舍身爆炸蓄力标记资源（0/1，同步客户端；蓄力期门控 sneaking_speed_up，禁 shift 潜行加速）
+	public static final Identifier OCELOT_NOVA_CHARGING = new Identifier("my_addon", "form_ocelot_nova_charging");
 	public static final Identifier AXOLOTL_SP = new Identifier("my_addon", "axolotl_sp");
+	// 进化美西螈（Upgrade Axolotl）- SSCA 进化加点路线起点形态，基于原版美西螈 axolotl_3，能力按进化树解锁
+	public static final Identifier UPGRADE_AXOLOTL = new Identifier("my_addon", "upgrade_axolotl");
+	// 荧光幼灵（Axolotl Fluorescent）- SP美西螈经进化石进化获得
+	public static final Identifier AXOLOTL_FLUORESCENT = new Identifier("my_addon", "axolotl_fluorescent");
+	// 阿澪（Aling）- 特殊形态，基于荧光幼灵，技能一致，专属模型/贴图，颜色不可改
+	public static final Identifier AXOLOTL_ALING = new Identifier("my_addon", "axolotl_aling");
 	public static final Identifier FALLEN_ALLAY_SP = new Identifier("my_addon", "fallen_allay_sp");
 	public static final Identifier ANUBIS_WOLF_SP = new Identifier("my_addon", "anubis_wolf_sp");
 	public static final Identifier SNOW_FOX_RESOURCE = new Identifier("my_addon", "form_snow_fox_sp_resource");

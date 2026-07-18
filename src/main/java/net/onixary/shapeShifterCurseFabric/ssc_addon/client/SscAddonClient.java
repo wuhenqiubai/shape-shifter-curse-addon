@@ -28,6 +28,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.client.mana.SnowFoxSPManaBa
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.mana.MancianimaResistanceBar;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.hud.SkillCooldownBarRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WaterSpearEntityRenderer;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.FluorescentLaserRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WitchFamiliarRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.PotionBagScreen;
 import org.slf4j.Logger;
@@ -76,7 +77,42 @@ public class SscAddonClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler2, client2) -> {
 			ErosionBrandClientState.clear();
 			MancianimaMarkClientState.clear();
+			net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.TidalTetherBeamRenderer.clear();
+			UpgradeAxolotlSpearRenderState.clear();
 		});
+
+		// 进化美西螈「投掷水矛」蓄力期：客户端取消右键预测（放置方块 / 使用物品），避免鬼影
+		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+			if (world.isClient && UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
+				return net.minecraft.util.ActionResult.FAIL;
+			}
+			return net.minecraft.util.ActionResult.PASS;
+		});
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+			if (world.isClient && UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
+				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
+			}
+			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+		});
+
+		// 荧光幼灵「潮汐束缚」守卫者激光：服务端同步被拴目标 entityId，客户端逐帧画光束
+		ClientPlayNetworking.registerGlobalReceiver(
+				net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_TIDAL_TETHER,
+				(client, handler, buf, responseSender) -> {
+					int orbId = buf.readVarInt();
+					int count = buf.readVarInt();
+					if (count < 0 || count > 64) return;
+					int[] ids = new int[count];
+					for (int i = 0; i < count; i++) ids[i] = buf.readVarInt();
+					client.execute(() -> {
+						if (client.world == null) return;
+						net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.TidalTetherBeamRenderer
+								.update(orbId, ids, client.world.getTime() + 20);
+					});
+				});
+		// 逐帧渲染潮汐束缚光束（守卫者激光样式）
+		net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(
+				net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.TidalTetherBeamRenderer::render);
 
 		// 修复跨存档颜色变白：cloth-config 里的自定义颜色是全局存储，但服务端 PlayerSkinComponent 按存档独立。
 		// 进入新世界/服务器时，主动把本地 cloth-config 的颜色状态重发给当前服务端，避免新存档拿到默认白色。
@@ -108,6 +144,10 @@ public class SscAddonClient implements ClientModInitializer {
 				cbuf.writeBoolean(cfg.accent2GreyReverse);
 				net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
 						new net.minecraft.util.Identifier(net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric.MOD_ID, "update_custom_color"), cbuf);
+				// 请求服务端把所有在场玩家的形态+皮肤同步过来（修复客机看其它玩家是默认白模型）。
+				net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
+						net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_REQUEST_ALL_FORM_SYNC,
+						net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
 			} catch (Throwable t) {
 				LOGGER.error("[SSC_ADDON] 跨存档颜色重同步失败", t);
 			}
@@ -115,6 +155,108 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// 注册契灵准星射线追踪（每客户端 tick 更新当前瞄准目标）
 		try { MancianimaCrosshairTracker.register(); } catch (Throwable t) { LOGGER.error("[SSC_ADDON] CrosshairTracker register failed", t); }
+		// 注册「SSCA 进化路线定义同步」接收器：服务端把 routes JSON 同步过来，供进化树 UI（多人）渲染。
+		ClientPlayNetworking.registerGlobalReceiver(
+				net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_EVO_ROUTES_SYNC,
+				(client, handler, buf, responseSender) -> {
+					int count = buf.readInt();
+					if (count < 0 || count > 1000) return;
+					java.util.Map<String, String> raw = new java.util.LinkedHashMap<>();
+					for (int i = 0; i < count; i++) {
+						String routeId = buf.readString(256);
+						String json = buf.readString(2000000);
+						raw.put(routeId, json);
+					}
+					client.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE.applyClientSync(raw));
+				});
+		// 注册「广播所有玩家形态」接收器：服务端把在场玩家的 formID + 皮肤数据直接广播过来，
+		// 客机按 UUID 直接写入其它玩家的 nowForm/nowFormID 与 PlayerSkinComponent（颜色/是否启用形态颜色等），
+		// 绕过 CCA 同步的不确定性，修复刚进游戏看其它玩家是「白色人类模型」（enableFormColor 未同步=渲染原版人类模型）。
+		ClientPlayNetworking.registerGlobalReceiver(
+				net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_BROADCAST_FORMS,
+				(client, handler, buf, responseSender) -> {
+					int count = buf.readInt();
+					if (count < 0 || count > 1000) return; // 防恶意服务端 OOM
+					java.util.List<java.util.UUID> uuids = new java.util.ArrayList<>(count);
+					java.util.List<String> formIds = new java.util.ArrayList<>(count);
+					java.util.List<boolean[]> boolData = new java.util.ArrayList<>(count); // [keepOrig, enableColor, pGrey, a1Grey, a2Grey, enableSound]
+					java.util.List<int[]> colorData = new java.util.ArrayList<>(count);    // [primary, accent1, accent2, eyeA, eyeB] (ABGR)
+					for (int i = 0; i < count; i++) {
+						uuids.add(buf.readUuid());
+						formIds.add(buf.readString());
+						boolean keepOrig = buf.readBoolean();
+						boolean enableColor = buf.readBoolean();
+						int primary = buf.readInt();
+						int accent1 = buf.readInt();
+						int accent2 = buf.readInt();
+						int eyeA = buf.readInt();
+						int eyeB = buf.readInt();
+						boolean pGrey = buf.readBoolean();
+						boolean a1Grey = buf.readBoolean();
+						boolean a2Grey = buf.readBoolean();
+						boolean enableSound = buf.readBoolean();
+						boolData.add(new boolean[]{keepOrig, enableColor, pGrey, a1Grey, a2Grey, enableSound});
+						colorData.add(new int[]{primary, accent1, accent2, eyeA, eyeB});
+					}
+					client.execute(() -> {
+						if (client.world == null) return;
+						for (int i = 0; i < uuids.size(); i++) {
+							net.minecraft.entity.player.PlayerEntity p = client.world.getPlayerByUuid(uuids.get(i));
+							if (p == null) continue;
+							// 形态
+							String fidStr = formIds.get(i);
+							if (!fidStr.isEmpty()) {
+								net.minecraft.util.Identifier fid = net.minecraft.util.Identifier.tryParse(fidStr);
+								if (fid != null) {
+									net.onixary.shapeShifterCurseFabric.player_form.IForm form =
+											net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms.getPlayerForm(fid);
+									if (form != null) {
+										net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent comp =
+												net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent.COMPONENT.get(p);
+										comp.nowForm = form;
+										comp.nowFormID = fid;
+										// 关键：模型渲染读的是 origin 组件（PlayerOriginComponent）而非 nowForm。
+										// 用形态的 layer 信息在客机重建 origin，渲染才会显示形态模型（否则只同步了 scale/动画 = 白色人类模型）。
+										try {
+											net.minecraft.util.Pair<net.minecraft.util.Identifier, net.minecraft.util.Identifier> layerData = form.getFormLayer();
+											net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginLayer layer =
+													net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginLayers.getLayer(layerData.getLeft());
+											if (layer != null && layerData.getRight() != null) {
+												net.onixary.shapeShifterCurseFabric.integration.origins.origin.Origin origin =
+														net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginRegistry.get(layerData.getRight());
+												if (origin != null) {
+													net.onixary.shapeShifterCurseFabric.integration.origins.component.OriginComponent oc =
+															(net.onixary.shapeShifterCurseFabric.integration.origins.component.OriginComponent)
+																	net.onixary.shapeShifterCurseFabric.integration.origins.registry.ModComponents.ORIGIN.get(p);
+													oc.setOrigin(layer, origin);
+												}
+											}
+										} catch (Throwable ignored) {
+											// power 客户端不全等极端情况，忽略；渲染只需 origins map 写入成功
+										}
+										// 同步形态缩放（Pehkui）：广播原先漏了 scale，导致客机看其它玩家模型偏大/站立、超出判定框。
+										// 对该玩家应用其形态的 applyScale（缩放形态缩小、人类形态复位 1.0），与 nowForm/origin/skin 一致由客机本地重建。
+										try {
+											form.applyScale(p);
+										} catch (Throwable ignored) {
+											// Pehkui 未加载或异常时忽略，不影响其它同步
+										}
+									}
+								}
+							}
+							// 皮肤（颜色 / 是否启用形态颜色等）
+							boolean[] b = boolData.get(i);
+							int[] cc = colorData.get(i);
+							net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent skin =
+									net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
+							skin.setKeepOriginalSkin(b[0]);
+							skin.setEnableFormColor(b[1]);
+							skin.setFormColor(new net.onixary.shapeShifterCurseFabric.util.FormTextureUtils.ColorSetting(
+									cc[0], cc[1], cc[2], cc[3], cc[4], b[2], b[3], b[4]));
+							skin.setEnableFormRandomSound(b[5]);
+						}
+					});
+				});
 
 		// 注册侵蚀烙印 S2C 同步包接收器
 		ClientPlayNetworking.registerGlobalReceiver(GoldenSandstormErosionBrand.PACKET_BRAND_SYNC, (client, handler, buf, responseSender) -> {
@@ -144,11 +286,32 @@ public class SscAddonClient implements ClientModInitializer {
 			client.execute(() -> MancianimaMarkClientState.update(marks));
 		});
 
+		// 风灵「疾风连爪」：接收爪击阶段+准星条进度，更新客户端镜像
+		ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_CLAW_STATE, (client, handler, buf, responseSender) -> {
+			int phase = buf.readInt();
+			float progress = buf.readFloat();
+			client.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.ClawClientState.update(phase, progress));
+		});
+
+        // 风灵「风之冲刺」：接收阶段+目标悬浮Y，更新客户端镜像（驱动悬浮期绿色落点预览）
+        ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_DASH_STATE, (client, handler, buf, responseSender) -> {
+            int phase = buf.readInt();
+            double targetY = buf.readDouble();
+            client.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.DashClientState.update(phase, targetY));
+        });
+
+        // 进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（主机 + 客机一致）
+        ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE, (client, handler, buf, responseSender) -> {
+            java.util.UUID id = buf.readUuid();
+            boolean charging = buf.readBoolean();
+
+            client.execute(() -> UpgradeAxolotlSpearRenderState.set(id, charging));
+        });
+
 		// 注册白名单 GUI S2C 同步包接收器：收到后打开/刷新 WhitelistManageScreen
 		ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC, (client, handler, buf, responseSender) -> {
 			boolean customMode = buf.readBoolean();
 			int n = buf.readInt();
-			// 安全守卫：防止被劫持服务器发超大 count 导致客机 OOM
 			if (n < 0 || n > 10000) return;
 			java.util.Set<java.util.UUID> set = new java.util.HashSet<>();
 			for (int i = 0; i < n; i++) set.add(buf.readUuid());
@@ -179,6 +342,8 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// 注册冰球渲染器（使用雪球材质）和冰风暴渲染器（粒子效果，空渲染器）
 		EntityRendererRegistry.register(SscAddon.FROST_BALL_ENTITY, FlyingItemEntityRenderer::new);
+		// 进化美西螈「投掷水矛」直线水矛：3D 投掷态模型，沿飞行方向摆正
+		EntityRendererRegistry.register(SscAddon.THROWN_WATER_SPEAR_ENTITY, net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.ThrownWaterSpearEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.FROST_STORM_ENTITY, EmptyEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.FOX_FIREBALL_ENTITY, ctx -> new net.minecraft.client.render.entity.FlyingItemEntityRenderer<>(ctx, 1F, true));
 		EntityRendererRegistry.register(SscAddon.FRIEND_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
@@ -186,9 +351,16 @@ public class SscAddonClient implements ClientModInitializer {
 		EntityRendererRegistry.register(SscAddon.INFECTION_SPORE_BOMB_ENTITY, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.PARASITIC_SEED_ENTITY, FlyingItemEntityRenderer::new);
 		EntityRendererRegistry.register(SscAddon.WITCH_FAMILIAR_ENTITY, WitchFamiliarRenderer::new);
+		// 荧光幼灵：潮汐球用 FlyingItemEntityRenderer 渲染潮涌方块作发光核心（对齐 red 火球标准）；
+		// 法阵激光用自定义渲染器画发光法阵 + 穿墙光柱（自发光、粗彩带）
+		EntityRendererRegistry.register(SscAddon.TIDAL_ORB_ENTITY, net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.TidalOrbRenderer::new);
+		EntityRendererRegistry.register(SscAddon.LASER_BEAM_ENTITY, FluorescentLaserRenderer::new);
 
 		// 寄生果蝠形态种子量能量条 HUD
 		SeedEnergyHudRenderer.register();
+
+		// 朔望九命剩余命数 HUD
+		net.onixary.shapeShifterCurseFabric.ssc_addon.client.NineLivesHudRenderer.register();
 
 		// 女巫使魔刷怪蛋颜色注册
 		ColorProviderRegistry.ITEM.register(
@@ -196,9 +368,17 @@ public class SscAddonClient implements ClientModInitializer {
 				SscAddon.WITCH_FAMILIAR_SPAWN_EGG
 		);
 
+		// 凋零药水（3型）：tintIndex 0 = 液体层染成凋零色（避免空瓶外观）；其它层（玻璃瓶）不染色
+		ColorProviderRegistry.ITEM.register(
+				(stack, tintIndex) -> tintIndex == 0 ? 0x4A403A : 0xFFFFFF,
+				SscAddon.WITHER_POTION, SscAddon.WITHER_POTION_SPLASH, SscAddon.WITHER_POTION_LINGERING
+		);
+
 		// Register predicate for 3D model when held (0.0 = inventory/ground, 1.0 = held)
+		// GUI/GROUND 渲染上下文时强制返回 0，避免 override 把物品栏图标也切到 3D
 		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "held"), (stack, world, entity, seed) ->
-				entity != null && (entity.getMainHandStack() == stack || entity.getOffHandStack() == stack) ? 1.0F : 0.0F
+				net.onixary.shapeShifterCurseFabric.ssc_addon.util.RenderContextTracker.isGuiContext() ? 0.0F :
+				(entity != null && (entity.getMainHandStack() == stack || entity.getOffHandStack() == stack) ? 1.0F : 0.0F)
 		);
 
 		// Also register "throwing" predicate for trident animation support if needed
@@ -240,5 +420,22 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// SSCA 美西螈漩涡蓄力 - 按键检测器
 		VortexChargeClient.register();
+		// SSCA 进化美西螈技能 - 主「投掷水矛」/ 次「涡流引导」按键检测器
+		UpgradeAxolotlSkillClient.register();
+		// 风灵「疾风连爪」 - 左键按住检测器
+		net.onixary.shapeShifterCurseFabric.ssc_addon.client.WindSpiritClawClient.register();
+		// 风灵「风之冲刺」 - 主技能键检测器 + 悬浮期绿色落点预览
+		net.onixary.shapeShifterCurseFabric.ssc_addon.client.WindDashClient.register();
+		// 荧光幼灵技能按键检测器（主要=潮汐波动 / 次要=水盾）
+		FluorescentKeyClient.register();
+
+		// SSCA 进化加点系统 - 在幻形者之书界面注入「进化加点」入口按钮（使魔形态显示）
+		net.onixary.shapeShifterCurseFabric.ssc_addon.client.evolution.EvolutionBookHook.register();
+
+		// SSCA 进化路线 - 在「翻开幻形者之书」开局界面注入「进入 SSCA 进化路线」入口按钮
+		net.onixary.shapeShifterCurseFabric.ssc_addon.client.evolution.SscaStartBookHook.register();
+
+		// SSCA 能量条 / 本能条位置可视化编辑器 - 在 SSC「客户端配置」cloth-config 界面注入入口按钮（fabric ScreenEvents，非 Mixin）
+		net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.BarPositionEditorScreen.registerEntry();
 	}
 }

@@ -56,6 +56,12 @@ public class FormUtils {
 		return isForm(entity, FormIdentifiers.FAMILIAR_FOX_RED);
 	}
 
+	/** 使魔系形态（使魔SP / 进化使魔 / 契灵 / 红堕落使魔）。 */
+	public static boolean isFamiliarFoxFamily(LivingEntity entity) {
+		return isAnyForm(entity, FormIdentifiers.FAMILIAR_FOX_SP, FormIdentifiers.UPGRADE_FAMILIAR_FOX,
+				FormIdentifiers.FAMILIAR_FOX_RED, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA);
+	}
+
 	public static boolean isSnowFoxSP(LivingEntity entity) {
 		return isForm(entity, FormIdentifiers.SNOW_FOX_SP);
 	}
@@ -68,8 +74,27 @@ public class FormUtils {
 		return isForm(entity, FormIdentifiers.WILD_CAT_SP);
 	}
 
+	public static boolean isOcelotSP(LivingEntity entity) {
+		return isForm(entity, FormIdentifiers.OCELOT_SP);
+	}
+
 	public static boolean isAxolotlSP(LivingEntity entity) {
 		return isForm(entity, FormIdentifiers.AXOLOTL_SP);
+	}
+
+	/** 进化美西螈（SSCA 进化路线起点形态）判断。 */
+	public static boolean isUpgradeAxolotl(LivingEntity entity) {
+		return isForm(entity, FormIdentifiers.UPGRADE_AXOLOTL);
+	}
+
+	/** 荧光幼灵（Axolotl Fluorescent）形态判断（含阿澪 Aling，技能一致）。 */
+	public static boolean isAxolotlFluorescent(LivingEntity entity) {
+		return isForm(entity, FormIdentifiers.AXOLOTL_FLUORESCENT) || isForm(entity, FormIdentifiers.AXOLOTL_ALING);
+	}
+
+	/** 需要保湿的形态判断（SP 美西螈 / 进化美西螈 / 荧光幼灵），用于加湿器生效判定。 */
+	public static boolean isMoistureDependent(LivingEntity entity) {
+		return isAxolotlSP(entity) || isUpgradeAxolotl(entity) || isAxolotlFluorescent(entity);
 	}
 
 	public static boolean isAnubisWolfSP(LivingEntity entity) {
