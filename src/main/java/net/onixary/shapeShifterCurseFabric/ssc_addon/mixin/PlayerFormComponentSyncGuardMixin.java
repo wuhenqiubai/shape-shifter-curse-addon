@@ -11,29 +11,26 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * 形态组件同步包超限 —— 自清理 + 兜底防护。
+ * 形态组件同步包超限 —— 兜底防护。
  *
- * <p><b>背景</b>：原版 {@link PlayerFormComponent#sync()} → {@code COMPONENT.sync(player)} →
- * {@code ComponentProvider.toComponentPacket()} 会把单个 CCA 组件 NBT 序列化成网络包。
- * 当某存档玩家运行时组件数据超过 MC 硬上限 {@code 1048576} 字节时，{@code PacketByteBuf}
- * 构造抛 {@link IllegalArgumentException}，在重生 {@code COPY_FROM} 路径被原版吞掉，
- * 导致形态未同步、重生按钮无反应、卡死亡屏幕。</p>
+ * <p><b>背景</b>：原版 {@link PlayerFormComponent} 的 {@code readFromNbt} 读取
+ * {@code formHistory} / {@code instinctEffects} 时没有先清空现有集合，导致每次反序列化
+ * （登录/切维度/重生/同步）都追加，集合无限累积 → writeToNbt 写出的 NBT 超过 MC 网络包
+ * 硬上限 {@code 1048576} 字节 → {@code sync()} 抛 {@link IllegalArgumentException}，
+ * 在重生路径被原版吞掉，表现为形态未同步、重生按钮无反应、卡死亡屏幕、坏档。</p>
  *
- * <p><b>三层防御</b>（HEAD 接管原 sync 方法体，直接强转 this 访问字段，避免 @Shadow mapping 问题）：
- * <ol>
- *   <li><b>预防性自清理</b>：sync 前检测 {@code instinctEffects}(HashMap) 与 {@code formHistory}(List)
- *       两个唯一可增长集合的大小。正常游玩下前者仅几个、后者 2-3 个；一旦异常膨胀（>阈值），
- *       主动裁剪，把膨胀掐死在序列化之前。{@code instinctEffects} 全清（等效游戏内 clearInstinct），
- *       {@code formHistory} 只保留最后 3 个（保留回退能力）。</li>
- *   <li><b>异常兜底</b>：若膨胀源不在这俩字段（可能是 CCA 内部或 vanilla 实体数据），
- *       catch 住「Payload may not be larger than」异常，跳过本次 sync 放行重生主流程。</li>
- *   <li><b>自动自愈</b>：被跳过的 sync，下一 tick 的正常 sync（本能 tick / 形态切换触发）会自动补上。</li>
- * </ol></p>
+ * <p><b>治本由主包负责</b>：该根因已由官方修复——
+ * <a href="https://github.com/onixary/shape-shifter-curse-fabric/pull/491">PR #491</a>
+ * （xu233333「修复多次死亡 formHistory 过大的 Bug」）在 {@code readFromNbt} 的
+ * formHistory / instinctEffects 块前各加了 {@code clear()}。同样的思路也见
+ * <a href="https://github.com/wuhenqiubai/Shape-Shifter-Curse_Unofficial-Port/commit/4cc011e67f156ed2d735a8b2fe5a7d1d71d31a42">wuhenqiubai 4cc011e</a>。
+ * 感谢两者的贡献。主包修好后本兜底自然不再触发，仅作旧版 jar / 未更新主包的保险。</p>
  *
- * <p><b>正常游玩零影响</b>：阈值（instinctEffects 64 / formHistory 16）远高于正常值，
- * 正常情况下自清理分支永不触发，sync 正常执行。</p>
- *
- * <p><b>诊断</b>：自清理与兜底均打 WARN 日志，便于下次复现时定位真正膨胀源。</p>
+ * <p><b>本 mixin 只保留兜底</b>：主包已（或将）治本，附属侧不重复做 readFromNbt clear，
+ * 避免与主包改动重复/冲突。本 mixin 仅在 {@code sync()} 外层兜底——
+ * sync 前检测 instinctEffects/formHistory 异常膨胀则裁剪，并对「Payload may not be larger than」
+ * 异常 try-catch 放行重生。作为主包治本之上的最后一道保险，应对未知的其它膨胀源
+ * 或主包尚未更新的旧 jar 场景。</p>
  */
 @Mixin(PlayerFormComponent.class)
 public class PlayerFormComponentSyncGuardMixin {
@@ -45,6 +42,13 @@ public class PlayerFormComponentSyncGuardMixin {
     /** formHistory 裁剪后保留的最大长度（保留回退能力） */
     private static final int FORM_HISTORY_KEEP = 3;
 
+    /**
+     * 兜底：sync 前自清理异常膨胀字段，并对包超限异常 try-catch 放行重生。
+     *
+     * <p>HEAD 接管原 sync 方法体，直接强转 this 访问字段，规避 @Shadow 对 mod 类的 obf mapping 问题。
+     * 主包治本修复（readFromNbt clear）生效后，这里的自清理分支正常情况下永不触发；
+     * 仅当膨胀源是未知的其它字段、或主包 jar 未更新时才会兜底生效。</p>
+     */
     @Inject(method = "sync", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
     private void sscAddon$guardSyncOverflow(CallbackInfo ci) {
         // 通过强转访问目标字段，规避 @Shadow 对 mod 类的 obf mapping 问题
@@ -85,5 +89,7 @@ public class PlayerFormComponentSyncGuardMixin {
         ci.cancel();
     }
 }
+
+
 
 
