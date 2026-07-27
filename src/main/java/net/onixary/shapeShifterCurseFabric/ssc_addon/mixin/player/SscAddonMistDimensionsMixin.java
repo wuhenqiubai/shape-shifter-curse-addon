@@ -23,39 +23,41 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LivingEntity.class)
 public abstract class SscAddonMistDimensionsMixin {
 
-	@Unique
-	private static final float MIST_WIDTH = 0.2f;
+//	TODO: 防崩第一步
+//	@Unique
+//	private static final float MIST_WIDTH = 0.2f;
+//
+//	@Unique
+//	private static final float MIST_HEIGHT = 0.1f;
+//
+//	@Unique
+//	private static final float MIST_EYE_HEIGHT = 0.08f;
+//
+//	@Unique
+//	private boolean sscAddon$constructed = false;
+//
+//	@Unique
+//	private boolean sscAddon$mistDimensionsApplied = false;
+//
+//	@Inject(method = "<init>", at = @At("RETURN"))
+//	private void sscAddon$markConstructed(EntityType entityType, World world, CallbackInfo ci) {
+//		this.sscAddon$constructed = true;
+//	}
 
-	@Unique
-	private static final float MIST_HEIGHT = 0.1f;
-
-	@Unique
-	private static final float MIST_EYE_HEIGHT = 0.08f;
-
-	@Unique
-	private boolean sscAddon$constructed = false;
-
-	@Unique
-	private boolean sscAddon$mistDimensionsApplied = false;
-
-	@Inject(method = "<init>", at = @At("RETURN"))
-	private void sscAddon$markConstructed(EntityType entityType, World world, CallbackInfo ci) {
-		this.sscAddon$constructed = true;
-	}
-
-	@Unique
-	private boolean sscAddon$isMistFormActive() {
-		return this.sscAddon$constructed && ((PlayerEntity) (Object) this).hasStatusEffect(SscAddon.MIST_FORM_ENTRY);
-	}
-
-	@Inject(method = "tick", at = @At("HEAD"))
-	private void sscAddon$refreshMistDimensions(CallbackInfo ci) {
-		boolean mistFormActive = this.sscAddon$isMistFormActive();
-		if (mistFormActive != this.sscAddon$mistDimensionsApplied) {
-			this.sscAddon$mistDimensionsApplied = mistFormActive;
-			((PlayerEntity) (Object) this).calculateDimensions();
-		}
-	}
+//  TODO: 这个叕崩了，也注释了
+//	@Unique
+//	private boolean sscAddon$isMistFormActive() {
+//		return this.sscAddon$constructed && ((PlayerEntity) (Object) this).hasStatusEffect(SscAddon.MIST_FORM_ENTRY);
+//	}
+//
+//	@Inject(method = "tick", at = @At("HEAD"))
+//	private void sscAddon$refreshMistDimensions(CallbackInfo ci) {
+//		boolean mistFormActive = this.sscAddon$isMistFormActive();
+//		if (mistFormActive != this.sscAddon$mistDimensionsApplied) {
+//			this.sscAddon$mistDimensionsApplied = mistFormActive;
+//			((PlayerEntity) (Object) this).calculateDimensions();
+//		}
+//	}
 
 //  TODO: 这玩意会导致区块生成卡进度，也注释了
 //	@ModifyExpressionValue(method = "getDimensions", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityDimensions;scaled(F)Lnet/minecraft/entity/EntityDimensions;"))
