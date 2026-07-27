@@ -60,7 +60,7 @@
 > 此分支由 [wuhenqiubai](https://github.com/wuhenqiubai) 移植并维护至 **Minecraft 1.21.1**。
 > 如需原始版本请查看上游 [MangZai-120/shape-shifter-curse-addon](https://github.com/MangZai-120/shape-shifter-curse-addon)。
 > 
-> 目前主模组 [Shape-Shifter-Curse](https://github.com/wuhenqiubai/shape-shifter-curse-fabric) 移植完成，预计在主模组的稳定性打磨完全后开始移植本mod（预计三周内开始移植）
+> 目前主模组 [Shape-Shifter-Curse](https://github.com/wuhenqiubai/shape-shifter-curse-fabric) 移植完成，预计在主模组的稳定性打磨完全后开始移植本mod（我开学前能移植完？ssca的规模比我想象的大得多）
 
 ## Q&A
 - Q:这个模组和Xu233的模组能不能共用？
