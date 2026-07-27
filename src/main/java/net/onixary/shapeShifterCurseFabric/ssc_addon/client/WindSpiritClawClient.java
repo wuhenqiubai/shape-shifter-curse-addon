@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.PacketByteBuf;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -45,7 +46,7 @@ public final class WindSpiritClawClient {
             if (hold != lastHold) {
                 PacketByteBuf buf = PacketByteBufs.create();
                 buf.writeBoolean(hold);
-                ClientPlayNetworking.send(SscAddonNetworking.PACKET_CLAW_HOLD, buf);
+                ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_CLAW_HOLD), buf));
                 lastHold = hold;
             }
 
@@ -53,7 +54,7 @@ public final class WindSpiritClawClient {
             boolean secPressed = isOcelot && client.currentScreen == null
                     && SscAddonKeybindings.getSecondaryKey().isPressed();
             if (secPressed && !lastSecPressed) {
-                ClientPlayNetworking.send(SscAddonNetworking.PACKET_CLAW_BUFF, PacketByteBufs.empty());
+                ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_CLAW_BUFF), PacketByteBufs.empty()));
             }
             lastSecPressed = secPressed;
 

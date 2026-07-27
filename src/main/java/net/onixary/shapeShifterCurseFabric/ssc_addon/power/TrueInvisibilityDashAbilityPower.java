@@ -83,7 +83,7 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 	@Override
 	public boolean canUse() {
 		// Can only use when invisible
-		return entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY);
+		return entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 	}
 
 	@Override
@@ -97,7 +97,7 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 		}
 
 		// Remove invisibility immediately
-		entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY);
+		entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 		entity.removeStatusEffect(StatusEffects.INVISIBILITY);
 
 		// Apply 50% slow (Slowness III = -45%, close enough) for 1 second
@@ -166,7 +166,7 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 					if (entity instanceof ServerPlayerEntity sPlayer && WhitelistUtils.isProtected(sPlayer, target))
 						return;
 					// Apply Stun: 1.5s = 30 ticks
-					target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN, 30, 0, false, false, true));
+					target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, 30, 0, false, false, true));
 				});
 
 		// Particle effect

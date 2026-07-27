@@ -12,6 +12,7 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.power.TrueInvisibilityAbilityPower;
 
@@ -22,9 +23,9 @@ public class PreInvisibilityEffect extends StatusEffect {
 		super(StatusEffectCategory.BENEFICIAL, 0x101010); // Dark color
 		this.addAttributeModifier(
 				EntityAttributes.GENERIC_MOVEMENT_SPEED,
-				"12db6328-9844-4e20-9118-202758169972",
+				Identifier.of("12db6328-9844-4e20-9118-202758169972"),
 				-0.5,
-				EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+				EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE
 		);
 	}
 
@@ -34,7 +35,7 @@ public class PreInvisibilityEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
 		if (!entity.getWorld().isClient()) {
 			ServerWorld serverWorld = (ServerWorld) entity.getWorld();
 
@@ -55,12 +56,13 @@ public class PreInvisibilityEffect extends StatusEffect {
 			}
 
 			// 4. Apply True Invisibility
-			entity.addStatusEffect(new StatusEffectInstance(SscAddon.TRUE_INVISIBILITY, duration, 0, false, false, true));
+			entity.addStatusEffect(new StatusEffectInstance(SscAddon.TRUE_INVISIBILITY_ENTRY, duration, 0, false, false, true));
 			// 同步叠加原版隐身，确保服务器把“不可见”状态同步给其他客户端。
 			entity.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY, duration, 0, false, false, false));
 
 			// 5. Notify Player
 			// 通知逻辑已移除，保留注释占位
 		}
+		return false;
 	}
 }

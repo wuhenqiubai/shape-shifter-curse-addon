@@ -398,16 +398,16 @@ public class PalettePresetsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (mouseX >= viewportLeft && mouseX <= viewportRight
                 && mouseY >= viewportY && mouseY <= viewportY + viewportH
                 && maxScroll > 0) {
-            int delta = (int) (-amount * ROW_H);
+            int delta = (int) (-horizontalAmount * ROW_H);
             scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset + delta));
             updateRowPositions();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, amount);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -415,7 +415,7 @@ public class PalettePresetsScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
+        this.renderBackground(context, mouseX, mouseY,  delta);
         updateRowPositions();
         updatePreviewSelection();
         super.render(context, mouseX, mouseY, delta);

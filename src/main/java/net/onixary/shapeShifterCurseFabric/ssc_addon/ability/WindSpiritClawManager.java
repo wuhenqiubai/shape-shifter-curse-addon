@@ -26,6 +26,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 风灵（月髓环豹猫） - 「疾风连爪」左键连击技能（服务端状态机）。
@@ -278,15 +279,13 @@ public final class WindSpiritClawManager {
     public static boolean isHoldingWeapon(ServerPlayerEntity player) {
         ItemStack stack = player.getMainHandStack();
         if (stack.isEmpty()) return false;
-        double totalAdd = 0.0;
-        for (EntityAttributeModifier m : stack
-                .appendAttributeModifiersTooltip(EquipmentSlot.MAINHAND)
-                .get(EntityAttributes.GENERIC_ATTACK_DAMAGE)) {
-            if (m.getOperation() == EntityAttributeModifier.Operation.ADD_VALUE) {
-                totalAdd += m.value();
+        AtomicReference<Double> totalAdd = new AtomicReference<>(0.0);
+        stack.getItem().getAttributeModifiers().applyModifiers(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+            if (attribute == EntityAttributes.GENERIC_ATTACK_DAMAGE && modifier.operation() == EntityAttributeModifier.Operation.ADD_VALUE) {
+                totalAdd.updateAndGet(v -> v + modifier.value());
             }
-        }
-        return totalAdd > 1.0;
+        });
+        return totalAdd.get() > 1.0;
     }
 
     /** 副技能（sp_secondary）：0.5 秒内徒手/形态伤害 +50%，cd 2 秒。 */

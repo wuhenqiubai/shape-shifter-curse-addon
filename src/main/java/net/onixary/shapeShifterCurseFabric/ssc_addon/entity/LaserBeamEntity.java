@@ -15,6 +15,7 @@ import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -108,7 +109,7 @@ public class LaserBeamEntity extends Entity {
 	}
 
 	@Override
-	protected void initDataTracker() {
+	protected void initDataTracker(DataTracker.Builder builder) {
 		this.dataTracker.startTracking(PHASE, 0);
 		this.dataTracker.startTracking(PHASE_TICK, 0);
 		this.dataTracker.startTracking(OWNER_ID, 0);
@@ -160,7 +161,7 @@ public class LaserBeamEntity extends Entity {
 		this.setPosition(owner.getX(), owner.getEyeY(), owner.getZ());
 
 		// 定身：每 tick 刷新 ROOTED（仅锁移动，视角自由；释放期视角限速由 mixin 处理）
-		owner.addStatusEffect(new StatusEffectInstance(SscAddon.ROOTED, 8, 0, false, false, false));
+		owner.addStatusEffect(new StatusEffectInstance(SscAddon.ROOTED_ENTRY, 8, 0, false, false, false));
 
 		Vec3d aim = owner.getRotationVec(1.0f).normalize();
 		Vec3d arrayPos = new Vec3d(owner.getX(), owner.getEyeY(), owner.getZ()).add(aim.multiply(ARRAY_DIST));
@@ -177,7 +178,7 @@ public class LaserBeamEntity extends Entity {
 	// ==================== CHARGE ====================
 	private void tickCharge(ServerWorld sw, ServerPlayerEntity owner, Vec3d aim, Vec3d arrayPos) {
 		// 净化打断：取消，返还 40% CD（进 60% CD）
-		if (owner.hasStatusEffect(SscAddon.PURIFIED)) {
+		if (owner.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
 			cancelWithInterruptCd(owner);
 			sw.playSound(null, owner.getX(), owner.getY(), owner.getZ(),
 					SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0f, 1.2f);
@@ -240,7 +241,7 @@ public class LaserBeamEntity extends Entity {
 		spawnBeamSpiral(sw, arrayPos, aim, r);
 		if (phaseTicks >= FADE_TICKS) {
 			// 完全消失 → 进 CD、解除定身、清状态
-			owner.removeStatusEffect(SscAddon.ROOTED);
+			owner.removeStatusEffect(SscAddon.ROOTED_ENTRY);
 			PowerUtils.setResourceValueAndSync(owner, LASER_STATE, 0);
 			PowerUtils.setResourceValueAndSync(owner, FormIdentifiers.SP_PRIMARY_CD, CD_TICKS);
 			sw.playSound(null, arrayPos.x, arrayPos.y, arrayPos.z,
@@ -307,7 +308,7 @@ public class LaserBeamEntity extends Entity {
 	// ==================== 取消/清理 ====================
 	private void cancelNoCd(ServerPlayerEntity owner) {
 		if (owner != null) {
-			owner.removeStatusEffect(SscAddon.ROOTED);
+			owner.removeStatusEffect(SscAddon.ROOTED_ENTRY);
 			PowerUtils.setResourceValueAndSync(owner, LASER_STATE, 0);
 		}
 	}
@@ -315,7 +316,7 @@ public class LaserBeamEntity extends Entity {
 	/** 被净化打断时取消：返还 40% CD（进 60% CD = 400 × 0.6 = 240t = 12 秒）。 */
 	private void cancelWithInterruptCd(ServerPlayerEntity owner) {
 		if (owner != null) {
-			owner.removeStatusEffect(SscAddon.ROOTED);
+			owner.removeStatusEffect(SscAddon.ROOTED_ENTRY);
 			PowerUtils.setResourceValueAndSync(owner, LASER_STATE, 0);
 			PowerUtils.setResourceValueAndSync(owner, FormIdentifiers.SP_PRIMARY_CD, (int)(CD_TICKS * 0.6));
 		}
@@ -359,8 +360,8 @@ public class LaserBeamEntity extends Entity {
 	}
 
 	@Override
-	public Packet<ClientPlayPacketListener> createSpawnPacket() {
-		return new EntitySpawnS2CPacket(this);
+	public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+		return new EntitySpawnS2CPacket(this, entityTrackerEntry);
 	}
 
 	@Override

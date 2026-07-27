@@ -28,9 +28,9 @@ public abstract class SscAddonTravelMixin {
 		// 幽雾化形飞行（悦灵同款）：仅客户端本地玩家接管移动，服务端靠位置同步 + setNoGravity 豁免悬空踢人。
 		// WASD 控制水平移动并严格锁速 4.5 格/s（0.225 格/tick）；跳跃键上浮、潜行键下降、无输入缓降。
 		if (entity.getWorld().isClient && entity instanceof PlayerEntity mistPlayer
-				&& entity.hasStatusEffect(SscAddon.MIST_FORM)) {
+				&& entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)) {
 			// 凝聚爆破蓄力期间整体减速 50%（带 MIST_CHARGING 标记时）
-			double maxH = entity.hasStatusEffect(SscAddon.MIST_CHARGING) ? 0.1125 : 0.225; // 0.225 格/tick = 4.5 格/s
+			double maxH = entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY) ? 0.1125 : 0.225; // 0.225 格/tick = 4.5 格/s
 
 			// 水平：按朝向(yaw)将 WASD 输入转为世界方向，归一化后严格锁定为 maxH（前后左右斜向同速）
 			float yaw = entity.getYaw() * 0.017453292F;

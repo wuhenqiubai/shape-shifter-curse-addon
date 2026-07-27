@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -34,7 +35,7 @@ public class MancianimaResistanceBar implements HudRenderCallback {
 	private static final int CENTER_OFFSET_X = -(FULL_WIDTH - MANA_WIDTH) / 2; // -6，在 mana 条上居中
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
 		if (mc.options.hudHidden || mc.player == null) return;
 		PlayerEntity player = mc.player;
 

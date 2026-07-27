@@ -121,7 +121,7 @@ public class SnowFoxSpMeleeAbility {
 				target.damage(source, DAMAGE);
 
 				target.addStatusEffect(new StatusEffectInstance(
-						SscAddon.FROST_FREEZE,
+						SscAddon.FROST_FREEZE_ENTRY,
 						FROST_FREEZE_DURATION,
 						0,
 						false,

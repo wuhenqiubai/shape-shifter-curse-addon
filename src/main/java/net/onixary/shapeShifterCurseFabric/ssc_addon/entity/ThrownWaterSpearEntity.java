@@ -13,6 +13,7 @@ import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -79,7 +80,7 @@ public class ThrownWaterSpearEntity extends ProjectileEntity {
 	}
 
 	@Override
-	protected void initDataTracker() {
+	protected void initDataTracker(DataTracker.Builder builder) {
 		this.dataTracker.startTracking(VEL_X, 0.0f);
 		this.dataTracker.startTracking(VEL_Y, 0.0f);
 		this.dataTracker.startTracking(VEL_Z, 0.0f);
@@ -208,7 +209,7 @@ public class ThrownWaterSpearEntity extends ProjectileEntity {
 	}
 
 	@Override
-	public Packet<ClientPlayPacketListener> createSpawnPacket() {
-		return new EntitySpawnS2CPacket(this);
+	public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+		return new EntitySpawnS2CPacket(this, entityTrackerEntry);
 	}
 }

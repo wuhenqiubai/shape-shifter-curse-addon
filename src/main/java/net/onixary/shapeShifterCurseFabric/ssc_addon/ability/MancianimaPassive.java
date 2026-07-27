@@ -16,6 +16,7 @@ import net.minecraft.entity.mob.PillagerEntity;
 import net.minecraft.entity.mob.RavagerEntity;
 import net.minecraft.entity.mob.VindicatorEntity;
 import net.minecraft.entity.mob.WitchEntity;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 import net.minecraft.village.raid.Raid;
 import net.minecraft.util.math.BlockPos;
@@ -307,7 +308,7 @@ public final class MancianimaPassive {
 			if (!leaderAssigned) {
 				// 首位 Pillager 带上不祥之旗作为队长
 				p.setPatrolLeader(true);
-				p.equipStack(EquipmentSlot.HEAD, Raid.getOminousBanner());
+				p.equipStack(EquipmentSlot.HEAD, Raid.getOminousBanner(world.getRegistryManager().getWrapperOrThrow(RegistryKeys.BANNER_PATTERN)));
 				leaderAssigned = true;
 			}
 			world.spawnEntity(p);

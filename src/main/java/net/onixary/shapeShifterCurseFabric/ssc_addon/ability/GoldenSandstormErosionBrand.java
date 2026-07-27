@@ -698,9 +698,9 @@ public class GoldenSandstormErosionBrand {
 		// 先移除所有旧标记，再施加当前层数对应的标记
 		removeAllBrandMarkers(target);
 		RegistryEntry<StatusEffect> markerEffect = switch (state.stacks) {
-			case 1 -> SscAddon.EROSION_BRAND_MARKER_1;
-			case 2 -> SscAddon.EROSION_BRAND_MARKER_2;
-			case 3 -> SscAddon.EROSION_BRAND_MARKER_3;
+			case 1 -> SscAddon.EROSION_BRAND_MARKER_1_ENTRY;
+			case 2 -> SscAddon.EROSION_BRAND_MARKER_2_ENTRY;
+			case 3 -> SscAddon.EROSION_BRAND_MARKER_3_ENTRY;
 			default -> null;
 		};
 		if (markerEffect != null) {
@@ -715,9 +715,9 @@ public class GoldenSandstormErosionBrand {
 	 * 移除目标上的所有烙印标记效果
 	 */
 	private static void removeAllBrandMarkers(LivingEntity target) {
-		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_1);
-		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_2);
-		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_3);
+		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_1_ENTRY);
+		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_2_ENTRY);
+		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_3_ENTRY);
 	}
 
 	/**

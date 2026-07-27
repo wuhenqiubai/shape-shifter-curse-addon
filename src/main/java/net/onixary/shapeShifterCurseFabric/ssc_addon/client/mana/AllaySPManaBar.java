@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -20,7 +21,7 @@ public class AllaySPManaBar implements HudRenderCallback {
 	private static final Identifier RESOURCE_ID = Identifier.of("my_addon", "form_allay_sp_mana_resource");
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
 		if (mc.options.hudHidden || mc.player == null) return;
 
 		PlayerEntity player = mc.player;
@@ -42,10 +43,10 @@ public class AllaySPManaBar implements HudRenderCallback {
 				offsetY
 		);
 
-		renderBar(context, tickDelta, pos.getLeft(), pos.getRight(), percent);
+		renderBar(context, tickCounter, pos.getLeft(), pos.getRight(), percent);
 	}
 
-	private void renderBar(DrawContext context, float tickDelta, int x, int y, double percent) {
+	private void renderBar(DrawContext context, RenderTickCounter tickCounter, int x, int y, double percent) {
 		// Assuming texture width is 80 (same as Snow Fox) or use actual width?
 		// Since I can't check texture width, I'll use 80 as default for compatibility with Snow Fox style
 		int fullWidth = 80;

@@ -83,21 +83,21 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 
 		if (entity == null || entity.getWorld().isClient) return;
 
-		if (entity.hasStatusEffect(SscAddon.PURIFIED)) {
-			if (entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY)) {
-				entity.removeStatusEffect(SscAddon.PRE_INVISIBILITY);
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
+			if (entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY)) {
+				entity.removeStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
 				entity.removeStatusEffect(StatusEffects.INVISIBILITY);
 				applyUniversalCooldown();
 			}
-			if (entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY)) {
+			if (entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) {
 				breakInvisibility(false);
 			}
 			wasInvisible = false;
 			return;
 		}
 
-		boolean isInvisible = entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY);
-		boolean isPrecasting = entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY);
+		boolean isInvisible = entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		boolean isPrecasting = entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
 
 		// Natural End Detection (Time expired - not from action break or key cancel)
 		if (wasInvisible && !isInvisible && !isPrecasting && lastAmplifier == 0) {
@@ -117,7 +117,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 		}
 
 		// Track current amplifier
-		StatusEffectInstance currentEffect = entity.getStatusEffect(SscAddon.TRUE_INVISIBILITY);
+		StatusEffectInstance currentEffect = entity.getStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 		if (currentEffect != null) {
 			lastAmplifier = currentEffect.getAmplifier();
 		}
@@ -210,14 +210,14 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	public void breakInvisibility(boolean byKey) {
 		if (entity == null || entity.getWorld().isClient) return;
 
-		if (!entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY)) return;
+		if (!entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) return;
 
 		// Check amplifier before removing
-		StatusEffectInstance currentEffect = entity.getStatusEffect(SscAddon.TRUE_INVISIBILITY);
+		StatusEffectInstance currentEffect = entity.getStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 		int currentAmp = (currentEffect != null) ? currentEffect.getAmplifier() : 0;
 
 		// Remove invisibility effect
-		entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY);
+		entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 		entity.removeStatusEffect(StatusEffects.INVISIBILITY);
 		wasInvisible = false;
 
@@ -230,7 +230,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 					SoundEvents.ENTITY_CAT_HISS, SoundCategory.PLAYERS, 1.0f, 1.0f);
 
 			// Add Buffs: Guaranteed Crit & Speed II for 5 seconds
-			entity.addStatusEffect(new StatusEffectInstance(SscAddon.GUARANTEED_CRIT, 100, 0, false, false, true));
+			entity.addStatusEffect(new StatusEffectInstance(SscAddon.GUARANTEED_CRIT_ENTRY, 100, 0, false, false, true));
 			entity.addStatusEffect(new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SPEED, 100, 1, false, false, true));
 
 		} else {
@@ -255,8 +255,8 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	public void onUse() {
 		if (entity == null || entity.getWorld().isClient) return;
 
-		boolean isInvisible = entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY);
-		boolean isPrecasting = entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY);
+		boolean isInvisible = entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		boolean isPrecasting = entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
 
 		if (isInvisible) {
 			// Already invisible - pressing key again cancels with cat hiss
@@ -267,7 +267,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 			// Not invisible - try to cast
 			if (isInternalCooldownReady()) {
 				// Apply pre-invisibility (casting phase)
-				entity.addStatusEffect(new StatusEffectInstance(SscAddon.PRE_INVISIBILITY, 20, 0, false, false, true));
+				entity.addStatusEffect(new StatusEffectInstance(SscAddon.PRE_INVISIBILITY_ENTRY, 20, 0, false, false, true));
 			}
 		}
 	}

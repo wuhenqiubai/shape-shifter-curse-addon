@@ -9,8 +9,7 @@ import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectCategory;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
-
-import java.util.UUID;
+import net.minecraft.util.Identifier;
 
 /**
  * 潮汐波动吸附减速效果 - 移动速度 -15%（代码减速，非药水缓慢）。
@@ -19,7 +18,7 @@ import java.util.UUID;
  */
 public class TidalSlowEffect extends StatusEffect {
 
-    private static final UUID SPEED_MODIFIER_UUID = UUID.fromString("7c1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8");
+    private static final Identifier SPEED_MODIFIER_UUID = Identifier.of("7c1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8");
     private static final String SPEED_MODIFIER_NAME = "Tidal Slow";
 
     public TidalSlowEffect() {
@@ -27,25 +26,24 @@ public class TidalSlowEffect extends StatusEffect {
     }
 
     @Override
-    public void onApplied(LivingEntity entity, AttributeContainer attributes, int amplifier) {
-        super.onApplied(entity, attributes, amplifier);
+    public void onApplied(LivingEntity entity, int amplifier) {
+        super.onApplied(entity, amplifier);
         EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (speedAttr != null) {
             speedAttr.removeModifier(SPEED_MODIFIER_UUID);
             // 15% 减速：MULTIPLY_TOTAL -0.15
             speedAttr.addTemporaryModifier(new EntityAttributeModifier(
                     SPEED_MODIFIER_UUID,
-                    SPEED_MODIFIER_NAME,
-                    -0.15,
-                    EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+		            -0.15,
+                    EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
             ));
         }
     }
 
     @Override
-    public void onRemoved(LivingEntity entity, AttributeContainer attributes, int amplifier) {
-        super.onRemoved(entity, attributes, amplifier);
-        EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+    public void onRemoved(AttributeContainer attributes) {
+        super.onRemoved(attributes);
+        EntityAttributeInstance speedAttr = attributes.getCustomInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (speedAttr != null) {
             speedAttr.removeModifier(SPEED_MODIFIER_UUID);
         }
@@ -57,7 +55,7 @@ public class TidalSlowEffect extends StatusEffect {
     }
 
     @Override
-    public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+    public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
         // 偶发水滴粒子提示（与脚底青蓝粒子互补）
         if (entity.getWorld() instanceof ServerWorld sw) {
             net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(sw,
@@ -65,5 +63,6 @@ public class TidalSlowEffect extends StatusEffect {
                     entity.getX(), entity.getY() + entity.getHeight() / 2.0, entity.getZ(),
                     1, entity.getWidth() / 2.0, entity.getHeight() / 4.0, entity.getWidth() / 2.0, 0.0);
         }
+        return false;
     }
 }

@@ -15,6 +15,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -59,7 +60,7 @@ public final class WindDashClient {
         boolean pressed = isWindSpirit && client.currentScreen == null
                 && SscAddonKeybindings.getPrimaryKey().isPressed();
         if (pressed && !lastPressed) {
-            ClientPlayNetworking.send(SscAddonNetworking.PACKET_WIND_DASH, PacketByteBufs.empty());
+            ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_WIND_DASH), PacketByteBufs.empty()));
         }
         lastPressed = pressed;
 

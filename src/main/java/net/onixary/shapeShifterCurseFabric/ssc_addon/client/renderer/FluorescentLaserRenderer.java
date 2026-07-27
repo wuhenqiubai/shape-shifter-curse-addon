@@ -257,7 +257,7 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 
 	private void v(VertexConsumer buf, Matrix4f pose, Matrix3f nrm, float x, float y, float z, float[] c) {
 		buf.vertex(pose, x, y, z).color(c[0], c[1], c[2], c[3]).texture(0.5f, 0.5f)
-				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(nrm, 0f, 0f, 1f).next();
+				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(0f, 0f, 1f);
 	}
 
 	@Override

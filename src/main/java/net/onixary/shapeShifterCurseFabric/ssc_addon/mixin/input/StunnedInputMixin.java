@@ -15,7 +15,7 @@ public class StunnedInputMixin {
 	@SuppressWarnings("resource") // client 是对游戏实例本身的引用，不应关闭
 	private void onDoAttack(CallbackInfoReturnable<Boolean> cir) {
 		MinecraftClient client = (MinecraftClient) (Object) this;
-		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN)) {
+		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN_ENTRY)) {
 			cir.setReturnValue(false);
 		}
 	}
@@ -24,7 +24,7 @@ public class StunnedInputMixin {
 	@SuppressWarnings("resource") // client 是对游戏实例本身的引用，不应关闭
 	private void onDoItemUse(CallbackInfo ci) {
 		MinecraftClient client = (MinecraftClient) (Object) this;
-		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN)) {
+		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN_ENTRY)) {
 			ci.cancel();
 		}
 	}
@@ -33,7 +33,7 @@ public class StunnedInputMixin {
 	@SuppressWarnings("resource") // client 是对游戏实例本身的引用，不应关闭
 	private void onHandleBlockBreaking(boolean breaking, CallbackInfo ci) {
 		MinecraftClient client = (MinecraftClient) (Object) this;
-		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN) && breaking) {
+		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN_ENTRY) && breaking) {
 			ci.cancel();
 		}
 

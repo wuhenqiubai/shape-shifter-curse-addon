@@ -87,10 +87,10 @@ public class BatSonicWaveAbilityPower extends ActiveCooldownPower {
 	@Override
 	public void onUse() {
 		if (entity == null || entity.getWorld().isClient) return;
-		if (entity.hasStatusEffect(SscAddon.PURIFIED)) return;
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
 		if (!isInternalCooldownReady()) return;
 		// 雾化期间禁止释放，避免与雾化爆破节奏冲突
-		if (entity.hasStatusEffect(SscAddon.MIST_FORM) || entity.hasStatusEffect(SscAddon.MIST_CHARGING)) return;
+		if (entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY) || entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) return;
 
 		fire();
 		applyCooldown();
@@ -130,7 +130,7 @@ public class BatSonicWaveAbilityPower extends ActiveCooldownPower {
 			target.addStatusEffect(new StatusEffectInstance(StatusEffects.NAUSEA, DEBUFF_TICKS, 0, false, true, true));
 			// 失聪：玩家用自定义 DEAFEN（客户端静音）；非玩家附加短暂失明模拟听觉抽离
 			if (target instanceof PlayerEntity) {
-				target.addStatusEffect(new StatusEffectInstance(SscAddon.DEAFEN, DEBUFF_TICKS, 0, false, true, true));
+				target.addStatusEffect(new StatusEffectInstance(SscAddon.DEAFEN_ENTRY, DEBUFF_TICKS, 0, false, true, true));
 			} else {
 				target.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, DEBUFF_TICKS, 0, false, true, true));
 			}

@@ -2,9 +2,11 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.entity;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.FlyingItemEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -16,6 +18,7 @@ import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -40,7 +43,7 @@ import java.util.List;
  * 12 格后固定 2 格/s 飞行至多 3 秒（达 18 格上限）；撞墙立即爆炸，12 格后碍生物也爆炸，未命中则泡泡裂开消散。
  * 爆炸：6 格球范围 6 物理（不穿墙） + 仅直接碰到火球者腰部火环向 2 格内连锁 4 物理（不再二次连锁）。
  */
-public class FoxFireballEntity extends ProjectileEntity implements net.minecraft.entity.FlyingItemEntity {
+public class FoxFireballEntity extends ProjectileEntity implements FlyingItemEntity {
 
     private static final double ARM_DISTANCE = 12.0;   // 12 格后才进入杀伤（碰墙/生物爆炸）
     private static final double HIT_RADIUS = 2.0;      // 命中/穿透判定球半径
@@ -89,7 +92,7 @@ public class FoxFireballEntity extends ProjectileEntity implements net.minecraft
     }
 
     @Override
-    protected void initDataTracker() {
+    protected void initDataTracker(DataTracker.Builder builder) {
     }
 
     @Override
@@ -291,7 +294,7 @@ public class FoxFireballEntity extends ProjectileEntity implements net.minecraft
 
     /** 火球命中附加狐火灼烧 5 秒（每秒掉血），并打上施法者归属 tag。 */
     private void applyFoxFireBurn(LivingEntity target) {
-        target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN, 100, 0, false, true, true));
+        target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, 100, 0, false, true, true));
         if (this.getOwner() != null) {
             target.addCommandTag("ssc_owner:" + this.getOwner().getUuid());
         }
@@ -404,7 +407,7 @@ public class FoxFireballEntity extends ProjectileEntity implements net.minecraft
     }
 
     @Override
-    public Packet<ClientPlayPacketListener> createSpawnPacket() {
-        return new EntitySpawnS2CPacket(this);
+    public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+        return new EntitySpawnS2CPacket(this, entityTrackerEntry);
     }
 }

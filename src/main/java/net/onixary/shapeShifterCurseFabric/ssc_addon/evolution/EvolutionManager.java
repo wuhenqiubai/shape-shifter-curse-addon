@@ -132,7 +132,7 @@ public final class EvolutionManager {
         ShapeShifterCurseFabric.ON_ENABLE_MOD.trigger(player);
         // 进化演出：黑屏淡入淡出动画期间定身，完成时升级音效
         int fxDuration = StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT;
-        player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN, fxDuration, 0, false, false, false));
+        player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, fxDuration, 0, false, false, false));
         TransformManager.startTransform(player, targetForm, data ->
                 player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
                         SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F));

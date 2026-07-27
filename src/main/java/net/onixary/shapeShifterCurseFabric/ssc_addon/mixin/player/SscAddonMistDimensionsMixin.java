@@ -44,7 +44,7 @@ public abstract class SscAddonMistDimensionsMixin {
 
 	@Unique
 	private boolean sscAddon$isMistFormActive() {
-		return this.sscAddon$constructed && ((PlayerEntity) (Object) this).hasStatusEffect(SscAddon.MIST_FORM);
+		return this.sscAddon$constructed && ((PlayerEntity) (Object) this).hasStatusEffect(SscAddon.MIST_FORM_ENTRY);
 	}
 
 	@Inject(method = "tick", at = @At("HEAD"))

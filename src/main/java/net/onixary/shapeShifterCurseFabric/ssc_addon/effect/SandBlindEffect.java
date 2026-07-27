@@ -1,5 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
+import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
+
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.AttributeContainer;
@@ -14,8 +17,7 @@ import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.particle.BlockStateParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
-
-import java.util.UUID;
+import net.minecraft.util.Identifier;
 
 /**
  * 致盲效果 - 金沙岚SP的凋零金沙技能施加的debuff
@@ -28,10 +30,10 @@ import java.util.UUID;
  */
 public class SandBlindEffect extends StatusEffect {
 
-	private static final UUID SPEED_MODIFIER_UUID = UUID.fromString("a7b8c9d0-e1f2-4a3b-8c5d-6e7f89012345");
+	private static final Identifier SPEED_MODIFIER_UUID = Identifier.of("a7b8c9d0-e1f2-4a3b-8c5d-6e7f89012345");
 	private static final String SPEED_MODIFIER_NAME = "Sand Blind Speed Debuff";
 
-	private static final UUID FOLLOW_RANGE_MODIFIER_UUID = UUID.fromString("a7b8c9d0-e1f2-4a3b-8c5d-6e7f89012346");
+	private static final Identifier FOLLOW_RANGE_MODIFIER_UUID = Identifier.of("a7b8c9d0-e1f2-4a3b-8c5d-6e7f89012346");
 	private static final String FOLLOW_RANGE_MODIFIER_NAME = "Sand Blind Follow Range Reduction";
 
 	public SandBlindEffect() {
@@ -39,11 +41,11 @@ public class SandBlindEffect extends StatusEffect {
 	}
 
 	@Override
-	public void onApplied(LivingEntity entity, AttributeContainer attributes, int amplifier) {
-		super.onApplied(entity, attributes, amplifier);
+	public void onApplied(LivingEntity entity, int amplifier) {
+		super.onApplied(entity, amplifier);
 
 		// 施加原版失明效果（视野限制）
-		StatusEffectInstance currentSandBlind = entity.getStatusEffect(this);
+		StatusEffectInstance currentSandBlind = entity.getStatusEffect(SscAddon.SAND_BLIND_ENTRY);
 		int blindDuration = currentSandBlind != null ? currentSandBlind.getDuration() : 60;
 		entity.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, blindDuration, 0, false, false, false));
 
@@ -53,9 +55,8 @@ public class SandBlindEffect extends StatusEffect {
 			speedAttr.removeModifier(SPEED_MODIFIER_UUID);
 			speedAttr.addTemporaryModifier(new EntityAttributeModifier(
 					SPEED_MODIFIER_UUID,
-					SPEED_MODIFIER_NAME,
 					-0.20,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 			));
 		}
 
@@ -70,9 +71,8 @@ public class SandBlindEffect extends StatusEffect {
 				if (reduction < 0) {
 					followRange.addTemporaryModifier(new EntityAttributeModifier(
 							FOLLOW_RANGE_MODIFIER_UUID,
-							FOLLOW_RANGE_MODIFIER_NAME,
 							reduction,
-							EntityAttributeModifier.Operation.ADDITION
+							EntityAttributeModifier.Operation.ADD_VALUE
 					));
 				}
 			}
@@ -80,24 +80,19 @@ public class SandBlindEffect extends StatusEffect {
 	}
 
 	@Override
-	public void onRemoved(LivingEntity entity, AttributeContainer attributes, int amplifier) {
-		super.onRemoved(entity, attributes, amplifier);
-
-		// 移除原版失明效果
-		entity.removeStatusEffect(StatusEffects.BLINDNESS);
+	public void onRemoved(AttributeContainer attributes) {
+		super.onRemoved(attributes);
 
 		// 移除速度修正
-		EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+		EntityAttributeInstance speedAttr = attributes.getCustomInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(SPEED_MODIFIER_UUID);
 		}
 
-		// 移除跟踪距离修正
-		if (entity instanceof MobEntity mob) {
-			EntityAttributeInstance followRange = mob.getAttributeInstance(EntityAttributes.GENERIC_FOLLOW_RANGE);
-			if (followRange != null) {
-				followRange.removeModifier(FOLLOW_RANGE_MODIFIER_UUID);
-			}
+		// 移除跟踪距离修正（通过attributes无法区分生物类型，有条件地用getCustomInstance检查）
+		EntityAttributeInstance followRange = attributes.getCustomInstance(EntityAttributes.GENERIC_FOLLOW_RANGE);
+		if (followRange != null) {
+			followRange.removeModifier(FOLLOW_RANGE_MODIFIER_UUID);
 		}
 	}
 
@@ -108,8 +103,8 @@ public class SandBlindEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
-		if (!(entity.getWorld() instanceof ServerWorld serverWorld)) return;
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
+		if (!(entity.getWorld() instanceof ServerWorld serverWorld)) return false;
 
 		double headX = entity.getX();
 		double headY = entity.getEyeY() + 0.3;
@@ -126,5 +121,6 @@ public class SandBlindEffect extends StatusEffect {
 				ParticleTypes.SMOKE,
 				headX, headY, headZ,
 				3, 0.4, 0.2, 0.4, 0.008);
+		return false;
 	}
 }

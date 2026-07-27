@@ -9,8 +9,7 @@ import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectCategory;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
-
-import java.util.UUID;
+import net.minecraft.util.Identifier;
 
 /**
  * 霜降效果 - SP雪狐远程技能造成的debuff
@@ -20,7 +19,7 @@ import java.util.UUID;
  */
 public class FrostFallEffect extends StatusEffect {
 
-	private static final UUID SPEED_MODIFIER_UUID = UUID.fromString("f2a3b4c5-d6e7-4890-bcde-f01234567891");
+	private static final Identifier SPEED_MODIFIER_UUID = Identifier.of("f2a3b4c5-d6e7-4890-bcde-f01234567891");
 	private static final String SPEED_MODIFIER_NAME = "Frost Fall Speed Debuff";
 
 	public FrostFallEffect() {
@@ -28,8 +27,8 @@ public class FrostFallEffect extends StatusEffect {
 	}
 
 	@Override
-	public void onApplied(LivingEntity entity, AttributeContainer attributes, int amplifier) {
-		super.onApplied(entity, attributes, amplifier);
+	public void onApplied(LivingEntity entity, int amplifier) {
+		super.onApplied(entity, amplifier);
 
 		// Apply movement speed reduction (-30%)
 		EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
@@ -37,19 +36,18 @@ public class FrostFallEffect extends StatusEffect {
 			speedAttr.removeModifier(SPEED_MODIFIER_UUID);
 			speedAttr.addTemporaryModifier(new EntityAttributeModifier(
 					SPEED_MODIFIER_UUID,
-					SPEED_MODIFIER_NAME,
 					-0.3,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 			));
 		}
 	}
 
 	@Override
-	public void onRemoved(LivingEntity entity, AttributeContainer attributes, int amplifier) {
-		super.onRemoved(entity, attributes, amplifier);
+	public void onRemoved(AttributeContainer attributes) {
+		super.onRemoved(attributes);
 
 		// Remove movement speed modifier
-		EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+		EntityAttributeInstance speedAttr = attributes.getCustomInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(SPEED_MODIFIER_UUID);
 		}
@@ -62,7 +60,7 @@ public class FrostFallEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
 		// Spawn snowflake particles
 		if (entity.getWorld() instanceof ServerWorld serverWorld) {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld,
@@ -77,5 +75,6 @@ public class FrostFallEffect extends StatusEffect {
 					0.02
 			);
 		}
+		return false;
 	}
 }

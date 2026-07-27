@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -28,7 +29,7 @@ public class SnowFoxSPManaBar implements HudRenderCallback {
 	private static final Identifier SWITCH_STATE_ID = Identifier.of("my_addon", "form_snow_fox_sp_switch_state");
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
 		if (mc.options.hudHidden || mc.player == null) return;
 
 		PlayerEntity player = mc.player;

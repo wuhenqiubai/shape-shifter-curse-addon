@@ -13,6 +13,7 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionNode;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry;
@@ -269,7 +270,7 @@ public class EvolutionScreen extends Screen {
         updateTreeRect();
         updateBtn();
 
-        renderBackground(ctx);
+        renderBackground(ctx, mouseX, mouseY,  delta);
 
         EvolutionComponent comp = getComp();
 
@@ -741,18 +742,18 @@ public class EvolutionScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (inTreeArea(mouseX, mouseY)) {
-            zoomAt(mouseX, mouseY, zoom + amount * ZOOM_STEP);
+            zoomAt(mouseX, mouseY, zoom + horizontalAmount * ZOOM_STEP);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, amount);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     private static void sendString(Identifier packet, String value) {
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(value);
-        ClientPlayNetworking.send(packet, buf);
+        ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), buf));
     }
 
     /** 提交全部待确认节点：一次性批量发送（服务端限频一次、按序逐个解锁），播放获得经验“叮”声，再清空暂存。 */
@@ -763,7 +764,7 @@ public class EvolutionScreen extends Screen {
         for (String id : pending) {
             buf.writeString(id);
         }
-        ClientPlayNetworking.send(SscAddonNetworking.PACKET_EVO_UNLOCK_BATCH, buf);
+        ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_EVO_UNLOCK_BATCH), buf));
         pending.clear();
         PlayerEntity p = MinecraftClient.getInstance().player;
         if (p != null) {

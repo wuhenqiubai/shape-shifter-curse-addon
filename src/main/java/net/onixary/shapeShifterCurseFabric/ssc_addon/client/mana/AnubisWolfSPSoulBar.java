@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -20,7 +21,7 @@ public class AnubisWolfSPSoulBar implements HudRenderCallback {
 	private static final Identifier RESOURCE_ID = Identifier.of("my_addon", "form_anubis_wolf_sp_soul_energy");
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
 		if (mc.options.hudHidden || mc.player == null) return;
 
 		PlayerEntity player = mc.player;
@@ -41,10 +42,10 @@ public class AnubisWolfSPSoulBar implements HudRenderCallback {
 				offsetY
 		);
 
-		renderBar(context, tickDelta, pos.getLeft(), pos.getRight(), percent);
+		renderBar(context, tickCounter, pos.getLeft(), pos.getRight(), percent);
 	}
 
-	private void renderBar(DrawContext context, float tickDelta, int x, int y, double percent) {
+	private void renderBar(DrawContext context, RenderTickCounter tickCounter, int x, int y, double percent) {
 		int barWidth = (int) Math.ceil(80 * percent);
 		// Draw Empty
 		context.drawTexture(BarTexEmptyID, x, y, 0, 0, 80, 5, 80, 5);

@@ -95,7 +95,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	}
 
 	private boolean isMist() {
-		return entity.hasStatusEffect(SscAddon.MIST_FORM);
+		return entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY);
 	}
 
 	/** 读取当前雾血值（仅服务端有效） */
@@ -142,7 +142,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 					.filter(BatBlockAttachPower::isAttached).findFirst()
 					.ifPresent(p -> p.detach(player, false));
 		}
-		entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_FORM, effectDuration, 0, false, false, true));
+		entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_FORM_ENTRY, effectDuration, 0, false, false, true));
 		// 原版隐身：FormRenderFeature 在 isInvisible() 时跳过形态模型渲染，从而实现“模型消失”
 		entity.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY, effectDuration, 0, false, false, false));
 		entity.calculateDimensions();
@@ -172,8 +172,8 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 	/** 退出雾化状态：清除雾化与隐身效果，可选播放收束粒子与音效 */
 	private void exitMist(boolean withEffect) {
-		if (entity.hasStatusEffect(SscAddon.MIST_FORM)) {
-			entity.removeStatusEffect(SscAddon.MIST_FORM);
+		if (entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)) {
+			entity.removeStatusEffect(SscAddon.MIST_FORM_ENTRY);
 		}
 		if (entity.hasStatusEffect(StatusEffects.INVISIBILITY)) {
 			entity.removeStatusEffect(StatusEffects.INVISIBILITY);
@@ -238,11 +238,11 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 		chargeStartTime = now;
 		setBlood(getBlood() - BLOOD_BURST_COST);
 		// 蓄力标记：客户端据此将化雾飞行减速 50%
-		entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_CHARGING, CHARGE_DURATION + 5, 0, false, false, false));
+		entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_CHARGING_ENTRY, CHARGE_DURATION + 5, 0, false, false, false));
 		// 防止蓄力期间雾化提前结束：剩余不足则延长 MIST_FORM/隐身至爆破完成
-		StatusEffectInstance mistInst = entity.getStatusEffect(SscAddon.MIST_FORM);
+		StatusEffectInstance mistInst = entity.getStatusEffect(SscAddon.MIST_FORM_ENTRY);
 		if (mistInst == null || mistInst.getDuration() < CHARGE_DURATION + 5) {
-			entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_FORM, CHARGE_DURATION + 5, 0, false, false, true));
+			entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_FORM_ENTRY, CHARGE_DURATION + 5, 0, false, false, true));
 			entity.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY, CHARGE_DURATION + 5, 0, false, false, false));
 		}
 		if (entity.getWorld() instanceof ServerWorld sw) {
@@ -278,14 +278,14 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 		if (entity == null || entity.getWorld().isClient) return;
 
 		// 被 sp悦灵净化：立即中断雾化（含蓄力）并进入冷却
-		if (entity.hasStatusEffect(SscAddon.PURIFIED)) {
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
 			if (isMist()) {
 				exitMist(true);
 				applyCooldown();
 			}
 			charging = false;
-			if (entity.hasStatusEffect(SscAddon.MIST_CHARGING)) {
-				entity.removeStatusEffect(SscAddon.MIST_CHARGING);
+			if (entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) {
+				entity.removeStatusEffect(SscAddon.MIST_CHARGING_ENTRY);
 			}
 			wasMist = false;
 			return;
@@ -299,8 +299,8 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 			spawnChargeConvergence(elapsed);
 			if (elapsed >= CHARGE_DURATION) {
 				charging = false;
-				if (entity.hasStatusEffect(SscAddon.MIST_CHARGING)) {
-					entity.removeStatusEffect(SscAddon.MIST_CHARGING);
+				if (entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) {
+					entity.removeStatusEffect(SscAddon.MIST_CHARGING_ENTRY);
 				}
 				detonate();
 				exitMist(false);
@@ -382,7 +382,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	public void onUse() {
 		if (entity == null || entity.getWorld().isClient) return;
 		// 净化期间禁止施放
-		if (entity.hasStatusEffect(SscAddon.PURIFIED)) return;
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
 
 		long now = entity.getWorld().getTime();
 		if (isMist()) {
@@ -403,8 +403,8 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 		if (entity == null || entity.getWorld().isClient) return;
 		// 形态切换/能力移除时兜底：解除雾化、蓄力与飞行豁免，避免残留作弊飞行
 		charging = false;
-		if (entity.hasStatusEffect(SscAddon.MIST_CHARGING)) {
-			entity.removeStatusEffect(SscAddon.MIST_CHARGING);
+		if (entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) {
+			entity.removeStatusEffect(SscAddon.MIST_CHARGING_ENTRY);
 		}
 		if (isMist()) {
 			exitMist(false);

@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.gui.screen.ingame.HandledScreens;
 import net.minecraft.client.item.ModelPredicateProviderRegistry;
 import net.minecraft.client.render.entity.EmptyEntityRenderer;
@@ -17,6 +18,8 @@ import net.minecraft.client.resource.language.I18n;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ErosionBrandClientState;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
@@ -31,6 +34,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WaterSpearE
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.FluorescentLaserRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WitchFamiliarRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.PotionBagScreen;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,17 +101,17 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// 荧光幼灵「潮汐束缚」守卫者激光：服务端同步被拴目标 entityId，客户端逐帧画光束
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_TIDAL_TETHER,
-				(client, handler, buf, responseSender) -> {
-					int orbId = buf.readVarInt();
-					int count = buf.readVarInt();
+				BytePayload.id(SscAddonNetworking.PACKET_TIDAL_TETHER),
+				(BytePayload bp, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+					int orbId = bp.data().readVarInt();
+					int count = bp.data().readVarInt();
 					if (count < 0 || count > 64) return;
 					int[] ids = new int[count];
-					for (int i = 0; i < count; i++) ids[i] = buf.readVarInt();
-					client.execute(() -> {
-						if (client.world == null) return;
+					for (int i = 0; i < count; i++) ids[i] = bp.data().readVarInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
 						net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.TidalTetherBeamRenderer
-								.update(orbId, ids, client.world.getTime() + 20);
+								.update(orbId, ids, ctx.client().world.getTime() + 20);
 					});
 				});
 		// 逐帧渲染潮汐束缚光束（守卫者激光样式）
@@ -142,12 +146,9 @@ public class SscAddonClient implements ClientModInitializer {
 				cbuf.writeBoolean(cfg.primaryGreyReverse);
 				cbuf.writeBoolean(cfg.accent1GreyReverse);
 				cbuf.writeBoolean(cfg.accent2GreyReverse);
-				net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-						new net.minecraft.util.Identifier(net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric.MOD_ID, "update_custom_color"), cbuf);
+				ClientPlayNetworking.send(new BytePayload(BytePayload.id(Identifier.of(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
 				// 请求服务端把所有在场玩家的形态+皮肤同步过来（修复客机看其它玩家是默认白模型）。
-				net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-						net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_REQUEST_ALL_FORM_SYNC,
-						net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
+				ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_REQUEST_ALL_FORM_SYNC), PacketByteBufs.empty()));
 			} catch (Throwable t) {
 				LOGGER.error("[SSC_ADDON] 跨存档颜色重同步失败", t);
 			}
@@ -157,51 +158,51 @@ public class SscAddonClient implements ClientModInitializer {
 		try { MancianimaCrosshairTracker.register(); } catch (Throwable t) { LOGGER.error("[SSC_ADDON] CrosshairTracker register failed", t); }
 		// 注册「SSCA 进化路线定义同步」接收器：服务端把 routes JSON 同步过来，供进化树 UI（多人）渲染。
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_EVO_ROUTES_SYNC,
-				(client, handler, buf, responseSender) -> {
-					int count = buf.readInt();
+				BytePayload.id(SscAddonNetworking.PACKET_EVO_ROUTES_SYNC),
+				(BytePayload bp, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+					int count = bp.data().readInt();
 					if (count < 0 || count > 1000) return;
 					java.util.Map<String, String> raw = new java.util.LinkedHashMap<>();
 					for (int i = 0; i < count; i++) {
-						String routeId = buf.readString(256);
-						String json = buf.readString(2000000);
+						String routeId = bp.data().readString(256);
+						String json = bp.data().readString(2000000);
 						raw.put(routeId, json);
 					}
-					client.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE.applyClientSync(raw));
+					ctx.client().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE.applyClientSync(raw));
 				});
 		// 注册「广播所有玩家形态」接收器：服务端把在场玩家的 formID + 皮肤数据直接广播过来，
 		// 客机按 UUID 直接写入其它玩家的 nowForm/nowFormID 与 PlayerSkinComponent（颜色/是否启用形态颜色等），
 		// 绕过 CCA 同步的不确定性，修复刚进游戏看其它玩家是「白色人类模型」（enableFormColor 未同步=渲染原版人类模型）。
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_BROADCAST_FORMS,
-				(client, handler, buf, responseSender) -> {
-					int count = buf.readInt();
+				BytePayload.id(SscAddonNetworking.PACKET_BROADCAST_FORMS),
+				(BytePayload bp, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+					int count = bp.data().readInt();
 					if (count < 0 || count > 1000) return; // 防恶意服务端 OOM
 					java.util.List<java.util.UUID> uuids = new java.util.ArrayList<>(count);
 					java.util.List<String> formIds = new java.util.ArrayList<>(count);
 					java.util.List<boolean[]> boolData = new java.util.ArrayList<>(count); // [keepOrig, enableColor, pGrey, a1Grey, a2Grey, enableSound]
 					java.util.List<int[]> colorData = new java.util.ArrayList<>(count);    // [primary, accent1, accent2, eyeA, eyeB] (ABGR)
 					for (int i = 0; i < count; i++) {
-						uuids.add(buf.readUuid());
-						formIds.add(buf.readString());
-						boolean keepOrig = buf.readBoolean();
-						boolean enableColor = buf.readBoolean();
-						int primary = buf.readInt();
-						int accent1 = buf.readInt();
-						int accent2 = buf.readInt();
-						int eyeA = buf.readInt();
-						int eyeB = buf.readInt();
-						boolean pGrey = buf.readBoolean();
-						boolean a1Grey = buf.readBoolean();
-						boolean a2Grey = buf.readBoolean();
-						boolean enableSound = buf.readBoolean();
+						uuids.add(bp.data().readUuid());
+						formIds.add(bp.data().readString());
+						boolean keepOrig = bp.data().readBoolean();
+						boolean enableColor = bp.data().readBoolean();
+						int primary = bp.data().readInt();
+						int accent1 = bp.data().readInt();
+						int accent2 = bp.data().readInt();
+						int eyeA = bp.data().readInt();
+						int eyeB = bp.data().readInt();
+						boolean pGrey = bp.data().readBoolean();
+						boolean a1Grey = bp.data().readBoolean();
+						boolean a2Grey = bp.data().readBoolean();
+						boolean enableSound = bp.data().readBoolean();
 						boolData.add(new boolean[]{keepOrig, enableColor, pGrey, a1Grey, a2Grey, enableSound});
 						colorData.add(new int[]{primary, accent1, accent2, eyeA, eyeB});
 					}
-					client.execute(() -> {
-						if (client.world == null) return;
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
 						for (int i = 0; i < uuids.size(); i++) {
-							net.minecraft.entity.player.PlayerEntity p = client.world.getPlayerByUuid(uuids.get(i));
+							net.minecraft.entity.player.PlayerEntity p = ctx.client().world.getPlayerByUuid(uuids.get(i));
 							if (p == null) continue;
 							// 形态
 							String fidStr = formIds.get(i);
@@ -259,80 +260,80 @@ public class SscAddonClient implements ClientModInitializer {
 				});
 
 		// 注册侵蚀烙印 S2C 同步包接收器
-		ClientPlayNetworking.registerGlobalReceiver(GoldenSandstormErosionBrand.PACKET_BRAND_SYNC, (client, handler, buf, responseSender) -> {
-			int count = buf.readInt();
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(GoldenSandstormErosionBrand.PACKET_BRAND_SYNC), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+			int count = payload.data().readInt();
 			// 安全守卫：防止被劫持服务器发超大 count 导致客机 OOM
 			if (count < 0 || count > 10000) return;
 			java.util.Map<java.util.UUID, String> brands = new java.util.HashMap<>();
 			for (int i = 0; i < count; i++) {
-				java.util.UUID uuid = buf.readUuid();
-				String color = buf.readString();
+				java.util.UUID uuid = payload.data().readUuid();
+				String color = payload.data().readString();
 				brands.put(uuid, color);
 			}
-			client.execute(() -> ErosionBrandClientState.update(brands));
+			ctx.client().execute(() -> ErosionBrandClientState.update(brands));
 		});
 
 		// 注册契灵标记 S2C 同步包接收器
-		ClientPlayNetworking.registerGlobalReceiver(MancianimaMarkManager.PACKET_MARK_SYNC, (client, handler, buf, responseSender) -> {
-			int count = buf.readInt();
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(MancianimaMarkManager.PACKET_MARK_SYNC), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+			int count = payload.data().readInt();
 			// 安全守卫：防止被劫持服务器发超大 count 导致客机 OOM
 			if (count < 0 || count > 10000) return;
 			java.util.Map<java.util.UUID, String> marks = new java.util.HashMap<>();
 			for (int i = 0; i < count; i++) {
-				java.util.UUID uuid = buf.readUuid();
-				String color = buf.readString();
+				java.util.UUID uuid = payload.data().readUuid();
+				String color = payload.data().readString();
 				marks.put(uuid, color);
 			}
-			client.execute(() -> MancianimaMarkClientState.update(marks));
+			ctx.client().execute(() -> MancianimaMarkClientState.update(marks));
 		});
 
 		// 风灵「疾风连爪」：接收爪击阶段+准星条进度，更新客户端镜像
-		ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_CLAW_STATE, (client, handler, buf, responseSender) -> {
-			int phase = buf.readInt();
-			float progress = buf.readFloat();
-			client.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.ClawClientState.update(phase, progress));
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_CLAW_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+			int phase = payload.data().readInt();
+			float progress = payload.data().readFloat();
+			ctx.client().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.ClawClientState.update(phase, progress));
 		});
 
         // 风灵「风之冲刺」：接收阶段+目标悬浮Y，更新客户端镜像（驱动悬浮期绿色落点预览）
-        ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_DASH_STATE, (client, handler, buf, responseSender) -> {
-            int phase = buf.readInt();
-            double targetY = buf.readDouble();
-            client.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.DashClientState.update(phase, targetY));
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_DASH_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+            int phase = payload.data().readInt();
+            double targetY = payload.data().readDouble();
+            ctx.client().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.DashClientState.update(phase, targetY));
         });
 
         // 进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（主机 + 客机一致）
-        ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE, (client, handler, buf, responseSender) -> {
-            java.util.UUID id = buf.readUuid();
-            boolean charging = buf.readBoolean();
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+            java.util.UUID id = payload.data().readUuid();
+            boolean charging = payload.data().readBoolean();
 
-            client.execute(() -> UpgradeAxolotlSpearRenderState.set(id, charging));
+            ctx.client().execute(() -> UpgradeAxolotlSpearRenderState.set(id, charging));
         });
 
 		// 注册白名单 GUI S2C 同步包接收器：收到后打开/刷新 WhitelistManageScreen
-		ClientPlayNetworking.registerGlobalReceiver(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC, (client, handler, buf, responseSender) -> {
-			boolean customMode = buf.readBoolean();
-			int n = buf.readInt();
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+			boolean customMode = payload.data().readBoolean();
+			int n = payload.data().readInt();
 			if (n < 0 || n > 10000) return;
 			java.util.Set<java.util.UUID> set = new java.util.HashSet<>();
-			for (int i = 0; i < n; i++) set.add(buf.readUuid());
-			int m = buf.readInt();
+			for (int i = 0; i < n; i++) set.add(payload.data().readUuid());
+			int m = payload.data().readInt();
 			if (m < 0 || m > 10000) return;
 			java.util.List<net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen.MobEntry> mobs = new java.util.ArrayList<>();
 			for (int i = 0; i < m; i++) {
-				java.util.UUID u = buf.readUuid();
-				String typeId = buf.readString();
+				java.util.UUID u = payload.data().readUuid();
+				String typeId = payload.data().readString();
 				mobs.add(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen.MobEntry(u, typeId.isEmpty() ? null : typeId));
 			}
-			client.execute(() -> {
-				if (client.currentScreen instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen s) {
+			ctx.client().execute(() -> {
+				if (ctx.client().currentScreen instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen s) {
 					s.updateState(set, customMode, mobs);
 				} else {
-					client.setScreen(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen(set, customMode, mobs));
+					ctx.client().setScreen(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen(set, customMode, mobs));
 				}
 			});
 		});
 
-		ItemTooltipCallback.EVENT.register((stack, context, lines) -> {
+		ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {
 			if (stack.getItem() == SscAddon.CORAL_BALL) {
 				addSplitTooltip(lines, "item.ssc_addon.coral_ball.tooltip");
 			}

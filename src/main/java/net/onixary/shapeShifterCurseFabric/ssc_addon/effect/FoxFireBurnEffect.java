@@ -38,10 +38,10 @@ public class FoxFireBurnEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
-		if (entity.hasStatusEffect(SscAddon.PURIFIED)) {
-			entity.removeStatusEffect(SscAddon.FOX_FIRE_BURN);
-			return;
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
+			entity.removeStatusEffect(SscAddon.FOX_FIRE_BURN_ENTRY);
+			return false;
 		}
 
 		if (entity.getWorld().isClient) {
@@ -105,5 +105,6 @@ public class FoxFireBurnEffect extends StatusEffect {
 				}
 			}
 		}
+		return false;
 	}
 }

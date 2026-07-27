@@ -10,6 +10,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FrostStormEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
@@ -118,7 +119,7 @@ public class SnowFoxSpFrostStorm {
         if (data == null) return;
         
         // 检查是否被净化 - 如果有purified效果则取消蓄力
-        if (player.hasStatusEffect(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.PURIFIED)) {
+        if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
             cancelCharging(player);
             return;
         }

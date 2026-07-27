@@ -28,8 +28,8 @@ public class PurifiedEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
-		if (entity.getWorld().isClient) return;
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
+		if (entity.getWorld().isClient) return false;
 
 		// Clear all harmful effects (or all effects except this one)
 		// Since we are iterating while modifying, we need a copy
@@ -37,7 +37,7 @@ public class PurifiedEffect extends StatusEffect {
 
 		for (StatusEffectInstance instance : effects) {
 			// Don't remove self
-			if (instance.getEffectType() == this) continue;
+			if (instance.getEffectType().value() == this) continue;
 
 			// Remove the effect
 			// Note: removeStatusEffect returns boolean, doesn't throw concurrent modification if we iterate over a copy
@@ -49,5 +49,6 @@ public class PurifiedEffect extends StatusEffect {
 			InfectionSporeManager.cureInfection(entity.getUuid());
 			InfectionSporeManager.dissipateCloudsNear(sw, entity.getPos(), InfectionSporeManager.CLOUD_PURIFY_REACH);
 		}
+		return false;
 	}
 }

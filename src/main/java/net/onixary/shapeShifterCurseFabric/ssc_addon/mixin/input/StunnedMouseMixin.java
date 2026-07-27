@@ -14,7 +14,7 @@ public class StunnedMouseMixin {
 	@Inject(method = "updateMouse", at = @At("HEAD"), cancellable = true)
 	private void onUpdateMouse(CallbackInfo ci) {
 		MinecraftClient client = MinecraftClient.getInstance();
-		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN)) {
+		if (client.player != null && client.player.hasStatusEffect(SscAddon.STUN_ENTRY)) {
 			// Prevent camera movement
 			ci.cancel();
 		}

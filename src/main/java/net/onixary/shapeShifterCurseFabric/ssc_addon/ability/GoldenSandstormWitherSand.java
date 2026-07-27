@@ -176,7 +176,7 @@ public class GoldenSandstormWitherSand {
 			if (WhitelistUtils.isProtected(player, target)) continue;
 
 			// 施加致盲效果（3秒）
-			target.addStatusEffect(new StatusEffectInstance(SscAddon.SAND_BLIND, BLIND_DURATION, 0, false, true));
+			target.addStatusEffect(new StatusEffectInstance(SscAddon.SAND_BLIND_ENTRY, BLIND_DURATION, 0, false, true));
 
 			// 叠加1层侵蚀烙印
 			GoldenSandstormErosionBrand.onPlayerAttack(player, target);

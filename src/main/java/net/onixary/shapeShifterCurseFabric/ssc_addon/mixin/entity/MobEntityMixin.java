@@ -80,11 +80,11 @@ public abstract class MobEntityMixin {
 				ci.cancel();
 				return;
 			}
-			if (target.hasStatusEffect(SscAddon.PLAYING_DEAD)) {
+			if (target.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
 				ci.cancel();
 				return;
 			}
-			if (target.hasStatusEffect(SscAddon.TRUE_INVISIBILITY)) {
+			if (target.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) {
 				ci.cancel();
 				return;
 			}
@@ -130,7 +130,7 @@ public abstract class MobEntityMixin {
 		MobEntity mob = (MobEntity) (Object) this;
 
 		// 1. 眩晕逻辑
-		if (mob.hasStatusEffect(SscAddon.STUN)) {
+		if (mob.hasStatusEffect(SscAddon.STUN_ENTRY)) {
 			ci.cancel();
 			return;
 		}
@@ -142,7 +142,7 @@ public abstract class MobEntityMixin {
 		}
 
 		// 2. 真隐身脱战
-		if (target.hasStatusEffect(SscAddon.TRUE_INVISIBILITY)) {
+		if (target.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) {
 			mob.setTarget(null);
 			return;
 		}

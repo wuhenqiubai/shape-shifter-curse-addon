@@ -108,7 +108,7 @@ public final class FluorescentTidalManager {
         // 蓄力阶段推进
         if (s.state == State.CHARGING) {
             // 被净化打断
-            if (player.hasStatusEffect(SscAddon.PURIFIED)) {
+            if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
                 cancelCharge(player, s);
                 return;
             }

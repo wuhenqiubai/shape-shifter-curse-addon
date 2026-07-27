@@ -98,7 +98,7 @@ public class PhantomBellTeleportAction {
 
 					// 4. 执行传送
 					if (bestPos != null) {
-						player.teleport(bestPos.getX() + 0.5, bestPos.getY(), bestPos.getZ() + 0.5);
+						player.teleport(bestPos.getX() + 0.5, bestPos.getY(), bestPos.getZ() + 0.5, false);
 					}
 				}
 		);

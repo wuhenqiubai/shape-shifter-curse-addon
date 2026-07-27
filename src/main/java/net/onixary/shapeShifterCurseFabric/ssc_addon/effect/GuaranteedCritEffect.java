@@ -4,6 +4,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.util.Identifier;
 
 public class GuaranteedCritEffect extends StatusEffect {
 	public GuaranteedCritEffect() {
@@ -11,9 +12,9 @@ public class GuaranteedCritEffect extends StatusEffect {
 		// +25% speed for 3 seconds as well
 		this.addAttributeModifier(
 				EntityAttributes.GENERIC_MOVEMENT_SPEED,
-				"71077713-3984-4786-8800-478950587747",
+				Identifier.of("71077713-3984-4786-8800-478950587747"),
 				0.25,
-				EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+				EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE
 		);
 	}
 }

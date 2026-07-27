@@ -74,7 +74,7 @@ public final class ParasiticAbsorptionManager {
         d.granted += add;
         d.endTick = now + duration;
         // 纯显示图标（到期由本管理器清 absorption）
-        entity.addStatusEffect(new StatusEffectInstance(SscAddon.BAT_ABSORPTION, duration, amplifier, false, true, true));
+        entity.addStatusEffect(new StatusEffectInstance(SscAddon.BAT_ABSORPTION_ENTRY, duration, amplifier, false, true, true));
     }
 
     private static void onWorldTick(ServerWorld world) {

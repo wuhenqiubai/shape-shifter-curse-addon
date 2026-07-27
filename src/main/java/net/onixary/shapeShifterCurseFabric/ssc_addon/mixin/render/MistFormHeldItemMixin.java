@@ -23,8 +23,8 @@ public class MistFormHeldItemMixin {
 												 LivingEntity entity, float limbAngle, float limbDistance,
 												 float tickDelta, float animationProgress, float headYaw, float headPitch,
 												 CallbackInfo ci) {
-		if (entity.hasStatusEffect(SscAddon.MIST_FORM)
-				|| entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY)) {
+		if (entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)
+				|| entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) {
 			ci.cancel();
 		}
 	}

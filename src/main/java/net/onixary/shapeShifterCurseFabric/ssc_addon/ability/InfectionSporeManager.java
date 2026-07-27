@@ -20,6 +20,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import org.joml.Vector3f;
 
@@ -77,7 +78,7 @@ public final class InfectionSporeManager {
         if (target == caster) return;
         // 施加专属「中毒」buff（图标 + 周期扣血，效果同中毒；扣血由 buff 负责，本管理器不再直接伤害）
         target.addStatusEffect(new StatusEffectInstance(
-                net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.BAT_POISON, Math.max(20, durationTicks), 0, false, true, true));
+                SscAddon.BAT_POISON_ENTRY, Math.max(20, durationTicks), 0, false, true, true));
         UUID targetUuid = target.getUuid();
         long now = serverWorld.getTime();
         long newEnd = now + Math.max(20, durationTicks);
@@ -185,7 +186,7 @@ public final class InfectionSporeManager {
             );
             ENTRIES.put(candidate.getUuid(), child);
             candidate.addStatusEffect(new StatusEffectInstance(
-                    net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.BAT_POISON, Math.max(20, remaining), 0, false, true, true));
+                    SscAddon.BAT_POISON_ENTRY, Math.max(20, remaining), 0, false, true, true));
         }
     }
 

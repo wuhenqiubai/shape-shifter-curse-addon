@@ -2,19 +2,27 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon;
 
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
+import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
-import net.minecraft.entity.EntityDimensions;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnGroup;
+import net.fabricmc.loader.api.FabricLoader;
+import net.jackcooper.shapeShifterCurseAddon.event.*;
+import net.minecraft.advancement.criterion.Criteria;
+import net.minecraft.block.jukebox.JukeboxSong;
+import net.minecraft.entity.*;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.item.Item;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
@@ -29,6 +37,7 @@ import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.player_form.NormalForm;
 import net.onixary.shapeShifterCurseFabric.player_form.NormalGroup;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
@@ -39,26 +48,25 @@ import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.No
 import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.SpecialForm;
 import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.InhibitorImmune;
 import static net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.HasSlowFall;
+
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.*;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.command.SscAddonCommands;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.condition.SscAddonConditions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonServerConfig;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.criteria.OnTransformAddonForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.*;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
-import net.minecraft.entity.SpawnRestriction;
 import net.minecraft.world.Heightmap;
 import net.minecraft.item.SpawnEggItem;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.AllayClearMarkerEntity;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.AllayFriendMarkerEntity;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FrostBallEntity;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FrostStormEntity;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.InfectionSporeBombEntity;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.*;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.forms.*;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.*;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.power.SscAddonPowers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.BlizzardTankRechargeRecipe;
@@ -67,58 +75,104 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.ReloadSnowballLaunch
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.InfiniteEnergyPotionRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.SpUpgradeRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.screen.PotionBagScreenHandler;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpMeleeAbility;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpTeleportAttack;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpFrostStorm;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPGroupHeal;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPJukebox;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPTotem;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpDeathDomain;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSoulEnergy;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSummonWolves;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormWitherSand;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.UndeadNeutralState;
 import net.onixary.shapeShifterCurseFabric.additional_power.VirtualTotemPower;
 import io.github.apace100.apoli.component.PowerHolderComponent;
+import net.onixary.shapeShifterCurseFabric.util.CustomEdibleUtils;
+
+import java.util.Collection;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class SscAddon implements ModInitializer {
 
-	// 存储玩家客户端语言设置，用于发送正确语言的消息
-	public static final java.util.concurrent.ConcurrentHashMap<java.util.UUID, String> PLAYER_LANGUAGES = new java.util.concurrent.ConcurrentHashMap<>();
+	public static final RegistryEntry<StatusEffect> FOX_FIRE_BURN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "fox_fire_burn"), new FoxFireBurnEffect());
+	public static final RegistryEntry<StatusEffect> BLUE_FIRE_RING_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "blue_fire_ring"), new BlueFireRingEffect());
+	public static final RegistryEntry<StatusEffect> PLAYING_DEAD_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "playing_dead"), new PlayingDeadEffect());
+	public static final RegistryEntry<StatusEffect> TRUE_INVISIBILITY_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "true_invisibility"), new TrueInvisibilityEffect());
+	public static final RegistryEntry<StatusEffect> PRE_INVISIBILITY_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "pre_invisibility"), new PreInvisibilityEffect());
+	public static final RegistryEntry<StatusEffect> STUN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "stun"), new StunEffect());
+	public static final RegistryEntry<StatusEffect> ROOTED_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "rooted"), new RootedEffect());
+	public static final RegistryEntry<StatusEffect> GUARANTEED_CRIT_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "guaranteed_crit"), new GuaranteedCritEffect());
+	public static final RegistryEntry<StatusEffect> FROST_FREEZE_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_freeze"), new FrostFreezeEffect());
+	public static final RegistryEntry<StatusEffect> FROST_FALL_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_fall"), new FrostFallEffect());
+	public static final RegistryEntry<StatusEffect> PURIFIED_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "purified"), new PurifiedEffect());
+	public static final RegistryEntry<StatusEffect> BAT_REGEN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_regen"), new BatRegenEffect());
+	public static final RegistryEntry<StatusEffect> BAT_POISON_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_poison"), new BatPoisonEffect());
+	public static final RegistryEntry<StatusEffect> BAT_ABSORPTION_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_absorption"), new BatAbsorptionEffect());
+	public static final RegistryEntry<StatusEffect> MIST_FORM_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_form"), new MistFormEffect());
+	public static final RegistryEntry<StatusEffect> MIST_CHARGING_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_charging"), new MistChargingEffect());
+	public static final RegistryEntry<StatusEffect> SAND_BLIND_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "sand_blind"), new SandBlindEffect());
+	public static final RegistryEntry<StatusEffect> DEAFEN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "deafen"), new DeafenEffect());
+	public static final RegistryEntry<StatusEffect> TIDAL_SLOW_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "tidal_slow"), new TidalSlowEffect());
+	public static final RegistryEntry<StatusEffect> EROSION_BRAND_MARKER_1_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_1"), new ErosionBrandMarkerEffect(0xFFD700));
+	public static final RegistryEntry<StatusEffect> EROSION_BRAND_MARKER_2_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_2"), new ErosionBrandMarkerEffect(0xFF8C00));
+	public static final RegistryEntry<StatusEffect> EROSION_BRAND_MARKER_3_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_3"), new ErosionBrandMarkerEffect(0xDC143C));
+	public static final RegistryKey<JukeboxSong> SHAPE_SHIFTERS_DREAM_SONG_KEY =
+			RegistryKey.of(RegistryKeys.JUKEBOX_SONG, Identifier.of("ssc_addon", "shape_shifters_dream"));
 
-	public static final StatusEffect FOX_FIRE_BURN = new FoxFireBurnEffect();
-	public static final StatusEffect BLUE_FIRE_RING = new BlueFireRingEffect();
-	public static final StatusEffect PLAYING_DEAD = new PlayingDeadEffect();
-	public static final StatusEffect TRUE_INVISIBILITY = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.TrueInvisibilityEffect();
-	public static final StatusEffect PRE_INVISIBILITY = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.PreInvisibilityEffect();
-	public static final StatusEffect STUN = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.StunEffect();
-	public static final StatusEffect ROOTED = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.RootedEffect();
-	public static final StatusEffect GUARANTEED_CRIT = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.GuaranteedCritEffect();
-	public static final StatusEffect FROST_FREEZE = new FrostFreezeEffect();
-	public static final StatusEffect FROST_FALL = new FrostFallEffect();
-	public static final StatusEffect PURIFIED = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.PurifiedEffect();
-	public static final StatusEffect BAT_REGEN = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.BatRegenEffect();
-	public static final StatusEffect BAT_POISON = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.BatPoisonEffect();
-	public static final StatusEffect BAT_ABSORPTION = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.BatAbsorptionEffect();
+
+	// 存储玩家客户端语言设置，用于发送正确语言的消息
+	public static final ConcurrentHashMap<UUID, String> PLAYER_LANGUAGES = new ConcurrentHashMap<>();
+
+	public static final StatusEffect FOX_FIRE_BURN = FOX_FIRE_BURN_ENTRY.value();
+	public static final StatusEffect BLUE_FIRE_RING = BLUE_FIRE_RING_ENTRY.value();
+	public static final StatusEffect PLAYING_DEAD = PLAYING_DEAD_ENTRY.value();
+	public static final StatusEffect TRUE_INVISIBILITY = TRUE_INVISIBILITY_ENTRY.value();
+	public static final StatusEffect PRE_INVISIBILITY = PRE_INVISIBILITY_ENTRY.value();
+	public static final StatusEffect STUN = STUN_ENTRY.value();
+	public static final StatusEffect ROOTED = ROOTED_ENTRY.value();
+	public static final StatusEffect GUARANTEED_CRIT = GUARANTEED_CRIT_ENTRY.value();
+	public static final StatusEffect FROST_FREEZE = FROST_FREEZE_ENTRY.value();
+	public static final StatusEffect FROST_FALL = FROST_FALL_ENTRY.value();
+	public static final StatusEffect PURIFIED = PURIFIED_ENTRY.value();
+	public static final StatusEffect BAT_REGEN = BAT_REGEN_ENTRY.value();
+	public static final StatusEffect BAT_POISON = BAT_POISON_ENTRY.value();
+	public static final StatusEffect BAT_ABSORPTION = BAT_ABSORPTION_ENTRY.value();
 	// 幽雾化形 - 雾化状态标记效果
-	public static final StatusEffect MIST_FORM = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.MistFormEffect();
+	public static final StatusEffect MIST_FORM = MIST_FORM_ENTRY.value();
 	// 幽雾化形 - 凝聚爆破蓄力标记效果（客户端据此减速 50%）
-	public static final StatusEffect MIST_CHARGING = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.MistChargingEffect();
-	public static final StatusEffect SAND_BLIND = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.SandBlindEffect();
+	public static final StatusEffect MIST_CHARGING = MIST_CHARGING_ENTRY.value();
+	public static final StatusEffect SAND_BLIND = SAND_BLIND_ENTRY.value();
 	// 失聪：客机 SoundManagerDeafenMixin 据此静音受影响玩家自身的所有声音
-	public static final StatusEffect DEAFEN = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.DeafenEffect();
+	public static final StatusEffect DEAFEN = DEAFEN_ENTRY.value();
 	// 潮汐波动吸附减速（荧光幼灵）- 15% 移速降低
-	public static final StatusEffect TIDAL_SLOW = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.TidalSlowEffect();
+	public static final StatusEffect TIDAL_SLOW = TIDAL_SLOW_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 1层(黄色) */
-	public static final StatusEffect EROSION_BRAND_MARKER_1 = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.ErosionBrandMarkerEffect(0xFFD700);
+	public static final StatusEffect EROSION_BRAND_MARKER_1 = EROSION_BRAND_MARKER_1_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 2层(橙色) */
-	public static final StatusEffect EROSION_BRAND_MARKER_2 = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.ErosionBrandMarkerEffect(0xFF8C00);
+	public static final StatusEffect EROSION_BRAND_MARKER_2 = EROSION_BRAND_MARKER_2_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 3层(红色) */
-	public static final StatusEffect EROSION_BRAND_MARKER_3 = new net.onixary.shapeShifterCurseFabric.ssc_addon.effect.ErosionBrandMarkerEffect(0xDC143C);
+	public static final StatusEffect EROSION_BRAND_MARKER_3 = EROSION_BRAND_MARKER_3_ENTRY.value();
 	public static final Item POTION_BAG = new PotionBagItem(new Item.Settings().maxCount(1));
 	public static final EntityType<FrostBallEntity> FROST_BALL_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
@@ -129,19 +183,19 @@ public class SscAddon implements ModInitializer {
 					.build()
 	);
 	// 进化美西螈「投掷水矛」直线水矛投射物（无重力匀速）
-	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY = Registry.register(
+	public static final EntityType<ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
 			Identifier.of("ssc_addon", "thrown_water_spear"),
-			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity::new)
+			FabricEntityTypeBuilder.<ThrownWaterSpearEntity>create(SpawnGroup.MISC, ThrownWaterSpearEntity::new)
 					.dimensions(EntityDimensions.fixed(0.4f, 0.4f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
 					.build()
 	);
 	// red 狐火火球投射物
-	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity> FOX_FIREBALL_ENTITY = Registry.register(
+	public static final EntityType<FoxFireballEntity> FOX_FIREBALL_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
 			Identifier.of("ssc_addon", "fox_fireball"),
-			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity::new)
+			FabricEntityTypeBuilder.<FoxFireballEntity>create(SpawnGroup.MISC, FoxFireballEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(2)
 					.build()
@@ -156,10 +210,10 @@ public class SscAddon implements ModInitializer {
 					.build()
 	);
 	// 寄生果蝠主技能「灵果寄生」投掷物
-	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile> PARASITIC_SEED_ENTITY = Registry.register(
+	public static final EntityType<ParasiticSeedProjectile> PARASITIC_SEED_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
 			Identifier.of("ssc_addon", "parasitic_seed"),
-			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile::new)
+			FabricEntityTypeBuilder.<ParasiticSeedProjectile>create(SpawnGroup.MISC, ParasiticSeedProjectile::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
 					.build()
@@ -174,19 +228,19 @@ public class SscAddon implements ModInitializer {
 					.build()
 	);
 	// 荧光幼灵 - 潮汐波动粒子球实体
-	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity> TIDAL_ORB_ENTITY = Registry.register(
+	public static final EntityType<TidalOrbEntity> TIDAL_ORB_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
 			Identifier.of("ssc_addon", "tidal_orb"),
-			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity::new)
+			FabricEntityTypeBuilder.<TidalOrbEntity>create(SpawnGroup.MISC, TidalOrbEntity::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeBlocks(64).trackedUpdateRate(1)
 					.build()
 	);
 	// 荧光幼灵 - 法阵激光实体
-	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity> LASER_BEAM_ENTITY = Registry.register(
+	public static final EntityType<LaserBeamEntity> LASER_BEAM_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
 			Identifier.of("ssc_addon", "laser_beam"),
-			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity::new)
+			FabricEntityTypeBuilder.<LaserBeamEntity>create(SpawnGroup.MISC, LaserBeamEntity::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeBlocks(96).trackedUpdateRate(1)
 					.build()
@@ -208,10 +262,10 @@ public class SscAddon implements ModInitializer {
 	public static final Item PHANTOM_BELL = new PhantomBellItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item FROST_AMULET = new FrostAmuletItem(new Item.Settings().maxCount(1).fireproof());
 	// 吸血蝙蝠 / 果蝠 专属饰品（半好半坏）
-	public static final Item BLOOD_GARNET = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodGarnetItem(new Item.Settings().maxCount(1).fireproof());
-	public static final Item BLOODLUST_RING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodlustRingItem(new Item.Settings().maxCount(1).fireproof());
-	public static final Item HUMUS_RING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.HumusRingItem(new Item.Settings().maxCount(1).fireproof());
-	public static final Item TWIN_POD = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.TwinPodItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item BLOOD_GARNET = new BloodGarnetItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item BLOODLUST_RING = new BloodlustRingItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item HUMUS_RING = new HumusRingItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item TWIN_POD = new TwinPodItem(new Item.Settings().maxCount(1).fireproof());
 	public static final RecipeSerializer<RefillMoisturizerRecipe> REFILL_MOISTURIZER_SERIALIZER = new SpecialRecipeSerializer<>(RefillMoisturizerRecipe::new);
 	public static final RecipeSerializer<ReloadSnowballLauncherRecipe> RELOAD_SNOWBALL_LAUNCHER_SERIALIZER = new SpecialRecipeSerializer<>(ReloadSnowballLauncherRecipe::new);
 	public static final RecipeSerializer<BlizzardTankRechargeRecipe> BLIZZARD_TANK_RECHARGE_SERIALIZER = new SpecialRecipeSerializer<>(BlizzardTankRechargeRecipe::new);
@@ -219,23 +273,23 @@ public class SscAddon implements ModInitializer {
 	// 60 durability like wooden sword, auto-consumed over 60 seconds
 	public static final Item WATER_SPEAR = new WaterSpearItem(new Item.Settings().maxCount(1).maxDamage(60));
 	// SP美西螈水矛合成内部冷却（服务端权威）：UUID -> 冷却结束的服务器 tick；与箭冷却条显示同步
-	private static final java.util.Map<java.util.UUID, Long> WATER_SPEAR_CRAFT_CD = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final Map<UUID, Long> WATER_SPEAR_CRAFT_CD = new ConcurrentHashMap<>();
 	private static final int WATER_SPEAR_CRAFT_CD_TICKS = 70; // 3.5 秒（与 Apoli 合成能力 cooldown 对齐；水矛消失后起算）
 	// [DEBUG] 水矛合成监测日志
 	private static final org.slf4j.Logger WS_DBG = org.slf4j.LoggerFactory.getLogger("WaterSpearDebug");
 	// [DEBUG] 每玩家上次水矛数（用于监测水矛出现时刻）
-	private static final java.util.Map<java.util.UUID, Integer> WS_LAST_SPEAR_COUNT = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final Map<UUID, Integer> WS_LAST_SPEAR_COUNT = new ConcurrentHashMap<>();
 	// Evolution Stone
 	public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item CORAL_BALL = new Item(new Item.Settings().maxCount(64));
 	public static final Item ACTIVE_CORAL_NECKLACE = new ActiveCoralNecklaceItem(new Item.Settings().maxCount(1));
 	// 风灵专属项链：加快疾风连爪耐力回复；朔望专属项链：强化九命复活
-	public static final Item WIND_SPIRIT_STAMINA_NECKLACE = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WindSpiritStaminaNecklaceItem(new Item.Settings().maxCount(1));
-	public static final Item NOVA_REVIVE_NECKLACE = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.NovaReviveNecklaceItem(new Item.Settings().maxCount(1));
+	public static final Item WIND_SPIRIT_STAMINA_NECKLACE = new WindSpiritStaminaNecklaceItem(new Item.Settings().maxCount(1));
+	public static final Item NOVA_REVIVE_NECKLACE = new NovaReviveNecklaceItem(new Item.Settings().maxCount(1));
 	public static final Item ANUBIS_CRYSTAL = new AnubisCrystalItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item ANKH_STONE = new AnkhStoneItem(new Item.Settings().maxCount(1).fireproof());
 	// 契灵专属：绑定脚环（feet/aglet 槽，与守御脚环互斥）
-	public static final Item BINDING_ANKLET = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item BINDING_ANKLET = new BindingAnkletItem(new Item.Settings().maxCount(1).fireproof());
 	// SP Golden Sandstorm items
 	public static final Item EROSION_SAND_PRISM = new ErosionSandPrismItem(new Item.Settings().maxCount(1).fireproof());
 	public static final Item WITHERED_SAND_RING = new WitheredSandRingItem(new Item.Settings().maxCount(1).fireproof());
@@ -273,26 +327,27 @@ public class SscAddon implements ModInitializer {
 	// 女巫使魔怪物蛋（主色狐狸沙棕 #D5B48F，次色青蓝 #31C8CC）
 	public static final Item WITCH_FAMILIAR_SPAWN_EGG = new SpawnEggItem(WITCH_FAMILIAR_ENTITY, 0xD5B48F, 0x31C8CC, new Item.Settings());
 	// 无限压缩能量药水（饮用/喷溅/滞留三型；使用后空瓶自充能，效果同压缩能量药水 feed_potion）
-	public static final Item INFINITE_ENERGY_POTION = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
-			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.DRINK);
-	public static final Item INFINITE_ENERGY_POTION_SPLASH = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
-			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.SPLASH);
-	public static final Item INFINITE_ENERGY_POTION_LINGERING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem(
-			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.Type.LINGERING);
+	public static final Item INFINITE_ENERGY_POTION = new InfiniteEnergyPotionItem(
+			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.DRINK);
+	public static final Item INFINITE_ENERGY_POTION_SPLASH = new InfiniteEnergyPotionItem(
+			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.SPLASH);
+	public static final Item INFINITE_ENERGY_POTION_LINGERING = new InfiniteEnergyPotionItem(
+			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.LINGERING);
 	// 凋零药水（饮用/喷溅/滞留三型，任何人可用，凋零II 20秒；瓶身附魔光效）
 	// 堆叠：默认不可叠(maxCount 1)；使魔系叠8 / SP阿努比斯叠3（由 WitherPotionStackMixin 按形态抬高）
-	public static final Item WITHER_POTION = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem(
-			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.DRINK);
-	public static final Item WITHER_POTION_SPLASH = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem(
-			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.SPLASH);
-	public static final Item WITHER_POTION_LINGERING = new net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem(
-			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.LINGERING);
+	public static final Item WITHER_POTION = new WitherPotionItem(
+			new Item.Settings().maxCount(1), WitherPotionItem.Type.DRINK);
+	public static final Item WITHER_POTION_SPLASH = new WitherPotionItem(
+			new Item.Settings().maxCount(1), WitherPotionItem.Type.SPLASH);
+	public static final Item WITHER_POTION_LINGERING = new WitherPotionItem(
+			new Item.Settings().maxCount(1), WitherPotionItem.Type.LINGERING);
 	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SpecialRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
 	// 幻形之梦 音乐唱片（Shape Shifter's Dream）：流式音效 + vanilla 唱片物品，145 秒
 	public static final Identifier SHAPE_SHIFTERS_DREAM_ID = Identifier.of("ssc_addon", "shape_shifters_dream");
 	public static final SoundEvent SHAPE_SHIFTERS_DREAM_EVENT = SoundEvent.of(SHAPE_SHIFTERS_DREAM_ID);
-	public static final Item MUSIC_DISC_SHAPE_SHIFTERS_DREAM = new net.minecraft.item.MusicDiscItem(
-			15, SHAPE_SHIFTERS_DREAM_EVENT, new Item.Settings().maxCount(1).rarity(net.minecraft.util.Rarity.RARE), 145);
+	public static final Item MUSIC_DISC_SHAPE_SHIFTERS_DREAM =
+			new Item(new Item.Settings().maxCount(1).rarity(net.minecraft.util.Rarity.RARE)
+					.jukeboxPlayable(SHAPE_SHIFTERS_DREAM_SONG_KEY));
 	public static final ItemGroup SSC_ADDON_GROUP = Registry.register(Registries.ITEM_GROUP,
 			Identifier.of("ssc_addon", "group"),
 			FabricItemGroup.builder()
@@ -345,8 +400,9 @@ public class SscAddon implements ModInitializer {
 	public static final SoundEvent ALLAY_SPEED_MUSIC_EVENT = SoundEvent.of(ALLAY_SPEED_MUSIC_ID);
 
 	// 附属形态切换成就触发器（统一一个 Criterion，不同 advancement JSON 用 form_id 条件区分）
-	public static final net.onixary.shapeShifterCurseFabric.ssc_addon.criteria.OnTransformAddonForm ON_TRANSFORM_ADDON_FORM =
-			net.minecraft.advancement.criterion.Criteria.register(new net.onixary.shapeShifterCurseFabric.ssc_addon.criteria.OnTransformAddonForm());
+	public static final OnTransformAddonForm ON_TRANSFORM_ADDON_FORM =
+			Registry.register(Registries.CRITERION, OnTransformAddonForm.ID, new OnTransformAddonForm());
+
 
 	@Override
 	public void onInitialize() {
@@ -366,7 +422,6 @@ public class SscAddon implements ModInitializer {
 
 		// 新代码
 		registerConfig();
-		registerStatusEffects();
 		registerItems();
 		registerRecipeSerializers();
 		registerSoundEvents();
@@ -379,21 +434,21 @@ public class SscAddon implements ModInitializer {
 		registerPlayerEventHandlers();
 		registerStunOrphanCleanup();
 		// 风灵被动：落地风涌（事件监听）；风压领域由 mixin（WindSpiritProjectilePressureMixin）驱动
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager.register();
+		WindSpiritLandingSurgeManager.register();
 		registerFeralBodyYawSync();
 		registerServerLifecycleHandlers();
 		registerMancianimaEvents();
 		AnubisWolfSpSoulEnergy.registerEvents();
 		GoldenSandstormRegen.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.register();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager.register();
+		MancianimaMarkManager.register();
+		MoonScarStoryManager.register();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.story.TideSpiritStoryManager.register();
 		// 原版官方事件监听（由 mixin 迁移而来）：诅咒之月 SP 形态提示 + 附属形态变身成就
-		net.jackcooper.shapeShifterCurseAddon.event.CursedMoonSpMessageHandler.register();
-		net.jackcooper.shapeShifterCurseAddon.event.AddonFormAdvancementHandler.register();
-		net.jackcooper.shapeShifterCurseAddon.event.VillagerTradeGuardHandler.register();
-		net.jackcooper.shapeShifterCurseAddon.event.FluorescentDodgeHandler.register();
-		net.jackcooper.shapeShifterCurseAddon.event.StorySleepTimeGuardHandler.register();
+		CursedMoonSpMessageHandler.register();
+		AddonFormAdvancementHandler.register();
+		VillagerTradeGuardHandler.register();
+		FluorescentDodgeHandler.register();
+		StorySleepTimeGuardHandler.register();
 		// SSCA 进化路线数据驱动加载器（datapack reload，扫描 data/<ns>/ssca_evolution/routes/*.json）
 		net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.SERVER_DATA)
 				.registerReloadListener(net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE);
@@ -404,31 +459,6 @@ public class SscAddon implements ModInitializer {
 	private void registerConfig() {
 		AutoConfig.register(SSCAddonClientConfig.class, GsonConfigSerializer::new);
 		AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
-	}
-
-	private void registerStatusEffects() {
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "fox_fire_burn"), FOX_FIRE_BURN);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "playing_dead"), PLAYING_DEAD);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "blue_fire_ring"), BLUE_FIRE_RING);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "true_invisibility"), TRUE_INVISIBILITY);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "pre_invisibility"), PRE_INVISIBILITY);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "stun"), STUN);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "rooted"), ROOTED);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "guaranteed_crit"), GUARANTEED_CRIT);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_freeze"), FROST_FREEZE);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_fall"), FROST_FALL);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "purified"), PURIFIED);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_regen"), BAT_REGEN);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_poison"), BAT_POISON);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_absorption"), BAT_ABSORPTION);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_form"), MIST_FORM);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_charging"), MIST_CHARGING);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "sand_blind"), SAND_BLIND);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "deafen"), DEAFEN);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_1"), EROSION_BRAND_MARKER_1);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_2"), EROSION_BRAND_MARKER_2);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_3"), EROSION_BRAND_MARKER_3);
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "tidal_slow"), TIDAL_SLOW);
 	}
 
 	private void registerItems() {
@@ -456,7 +486,7 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "anubis_crystal"), ANUBIS_CRYSTAL);
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "ankh_stone"), ANKH_STONE);
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "binding_anklet"), BINDING_ANKLET);
-		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem.registerLootTable();
+		BindingAnkletItem.registerLootTable();
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "erosion_sand_prism"), EROSION_SAND_PRISM);
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "withered_sand_ring"), WITHERED_SAND_RING);
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "allay_heal_wand"), ALLAY_HEAL_WAND);
@@ -501,24 +531,24 @@ public class SscAddon implements ModInitializer {
 		SscAddonConditions.register();
 		SscAddonPowers.register();
 		SscAddonNetworking.registerServerReceivers();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPTotem.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticSeedFieldManager.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticCombatTracker.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticAbsorptionManager.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticSeedEnergyRegen.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NineLivesManager.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NovaSkillManager.init();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SeedEnergyEatingHandler.register();
+		StoryBookLoot.init();
+		AllaySPTotem.init();
+		InfectionSporeManager.init();
+		ParasiticSeedFieldManager.init();
+		ParasiticCombatTracker.init();
+		ParasiticAbsorptionManager.init();
+		ParasiticSeedEnergyRegen.init();
+		NineLivesManager.init();
+		NovaSkillManager.init();
+		SeedEnergyEatingHandler.register();
 		LifesavingCatTailItem.registerLootTable();
 		AnkhStoneItem.registerLootTable();
 		AnubisCrystalItem.registerLootTable();
 		ErosionSandPrismItem.registerLootTable();
 		WitheredSandRingItem.registerLootTable();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodGarnetItem.registerLootTable();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BloodlustRingItem.registerLootTable();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.item.HumusRingItem.registerLootTable();
+		BloodGarnetItem.registerLootTable();
+		BloodlustRingItem.registerLootTable();
+		HumusRingItem.registerLootTable();
 	}
 
 	private void registerForms() {
@@ -680,25 +710,25 @@ public class SscAddon implements ModInitializer {
 	}
 
 	private void registerTickHandlers() {
-		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.START_WORLD_TICK.register(world -> {
+		ServerTickEvents.START_WORLD_TICK.register(world -> {
 			// 在服务器线程上处理断线玩家的领域方块还原
-			if (world.getRegistryKey() == net.minecraft.world.World.OVERWORLD) {
+			if (world.getRegistryKey() == World.OVERWORLD) {
 				AnubisWolfSpDeathDomain.tickCleanup();
 				// 契灵：每秒清理过期的恐惧减速 modifier
 				if (world.getServer().getTicks() % 20 == 0) {
-					net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive
+					MancianimaPassive
 							.serverGlobalFleeCleanup(world.getServer());
 					// 契灵劫掠军组生命周期推进（LINGER → MARCH → 脱适清理）
-					net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive
+					MancianimaPassive
 							.tickRaiderGroups(world.getServer());
 				}
 			}
-			for (net.minecraft.server.network.ServerPlayerEntity player : world.getPlayers()) {
+			for (ServerPlayerEntity player : world.getPlayers()) {
 				// 修复局域网多人游戏中远程玩家的自定义可食用物品Map未在服务端刷新的问题
 				// 原版mod在集成服务器(EnvType.CLIENT)环境下跳过了OnServerTick，导致非主机玩家无法食用自定义食物（如悦灵吃紫水晶）
-				if (net.fabricmc.loader.api.FabricLoader.getInstance().getEnvironmentType() == net.fabricmc.api.EnvType.CLIENT
+				if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT
 						&& player.age % 100 == 0) {
-					net.onixary.shapeShifterCurseFabric.util.CustomEdibleUtils.ReloadPlayerCustomEdible(player);
+					CustomEdibleUtils.ReloadPlayerCustomEdible(player);
 				}
 				SnowFoxSpMeleeAbility.tick(player);
 				SnowFoxSpTeleportAttack.tick(player);
@@ -710,27 +740,27 @@ public class SscAddon implements ModInitializer {
 				GoldenSandstormErosionBrand.tick(player);
 				GoldenSandstormWitherSand.tick(player);
 				GoldenSandstormRegen.tick(player);
-				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.tick(player);
-				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.PlayDeadAbsorptionManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.tick(player);
-			// 冥裁者凋零阶梯 / 凋零抗性追踪（凋零持续时长分层 + tick 跳过计数）
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.tick(player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager.tickPlayer(player);
+				BatDesmodusBloodThirst.tick(player);
+				MancianimaPassive.tick(player);
+				VortexChargeManager.tick(player);
+				WindSpiritClawManager.tick(player);
+				WindDashManager.tick(player);
+				WindSpiritLandingSurgeManager.tick(player);
+				WaterSpearLeapManager.tick(player);
+				VortexGuideManager.tick(player);
+				AxolotlWaterSpurtHandler.tick(player);
+				PlayDeadAbsorptionManager.tick(player);
+				FluorescentTidalManager.tick(player);
+				// 冥裁者凋零阶梯 / 凋零抗性追踪（凋零持续时长分层 + tick 跳过计数）
+				WitherFrenzyManager.tick(player);
+				EvolutionManager.tickPlayer(player);
 		}
 	});
 
 	// END_SERVER_TICK：荧光幼灵技能 pendingCd 补设（球/盾消失后回调无法直接拿到 player）
 	net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
-		java.util.Collection<net.minecraft.server.network.ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
-		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.tickPendingCd(players);
+		Collection<ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
+		FluorescentTidalManager.tickPendingCd(players);
 	});
 }
 
@@ -779,7 +809,7 @@ public class SscAddon implements ModInitializer {
 						WS_DBG.warn("[WS-CD] 水矛消失 @tick {} → 重启合成冷却(从消失起算 {}t)", wsT, WATER_SPEAR_CRAFT_CD_TICKS);
 					}
 				}
-				if (player.hasStatusEffect(STUN)) continue;
+				if (player.hasStatusEffect(STUN_ENTRY)) continue;
 				net.minecraft.entity.attribute.EntityAttributeInstance atk =
 						player.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);
 				if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {
@@ -845,9 +875,9 @@ public class SscAddon implements ModInitializer {
 			GoldenSandstormErosionBrand.clearAll();
 			GoldenSandstormWitherSand.clearAll(server);
 			GoldenSandstormRegen.clearAll();
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.clearAll();
+			BatDesmodusBloodThirst.clearAll();
 			UndeadNeutralState.clearAll();
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.clearAll();
+			MancianimaPassive.clearAll();
 			net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions.clearAll();
 			System.out.println("[SSC_ADDON] SERVER_STARTING ability state cleared");
 		});
@@ -874,9 +904,9 @@ public class SscAddon implements ModInitializer {
 			GoldenSandstormErosionBrand.clearAll();
 			GoldenSandstormWitherSand.clearAll(server);
 			GoldenSandstormRegen.clearAll();
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.clearAll();
+			BatDesmodusBloodThirst.clearAll();
 			UndeadNeutralState.clearAll();
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.clearAll();
+			MancianimaPassive.clearAll();
 			net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions.clearAll();
 			System.out.println("[SSC_ADDON] END_DATA_PACK_RELOAD ability state cleared");
 		});
@@ -890,13 +920,13 @@ public class SscAddon implements ModInitializer {
 	private void registerMancianimaEvents() {
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			// 1. 袭击目标死亡检测
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.onAssaultTargetDeath(entity);
+			MancianimaPassive.onAssaultTargetDeath(entity);
 			// 2. 村民/商人 被契灵击杀 → 掉落
 			if (entity instanceof net.minecraft.entity.passive.MerchantEntity merchant
 					&& source.getAttacker() instanceof net.minecraft.server.network.ServerPlayerEntity killer
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(killer,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) {
-				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive
+				MancianimaPassive
 						.onMerchantKilledByMancianima(merchant, killer);
 			}
 		});
@@ -939,13 +969,14 @@ public class SscAddon implements ModInitializer {
 			}
 			net.minecraft.block.BlockState state = world.getBlockState(hitResult.getBlockPos());
 			if (!(state.getBlock() instanceof net.minecraft.block.BellBlock)) return net.minecraft.util.ActionResult.PASS;
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.tryTriggerAssaultByBell(sp);
+			MancianimaPassive.tryTriggerAssaultByBell(sp);
 			// 让钟声照常播放
 			return net.minecraft.util.ActionResult.PASS;
 		});
 
 		// 吸血蝙蝠血雾期间禁用一切右键交互（用物品/放方块/与生物互动/吃喝/盾牌副手等）
-		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {			if (player.hasStatusEffect(MIST_FORM)
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+			if (player.hasStatusEffect(MIST_FORM_ENTRY)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
 				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
@@ -1038,7 +1069,7 @@ public class SscAddon implements ModInitializer {
 			return net.minecraft.util.ActionResult.PASS;
 		});
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			if (player.hasStatusEffect(MIST_FORM)
+			if (player.hasStatusEffect(MIST_FORM_ENTRY)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
 				return net.minecraft.util.ActionResult.FAIL;
@@ -1046,7 +1077,7 @@ public class SscAddon implements ModInitializer {
 			return net.minecraft.util.ActionResult.PASS;
 		});
 		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-			if (player.hasStatusEffect(MIST_FORM)
+			if (player.hasStatusEffect(MIST_FORM_ENTRY)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
 				return net.minecraft.util.ActionResult.FAIL;
@@ -1055,7 +1086,7 @@ public class SscAddon implements ModInitializer {
 		});
 		// 同时禁用左键破坏方块
 		net.fabricmc.fabric.api.event.player.AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {
-			if (player.hasStatusEffect(MIST_FORM)
+			if (player.hasStatusEffect(MIST_FORM_ENTRY)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
 				return net.minecraft.util.ActionResult.FAIL;
@@ -1064,7 +1095,7 @@ public class SscAddon implements ModInitializer {
 		});
 		// 禁用左键攻击实体（含挥剑/普攻起手动作本身）
 		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-			if (player.hasStatusEffect(MIST_FORM)
+			if (player.hasStatusEffect(MIST_FORM_ENTRY)
 					&& net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils.isForm(player,
 							net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.BAT_DESMODUS)) {
 				return net.minecraft.util.ActionResult.FAIL;
@@ -1081,7 +1112,7 @@ public class SscAddon implements ModInitializer {
 	 */
 	private void registerEntitySpawnHandlers() {
 		// 野外自然生成（末影人权重10的一半=5）
-		SpawnRestriction.register(WITCH_FAMILIAR_ENTITY, SpawnRestriction.Location.ON_GROUND,
+		SpawnRestriction.register(WITCH_FAMILIAR_ENTITY, SpawnLocationTypes.ON_GROUND,
 				Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, HostileEntity::canSpawnInDark);
 		BiomeModifications.addSpawn(
 				BiomeSelectors.foundInOverworld(),
@@ -1150,14 +1181,14 @@ public class SscAddon implements ModInitializer {
 			// 重连/换维度回归后：强制把契灵标记 + 金沙岚侵蚀印记状态重新同步给客户端，
 			// 避免重连后客户端 HUD/渲染缓存为空，直到下一次状态变更才被动恢复。
 			server.execute(() -> {
-				try { net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.resyncToPlayer(player); } catch (Throwable ignored) {}
-				try { net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand.resyncToPlayer(player); } catch (Throwable ignored) {}
+				try { MancianimaMarkManager.resyncToPlayer(player); } catch (Throwable ignored) {}
+				try { GoldenSandstormErosionBrand.resyncToPlayer(player); } catch (Throwable ignored) {}
 			});
 			String welcomeTag = "ssc_addon_welcomed";
 			if (!player.getCommandTags().contains(welcomeTag)) {
 				player.addCommandTag(welcomeTag);
-				final java.util.UUID playerUuid = player.getUuid();
-				java.util.concurrent.CompletableFuture.delayedExecutor(3, java.util.concurrent.TimeUnit.SECONDS)
+				final UUID playerUuid = player.getUuid();
+				CompletableFuture.delayedExecutor(3, TimeUnit.SECONDS)
 						.execute(() -> {
 							// 3 秒延迟到达时服务端可能已关闭/重启 —— 防御性检查，避免 IllegalStateException
 							if (!server.isRunning()) return;
@@ -1168,7 +1199,7 @@ public class SscAddon implements ModInitializer {
 							String wikiUrl = "https://www.mcmod.cn/class/24327.html";
 							// 根据玩家客户端语言选择显示文本
 							String lang = PLAYER_LANGUAGES.getOrDefault(playerUuid, "en_us");
-							boolean isChinese = lang.toLowerCase(java.util.Locale.ROOT).startsWith("zh");
+							boolean isChinese = lang.toLowerCase(Locale.ROOT).startsWith("zh");
 							MutableText githubLink = Text.literal(url)
 									.setStyle(Style.EMPTY
 											.withColor(Formatting.AQUA)
@@ -1224,13 +1255,13 @@ public class SscAddon implements ModInitializer {
 
 		// 进化美西螈「投掷水矛」蓄力期：服务端禁用右键放置方块 / 使用方块与物品（蓄力时不能做其它交互）
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			if (!world.isClient && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUuid())) {
+			if (!world.isClient && WaterSpearLeapManager.isCharging(player.getUuid())) {
 				return net.minecraft.util.ActionResult.FAIL;
 			}
 			return net.minecraft.util.ActionResult.PASS;
 		});
 		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (!world.isClient && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUuid())) {
+			if (!world.isClient && WaterSpearLeapManager.isCharging(player.getUuid())) {
 				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
 			}
 			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
@@ -1240,17 +1271,17 @@ public class SscAddon implements ModInitializer {
 		// 玩家断线时清理所有静态状态Map，防止内存泄漏和重连后状态错乱
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 
-			java.util.UUID uuid = handler.player.getUuid();
+			UUID uuid = handler.player.getUuid();
 			System.out.println("[SSC_ADDON] DISCONNECT event fired for player: " + handler.player.getName().getString());
 			SnowFoxSpMeleeAbility.clearPlayer(uuid);
 			SnowFoxSpTeleportAttack.clearPlayer(uuid);
 			SnowFoxSpFrostStorm.clearPlayer(uuid);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.onPlayerDisconnect(handler.player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.onPlayerDisconnect(handler.player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager.onPlayerDisconnect(handler.player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.onPlayerDisconnect(handler.player);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.onPlayerDisconnect(uuid);
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler.onPlayerDisconnect(uuid);
+			WindSpiritClawManager.onPlayerDisconnect(handler.player);
+			WindDashManager.onPlayerDisconnect(handler.player);
+			WindSpiritLandingSurgeManager.onPlayerDisconnect(handler.player);
+			WaterSpearLeapManager.onPlayerDisconnect(handler.player);
+			VortexGuideManager.onPlayerDisconnect(uuid);
+			AxolotlWaterSpurtHandler.onPlayerDisconnect(uuid);
 			AnubisWolfSpDeathDomain.clearPlayer(handler.player);
 			AnubisWolfSpSummonWolves.clearPlayer(uuid);
 			AllaySPTotem.clearPlayer(handler.player);
@@ -1265,7 +1296,7 @@ public class SscAddon implements ModInitializer {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions.clearPlayer(uuid);
 			PLAYER_LANGUAGES.remove(uuid);
 			// 契灵：清理袭击 bossBar + raid 状态，防止 bossBar 残留与 Map 泄漏
-			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive.onPlayerDisconnect(uuid);
+			MancianimaPassive.onPlayerDisconnect(uuid);
 			// 白名单 GUI 限频表：移除退出玩家的时间戳，防止僵尸 UUID 积累
 			net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.onPlayerDisconnect(uuid);
 			System.out.println("[SSC_ADDON] DISCONNECT cleanup completed");

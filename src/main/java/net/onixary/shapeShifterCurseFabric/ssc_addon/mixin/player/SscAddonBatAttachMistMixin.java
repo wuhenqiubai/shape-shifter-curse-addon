@@ -22,7 +22,7 @@ public class SscAddonBatAttachMistMixin {
     @Inject(method = "tryAttach", at = @At("HEAD"), cancellable = true)
     private void sscAddon$disableAttachInMist(PlayerEntity player, BlockHitResult hitResult, CallbackInfoReturnable<Boolean> cir) {
         // 血雾化形期间禁止右键贴墙攀爬
-        if (player.hasStatusEffect(SscAddon.MIST_FORM)) {
+        if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)) {
             cir.setReturnValue(false);
         }
     }

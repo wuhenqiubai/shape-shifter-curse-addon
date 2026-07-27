@@ -1,5 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
+import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -21,12 +22,14 @@ public final class MancianimaAssaultState extends PersistentState {
 
 	public static MancianimaAssaultState get(MinecraftServer server) {
 		return server.getOverworld().getPersistentStateManager().getOrCreate(
-				MancianimaAssaultState::fromNbt,
-				MancianimaAssaultState::new,
-				KEY);
+					new PersistentState.Type<>(
+							MancianimaAssaultState::new,
+							MancianimaAssaultState::fromNbt,
+							DataFixTypes.LEVEL),
+					KEY);
 	}
 
-	public static MancianimaAssaultState fromNbt(NbtCompound nbt) {
+	public static MancianimaAssaultState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
 		MancianimaAssaultState s = new MancianimaAssaultState();
 		NbtList list = nbt.getList("last_roll", NbtElement.COMPOUND_TYPE);
 		for (NbtElement e : list) {

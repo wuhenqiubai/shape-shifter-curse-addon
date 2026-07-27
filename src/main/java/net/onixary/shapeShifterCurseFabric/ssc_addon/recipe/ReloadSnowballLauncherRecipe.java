@@ -7,15 +7,14 @@ import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
 import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.SnowballLauncherItem;
 
 public class ReloadSnowballLauncherRecipe extends SpecialCraftingRecipe {
 
-	public ReloadSnowballLauncherRecipe(Identifier id, CraftingRecipeCategory category) {
-		super(id, category);
+	public ReloadSnowballLauncherRecipe(CraftingRecipeCategory category) {
+		super(category);
 	}
 
 	@Override

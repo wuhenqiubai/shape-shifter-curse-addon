@@ -89,7 +89,7 @@ public final class PalettePreviewRenderer {
         entity.headYaw = entity.getYaw();
         entity.prevHeadYaw = entity.getYaw();
         try {
-            InventoryScreen.drawEntity(context, x, y, size, body, head, entity);
+            InventoryScreen.drawEntity(context, (float)x, (float)y, size, new org.joml.Vector3f(0.0f, entity.getHeight() / 2.0f, 0.0f), body, head, entity);
         } finally {
             entity.bodyYaw = bh;
             entity.prevBodyYaw = pby;

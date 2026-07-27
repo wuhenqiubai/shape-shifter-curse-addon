@@ -16,7 +16,7 @@ public abstract class SoundManagerDeafenMixin {
 	@Inject(method = "play(Lnet/minecraft/client/sound/SoundInstance;)V", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$deafenMute(SoundInstance sound, CallbackInfo ci) {
 		PlayerEntity player = MinecraftClient.getInstance().player;
-		if (player != null && player.hasStatusEffect(SscAddon.DEAFEN)) {
+		if (player != null && player.hasStatusEffect(SscAddon.DEAFEN_ENTRY)) {
 			ci.cancel();
 		}
 	}

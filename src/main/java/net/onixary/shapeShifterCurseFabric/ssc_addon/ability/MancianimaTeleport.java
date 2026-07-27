@@ -120,7 +120,7 @@ public final class MancianimaTeleport {
 				SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.2f);
 
 		// 执行传送（保留视角方向）
-		player.teleport(targetFeet.x, targetFeet.y, targetFeet.z);
+		player.teleport(world, targetFeet.x, targetFeet.y, targetFeet.z, player.getYaw(), player.getPitch());
 
 		// 落点粒子 + 音效（对周围所有玩家可见/可听）
 		ParticleUtils.spawnParticles(world, ParticleTypes.PORTAL,
@@ -192,7 +192,7 @@ public final class MancianimaTeleport {
 				marker.getX(), marker.getY() + 1.0, marker.getZ(),
 				40, 0.3, 0.8, 0.3, 0.6);
 		// 传送
-		marker.teleport(landing.x, landing.y, landing.z);
+		marker.teleport(world, landing.x, landing.y, landing.z, marker.getYaw(), marker.getPitch());
 		// 让契灵看向目标
 		double dx = target.getX() - landing.x;
 		double dz = target.getZ() - landing.z;

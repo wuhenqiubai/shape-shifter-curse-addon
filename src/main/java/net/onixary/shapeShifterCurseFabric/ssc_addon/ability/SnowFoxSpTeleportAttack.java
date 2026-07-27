@@ -100,7 +100,7 @@ public class SnowFoxSpTeleportAttack {
 		TeleportAttackData data = ATTACKING_PLAYERS.get(player.getUuid());
 		if (data == null) return;
 
-		if (player.hasStatusEffect(SscAddon.PURIFIED)) {
+		if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
 			returnToOrigin(player, data);
 			ATTACKING_PLAYERS.remove(player.getUuid());
 			return;
@@ -140,7 +140,7 @@ public class SnowFoxSpTeleportAttack {
 		Vec3d targetLookDir = target.getRotationVector().normalize();
 		Vec3d behindPos = targetPos.subtract(targetLookDir.multiply(1.5));
 
-		player.teleport(behindPos.x, behindPos.y, behindPos.z);
+		player.teleport((ServerWorld) player.getWorld(), behindPos.x, behindPos.y, behindPos.z, player.getYaw(), player.getPitch());
 
 		Vec3d toTarget = targetPos.subtract(behindPos).normalize();
 		float yaw = (float) Math.toDegrees(Math.atan2(-toTarget.x, toTarget.z));
@@ -160,7 +160,7 @@ public class SnowFoxSpTeleportAttack {
 
 		float damage = BASE_DAMAGE;
 
-		StatusEffectInstance frostEffect = target.getStatusEffect(SscAddon.FROST_FREEZE);
+		StatusEffectInstance frostEffect = target.getStatusEffect(SscAddon.FROST_FREEZE_ENTRY);
 		if (frostEffect != null) {
 			damage += BONUS_DAMAGE;
 		}
@@ -188,7 +188,7 @@ public class SnowFoxSpTeleportAttack {
 	 * 返回原位
 	 */
 	private static void returnToOrigin(ServerPlayerEntity player, TeleportAttackData data) {
-		player.teleport(data.originalPos.x, data.originalPos.y, data.originalPos.z);
+		player.teleport((ServerWorld) player.getWorld(), data.originalPos.x, data.originalPos.y, data.originalPos.z, player.getYaw(), player.getPitch());
 		player.setYaw(data.originalYaw);
 		player.setPitch(data.originalPitch);
 		player.setVelocity(0, 0, 0);

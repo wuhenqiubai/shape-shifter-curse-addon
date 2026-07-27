@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -58,7 +59,7 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 	private int ticksDelta = 1;
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
 		if (mc.options.hudHidden || mc.player == null) return;
 
 		SSCAddonClientConfig config = SSCAddonConfig.client();

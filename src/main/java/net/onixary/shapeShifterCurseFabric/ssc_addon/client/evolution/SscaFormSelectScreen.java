@@ -14,6 +14,7 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionNode;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRoute;
@@ -30,7 +31,6 @@ import java.util.List;
  * 点击「选择此形态」即发包让服务端走 SSCA 进化路线并播放进化动画。</p>
  *
  * <p><b>当前阶段</b>：SSCA 进化形态只有「进化使魔」一个，故只有 1 页；界面已做成可翻页框架，
- * 以后在 {@link #FORMS} 列表追加形态即可自动支持翻页。</p>
  */
 public class SscaFormSelectScreen extends Screen {
 
@@ -176,14 +176,14 @@ public class SscaFormSelectScreen extends Screen {
         StartForm form = forms.get(page);
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(form.formId.toString());
-        ClientPlayNetworking.send(SscAddonNetworking.PACKET_SSCA_START_ROUTE, buf);
+        ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SSCA_START_ROUTE), buf));
         // 关闭所有界面，让玩家看到进化动画
         MinecraftClient.getInstance().setScreen(null);
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx);
+        this.renderBackground(ctx, mouseX, mouseY, delta);
 
         int px = panelX();
         int py = panelY();

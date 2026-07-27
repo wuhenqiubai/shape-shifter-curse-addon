@@ -5,6 +5,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.FlyingItemEntity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
@@ -15,6 +16,7 @@ import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -76,7 +78,7 @@ public class FrostBallEntity extends ProjectileEntity implements FlyingItemEntit
 	}
 
 	@Override
-	protected void initDataTracker() {
+	protected void initDataTracker(DataTracker.Builder builder) {
 		// 不需要额外的数据追踪器
 	}
 
@@ -165,7 +167,7 @@ public class FrostBallEntity extends ProjectileEntity implements FlyingItemEntit
 			}
 			// 施加霜降效果
 			livingTarget.addStatusEffect(new StatusEffectInstance(
-					SscAddon.FROST_FALL,
+					SscAddon.FROST_FALL_ENTRY,
 					FROST_FALL_DURATION,
 					0,
 					false,
@@ -256,8 +258,8 @@ public class FrostBallEntity extends ProjectileEntity implements FlyingItemEntit
 	}
 
 	@Override
-	public Packet<ClientPlayPacketListener> createSpawnPacket() {
-		return new EntitySpawnS2CPacket(this);
+	public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+		return new EntitySpawnS2CPacket(this, entityTrackerEntry);
 	}
 
 	/**

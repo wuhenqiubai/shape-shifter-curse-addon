@@ -76,7 +76,7 @@ public class ParasiticSporeBombPower extends ActiveCooldownPower {
     public void onUse() {
         if (!(entity instanceof ServerPlayerEntity caster)) return;
         if (caster.getWorld().isClient) return;
-        if (caster.hasStatusEffect(SscAddon.PURIFIED)) return;
+        if (caster.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
         // 双重保险：避免 Apoli 内部 use 状态异常时连按穿透
         if (entity.getWorld().getTime() < internalCooldownEndTime) return;
 

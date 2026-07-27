@@ -4,6 +4,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.util.Identifier;
 
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ public class RootedEffect extends StatusEffect {
 	public RootedEffect() {
 		super(StatusEffectCategory.NEUTRAL, 0x33CCFF);
 		this.addAttributeModifier(EntityAttributes.GENERIC_MOVEMENT_SPEED,
-				SPEED_MODIFIER_UUID.toString(), -1.0, EntityAttributeModifier.Operation.MULTIPLY_TOTAL);
+				Identifier.of(SPEED_MODIFIER_UUID.toString()), -1.0, EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE);
 	}
 
 	@Override

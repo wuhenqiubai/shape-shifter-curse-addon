@@ -1,15 +1,19 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.entity;
 
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.data.DataTracker;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -18,7 +22,9 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
@@ -116,7 +122,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
     }
 
     @Override
-    protected void initDataTracker() {
+    protected void initDataTracker(DataTracker.Builder builder) {
         this.dataTracker.startTracking(TETHER_ACTIVE, false);
     }
 
@@ -344,8 +350,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
             buf.writeVarInt(this.getId());
             buf.writeVarInt(ids.size());
             for (int i : ids) buf.writeVarInt(i);
-            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(
-                    p, net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_TIDAL_TETHER, buf);
+            ServerPlayNetworking.send(p, new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_TIDAL_TETHER), buf));
         }
     }
 
@@ -535,7 +540,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
 
     private boolean isOwnerPurified(ServerWorld sw) {
         ServerPlayerEntity owner = getOwner(sw);
-        return owner != null && owner.hasStatusEffect(SscAddon.PURIFIED);
+        return owner != null && owner.hasStatusEffect(SscAddon.PURIFIED_ENTRY);
     }
 
     /** 球消失时回调技能管理器，让其开始 CD。 */
@@ -591,8 +596,8 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
     }
 
     @Override
-    public Packet<ClientPlayPacketListener> createSpawnPacket() {
-        return new net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket(this);
+    public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+        return new EntitySpawnS2CPacket(this, entityTrackerEntry);
     }
 
     /** 渲染为潮涌（Conduit）方块作为发光核心。 */

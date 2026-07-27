@@ -10,6 +10,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -37,7 +38,7 @@ public final class NineLivesHudRenderer implements HudRenderCallback {
     }
 
     @Override
-    public void onHudRender(DrawContext context, float tickDelta) {
+    public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
         if (MC.options.hudHidden || MC.player == null) return;
         PlayerEntity player = MC.player;
         if (!ClientResourceCache.has(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES)) return;

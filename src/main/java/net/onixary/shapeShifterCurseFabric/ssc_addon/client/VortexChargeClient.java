@@ -10,6 +10,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -55,6 +56,6 @@ public final class VortexChargeClient {
 
 	private static void send(Identifier packet) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-		ClientPlayNetworking.send(packet, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), buf));
 	}
 }

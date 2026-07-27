@@ -10,6 +10,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -38,7 +39,7 @@ public final class SeedEnergyHudRenderer implements HudRenderCallback {
     }
 
     @Override
-    public void onHudRender(DrawContext context, float tickDelta) {
+    public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
         if (MC.options.hudHidden || MC.player == null) return;
         PlayerEntity player = MC.player;
         // 必须真正拥有该 power 才渲染，避免对其他形态/未变形玩家误显示

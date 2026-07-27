@@ -187,7 +187,7 @@ public class SscAddonActions {
 								target.setVelocity(oldVelocity);
 							}
 
-							target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN, duration, 0)); // Duration from data
+							target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration, 0)); // Duration from data
 
 							if (living instanceof PlayerEntity player && target instanceof SscIgnitedEntityAccessor accessor) {
 								accessor.sscAddon$setIgniterUuid(player.getUuid());
@@ -214,7 +214,7 @@ public class SscAddonActions {
 					// target.setOnFireFor(duration); // Replaced with custom effect
 
 					if (target instanceof LivingEntity livingTarget) {
-						livingTarget.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN, duration * 20, 0));
+						livingTarget.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration * 20, 0));
 					}
 
 					if (actor instanceof PlayerEntity player && target instanceof SscIgnitedEntityAccessor accessor) {
@@ -384,7 +384,7 @@ public class SscAddonActions {
 						// 项链黄心改由 PlayingDeadEffect 每10tick累积，不再用 Absorption 效果
 
 						// visible=false to hide icon（回血改由 PlayingDeadEffect 每10tick结算）
-						living.addStatusEffect(new StatusEffectInstance(SscAddon.PLAYING_DEAD, duration, 0, false, false, false));
+						living.addStatusEffect(new StatusEffectInstance(SscAddon.PLAYING_DEAD_ENTRY, duration, 0, false, false, false));
 						living.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, duration, 0, false, false));
 						living.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, duration, 10, false, false));
 

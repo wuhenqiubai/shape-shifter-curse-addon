@@ -75,15 +75,15 @@ public class AdvancedColorScreen extends Screen {
 
         // ====== 顶部：启用开关 + 5 个色块切换 ======
         int topY = 26;
-        enableCheck = new CheckboxWidget(12, topY, 20, 20,
-                Text.translatable("text.ssc_addon.adv_color.enable"), working.enabled) {
-            @Override
-            public void onPress() {
-                super.onPress();
-                working.enabled = this.isChecked();
-                AdvancedColorBridge.applyPreview(working);
-            }
-        };
+        enableCheck = CheckboxWidget.builder(Text.translatable("text.ssc_addon.adv_color.enable"), textRenderer)
+                .pos(12, topY)
+                .maxWidth(20)
+                .checked(working.enabled)
+                .callback((checkbox, checked) -> {
+                    working.enabled = checked;
+                    AdvancedColorBridge.applyPreview(working);
+                })
+                .build();
         addDrawableChild(enableCheck);
 
         // 5 个色块：在顶部右侧
@@ -170,15 +170,15 @@ public class AdvancedColorScreen extends Screen {
                 case 1 -> "text.ssc_addon.adv_color.grey_reverse.accent1";
                 default -> "text.ssc_addon.adv_color.grey_reverse.accent2";
             };
-            grChecks[i] = new CheckboxWidget(rightX, grStartY + i * grRowH, 20, 20,
-                    Text.translatable(key), working.greyReverse[idx]) {
-                @Override
-                public void onPress() {
-                    super.onPress();
-                    working.greyReverse[idx] = this.isChecked();
-                    AdvancedColorBridge.applyPreview(working);
-                }
-            };
+            grChecks[i] = CheckboxWidget.builder(Text.translatable(key), textRenderer)
+                    .pos(rightX, grStartY + i * grRowH)
+                    .maxWidth(20)
+                    .checked(working.greyReverse[idx])
+                    .callback((checkbox, checked) -> {
+                        working.greyReverse[idx] = checked;
+                        AdvancedColorBridge.applyPreview(working);
+                    })
+                    .build();
             addDrawableChild(grChecks[i]);
         }
 
@@ -411,7 +411,7 @@ public class AdvancedColorScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx);
+        this.renderBackground(ctx, mouseX, mouseY, delta);
         super.render(ctx, mouseX, mouseY, delta);
 
         // 标题
@@ -495,7 +495,7 @@ public class AdvancedColorScreen extends Screen {
             player.headYaw = player.getYaw();
             player.prevHeadYaw = player.getYaw();
             try {
-                InventoryScreen.drawEntity(ctx, cx, cy, 40, body, head, player);
+                InventoryScreen.drawEntity(ctx, (float)cx, (float)cy, 40, new org.joml.Vector3f(0.0f, player.getHeight() / 2.0f + 0.0625f * player.getScale(), 0.0f), body, head, player);
             } finally {
                 player.bodyYaw = bh; player.prevBodyYaw = pby;
                 player.setYaw(yaw); player.setPitch(pitch);
@@ -676,12 +676,12 @@ public class AdvancedColorScreen extends Screen {
     }
 
     /** 色块按钮：仅作为可点击 + 可叙述区域，vanilla 背景全部抑制；色块本身由 Screen.render() 自行绘制。 */
-    private static class SwatchButton extends net.minecraft.client.gui.widget.ButtonWidget {
+    private static class SwatchButton extends ButtonWidget {
         SwatchButton(int x, int y, int w, int h, PressAction onPress) {
             super(x, y, w, h, Text.literal(""), onPress, ButtonWidget.DEFAULT_NARRATION_SUPPLIER);
         }
         @Override
-        protected void renderButton(net.minecraft.client.gui.DrawContext ctx, int mouseX, int mouseY, float delta) {
+        protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             // 不画任何 vanilla 背景，避免 hover 灰色覆盖外部色块绘制
         }
     }
@@ -722,7 +722,7 @@ public class AdvancedColorScreen extends Screen {
 
         @Override
         public void render(DrawContext ctx, int mx, int my, float delta) {
-            this.renderBackground(ctx);
+            this.renderBackground(ctx, mx, my, delta);
             // 标题与说明文字往上挪，与按钮区分开
             ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, width / 2, height / 2 - 40, 0xFFFFFF);
             ctx.drawCenteredTextWithShadow(this.textRenderer,

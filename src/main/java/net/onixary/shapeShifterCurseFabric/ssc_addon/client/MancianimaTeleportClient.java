@@ -14,6 +14,7 @@ import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaTeleport;
@@ -135,7 +136,7 @@ public final class MancianimaTeleportClient {
 	private static void sendTeleportPacket(byte mode) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeByte(mode);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_MANCIANIMA_TELEPORT, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_MANCIANIMA_TELEPORT), buf));
 	}
 
 	private static boolean isMancianima(ClientPlayerEntity player) {

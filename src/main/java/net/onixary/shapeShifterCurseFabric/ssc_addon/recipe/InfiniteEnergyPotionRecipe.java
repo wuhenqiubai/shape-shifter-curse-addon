@@ -8,7 +8,6 @@ import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
 import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -24,8 +23,8 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
  */
 public class InfiniteEnergyPotionRecipe extends SpecialCraftingRecipe {
 
-	public InfiniteEnergyPotionRecipe(Identifier id, CraftingRecipeCategory category) {
-		super(id, category);
+	public InfiniteEnergyPotionRecipe(CraftingRecipeCategory category) {
+		super(category);
 	}
 
 	@Override

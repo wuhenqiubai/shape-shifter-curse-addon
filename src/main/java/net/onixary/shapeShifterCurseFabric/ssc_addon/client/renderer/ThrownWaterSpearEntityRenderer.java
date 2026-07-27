@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
@@ -51,7 +52,7 @@ public class ThrownWaterSpearEntityRenderer extends EntityRenderer<ThrownWaterSp
 
 		// CustomModelData=1 触发 water_spear_throwing（3D 投掷态）模型
 		ItemStack renderStack = new ItemStack(SscAddon.WATER_SPEAR);
-		renderStack.getOrCreateNbt().putInt("CustomModelData", 1);
+		renderStack.set(DataComponentTypes.CUSTOM_MODEL_DATA, new net.minecraft.component.type.CustomModelDataComponent(1));
 		this.itemRenderer.renderItem(renderStack, ModelTransformationMode.GROUND, light, OverlayTexture.DEFAULT_UV,
 				matrices, vertexConsumers, entity.getWorld(), entity.getId());
 

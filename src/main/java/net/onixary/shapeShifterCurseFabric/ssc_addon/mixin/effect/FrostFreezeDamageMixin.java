@@ -36,7 +36,7 @@ public abstract class FrostFreezeDamageMixin {
 		}
 
 		// 2. Check if entity has Frost Freeze effect (increase damage by 35%)
-		StatusEffectInstance frostFreezeEffect = self.getStatusEffect(SscAddon.FROST_FREEZE);
+		StatusEffectInstance frostFreezeEffect = self.getStatusEffect(SscAddon.FROST_FREEZE_ENTRY);
 		if (frostFreezeEffect != null && FrostFreezeEffect.isPhysicalOrMagicDamage(source)) {
 			modifiedAmount = modifiedAmount * 1.35f;
 		}

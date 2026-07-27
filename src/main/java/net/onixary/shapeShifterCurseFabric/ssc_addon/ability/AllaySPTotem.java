@@ -11,6 +11,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
@@ -121,14 +123,11 @@ public class AllaySPTotem {
 	}
 
 	private static void deactivateTotem(ItemStack stack) {
-		NbtCompound nbt = stack.getOrCreateNbt();
-		nbt.remove(ACTIVE_TAG);
-		if (nbt.contains("Enchantments")) {
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+			nbt.remove(ACTIVE_TAG);
 			nbt.remove("Enchantments");
-		}
-		if (nbt.contains("HideFlags")) {
 			nbt.remove("HideFlags");
-		}
+		});
 	}
 
 	private static TypedActionResult<ItemStack> onUseItem(PlayerEntity player, net.minecraft.world.World world, Hand hand) {
@@ -147,20 +146,16 @@ public class AllaySPTotem {
 		}
 
 		// Toggle Active State
-		NbtCompound nbt = stack.getOrCreateNbt();
-		boolean isActive = nbt.getBoolean(ACTIVE_TAG);
+		NbtComponent customData = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT);
+		boolean isActive = customData.getNbt().getBoolean(ACTIVE_TAG);
 
 		if (isActive) {
 			// Deactivate
-			nbt.remove(ACTIVE_TAG);
-
-			// Remove glint
-			if (nbt.contains("Enchantments")) {
+			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+				nbt.remove(ACTIVE_TAG);
 				nbt.remove("Enchantments");
-			}
-			if (nbt.contains("HideFlags")) {
 				nbt.remove("HideFlags");
-			}
+			});
 
 			player.sendMessage(Text.translatable("message.ssc_addon.totem.deactivated"), true);
 			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
@@ -170,18 +165,18 @@ public class AllaySPTotem {
 			}
 		} else {
 			// Activate
-			nbt.putBoolean(ACTIVE_TAG, true);
-
-			// Add Glint
-			if (!nbt.contains("Enchantments")) {
-				NbtList enchantments = new NbtList();
-				NbtCompound unbreaking = new NbtCompound();
-				unbreaking.putString("id", "minecraft:unbreaking");
-				unbreaking.putShort("lvl", (short) 1);
-				enchantments.add(unbreaking);
-				nbt.put("Enchantments", enchantments);
-				nbt.putInt("HideFlags", 1); // Hide enchantments
-			}
+			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+				nbt.putBoolean(ACTIVE_TAG, true);
+				if (!nbt.contains("Enchantments")) {
+					NbtList enchantments = new NbtList();
+					NbtCompound unbreaking = new NbtCompound();
+					unbreaking.putString("id", "minecraft:unbreaking");
+					unbreaking.putShort("lvl", (short) 1);
+					enchantments.add(unbreaking);
+					nbt.put("Enchantments", enchantments);
+					nbt.putInt("HideFlags", 1);
+				}
+			});
 
 			player.sendMessage(Text.translatable("message.ssc_addon.totem.activated"), true);
 			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 2.0f);
@@ -264,10 +259,8 @@ public class AllaySPTotem {
 
 	private static boolean isActiveTotem(ItemStack stack) {
 		// Check if item is Totem and has active tag
-		if (stack.getNbt() != null) {
-			return !stack.isEmpty() && stack.isOf(Items.TOTEM_OF_UNDYING) && stack.hasNbt() && stack.getNbt().getBoolean(ACTIVE_TAG);
-		}
-		return false;
+		return !stack.isEmpty() && stack.isOf(Items.TOTEM_OF_UNDYING)
+			&& stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getBoolean(ACTIVE_TAG);
 	}
 
 	private static boolean isSpAllay(PlayerEntity player) {

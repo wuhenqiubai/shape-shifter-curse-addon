@@ -44,7 +44,7 @@ public class WitchFamiliarEyesLayer extends GeoRenderLayer<WitchFamiliarEntity> 
 				partialTick,
 				15728640, // 全亮度（LightmapTextureManager.MAX_LIGHT_COORDINATE）
 				LivingEntityRenderer.getOverlay(animatable, 0),
-				1.0f, 1.0f, 1.0f, 1.0f
+				-1
 		);
 	}
 }

@@ -71,7 +71,7 @@ public final class TidalTetherBeamRenderer {
         if (world == null) return;
 
         long now = world.getTime();
-        float tickDelta = ctx.tickDelta();
+        float tickDelta = MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true);
         Camera cam = ctx.camera();
         Vec3d camPos = cam.getPos();
         MatrixStack ms = ctx.matrixStack();
@@ -147,6 +147,6 @@ public final class TidalTetherBeamRenderer {
                             float x, float y, float z, float u, float v,
                             float r, float g, float b, float a) {
         vc.vertex(pose, x, y, z).color(r, g, b, a).texture(u, v)
-                .overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(nrm, 0f, 1f, 0f).next();
+                .overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(0f, 1f, 0f);
     }
 }

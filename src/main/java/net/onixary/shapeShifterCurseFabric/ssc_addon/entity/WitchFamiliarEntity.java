@@ -1,26 +1,18 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.entity;
 
+import net.minecraft.entity.*;
+import net.minecraft.util.math.Box;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
-import net.minecraft.entity.EntityGroup;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageType;
-import net.minecraft.enchantment.ProtectionEnchantment;
-import net.minecraft.entity.TntEntity;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.SweetBerryBushBlock;
-import net.minecraft.entity.MovementType;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -253,12 +245,12 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		int u = MathHelper.floor(explosionPos.getZ() + q + 1.0);
 
 		// 获取范围内所有实体（排除自身）
-		List<net.minecraft.entity.Entity> entityList = serverWorld.getOtherEntities(
-				this, new net.minecraft.util.math.Box(k, r, t, l, s, u));
+		List<Entity> entityList = serverWorld.getOtherEntities(
+				this, new Box(k, r, t, l, s, u));
 
 		RegistryKey<DamageType> onFireKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "on_fire"));
 
-		for (net.minecraft.entity.Entity targetEntity : entityList) {
+		for (Entity targetEntity : entityList) {
 			// 跳过爆炸免疫实体
 			if (targetEntity.isImmuneToExplosion()) continue;
 			// 跳过非生物实体或不应受火环影响的实体
@@ -381,7 +373,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 */
 	@Override
 	public boolean canHaveStatusEffect(StatusEffectInstance effect) {
-		StatusEffect type = effect.getEffectType();
+		StatusEffect type = effect.getEffectType().value();
 		if (type == StatusEffects.POISON
 				|| type == StatusEffects.HUNGER
 				|| type == StatusEffects.SPEED

@@ -662,14 +662,14 @@ public class BarPositionEditorScreen extends Screen {
             // 世界已由游戏主循环实时渲染到画面；这里叠加真实完整 HUD（含真实的能量条 / 本能条）
             if (!mc.options.hudHidden) {
                 try {
-                    mc.inGameHud.render(ctx, delta);
+                    mc.inGameHud.render(ctx, MinecraftClient.getInstance().getRenderTickCounter());
                 } catch (Exception ignored) {
                     drawHudReference(ctx);
                 }
             }
         } else {
             // 主菜单等无世界场景：暗背景 + HUD 参照兑底
-            this.renderBackground(ctx);
+            this.renderBackground(ctx, mouseX, mouseY,  delta);
             drawHudReference(ctx);
         }
 

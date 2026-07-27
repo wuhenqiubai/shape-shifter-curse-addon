@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class SscAddonEntityMixin {
 	@Inject(method = "changeLookDirection", at = @At("HEAD"), cancellable = true)
 	public void onChangeLookDirection(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
-		if ((Object) this instanceof LivingEntity entity && entity.hasStatusEffect(SscAddon.PLAYING_DEAD)) {
+		if ((Object) this instanceof LivingEntity entity && entity.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
 			ci.cancel();
 		}
 

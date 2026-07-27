@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.PacketByteBuf;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 
@@ -44,7 +45,7 @@ public final class PlayDeadEndClient {
 			wasPlayingDead = false;
 			return;
 		}
-		boolean isPlayingDead = player.hasStatusEffect(SscAddon.PLAYING_DEAD);
+		boolean isPlayingDead = player.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY);
 		// 记录装死开始时刻（用于宽限期判定）
 		if (isPlayingDead && !wasPlayingDead) {
 			playDeadStartTime = client.world.getTime();
@@ -55,7 +56,7 @@ public final class PlayDeadEndClient {
 		if (isPlayingDead && pressed && !wasKeyPressed
 				&& (client.world.getTime() - playDeadStartTime) >= END_GRACE_TICKS) {
 			PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-			ClientPlayNetworking.send(SscAddonNetworking.PACKET_PLAY_DEAD_END, buf);
+			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_PLAY_DEAD_END), buf));
 		}
 		wasKeyPressed = pressed;
 		wasPlayingDead = isPlayingDead;

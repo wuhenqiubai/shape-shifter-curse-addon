@@ -62,8 +62,8 @@ public class StunnedKeyBindingMixin {
 		// 故原版催化剂/抑制剂/诅咒之月等触发的变身过渡中玩家仍能 WASD 走动。
 		// TransformManager.transformTimer 是客户端 public 字段，黑屏过渡期间 >=0
 		// （receiveTransformState 收到 isTransforming=true 时置 0、结束置 -1），用它统一冻结所有变身（含原版触发）。
-		return client.player.hasStatusEffect(SscAddon.STUN)
-				|| client.player.hasStatusEffect(SscAddon.PLAYING_DEAD)
+		return client.player.hasStatusEffect(SscAddon.STUN_ENTRY)
+				|| client.player.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)
 				|| TransformManager.transformTimer >= 0;
 	}
 
@@ -78,7 +78,7 @@ public class StunnedKeyBindingMixin {
 	private boolean isPlayerRooted() {
 		// ROOTED：只锁移动/跳跃（不锁视角/技能键），荧光幼灵法阵激光蓄力/释放期使用
 		MinecraftClient client = MinecraftClient.getInstance();
-		return client != null && client.player != null && client.player.hasStatusEffect(SscAddon.ROOTED);
+		return client != null && client.player != null && client.player.hasStatusEffect(SscAddon.ROOTED_ENTRY);
 	}
 
 	@Unique

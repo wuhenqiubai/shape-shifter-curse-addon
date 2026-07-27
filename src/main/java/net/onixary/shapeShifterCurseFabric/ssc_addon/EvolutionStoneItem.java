@@ -115,7 +115,7 @@ public class EvolutionStoneItem extends Item {
 					// 带黑屏淡入淡出动画变身（startTransform），STUN 在动画期间定身
 					TransformManager.startTransform(player, formBase, null);
 					// 变身演出（黑屏淡入 IN + 淡出 OUT，共 160 tick）期间定身玩家，避免演出过程中走动
-					player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN,
+					player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY,
 							StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT, 0, false, false, false));
 					player.sendMessage(Text.translatable("message.ssc_addon.evolution_stone.success").formatted(Formatting.GREEN, Formatting.BOLD), false);
 					world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);

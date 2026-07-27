@@ -1,10 +1,14 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker;
 
 import me.shedaniel.autoconfig.AutoConfig;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.config.PlayerCustomConfig;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.networking.ModPacketsS2C;
 import net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent;
@@ -141,7 +145,7 @@ public final class AdvancedColorBridge {
         // 直接走 ClientPlayNetworking.send + update_custom_color 通道补发颜色，
         // 不依赖 SSC 主包是否暴露 sendUpdateCustomColor 方法（1.9.0 上还没暴露）。
         try {
-            net.minecraft.network.PacketByteBuf cbuf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+            net.minecraft.network.PacketByteBuf cbuf = PacketByteBufs.create();
             cbuf.writeInt(FormTextureUtils.ARGB2ABGR(s.colorsARGB[IDX_PRIMARY]));
             cbuf.writeInt(FormTextureUtils.ARGB2ABGR(s.colorsARGB[IDX_ACCENT1]));
             cbuf.writeInt(FormTextureUtils.ARGB2ABGR(s.colorsARGB[IDX_ACCENT2]));
@@ -150,8 +154,7 @@ public final class AdvancedColorBridge {
             cbuf.writeBoolean(s.greyReverse[GR_IDX_PRIMARY]);
             cbuf.writeBoolean(s.greyReverse[GR_IDX_ACCENT1]);
             cbuf.writeBoolean(s.greyReverse[GR_IDX_ACCENT2]);
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                    new net.minecraft.util.Identifier(ShapeShifterCurseFabric.MOD_ID, "update_custom_color"), cbuf);
+            ClientPlayNetworking.send(new BytePayload(BytePayload.id(Identifier.of(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
         } catch (Throwable t) {
             ShapeShifterCurseFabric.LOGGER.error("[SSC_ADDON] AdvancedColorBridge: failed to send color packet", t);
         }

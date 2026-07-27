@@ -8,7 +8,6 @@ import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
 import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomItem;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -18,8 +17,8 @@ import java.util.List;
 
 public class SpUpgradeRecipe extends SpecialCraftingRecipe {
 
-	public SpUpgradeRecipe(Identifier id, CraftingRecipeCategory category) {
-		super(id, category);
+	public SpUpgradeRecipe(CraftingRecipeCategory category) {
+		super(category);
 	}
 
 	@Override

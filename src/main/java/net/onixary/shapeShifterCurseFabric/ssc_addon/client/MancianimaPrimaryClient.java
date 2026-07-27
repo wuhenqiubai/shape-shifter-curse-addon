@@ -10,6 +10,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -39,7 +40,7 @@ public final class MancianimaPrimaryClient {
 		boolean pressed = key.isPressed();
 		if (pressed && !wasKeyPressed) {
 			PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-			ClientPlayNetworking.send(SscAddonNetworking.PACKET_MANCIANIMA_PRIMARY, buf);
+			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_MANCIANIMA_PRIMARY), buf));
 		}
 		wasKeyPressed = pressed;
 	}

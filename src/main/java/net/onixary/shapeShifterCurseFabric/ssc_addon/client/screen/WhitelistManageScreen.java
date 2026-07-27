@@ -17,6 +17,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 
 import java.util.ArrayList;
@@ -250,7 +251,7 @@ public class WhitelistManageScreen extends Screen {
 	private void sendModeToggle(boolean custom) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeByte(custom ? 1 : 0);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_WHITELIST_GUI_MODE, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_MODE), buf));
 	}
 
 	private void invalidateFilterCache() {
@@ -319,7 +320,7 @@ public class WhitelistManageScreen extends Screen {
 
 	@Override
 	public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-		this.renderBackground(ctx);
+		this.renderBackground(ctx, mouseX, mouseY,  delta);
 		int left = (this.width - PANEL_WIDTH) / 2;
 		int top = (this.height - PANEL_HEIGHT) / 2;
 
@@ -407,8 +408,8 @@ public class WhitelistManageScreen extends Screen {
 				: null;
 
 		// 头像：在线 → 取皮肤；离线 → 默认皮肤
-		Identifier skinTex = online != null ? online.getSkinTexture()
-				: net.minecraft.client.util.DefaultSkinHelper.getTexture(uuid);
+		Identifier skinTex = online != null ? online.getSkinTextures().texture()
+				: net.minecraft.client.util.DefaultSkinHelper.getTexture();
 		if (skinTex != null) {
 			ctx.drawTexture(skinTex, this.listX + 3, rowY + 3, 16, 16, 8, 8, 8, 8, 64, 64);
 			ctx.drawTexture(skinTex, this.listX + 3, rowY + 3, 16, 16, 40, 8, 8, 8, 64, 64);
@@ -477,7 +478,7 @@ public class WhitelistManageScreen extends Screen {
 		if (hover) ctx.fill(this.listX, rowY, this.listX + this.listW - 6, rowY + ENTRY_HEIGHT, 0x30FFFFFF);
 
 		// 头像
-		Identifier skinTex = entry.getSkinTexture();
+		Identifier skinTex = entry.getSkinTextures().texture();
 		if (skinTex != null) {
 			ctx.drawTexture(skinTex, this.listX + 3, rowY + 3, 16, 16, 8, 8, 8, 8, 64, 64);
 			ctx.drawTexture(skinTex, this.listX + 3, rowY + 3, 16, 16, 40, 8, 8, 8, 64, 64);
@@ -621,10 +622,10 @@ public class WhitelistManageScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
 		int size = getCurrentListSize();
 		int maxOffset = Math.max(0, size - LIST_VISIBLE_ROWS);
-		this.scrollOffset = MathHelper.clamp(this.scrollOffset - (int) Math.signum(amount), 0, maxOffset);
+		this.scrollOffset = MathHelper.clamp(this.scrollOffset - (int) Math.signum(horizontalAmount), 0, maxOffset);
 		return true;
 	}
 
@@ -684,19 +685,19 @@ public class WhitelistManageScreen extends Screen {
 	private void sendAdd(UUID uuid) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeUuid(uuid);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_WHITELIST_GUI_ADD, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_ADD), buf));
 	}
 
 	private void sendRemove(UUID uuid) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeUuid(uuid);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_WHITELIST_GUI_REMOVE, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_REMOVE), buf));
 	}
 
 	private void sendMobRemove(UUID uuid) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeUuid(uuid);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_WHITELIST_GUI_MOB_REMOVE, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_MOB_REMOVE), buf));
 	}
 
 	@Override

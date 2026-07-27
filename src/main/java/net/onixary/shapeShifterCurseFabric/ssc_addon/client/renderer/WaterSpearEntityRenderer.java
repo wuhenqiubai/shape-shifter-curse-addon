@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
@@ -35,7 +36,7 @@ public class WaterSpearEntityRenderer extends EntityRenderer<WaterSpearEntity> {
 		if (stack != null && !stack.isEmpty()) {
 			// Use a copy of the stack to avoid modifying the actual item NBT (which would persist when picked up)
 			ItemStack renderStack = stack.copy();
-			renderStack.getOrCreateNbt().putInt("CustomModelData", 1);
+			renderStack.set(DataComponentTypes.CUSTOM_MODEL_DATA, new net.minecraft.component.type.CustomModelDataComponent(1));
 			this.itemRenderer.renderItem(renderStack, ModelTransformationMode.GROUND, light, OverlayTexture.DEFAULT_UV, matrices, vertexConsumers, entity.getWorld(), entity.getId());
 		}
 

@@ -55,7 +55,7 @@ public class PlayDeadAbsorptionManager {
 		}
 
 		// 仍在装死 → 还在累积，不衰减；计时起点留到结束后再设
-		if (player.hasStatusEffect(SscAddon.PLAYING_DEAD)) {
+		if (player.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
 			BUDGET.put(id, budget);
 			DECAY_START.remove(id);
 			return;

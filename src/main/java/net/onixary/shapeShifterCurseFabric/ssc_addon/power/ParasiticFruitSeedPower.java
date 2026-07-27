@@ -126,7 +126,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     public void onUse() {
         if (!(entity instanceof ServerPlayerEntity caster)) return;
         if (entity.getWorld().isClient) return;
-        if (entity.hasStatusEffect(SscAddon.PURIFIED)) return;
+        if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
         if (!isInternalCooldownReady()) return;
 
         // 双生种荚：一次播种额外寄生最近的第二目标，但能量消耗翻倍、冷却 +1 秒
