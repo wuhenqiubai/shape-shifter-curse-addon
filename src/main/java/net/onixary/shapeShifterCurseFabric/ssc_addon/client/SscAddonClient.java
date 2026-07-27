@@ -20,6 +20,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ErosionBrandClientState;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
@@ -34,7 +35,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WaterSpearE
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.FluorescentLaserRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.WitchFamiliarRenderer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.PotionBagScreen;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +61,17 @@ public class SscAddonClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		// 注册所有 S2C payload 类型（必须先注册才能接收）
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_TIDAL_TETHER);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_EVO_ROUTES_SYNC);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_BROADCAST_FORMS);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_CLAW_STATE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_DASH_STATE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC);
+		BytePayload.registerS2C(GoldenSandstormErosionBrand.PACKET_BRAND_SYNC);
+		BytePayload.registerS2C(MancianimaMarkManager.PACKET_MARK_SYNC);
+
 		LOGGER.info("[SSC_ADDON] Registering Client KeyBindings...");
 
 		// 关键路径：键位注册必须成功，否则客机所有 SP 技能都无法激活。
@@ -288,21 +300,21 @@ public class SscAddonClient implements ClientModInitializer {
 		});
 
 		// 风灵「疾风连爪」：接收爪击阶段+准星条进度，更新客户端镜像
-		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_CLAW_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_CLAW_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
 			int phase = payload.data().readInt();
 			float progress = payload.data().readFloat();
 			ctx.client().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.ClawClientState.update(phase, progress));
 		});
 
         // 风灵「风之冲刺」：接收阶段+目标悬浮Y，更新客户端镜像（驱动悬浮期绿色落点预览）
-        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_DASH_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_DASH_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
             int phase = payload.data().readInt();
             double targetY = payload.data().readDouble();
             ctx.client().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.client.DashClientState.update(phase, targetY));
         });
 
         // 进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（主机 + 客机一致）
-        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
             java.util.UUID id = payload.data().readUuid();
             boolean charging = payload.data().readBoolean();
 
@@ -310,7 +322,7 @@ public class SscAddonClient implements ClientModInitializer {
         });
 
 		// 注册白名单 GUI S2C 同步包接收器：收到后打开/刷新 WhitelistManageScreen
-		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
 			boolean customMode = payload.data().readBoolean();
 			int n = payload.data().readInt();
 			if (n < 0 || n > 10000) return;

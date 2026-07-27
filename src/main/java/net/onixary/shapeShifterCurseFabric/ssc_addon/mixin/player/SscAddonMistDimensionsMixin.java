@@ -57,14 +57,15 @@ public abstract class SscAddonMistDimensionsMixin {
 		}
 	}
 
-	@ModifyExpressionValue(method = "getDimensions", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityDimensions;scaled(F)Lnet/minecraft/entity/EntityDimensions;"))
-	private EntityDimensions sscAddon$modifyMistDimensions(EntityDimensions original) {
-		if (this.sscAddon$isMistFormActive()) {
-			// 高度压到 0.1，确保可以穿过 0.25 格高的缝隙
-			return EntityDimensions.changing(MIST_WIDTH, MIST_HEIGHT);
-		}
-		return original;
-	}
+//  TODO: 这玩意会导致区块生成卡进度，也注释了
+//	@ModifyExpressionValue(method = "getDimensions", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityDimensions;scaled(F)Lnet/minecraft/entity/EntityDimensions;"))
+//	private EntityDimensions sscAddon$modifyMistDimensions(EntityDimensions original) {
+//		if (this.sscAddon$isMistFormActive()) {
+//			// 高度压到 0.1，确保可以穿过 0.25 格高的缝隙
+//			return EntityDimensions.changing(MIST_WIDTH, MIST_HEIGHT);
+//		}
+//		return original;
+//	}
 
 // 	TODO: 没了，没找到替代所以先不找了
 //	@ModifyReturnValue(method = "getEyeHeight", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;getEyeHeight(Lnet/minecraft/entity/EntityPose;)F"))

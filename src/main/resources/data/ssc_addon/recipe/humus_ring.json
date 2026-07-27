@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:humus_ring",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:humus_ring"
   }
 }

@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:wind_spirit_stamina_necklace",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:wind_spirit_stamina_necklace"
   }
 }

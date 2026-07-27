@@ -1,18 +1,36 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    { "item": "minecraft:amethyst_shard" },
-    { "item": "minecraft:amethyst_shard" },
-    { "item": "minecraft:echo_shard" },
-    { "item": "minecraft:echo_shard" },
-    { "item": "minecraft:diamond" },
-    { "item": "minecraft:diamond" },
-    { "item": "shape-shifter-curse:morphscale_core" },
-    { "item": "shape-shifter-curse:moondust_crystal_shard" },
-    { "item": "minecraft:netherite_ingot" }
+    {
+      "item": "minecraft:amethyst_shard"
+    },
+    {
+      "item": "minecraft:amethyst_shard"
+    },
+    {
+      "item": "minecraft:echo_shard"
+    },
+    {
+      "item": "minecraft:echo_shard"
+    },
+    {
+      "item": "minecraft:diamond"
+    },
+    {
+      "item": "minecraft:diamond"
+    },
+    {
+      "item": "shape-shifter-curse:morphscale_core"
+    },
+    {
+      "item": "shape-shifter-curse:moondust_crystal_shard"
+    },
+    {
+      "item": "minecraft:netherite_ingot"
+    }
   ],
   "result": {
-    "item": "ssc_addon:evolution_stone",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:evolution_stone"
   }
 }

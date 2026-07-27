@@ -6,7 +6,7 @@
     }
   ],
   "result": {
-    "item": "ssc_addon:friend_marker",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:friend_marker"
   }
 }

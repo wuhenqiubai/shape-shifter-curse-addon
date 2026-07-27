@@ -18,7 +18,7 @@
     }
   ],
   "result": {
-    "item": "ssc_addon:clear_friend_marker",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:clear_friend_marker"
   }
 }

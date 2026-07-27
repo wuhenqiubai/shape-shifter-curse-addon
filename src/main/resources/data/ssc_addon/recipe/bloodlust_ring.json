@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:bloodlust_ring",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:bloodlust_ring"
   }
 }

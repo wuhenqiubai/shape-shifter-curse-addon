@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:snowball_launcher",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:snowball_launcher"
   }
 }

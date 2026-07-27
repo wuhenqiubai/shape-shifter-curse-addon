@@ -17,8 +17,8 @@
     }
   },
   "result": {
-    "item": "ssc_addon:portable_moisturizer",
     "count": 1,
-    "nbt": "{Charge:600}"
+    "nbt": "{Charge:600}",
+    "id": "ssc_addon:portable_moisturizer"
   }
 }

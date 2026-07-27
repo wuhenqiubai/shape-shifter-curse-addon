@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:twin_pod",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:twin_pod"
   }
 }

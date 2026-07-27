@@ -23,7 +23,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:portable_fridge",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:portable_fridge"
   }
 }

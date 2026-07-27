@@ -148,6 +148,31 @@ public class SscAddonNetworking {
 	}
 
 	public static void registerServerReceivers() {
+		// 注册所有 C2S payload 类型
+		BytePayload.registerC2S(PACKET_KEY_PRESS);
+		BytePayload.registerC2S(PACKET_MANCIANIMA_TELEPORT);
+		BytePayload.registerC2S(PACKET_MANCIANIMA_PRIMARY);
+		BytePayload.registerC2S(PACKET_WHITELIST_GUI_ADD);
+		BytePayload.registerC2S(PACKET_WHITELIST_GUI_REMOVE);
+		BytePayload.registerC2S(PACKET_WHITELIST_GUI_MODE);
+		BytePayload.registerC2S(PACKET_WHITELIST_GUI_MOB_REMOVE);
+		BytePayload.registerC2S(PACKET_PLAY_DEAD_END);
+		BytePayload.registerC2S(PACKET_VORTEX_START);
+		BytePayload.registerC2S(PACKET_VORTEX_RELEASE);
+		BytePayload.registerC2S(PACKET_UPGRADE_AXOLOTL_SPEAR);
+		BytePayload.registerC2S(PACKET_UPGRADE_AXOLOTL_VORTEX);
+		BytePayload.registerC2S(PACKET_CLAW_HOLD);
+		BytePayload.registerC2S(PACKET_CLAW_BUFF);
+		BytePayload.registerC2S(PACKET_WIND_DASH);
+		BytePayload.registerC2S(PACKET_FLUO_LASER);
+		BytePayload.registerC2S(PACKET_FLUO_TIDAL);
+		BytePayload.registerC2S(PACKET_EVO_SELECT_ROUTE);
+		BytePayload.registerC2S(PACKET_EVO_SELECT_BRANCH);
+		BytePayload.registerC2S(PACKET_EVO_UNLOCK);
+		BytePayload.registerC2S(PACKET_EVO_UNLOCK_BATCH);
+		BytePayload.registerC2S(PACKET_SSCA_START_ROUTE);
+		BytePayload.registerC2S(PACKET_REQUEST_ALL_FORM_SYNC);
+
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_KEY_PRESS), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
 			PacketByteBuf buf = payload.data();
 			int keyId = buf.readInt();

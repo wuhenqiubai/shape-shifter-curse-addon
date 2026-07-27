@@ -14,7 +14,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:phantom_bell",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:phantom_bell"
   }
 }

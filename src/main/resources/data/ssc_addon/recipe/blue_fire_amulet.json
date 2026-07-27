@@ -14,7 +14,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:blue_fire_amulet",
-    "count": 1
+    "count": 1,
+    "id": "ssc_addon:blue_fire_amulet"
   }
 }
