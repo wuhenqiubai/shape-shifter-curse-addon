@@ -8,7 +8,6 @@ import net.minecraft.recipe.BrewingRecipeRegistry;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BrewingStandBlockEntity.class)
 public abstract class BrewingStandInfinitePotionMixin {
 
-    @Shadow
+    @Unique
     public abstract ItemStack getStack(int slot);
 
     @Inject(method = "isValid", at = @At("HEAD"), cancellable = true)
@@ -109,5 +108,3 @@ abstract class BrewingRegistryInfiniteMixin {
         return null;
     }
 }
-
-

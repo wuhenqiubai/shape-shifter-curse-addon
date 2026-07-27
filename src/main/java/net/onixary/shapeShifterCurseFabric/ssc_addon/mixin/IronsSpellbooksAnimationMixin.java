@@ -17,20 +17,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "io.redspace.ironsspellbooks.player.ClientSpellCastHelper")
 public class IronsSpellbooksAnimationMixin {
-
-	@Inject(method = "animatePlayerStart", at = @At("HEAD"), cancellable = true, remap = false)
-	private static void onAnimatePlayerStart(PlayerEntity player, Identifier resourceLocation, CallbackInfo ci) {
-		try {
-			IForm currentForm = FormUtils.getCurrentForm(player);
-			if (currentForm != null && currentForm.getFormID() != null) {
-				String path = currentForm.getFormID().getPath();
-				// Check if the form is an SP form (contains "_sp") or Red form (contains "red")
-				if ((path.contains("_sp") || path.contains("red")) && !path.contains("axolotl_sp")) {
-					ci.cancel();
-				}
-			}
-		} catch (Exception e) {
-			// Ignore if FormAbilityManager is unavailable or other errors occur
-		}
-	}
+	//TODO: 之后做Connector版再恢复
+//	@Inject(method = "animatePlayerStart", at = @At("HEAD"), cancellable = true, remap = false)
+//	private static void onAnimatePlayerStart(net.minecraft.world.entity.player.Player player, net.minecraft.resources.ResourceLocation resourceLocation, CallbackInfo ci) {
+//		try {
+//			IForm currentForm = FormUtils.getCurrentForm(player);
+//			if (currentForm != null && currentForm.getFormID() != null) {
+//				String path = currentForm.getFormID().getPath();
+//				// Check if the form is an SP form (contains "_sp") or Red form (contains "red")
+//				if ((path.contains("_sp") || path.contains("red")) && !path.contains("axolotl_sp")) {
+//					ci.cancel();
+//				}
+//			}
+//		} catch (Exception e) {
+//			// Ignore if FormAbilityManager is unavailable or other errors occur
+//		}
+//	}
 }
