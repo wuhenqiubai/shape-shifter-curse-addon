@@ -92,7 +92,7 @@ public final class SscAddonInteractionEvents {
 		});
 
 		// 吸血蝙蝠血雾期间禁用一切右键交互（用物品/放方块/与生物互动/吃喝/盾牌副手等）
-		UseItemCallback.EVENT.register((player, world, hand) -> {			if (player.hasStatusEffect(SscAddon.MIST_FORM)
+		UseItemCallback.EVENT.register((player, world, hand) -> {			if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)
 					&& FormUtils.isForm(player,
 							FormIdentifiers.BAT_DESMODUS)) {
 				return TypedActionResult.fail(player.getStackInHand(hand));
@@ -185,7 +185,7 @@ public final class SscAddonInteractionEvents {
 			return ActionResult.PASS;
 		});
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			if (player.hasStatusEffect(SscAddon.MIST_FORM)
+			if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)
 					&& FormUtils.isForm(player,
 							FormIdentifiers.BAT_DESMODUS)) {
 				return ActionResult.FAIL;
@@ -193,7 +193,7 @@ public final class SscAddonInteractionEvents {
 			return ActionResult.PASS;
 		});
 		UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-			if (player.hasStatusEffect(SscAddon.MIST_FORM)
+			if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)
 					&& FormUtils.isForm(player,
 							FormIdentifiers.BAT_DESMODUS)) {
 				return ActionResult.FAIL;
@@ -202,7 +202,7 @@ public final class SscAddonInteractionEvents {
 		});
 		// 同时禁用左键破坏方块
 		AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {
-			if (player.hasStatusEffect(SscAddon.MIST_FORM)
+			if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)
 					&& FormUtils.isForm(player,
 							FormIdentifiers.BAT_DESMODUS)) {
 				return ActionResult.FAIL;
@@ -211,7 +211,7 @@ public final class SscAddonInteractionEvents {
 		});
 		// 禁用左键攻击实体（含挥剑/普攻起手动作本身）
 		AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-			if (player.hasStatusEffect(SscAddon.MIST_FORM)
+			if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)
 					&& FormUtils.isForm(player,
 							FormIdentifiers.BAT_DESMODUS)) {
 				return ActionResult.FAIL;

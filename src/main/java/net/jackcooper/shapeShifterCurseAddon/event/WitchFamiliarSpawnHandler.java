@@ -4,12 +4,15 @@ import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.entity.SpawnGroup;
+import net.minecraft.entity.SpawnLocationTypes;
 import net.minecraft.entity.SpawnRestriction;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.mob.WitchEntity;
 import net.minecraft.world.Heightmap;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
+
+import static net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.WITCH_FAMILIAR_ENTITY;
 
 /**
  * 女巫使魔伴生逻辑 + 野外自然生成注册（从 SscAddon.registerEntitySpawnHandlers 拆分而来）。
@@ -23,12 +26,12 @@ public final class WitchFamiliarSpawnHandler {
 
 	public static void register() {
 		// 野外自然生成（末影人权重10的一半=5）
-		SpawnRestriction.register(SscAddon.WITCH_FAMILIAR_ENTITY, SpawnRestriction.Location.ON_GROUND,
+		SpawnRestriction.register(WITCH_FAMILIAR_ENTITY, SpawnLocationTypes.ON_GROUND,
 				Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, HostileEntity::canSpawnInDark);
 		BiomeModifications.addSpawn(
 				BiomeSelectors.foundInOverworld(),
 				SpawnGroup.MONSTER,
-				SscAddon.WITCH_FAMILIAR_ENTITY,
+				WITCH_FAMILIAR_ENTITY,
 				5,    // 末影人权重10的一半
 				1, 1  // 最小/最大成组数量
 		);
@@ -45,7 +48,7 @@ public final class WitchFamiliarSpawnHandler {
 			// 随机生成1-3只使魔
 			int count = 1 + witch.getRandom().nextInt(3);
 			for (int i = 0; i < count; i++) {
-				WitchFamiliarEntity familiar = SscAddon.WITCH_FAMILIAR_ENTITY.create(world);
+				WitchFamiliarEntity familiar = WITCH_FAMILIAR_ENTITY.create(world);
 				if (familiar == null) continue;
 
 				// 设置主人为该女巫

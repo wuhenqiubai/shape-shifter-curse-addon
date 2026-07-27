@@ -156,11 +156,11 @@ public final class SscAddonServerEvents {
 						SscAddon.WATER_SPEAR_CRAFT_CD.put(player.getUuid(), wsT + SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
 						player.getItemCooldownManager().set(Items.ARROW, SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
 						PowerUtils.resetCooldown(player,
-								new Identifier("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
+								Identifier.of("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
 						SscAddon.WS_DBG.warn("[WS-CD] 水矛消失 @tick {} → 重启合成冷却(从消失起算 {}t)", wsT, SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
 					}
 				}
-				if (player.hasStatusEffect(SscAddon.STUN)) continue;
+				if (player.hasStatusEffect(SscAddon.STUN_ENTRY)) continue;
 				EntityAttributeInstance atk =
 						player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
 				if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {
