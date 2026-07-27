@@ -3,7 +3,6 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.player_animation.AnimationHolder;
-import net.onixary.shapeShifterCurseFabric.player_animation.v2.PlayerAnimState;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AbstractAnimStateController;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimStateEnum;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimSystem;
@@ -39,32 +38,6 @@ public abstract class AbstractFeralForm extends Form_FeralBase {
 	protected AbstractFeralForm(Identifier formID) {
 		super(formID);
 		// 父类 Form_FeralBase 构造已 bodyType(FERAL)
-	}
-
-	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API，保留作 v3 状态控制器的内部映射用
-	public AnimationHolder Anim_getFormAnimToPlay(PlayerAnimState currentState) {
-		return getAnimStateMapping(currentState);
-	}
-
-	protected AnimationHolder getAnimStateMapping(PlayerAnimState currentState) {
-		return switch (currentState) {
-			case ANIM_SNEAK_IDLE, ANIM_RIDE_VEHICLE_IDLE -> anim_sneak_idle;
-			case ANIM_RIDE_IDLE -> anim_ride;
-			case ANIM_WALK -> anim_walk;
-			case ANIM_SNEAK_WALK -> anim_sneak_walk;
-			case ANIM_SNEAK_RUSH -> anim_sneak_rush;
-			case ANIM_RUN -> anim_run;
-			case ANIM_SWIM_IDLE -> anim_float;
-			case ANIM_SWIM -> anim_swim;
-			case ANIM_TOOL_SWING, ANIM_SNEAK_TOOL_SWING -> anim_dig;
-			case ANIM_JUMP, ANIM_SNEAK_JUMP -> anim_jump;
-			case ANIM_CLIMB_IDLE, ANIM_CLIMB -> anim_climb;
-			case ANIM_FALL, ANIM_SNEAK_FALL -> anim_fall;
-			case ANIM_SLEEP -> anim_sleep;
-			case ANIM_ATTACK_ONCE, ANIM_SNEAK_ATTACK_ONCE -> anim_attack;
-			case ANIM_ELYTRA_FLY, ANIM_CREATIVE_FLY -> anim_elytra_fly;
-			default -> anim_idle;
-		};
 	}
 
 	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API；子类仍通过 super 调用初始化字段，故保留

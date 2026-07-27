@@ -1,6 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
@@ -45,19 +47,19 @@ public abstract class PotionBagDeathDropMixin {
 		}
 
 		// Drop all items from the potion bag
-		if (!potionBag.isEmpty() && potionBag.hasNbt()) {
-			NbtCompound nbt = potionBag.getNbt();
-			if (nbt != null && nbt.contains("Items", 9)) {
-				NbtList list = nbt.getList("Items", 10);
+		if (!potionBag.isEmpty() && potionBag.contains(DataComponentTypes.CUSTOM_DATA)) {
+			NbtComponent nbt = potionBag.get(DataComponentTypes.CUSTOM_DATA);
+			if (nbt != null && nbt.getNbt().contains("Items", 9)) {
+				NbtList list = nbt.getNbt().getList("Items", 10);
 				for (int i = 0; i < list.size(); ++i) {
 					NbtCompound itemTag = list.getCompound(i);
-					ItemStack stack = ItemStack.fromNbt(itemTag);
+					ItemStack stack = ItemStack.fromNbt(player.getWorld().getRegistryManager(), itemTag).orElse(ItemStack.EMPTY);
 					if (!stack.isEmpty()) {
 						player.dropItem(stack, true, false);
 					}
 				}
 				// Clear the potion bag's items
-				nbt.remove("Items");
+				NbtComponent.set(DataComponentTypes.CUSTOM_DATA, potionBag, n -> n.remove("Items"));
 			}
 		}
 	}

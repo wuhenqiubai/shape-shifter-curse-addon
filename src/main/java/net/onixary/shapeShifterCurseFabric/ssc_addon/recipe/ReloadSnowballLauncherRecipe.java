@@ -6,7 +6,9 @@ import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
+import net.minecraft.recipe.input.CraftingRecipeInput;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.SnowballLauncherItem;
@@ -18,12 +20,12 @@ public class ReloadSnowballLauncherRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public boolean matches(RecipeInputInventory inventory, World world) {
+	public boolean matches(CraftingRecipeInput input, World world) {
 		boolean hasLauncher = false;
 		boolean hasAmmo = false;
 
-		for (int i = 0; i < inventory.size(); ++i) {
-			ItemStack stack = inventory.getStack(i);
+		for (int i = 0; i < input.getSize(); ++i) {
+			ItemStack stack = input.getStackInSlot(i);
 			if (!stack.isEmpty()) {
 				if (stack.getItem() == SscAddon.SNOWBALL_LAUNCHER) {
 					if (hasLauncher) return false; // Only 1 launcher
@@ -39,12 +41,12 @@ public class ReloadSnowballLauncherRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public ItemStack craft(RecipeInputInventory inventory, DynamicRegistryManager registryManager) {
+	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
 		ItemStack launcher = ItemStack.EMPTY;
 		int ammoToAdd = 0;
 
-		for (int i = 0; i < inventory.size(); ++i) {
-			ItemStack stack = inventory.getStack(i);
+		for (int i = 0; i < input.getSize(); ++i) {
+			ItemStack stack = input.getStackInSlot(i);
 			if (!stack.isEmpty()) {
 				if (stack.getItem() == SscAddon.SNOWBALL_LAUNCHER) {
 					launcher = stack.copy();

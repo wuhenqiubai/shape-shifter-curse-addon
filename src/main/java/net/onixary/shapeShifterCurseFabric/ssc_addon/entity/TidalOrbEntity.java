@@ -123,7 +123,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
 
     @Override
     protected void initDataTracker(DataTracker.Builder builder) {
-        this.dataTracker.startTracking(TETHER_ACTIVE, false);
+        builder.add(TETHER_ACTIVE, false);
     }
 
     /** 飞行阶段：触发减速（玩家再次按键 / 飞满 8 秒自动）。 */

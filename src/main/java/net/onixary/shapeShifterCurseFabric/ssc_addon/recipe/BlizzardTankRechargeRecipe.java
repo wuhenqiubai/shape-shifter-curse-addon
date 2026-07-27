@@ -1,12 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.recipe;
 
-import net.minecraft.inventory.RecipeInputInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.recipe.input.CraftingRecipeInput;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.PortableFridgeItem;
@@ -18,12 +18,12 @@ public class BlizzardTankRechargeRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public boolean matches(RecipeInputInventory inventory, World world) {
+	public boolean matches(CraftingRecipeInput input, World world) {
 		ItemStack tankStack = ItemStack.EMPTY;
 		boolean hasSnowBlock = false;
 
-		for (int i = 0; i < inventory.size(); ++i) {
-			ItemStack stack = inventory.getStack(i);
+		for (int i = 0; i < input.getSize(); ++i) {
+			ItemStack stack = input.getStackInSlot(i);
 			if (!stack.isEmpty()) {
 				if (stack.getItem() == SscAddon.PORTABLE_FRIDGE) {
 					if (!tankStack.isEmpty()) return false; // Only 1 tank allowed
@@ -44,12 +44,12 @@ public class BlizzardTankRechargeRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public ItemStack craft(RecipeInputInventory inventory, DynamicRegistryManager registryManager) {
+	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
 		ItemStack tank = ItemStack.EMPTY;
 		int chargeToAdd = 0;
 
-		for (int i = 0; i < inventory.size(); ++i) {
-			ItemStack stack = inventory.getStack(i);
+		for (int i = 0; i < input.getSize(); ++i) {
+			ItemStack stack = input.getStackInSlot(i);
 			if (!stack.isEmpty()) {
 				if (stack.getItem() == SscAddon.PORTABLE_FRIDGE) {
 					tank = stack.copy();

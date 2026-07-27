@@ -4,14 +4,12 @@ import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -99,7 +97,7 @@ public class PhantomBellItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		// 移除了"装备在项链栏生效"的提示
 		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.desc.1").formatted(Formatting.BLUE));
 		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.desc.2").formatted(Formatting.BLUE));
@@ -116,6 +114,6 @@ public class PhantomBellItem extends TrinketItem {
 		}
 
 		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

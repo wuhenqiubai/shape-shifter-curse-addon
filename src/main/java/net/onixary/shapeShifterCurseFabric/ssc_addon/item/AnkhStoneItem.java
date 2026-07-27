@@ -5,11 +5,11 @@ import dev.emi.trinkets.api.TrinketComponent;
 import dev.emi.trinkets.api.TrinketItem;
 import dev.emi.trinkets.api.TrinketsApi;
 import io.github.apace100.apoli.component.PowerHolderComponent;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
@@ -19,11 +19,9 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.additional_power.VirtualTotemPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,8 +74,8 @@ public class AnkhStoneItem extends TrinketItem {
 	 * 注册安卡纹石到沙漠神殿战利品表（15%概率，1-2个）
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (id.equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (key.getValue().equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(UniformLootNumberProvider.create(1.0f, 2.0f))
 						.conditionally(RandomChanceLootCondition.builder(0.15f))
@@ -93,12 +91,12 @@ public class AnkhStoneItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
 		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_2").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_3").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_4").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_5").formatted(Formatting.RED));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

@@ -3,11 +3,12 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.recipe;
 import net.minecraft.inventory.RecipeInputInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
+import net.minecraft.recipe.input.CraftingRecipeInput;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -28,15 +29,15 @@ public class InfiniteEnergyPotionRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public boolean matches(RecipeInputInventory inventory, World world) {
-		if (inventory.getWidth() < 3 || inventory.getHeight() < 3) {
+	public boolean matches(CraftingRecipeInput input, World world) {
+		if (input.getWidth() < 3 || input.getHeight() < 3) {
 			return false;
 		}
 		// 形状 0 M 0 / A I A / 0 0 0，允许整体上对齐或下对齐两种摆放：
 		// 上：M=1 A=3 I=4 A=5，空=0,2,6,7,8
 		// 下：M=4 A=6 I=7 A=8，空=0,1,2,3,5
-		return matchesLayout(inventory, 1, 3, 4, 5, new int[]{0, 2, 6, 7, 8})
-				|| matchesLayout(inventory, 4, 6, 7, 8, new int[]{0, 1, 2, 3, 5});
+		return matchesLayout((RecipeInputInventory) input, 1, 3, 4, 5, new int[]{0, 2, 6, 7, 8})
+				|| matchesLayout((RecipeInputInventory) input, 4, 6, 7, 8, new int[]{0, 1, 2, 3, 5});
 	}
 
 	/** 校验一种摆放：moonSlot=月髓环，appleSlotL/appleSlotR=附魔金苹果，potionSlot=压缩能量药水，emptySlots 必须为空。 */
@@ -68,11 +69,11 @@ public class InfiniteEnergyPotionRecipe extends SpecialCraftingRecipe {
 
 	/** 压缩能量药水 = 原版药水物品且药水类型为 feed_potion。 */
 	private boolean isCompressedEnergyPotion(ItemStack stack) {
-		return stack.isOf(Items.POTION) && PotionUtil.getPotion(stack) == RegCustomPotions.FEED_POTION;
+		return stack.isOf(Items.POTION) && stack.getOrDefault(net.minecraft.component.DataComponentTypes.POTION_CONTENTS, net.minecraft.component.type.PotionContentsComponent.DEFAULT).potion().map(p -> p.value() == RegCustomPotions.FEED_POTION).orElse(false);
 	}
 
 	@Override
-	public ItemStack craft(RecipeInputInventory inventory, DynamicRegistryManager registryManager) {
+	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
 		return new ItemStack(SscAddon.INFINITE_ENERGY_POTION);
 	}
 

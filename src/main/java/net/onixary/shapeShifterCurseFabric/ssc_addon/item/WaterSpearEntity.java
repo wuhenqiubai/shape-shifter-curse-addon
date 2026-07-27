@@ -49,14 +49,16 @@ public class WaterSpearEntity extends TridentEntity {
 	public void readCustomDataFromNbt(NbtCompound nbt) {
 		super.readCustomDataFromNbt(nbt);
 		if (nbt.contains("WaterSpear", 10)) {
-			this.waterSpearStack = ItemStack.fromNbt(nbt.getCompound("WaterSpear"));
+			net.minecraft.registry.RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : net.minecraft.registry.DynamicRegistryManager.EMPTY;
+			ItemStack.fromNbt(registries, nbt.getCompound("WaterSpear")).ifPresent(s -> this.waterSpearStack = s);
 		}
 	}
 
 	@Override
 	public void writeCustomDataToNbt(NbtCompound nbt) {
 		super.writeCustomDataToNbt(nbt);
-		nbt.put("WaterSpear", this.waterSpearStack.writeNbt(new NbtCompound()));
+		net.minecraft.registry.RegistryWrapper.WrapperLookup registries2 = this.getWorld() != null ? this.getWorld().getRegistryManager() : net.minecraft.registry.DynamicRegistryManager.EMPTY;
+		nbt.put("WaterSpear", this.waterSpearStack.encode(registries2));
 	}
 
 

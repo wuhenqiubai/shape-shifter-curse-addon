@@ -3,6 +3,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.story;
 import net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.advancement.Advancement;
+import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -193,7 +194,7 @@ public final class MoonScarStoryManager {
 	private static boolean hasMoonScarPower(ServerPlayerEntity player) {
 		MinecraftServer server = player.getServer();
 		if (server == null) return false;
-		Advancement adv = server.getAdvancementLoader().get(MOON_SCAR_POWER_ADV);
+		AdvancementEntry adv = server.getAdvancementLoader().get(MOON_SCAR_POWER_ADV);
 		if (adv == null) return false;
 		return player.getAdvancementTracker().getProgress(adv).isDone();
 	}

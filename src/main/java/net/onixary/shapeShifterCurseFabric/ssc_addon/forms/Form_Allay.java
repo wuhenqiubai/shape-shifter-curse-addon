@@ -3,7 +3,6 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.player_animation.AnimationHolder;
-import net.onixary.shapeShifterCurseFabric.player_animation.v2.PlayerAnimState;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AbstractAnimStateController;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimStateControllerDP.OneAnimController;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimStateControllerDP.WithSneakAnimController;
@@ -33,20 +32,6 @@ public class Form_Allay extends NormalForm {
 
 	public Form_Allay(Identifier formID) {
 		super(formID);
-	}
-
-	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API
-	public AnimationHolder Anim_getFormAnimToPlay(PlayerAnimState currentState) {
-		return switch (currentState) {
-			case ANIM_RUN -> anim_run;
-			case ANIM_SNEAK_IDLE -> anim_sneak_idle;
-			case ANIM_SNEAK_WALK -> anim_sneak_walk;
-			case ANIM_IDLE -> anim_idle;
-			case ANIM_FLY, ANIM_JUMP, ANIM_FALL, ANIM_SNEAK_FALL, ANIM_SLOW_FALL, ANIM_CREATIVE_FLY -> anim_flying;
-			case ANIM_TOOL_SWING -> anim_digging;
-			case ANIM_ATTACK_ONCE -> anim_attack;
-			default -> anim_walk;
-		};
 	}
 
 	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API

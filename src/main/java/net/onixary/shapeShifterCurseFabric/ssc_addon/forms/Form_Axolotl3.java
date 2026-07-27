@@ -4,7 +4,6 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.player_animation.AnimationHolder;
-import net.onixary.shapeShifterCurseFabric.player_animation.v2.PlayerAnimState;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AbstractAnimStateController;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimStateControllerDP.OneAnimController;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimStateControllerDP.RushJumpAnimController;
@@ -48,26 +47,6 @@ public class Form_Axolotl3 extends NormalForm {
 
 	public Form_Axolotl3(Identifier formID) {
 		super(formID);
-	}
-
-	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API
-	public AnimationHolder Anim_getFormAnimToPlay(PlayerAnimState currentState) {
-		return switch (currentState) {
-			case ANIM_JUMP, ANIM_FALL -> anim_jump;
-			case ANIM_SNEAK_JUMP, ANIM_SNEAK_RUSH_JUMP -> anim_crawling_jump;
-			case ANIM_SNEAK_FALL, ANIM_SNEAK_IDLE -> anim_crawling_idle;
-			case ANIM_RUSH_JUMP -> anim_rush_jump;
-			case ANIM_WALK -> anim_walking;
-			case ANIM_RUN -> anim_running;
-			case ANIM_IDLE -> anim_idle;
-			case ANIM_SWIM -> anim_swimming;
-			case ANIM_SWIM_IDLE -> anim_swimming_idle;
-			case ANIM_SNEAK_WALK -> anim_crawling;
-			case ANIM_SLEEP -> anim_sleep;
-			case ANIM_SNEAK_ATTACK_ONCE -> anim_crawling_attack_once;
-			case ANIM_SNEAK_TOOL_SWING -> anim_crawling_tool_swing;
-			default -> null;
-		};
 	}
 
 	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API

@@ -1,6 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
 import net.minecraft.advancement.Advancement;
+import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.advancement.AdvancementProgress;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
@@ -27,7 +28,7 @@ public final class AdvancementUtils {
 		if (!(player instanceof ServerPlayerEntity sp)) return;
 		MinecraftServer server = sp.getServer();
 		if (server == null) return;
-		Advancement adv = server.getAdvancementLoader().get(advId);
+		AdvancementEntry adv = server.getAdvancementLoader().get(advId);
 		if (adv == null) return;
 		AdvancementProgress progress = sp.getAdvancementTracker().getProgress(adv);
 		if (progress.isDone()) return;

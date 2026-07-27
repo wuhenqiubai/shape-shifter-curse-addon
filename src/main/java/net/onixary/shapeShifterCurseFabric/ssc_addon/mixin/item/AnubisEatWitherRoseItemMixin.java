@@ -49,7 +49,7 @@ public abstract class AnubisEatWitherRoseItemMixin {
 	}
 
 	@Inject(method = "getMaxUseTime", at = @At("HEAD"), cancellable = true)
-	private void ssc_addon$anubisWitherRoseMaxUseTime(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
+	private void ssc_addon$anubisWitherRoseMaxUseTime(ItemStack stack, LivingEntity user, CallbackInfoReturnable<Integer> cir) {
 		if (stack.isOf(Items.WITHER_ROSE)) {
 			cir.setReturnValue(32);
 		}

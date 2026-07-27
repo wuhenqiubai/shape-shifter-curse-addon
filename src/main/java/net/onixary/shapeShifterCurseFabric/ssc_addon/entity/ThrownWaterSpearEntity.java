@@ -81,9 +81,9 @@ public class ThrownWaterSpearEntity extends ProjectileEntity {
 
 	@Override
 	protected void initDataTracker(DataTracker.Builder builder) {
-		this.dataTracker.startTracking(VEL_X, 0.0f);
-		this.dataTracker.startTracking(VEL_Y, 0.0f);
-		this.dataTracker.startTracking(VEL_Z, 0.0f);
+		builder.add(VEL_X, 0.0f);
+		builder.add(VEL_Y, 0.0f);
+		builder.add(VEL_Z, 0.0f);
 	}
 
 	@Override

@@ -4,11 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.Items;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.function.SetNbtLootFunction;
 import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
@@ -210,7 +211,7 @@ public class StoryBookLoot implements ConfigChangeListener {
 
 	private static net.minecraft.item.ItemStack createBookStack(String id, String title, String author, String content) {
 		net.minecraft.item.ItemStack stack = new net.minecraft.item.ItemStack(Items.WRITTEN_BOOK);
-		stack.setNbt(createBookNbt(id, title, author, content));
+		stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(createBookNbt(id, title, author, content)));
 		return stack;
 	}
 
@@ -242,8 +243,8 @@ public class StoryBookLoot implements ConfigChangeListener {
 
 	public static void init() {
 		ConfigChangeManager.register(new StoryBookLoot());
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (isTargetChest(id)) {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (isTargetChest(key.getValue())) {
 				loadConfig();
 				loadBooks();
 				LootPool.Builder poolBuilder = LootPool.builder()
@@ -276,7 +277,7 @@ public class StoryBookLoot implements ConfigChangeListener {
 	@SuppressWarnings("deprecation")
 	private static void addBookToPool(LootPool.Builder pool, String id, String title, String author, String content) {
 		pool.with(ItemEntry.builder(Items.WRITTEN_BOOK)
-				.apply(SetNbtLootFunction.builder(createBookNbt(id, title, author, content)))
+				.apply(net.minecraft.loot.function.SetComponentsLootFunction.builder(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.of(createBookNbt(id, title, author, content))))
 				.weight(1)); // Equal weight for each book
 	}
 

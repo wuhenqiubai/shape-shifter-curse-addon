@@ -57,7 +57,7 @@ public final class GlowMarker {
         AbstractTeam current = target.getScoreboardTeam();
         if (current instanceof Team team
                 && (TEAM_FRIEND.equals(team.getName()) || TEAM_ENEMY.equals(team.getName()))) {
-            scoreboard.removePlayerFromTeam(target.getEntityName(), team);
+            scoreboard.removeScoreHolderFromTeam(target.getNameForScoreboard(), team);
         }
     }
 
@@ -73,11 +73,11 @@ public final class GlowMarker {
             // 若之前在另一个本机制 team，先移除避免重复
             if (current instanceof Team prev
                     && (TEAM_FRIEND.equals(prev.getName()) || TEAM_ENEMY.equals(prev.getName()))) {
-                scoreboard.removePlayerFromTeam(target.getEntityName(), prev);
+                scoreboard.removeScoreHolderFromTeam(target.getNameForScoreboard(), prev);
             }
             // 仅当目标完全无 team 或之前在本机制 team 时才接管，避免破坏外部 team 配置
             if (target.getScoreboardTeam() == null) {
-                scoreboard.addPlayerToTeam(target.getEntityName(), team);
+                scoreboard.addScoreHolderToTeam(target.getNameForScoreboard(), team);
             }
         }
         // 持续刷新 GLOWING 状态以保证客户端描边

@@ -5,12 +5,12 @@ import io.github.apace100.apoli.power.Power;
 import io.github.apace100.apoli.power.PowerType;
 import io.github.apace100.apoli.power.PowerTypeRegistry;
 import io.github.apace100.apoli.power.VariableIntPower;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -196,7 +196,7 @@ public class AllayHealWandItem extends Item {
 
 					// Play heal sound
 					// User hears private sound
-					serverPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 1.0f, 1.5f);
+					serverPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
 					// Target and nearby players hear positional sound (exclude user to avoid double sound)
 					world.playSound(serverPlayer, target.getX(), target.getY(), target.getZ(),
 							SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 1.0f, 1.5f);
@@ -218,9 +218,9 @@ public class AllayHealWandItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.allay_heal_wand.tooltip").formatted(Formatting.AQUA));
 		tooltip.add(Text.translatable("item.ssc_addon.allay_heal_wand.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

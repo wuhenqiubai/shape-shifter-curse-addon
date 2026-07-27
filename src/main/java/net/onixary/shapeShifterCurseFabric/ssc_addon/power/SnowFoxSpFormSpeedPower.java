@@ -18,8 +18,8 @@ import java.util.UUID;
 
 public class SnowFoxSpFormSpeedPower extends Power {
 
-	private static final UUID MELEE_SPEED_UUID = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
-	private static final UUID RANGED_SPEED_UUID = UUID.fromString("b2c3d4e5-f6a7-8901-bcde-f12345678901");
+	private static final Identifier MELEE_SPEED_UUID = Identifier.of("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+	private static final Identifier RANGED_SPEED_UUID = Identifier.of("b2c3d4e5-f6a7-8901-bcde-f12345678901");
 
 	private final Identifier resourceId;
 	private final double meleeSpeedBonus;
@@ -90,18 +90,16 @@ public class SnowFoxSpFormSpeedPower extends Power {
 			// Melee state: +10% speed
 			EntityAttributeModifier meleeModifier = new EntityAttributeModifier(
 					MELEE_SPEED_UUID,
-					"Snow Fox SP Melee Speed",
 					meleeSpeedBonus,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 			);
 			speedAttr.addTemporaryModifier(meleeModifier);
 		} else if (state == 1) {
 			// Ranged state: -10% speed
 			EntityAttributeModifier rangedModifier = new EntityAttributeModifier(
 					RANGED_SPEED_UUID,
-					"Snow Fox SP Ranged Speed",
 					rangedSpeedPenalty,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 			);
 			speedAttr.addTemporaryModifier(rangedModifier);
 		}

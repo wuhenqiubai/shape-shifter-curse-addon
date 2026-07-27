@@ -1,6 +1,5 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.entity.EntityGroup;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.HuskEntity;
 import net.minecraft.entity.mob.MobEntity;
@@ -39,7 +38,7 @@ public abstract class MobEntityMixin {
 	@Unique
 	private boolean ssc_addon$isNeutralMobPair(MobEntity mob, PlayerEntity player) {
 		if (FormUtils.isForm(player, FormIdentifiers.ANUBIS_WOLF_SP)) {
-			return mob.getGroup() == EntityGroup.UNDEAD;
+			return mob.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD);
 		}
 		if (FormUtils.isForm(player, FormIdentifiers.GOLDEN_SANDSTORM_SP)) {
 			return mob instanceof HuskEntity || FormUtils.isTransformativeWolf(mob);

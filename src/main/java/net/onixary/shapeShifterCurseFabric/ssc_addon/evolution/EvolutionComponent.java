@@ -1,5 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 
+import net.minecraft.registry.RegistryWrapper;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -154,7 +155,7 @@ public class EvolutionComponent implements AutoSyncedComponent {
     // ---------------- 持久化 / 同步 ----------------
 
     @Override
-    public void readFromNbt(NbtCompound nbt) {
+    public void readFromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
         this.route = nbt.getString("route");
         this.branch = nbt.getString("branch");
         this.exp = nbt.getInt("exp");
@@ -173,7 +174,7 @@ public class EvolutionComponent implements AutoSyncedComponent {
     }
 
     @Override
-    public void writeToNbt(NbtCompound nbt) {
+    public void writeToNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
         nbt.putString("route", getRoute());
         nbt.putString("branch", getBranch());
         nbt.putInt("exp", this.exp);

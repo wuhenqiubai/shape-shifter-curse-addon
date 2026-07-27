@@ -1,5 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -8,7 +9,6 @@ import net.minecraft.entity.projectile.thrown.PotionEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.stat.Stats;
@@ -133,9 +133,11 @@ public class WitherPotionItem extends Item {
 	/** 生成携带凋零效果的原版投掷药水（喷溅 / 滞留），复用原版 AOE / 地面云机制。仅服务端调用。 */
 	private void spawnThrownPotion(World world, PlayerEntity user) {
 		ItemStack thrown = new ItemStack(type == Type.LINGERING ? Items.LINGERING_POTION : Items.SPLASH_POTION);
-		PotionUtil.setCustomPotionEffects(thrown, List.of(
-				new StatusEffectInstance(StatusEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER)));
-		thrown.getOrCreateNbt().putInt("CustomPotionColor", POTION_COLOR);
+		net.minecraft.component.type.PotionContentsComponent contents = new net.minecraft.component.type.PotionContentsComponent(
+				java.util.Optional.empty(),
+				java.util.Optional.of(POTION_COLOR),
+				List.of(new StatusEffectInstance(StatusEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER)));
+		thrown.set(DataComponentTypes.POTION_CONTENTS, contents);
 		PotionEntity entity = new PotionEntity(world, user);
 		entity.setItem(thrown);
 		entity.setVelocity(user, user.getPitch(), user.getYaw(), -20.0F, 0.5F, 1.0F);

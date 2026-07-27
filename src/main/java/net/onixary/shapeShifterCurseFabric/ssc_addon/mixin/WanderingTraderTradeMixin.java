@@ -4,6 +4,7 @@ import net.minecraft.entity.passive.WanderingTraderEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.village.TradeOffer;
+import net.minecraft.village.TradedItem;
 import net.minecraft.village.TradeOfferList;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,8 +43,8 @@ public abstract class WanderingTraderTradeMixin {
 		// TradeOffer(第一槽位, 第二槽位, 输出, 最大使用次数, 经验, 价格乘数)
 		// 仅可购买1次，不给商人经验，无价格波动
 		TradeOffer crystalOffer = new TradeOffer(
-				new ItemStack(Items.DIAMOND, diamondCount),
-				new ItemStack(Items.EMERALD, emeraldCount),
+				new TradedItem(Items.DIAMOND, diamondCount),
+				java.util.Optional.of(new TradedItem(Items.EMERALD, emeraldCount)),
 				new ItemStack(SscAddon.ANUBIS_CRYSTAL),
 				1,   // 最大交易次数
 				0,   // 商人经验

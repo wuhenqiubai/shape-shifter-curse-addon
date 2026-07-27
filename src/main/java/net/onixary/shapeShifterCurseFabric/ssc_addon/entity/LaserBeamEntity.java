@@ -110,10 +110,10 @@ public class LaserBeamEntity extends Entity {
 
 	@Override
 	protected void initDataTracker(DataTracker.Builder builder) {
-		this.dataTracker.startTracking(PHASE, 0);
-		this.dataTracker.startTracking(PHASE_TICK, 0);
-		this.dataTracker.startTracking(OWNER_ID, 0);
-		this.dataTracker.startTracking(IS_ALING, false);
+		builder.add(PHASE, 0);
+		builder.add(PHASE_TICK, 0);
+		builder.add(OWNER_ID, 0);
+		builder.add(IS_ALING, false);
 	}
 
 	// ===== 渲染器读取 =====

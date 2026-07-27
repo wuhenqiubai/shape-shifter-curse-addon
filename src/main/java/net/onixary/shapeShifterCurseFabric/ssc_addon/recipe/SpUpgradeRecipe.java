@@ -7,7 +7,9 @@ import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
+import net.minecraft.recipe.input.CraftingRecipeInput;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomItem;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -22,9 +24,9 @@ public class SpUpgradeRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public boolean matches(RecipeInputInventory inventory, World world) {
+	public boolean matches(CraftingRecipeInput input, World world) {
 		// Grid must be at least 3x3 for safety, though inventory usually is 3x3
-		if (inventory.getWidth() < 3 || inventory.getHeight() < 3) return false;
+		if (input.getWidth() < 3 || input.getHeight() < 3) return false;
 
 		// Check Fixed Positions
 		// 0 1 2
@@ -32,15 +34,15 @@ public class SpUpgradeRecipe extends SpecialCraftingRecipe {
 		// 6 7 8
 
 		// Corners: Gold Ingot
-		if (!stackMatches(inventory.getStack(0), Items.GOLD_INGOT) ||
-				!stackMatches(inventory.getStack(2), Items.GOLD_INGOT) ||
-				!stackMatches(inventory.getStack(6), Items.GOLD_INGOT) ||
-				!stackMatches(inventory.getStack(8), Items.GOLD_INGOT)) {
+		if (!stackMatches(input.getStackInSlot(0), Items.GOLD_INGOT) ||
+				!stackMatches(input.getStackInSlot(2), Items.GOLD_INGOT) ||
+				!stackMatches(input.getStackInSlot(6), Items.GOLD_INGOT) ||
+				!stackMatches(input.getStackInSlot(8), Items.GOLD_INGOT)) {
 			return false;
 		}
 
 		// Center: Morphscale Core
-		if (!stackMatches(inventory.getStack(4), RegCustomItem.MORPHSCALE_CORE)) {
+		if (!stackMatches(input.getStackInSlot(4), RegCustomItem.MORPHSCALE_CORE)) {
 			return false;
 		}
 
@@ -53,7 +55,7 @@ public class SpUpgradeRecipe extends SpecialCraftingRecipe {
 
 		int[] checkSlots = {1, 3, 5, 7};
 		for (int i : checkSlots) {
-			ItemStack stack = inventory.getStack(i);
+			ItemStack stack = input.getStackInSlot(i);
 			if (stack.isEmpty()) return false;
 			if (finding.contains(stack.getItem())) {
 				finding.remove(stack.getItem());
@@ -70,7 +72,7 @@ public class SpUpgradeRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public ItemStack craft(RecipeInputInventory inventory, DynamicRegistryManager registryManager) {
+	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
 		return new ItemStack(SscAddon.SP_UPGRADE_THING);
 	}
 

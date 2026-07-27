@@ -3,20 +3,18 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.api.EnvType;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.entry.ItemEntry;
 import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -29,9 +27,9 @@ public class LifesavingCatTailItem extends TrinketItem {
 	}
 
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
 			// Add Lifesaving Cat Tail to Cat drops (1% chance)
-			if (id.equals(Identifier.of("minecraft", "entities/cat"))) {
+			if (key.getValue().equals(Identifier.of("minecraft", "entities/cat"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(ConstantLootNumberProvider.create(1.0f))
 						.conditionally(net.minecraft.loot.condition.RandomChanceLootCondition.builder(0.01f))
@@ -122,7 +120,7 @@ public class LifesavingCatTailItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		// "保命猫尾"
 		// 装备到腰带栏生效，无法修补、叠加、附魔、交易
 		// 在sp野猫受到致命伤害时免疫一次死亡...
@@ -141,6 +139,6 @@ public class LifesavingCatTailItem extends TrinketItem {
 		}
 
 		tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

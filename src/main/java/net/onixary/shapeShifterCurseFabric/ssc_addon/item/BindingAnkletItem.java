@@ -4,8 +4,7 @@ import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketComponent;
 import dev.emi.trinkets.api.TrinketItem;
 import dev.emi.trinkets.api.TrinketsApi;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.IllagerEntity;
 import net.minecraft.entity.mob.PillagerEntity;
@@ -16,6 +15,7 @@ import net.minecraft.entity.mob.WitchEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.raid.RaiderEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
@@ -28,7 +28,6 @@ import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -120,8 +119,8 @@ public class BindingAnkletItem extends TrinketItem {
 	private static final Identifier PILLAGER_OUTPOST_LOOT = Identifier.of("minecraft", "chests/pillager_outpost");
 
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!PILLAGER_OUTPOST_LOOT.equals(id)) return;
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (!PILLAGER_OUTPOST_LOOT.equals(key.getValue())) return;
 			LootPool.Builder pool = LootPool.builder()
 					.rolls(ConstantLootNumberProvider.create(1.0F))
 					.conditionally(RandomChanceLootCondition.builder(0.25F))
@@ -135,11 +134,11 @@ public class BindingAnkletItem extends TrinketItem {
 	/* ------------------------------------------------------------ */
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
 		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_2").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_3").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_4").formatted(Formatting.DARK_GRAY));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

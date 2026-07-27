@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.client.item.TooltipContext;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.MusicDiscItem;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -14,7 +14,6 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -40,42 +39,31 @@ public class AllayJukeboxItem extends Item {
 		super(settings);
 	}
 
-	// ===== Resource accessors (replacing NBT) =====
+	// ===== Data component accessors =====
 
 	public static int getCharge(ItemStack stack) {
-		// For item-specific data, we still need to use NBT for now
-		if (!stack.hasNbt()) return 0;
-		NbtCompound nbt = stack.getNbt();
-		return nbt != null ? nbt.getInt("Charge") : 0;
+		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getInt("Charge");
 	}
 
 	public static void setCharge(ItemStack stack, int amount) {
-		// For item-specific data, we still need to use NBT for now
-		stack.getOrCreateNbt().putInt("Charge", Math.max(0, Math.min(amount, MAX_CHARGE)));
+		int clamped = Math.max(0, Math.min(amount, MAX_CHARGE));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Charge", clamped));
 	}
 
 	public static boolean isActive(ItemStack stack) {
-		// For item-specific data, we still need to use NBT for now
-		if (!stack.hasNbt()) return false;
-		NbtCompound nbt = stack.getNbt();
-		return nbt != null && nbt.getBoolean("Active");
+		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getBoolean("Active");
 	}
 
 	public static void setActive(ItemStack stack, boolean active) {
-		// For item-specific data, we still need to use NBT for now
-		stack.getOrCreateNbt().putBoolean("Active", active);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putBoolean("Active", active));
 	}
 
 	public static int getMode(ItemStack stack) {
-		// For item-specific data, we still need to use NBT for now
-		if (!stack.hasNbt()) return MODE_SPEED;
-		NbtCompound nbt = stack.getNbt();
-		return nbt != null ? nbt.getInt("Mode") : MODE_SPEED;
+		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getInt("Mode");
 	}
 
 	public static void setMode(ItemStack stack, int mode) {
-		// For item-specific data, we still need to use NBT for now
-		stack.getOrCreateNbt().putInt("Mode", mode);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Mode", mode));
 	}
 
 	/**
@@ -84,7 +72,7 @@ public class AllayJukeboxItem extends Item {
 	 * @return true if charging succeeded
 	 */
 	public static boolean tryChargeWithDisc(ItemStack jukeboxStack, ItemStack discStack) {
-		if (!(discStack.getItem() instanceof MusicDiscItem)) return false;
+		if (!discStack.contains(DataComponentTypes.JUKEBOX_PLAYABLE)) return false;
 		int currentCharge = getCharge(jukeboxStack);
 		if (currentCharge >= MAX_CHARGE) return false;
 
@@ -168,7 +156,7 @@ public class AllayJukeboxItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, Item.TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("tooltip.ssc_addon.allay_jukebox.desc").formatted(Formatting.AQUA));
 		tooltip.add(Text.translatable("tooltip.ssc_addon.allay_jukebox.charge", getCharge(stack), MAX_CHARGE).formatted(Formatting.GRAY));
 
@@ -181,6 +169,6 @@ public class AllayJukeboxItem extends Item {
 		}
 
 		tooltip.add(Text.translatable("tooltip.ssc_addon.allay_jukebox.usage").formatted(Formatting.GOLD));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

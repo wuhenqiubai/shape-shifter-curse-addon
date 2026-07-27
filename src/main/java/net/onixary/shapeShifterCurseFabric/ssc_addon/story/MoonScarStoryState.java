@@ -1,5 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.story;
 
+import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -27,12 +28,14 @@ public final class MoonScarStoryState extends PersistentState {
 
 	public static MoonScarStoryState get(MinecraftServer server) {
 		return server.getOverworld().getPersistentStateManager().getOrCreate(
-				MoonScarStoryState::fromNbt,
-				MoonScarStoryState::new,
+				new PersistentState.Type<>(
+						MoonScarStoryState::new,
+						MoonScarStoryState::fromNbt,
+						DataFixTypes.LEVEL),
 				KEY);
 	}
 
-	public static MoonScarStoryState fromNbt(NbtCompound nbt) {
+	public static MoonScarStoryState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
 		MoonScarStoryState s = new MoonScarStoryState();
 		readUuidList(nbt, "story_red", s.storyRedPlayers);
 		readUuidList(nbt, "tipped", s.tippedPlayers);

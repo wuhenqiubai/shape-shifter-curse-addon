@@ -1,6 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.client.item.TooltipContext;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -8,13 +9,15 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.projectile.thrown.PotionEntity;
 import net.minecraft.item.Item;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.LingeringPotionItem;
 import net.minecraft.item.PotionItem;
 import net.minecraft.item.SplashPotionItem;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.potion.PotionUtil;
+import net.minecraft.component.type.PotionContentsComponent;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.sound.SoundCategory;
@@ -97,7 +100,10 @@ public class PotionBagItem extends Item {
 		}
 
 		// 普通右键：快捷投放栏（最左侧槽位）快速使用一瓶药水
-		ItemStack potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT);
+		ItemStack potion = ItemStack.EMPTY;
+		if (stack.getItem() instanceof PotionBagItem) {
+			potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT, net.minecraft.registry.DynamicRegistryManager.EMPTY);
+		}
 		if (potion.isEmpty()) {
 			// 快捷栏已空，无法继续使用（不摆手、不消耗）
 			return TypedActionResult.pass(stack);
@@ -122,7 +128,7 @@ public class PotionBagItem extends Item {
 				throwPotion(world, user, stack, potion);
 			}
 			// 双端记录投掷冷却结束时间（world.getTime 双端同步）；白色遮罩由 inventoryTick 同步
-			stack.getOrCreateNbt().putLong(NBT_THROW_END, world.getTime() + THROW_COOLDOWN);
+			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putLong(NBT_THROW_END, world.getTime() + THROW_COOLDOWN));
 			return TypedActionResult.success(stack);
 		}
 
@@ -142,20 +148,21 @@ public class PotionBagItem extends Item {
 	@Override
 	public ItemStack finishUsing(ItemStack stack, World world, LivingEntity user) {
 		if (!world.isClient && user instanceof PlayerEntity player) {
-			ItemStack potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT);
+			ItemStack potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT, world.getRegistryManager());
 			// 无限压缩能量药水（饮用型）：施加 feed_effect，标记空瓶充能，不消耗数量、不返还玻璃瓶
 			if (potion.getItem() instanceof InfiniteEnergyPotionItem inf
 					&& inf.getType() == InfiniteEnergyPotionItem.Type.DRINK) {
 				if (!InfiniteEnergyPotionItem.isRecharging(potion, world)) {
 					RegOtherStatusEffects.FEED_EFFECT.applyInstantEffect(player, player, player, 0, 1.0);
 					inf.markUsed(potion, world);
-					PotionBagScreenHandler.setStoredStack(stack, QUICK_SLOT, potion);
+					PotionBagScreenHandler.setStoredStack(stack, QUICK_SLOT, potion, world.getRegistryManager());
 				}
 			} else if (isDrinkable(potion)) {
 				// 施加药水效果（瞬时效果立即结算，持续效果加为状态）
-				for (StatusEffectInstance effect : PotionUtil.getPotionEffects(potion)) {
-					if (effect.getEffectType().isInstant()) {
-						effect.getEffectType().applyInstantEffect(player, player, player, effect.getAmplifier(), 1.0);
+				PotionContentsComponent pContents = potion.getOrDefault(DataComponentTypes.POTION_CONTENTS, PotionContentsComponent.DEFAULT);
+				for (StatusEffectInstance effect : pContents.getEffects()) {
+					if (effect.getEffectType().value().isInstant()) {
+						effect.getEffectType().value().applyInstantEffect(player, player, player, effect.getAmplifier(), 1.0);
 					} else {
 						player.addStatusEffect(new StatusEffectInstance(effect));
 					}
@@ -169,7 +176,7 @@ public class PotionBagItem extends Item {
 				}
 				// 消耗 1 瓶并写回药水包存储
 				potion.decrement(1);
-				PotionBagScreenHandler.setStoredStack(stack, QUICK_SLOT, potion);
+				PotionBagScreenHandler.setStoredStack(stack, QUICK_SLOT, potion, world.getRegistryManager());
 			}
 		}
 		return stack; // 药水袋本身不被消耗
@@ -178,13 +185,13 @@ public class PotionBagItem extends Item {
 	/** 饮用读条时长：仅当快捷栏为饮用型药水时返回 {@link #DRINK_TIME}，否则 0（投掷型/空为即时/无动作）。 */
 	@Override
 	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
-		return isDrinkable(PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT)) ? DRINK_TIME : 0;
+		return isDrinkable(PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT, net.minecraft.registry.DynamicRegistryManager.EMPTY)) ? DRINK_TIME : 0;
 	}
 
 	/** 饮用型药水显示喝药动作（含原版饮用粒子与音效），否则无动作。 */
 	@Override
 	public UseAction getUseAction(ItemStack stack) {
-		return isDrinkable(PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT)) ? UseAction.DRINK : UseAction.NONE;
+		return isDrinkable(PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT, net.minecraft.registry.DynamicRegistryManager.EMPTY)) ? UseAction.DRINK : UseAction.NONE;
 	}
 
 	/**
@@ -197,7 +204,7 @@ public class PotionBagItem extends Item {
 			InfiniteEnergyPotionItem.playThrowSound(world, user);
 			inf.spawnThrownPotion(world, user);
 			inf.markUsed(potion, world);
-			PotionBagScreenHandler.setStoredStack(bagStack, QUICK_SLOT, potion);
+			PotionBagScreenHandler.setStoredStack(bagStack, QUICK_SLOT, potion, world.getRegistryManager());
 			return;
 		}
 		world.playSound(null, user.getX(), user.getY(), user.getZ(),
@@ -208,13 +215,13 @@ public class PotionBagItem extends Item {
 		potionEntity.setVelocity(user, user.getPitch(), user.getYaw(), -20.0F, 0.5F, 1.0F);
 		world.spawnEntity(potionEntity);
 		potion.decrement(1);
-		PotionBagScreenHandler.setStoredStack(bagStack, QUICK_SLOT, potion);
+		PotionBagScreenHandler.setStoredStack(bagStack, QUICK_SLOT, potion, world.getRegistryManager());
 	}
 
 	/** 普通投掷药水是否仍在投掷间隔冷却中（基于药水袋 NBT 记录的结束世界时间）。 */
 	private static boolean isThrowCoolingDown(ItemStack bag, World world) {
-		NbtCompound nbt = bag.getNbt();
-		return nbt != null && nbt.contains(NBT_THROW_END) && world.getTime() < nbt.getLong(NBT_THROW_END);
+		NbtComponent nbt = bag.get(DataComponentTypes.CUSTOM_DATA);
+		return nbt != null && nbt.contains(NBT_THROW_END) && world.getTime() < nbt.getNbt().getLong(NBT_THROW_END);
 	}
 
 	/**
@@ -230,21 +237,21 @@ public class PotionBagItem extends Item {
 	@Override
 	public void inventoryTick(ItemStack stack, World world, Entity entity, int slot, boolean selected) {
 		if (!world.isClient && entity instanceof PlayerEntity player) {
-			ItemStack potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT);
+			ItemStack potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT, world.getRegistryManager());
 			long time = world.getTime();
 			long endTime = 0L;
 			if (potion.getItem() instanceof InfiniteEnergyPotionItem) {
 				endTime = InfiniteEnergyPotionItem.getRechargeEndTime(potion);
 			} else if (isThrowable(potion)) {
-				NbtCompound nbt = stack.getNbt();
+				NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
 				if (nbt != null && nbt.contains(NBT_THROW_END)) {
-					endTime = nbt.getLong(NBT_THROW_END);
+					endTime = nbt.getNbt().getLong(NBT_THROW_END);
 				}
 			}
 			long token = endTime > time ? endTime : 0L; // 已过期视为无冷却
-			long lastToken = stack.getNbt() != null ? stack.getNbt().getLong(NBT_CD_TOKEN) : 0L;
+			long lastToken = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getLong(NBT_CD_TOKEN);
 			if (token != lastToken) {
-				stack.getOrCreateNbt().putLong(NBT_CD_TOKEN, token);
+				NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putLong(NBT_CD_TOKEN, token));
 				if (token > 0L) {
 					player.getItemCooldownManager().set(this, (int) (token - time));
 				} else {
@@ -256,10 +263,10 @@ public class PotionBagItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, Item.TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.potion_bag.tooltip").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.potion_bag.tooltip.controls").formatted(Formatting.DARK_GRAY));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 
 	/**
@@ -268,7 +275,10 @@ public class PotionBagItem extends Item {
 	 */
 	@Override
 	public Text getName(ItemStack stack) {
-		ItemStack potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT);
+		ItemStack potion = ItemStack.EMPTY;
+		if (stack.getItem() instanceof PotionBagItem) {
+			potion = PotionBagScreenHandler.getStoredStack(stack, QUICK_SLOT, net.minecraft.registry.DynamicRegistryManager.EMPTY);
+		}
 		if (potion.isEmpty()) {
 			return Text.translatable("item.ssc_addon.potion_bag.empty");
 		}
@@ -298,32 +308,32 @@ public class PotionBagItem extends Item {
 	 * 放置优先级：先填非快捷消耗栏（槽位 1-8），快捷投放栏（槽位 0）仅在前者放不下时兜底；
 	 * 各区间内均先合并到同类未满堆叠，再占用空槽位。堆叠规则与药水包 GUI 一致（普通药水每格 8、无限能量药水每格 1）。
 	 */
-	public static int insertIntoBag(ItemStack bag, ItemStack source) {
+	public static int insertIntoBag(ItemStack bag, ItemStack source, RegistryWrapper.WrapperLookup registries) {
 		if (source.isEmpty() || !isStorable(source)) {
 			return 0;
 		}
 		int perSlot = maxPerSlot(source);
 		ItemStack[] slots = new ItemStack[BAG_SLOTS];
 		for (int i = 0; i < BAG_SLOTS; ++i) {
-			slots[i] = PotionBagScreenHandler.getStoredStack(bag, i);
+			slots[i] = PotionBagScreenHandler.getStoredStack(bag, i, registries);
 		}
 		// 优先非快捷消耗栏（槽位 1-8），快捷投放栏（槽位 0）兜底
-		int inserted = fillRange(slots, source, perSlot, 1, BAG_SLOTS);
-		inserted += fillRange(slots, source, perSlot, QUICK_SLOT, QUICK_SLOT + 1);
+		int inserted = fillRange(slots, source, perSlot, 1, BAG_SLOTS, registries);
+		inserted += fillRange(slots, source, perSlot, QUICK_SLOT, QUICK_SLOT + 1, registries);
 		if (inserted > 0) {
 			for (int i = 0; i < BAG_SLOTS; ++i) {
-				PotionBagScreenHandler.setStoredStack(bag, i, slots[i]);
+				PotionBagScreenHandler.setStoredStack(bag, i, slots[i], registries);
 			}
 		}
 		return inserted;
 	}
 
 	/** 在 {@code [from, to)} 槽位区间内放入药水：先合并到同类未满堆叠、再占用空槽位；扣减 {@code source} 并返回放入数量。 */
-	private static int fillRange(ItemStack[] slots, ItemStack source, int perSlot, int from, int to) {
+	private static int fillRange(ItemStack[] slots, ItemStack source, int perSlot, int from, int to, RegistryWrapper.WrapperLookup registries) {
 		int inserted = 0;
 		for (int i = from; i < to && !source.isEmpty(); ++i) {
 			ItemStack slot = slots[i];
-			if (!slot.isEmpty() && slot.getCount() < perSlot && ItemStack.canCombine(slot, source)) {
+			if (!slot.isEmpty() && slot.getCount() < perSlot && ItemStack.areItemsAndComponentsEqual(slot, source)) {
 				int add = Math.min(perSlot - slot.getCount(), source.getCount());
 				slot.increment(add);
 				source.decrement(add);

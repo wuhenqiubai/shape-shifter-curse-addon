@@ -15,7 +15,6 @@ import io.github.apace100.apoli.util.HudRender;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityGroup;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -23,6 +22,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleEffect;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -424,7 +424,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     private void healWithFx(LivingEntity target, int hearts) {
         target.heal(hearts * 2.0f);
         // 专属「生命恢复」buff：立即回血由上面 heal 完成（血条动画），此 buff 仅显示图标、不周期回血（只回一次）
-        addEffect(target, SscAddon.BAT_REGEN, 60, hearts - 1);
+        addEffect(target, SscAddon.BAT_REGEN_ENTRY, 60, hearts - 1);
     }
 
     private void applyEnemyFruit(LivingEntity target, EnemyFruit fruit, int divisor, int stack) {
@@ -443,7 +443,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
                 addEffect(target, StatusEffects.GLOWING, scaleDuration(80, divisor, 1.0f), 0);
             }
             case ROTTEN -> {
-                if (target.getGroup() == EntityGroup.UNDEAD) {
+                if (target.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD)) {
                     addEffect(target, StatusEffects.SLOWNESS, scaleDuration(70, divisor, 1.0f), amp);
                     addEffect(target, StatusEffects.WEAKNESS, scaleDuration(70, divisor, 1.0f), amp);
                 } else {
@@ -457,7 +457,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         }
     }
 
-    private void addEffect(LivingEntity target, StatusEffect effect, int duration, int amplifier) {
+    private void addEffect(LivingEntity target, RegistryEntry<StatusEffect> effect, int duration, int amplifier) {
         if (duration <= 0) return;
         target.addStatusEffect(new StatusEffectInstance(effect, duration, amplifier, false, true, true));
     }

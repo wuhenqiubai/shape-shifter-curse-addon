@@ -98,7 +98,6 @@ public class FruitBatPlantGrowthPower extends Power {
                 || b instanceof CocoaBlock       // 可可豆
                 || b instanceof SugarCaneBlock   // 甘蔗
                 || b instanceof BambooBlock      // 竹子
-                || b instanceof BambooSaplingBlock
                 || b instanceof NetherWartBlock  // 地狱疣
                 || b instanceof SaplingBlock     // 树苗
                 || b instanceof SweetBerryBushBlock // 甜浆果丛

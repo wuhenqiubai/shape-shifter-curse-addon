@@ -1,6 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.client.item.TooltipContext;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -8,8 +10,9 @@ import net.minecraft.entity.projectile.thrown.PotionEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.potion.PotionUtil;
+import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.potion.Potion;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
@@ -68,35 +71,35 @@ public class InfiniteEnergyPotionItem extends Item {
 		if (world == null) {
 			return false;
 		}
-		NbtCompound nbt = stack.getNbt();
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
 		if (nbt == null || !nbt.contains(NBT_FULL_AT)) {
 			return false;
 		}
-		return world.getTime() < nbt.getLong(NBT_FULL_AT);
+		return world.getTime() < nbt.getNbt().getLong(NBT_FULL_AT);
 	}
 
 	/** 仅凭 NBT 判断是否标记为空瓶（无世界对象时用于命名/物品栏显示；充满后由 inventoryTick 清除标记）。 */
 	public static boolean isEmptyByNbt(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
 		return nbt != null && nbt.contains(NBT_FULL_AT);
 	}
 
 	/** 返回充能结束的世界游戏时间（无标记返回 0）。供药水袋把剩余充能时间同步到冷却遮罩使用。 */
 	public static long getRechargeEndTime(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
-		return (nbt != null && nbt.contains(NBT_FULL_AT)) ? nbt.getLong(NBT_FULL_AT) : 0L;
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
+		return (nbt != null && nbt.contains(NBT_FULL_AT)) ? nbt.getNbt().getLong(NBT_FULL_AT) : 0L;
 	}
 
 	/** 标记一次使用：写入充满时刻 = 当前世界时间 + 充能时长（进入空瓶状态）。供本类与药水袋调用。 */
 	public void markUsed(ItemStack stack, World world) {
-		stack.getOrCreateNbt().putLong(NBT_FULL_AT, world.getTime() + type.rechargeTicks);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putLong(NBT_FULL_AT, world.getTime() + type.rechargeTicks));
 	}
 
 	/** 生成原版投掷药水弹射物并携带压缩能量药水(feed_potion)，复用原版喷溅/滞留范围效果。仅服务端调用。 */
 	public void spawnThrownPotion(World world, PlayerEntity user) {
-		ItemStack thrown = PotionUtil.setPotion(
-				new ItemStack(type == Type.LINGERING ? Items.LINGERING_POTION : Items.SPLASH_POTION),
-				RegCustomPotions.FEED_POTION);
+		ItemStack thrown = PotionContentsComponent.createStack(
+				type == Type.LINGERING ? Items.LINGERING_POTION : Items.SPLASH_POTION,
+				(RegistryEntry<Potion>) RegCustomPotions.FEED_POTION);
 		PotionEntity entity = new PotionEntity(world, user);
 		entity.setItem(thrown);
 		entity.setVelocity(user, user.getPitch(), user.getYaw(), -20.0F, 0.5F, 1.0F);
@@ -163,11 +166,10 @@ public class InfiniteEnergyPotionItem extends Item {
 		if (world == null) {
 			return false;
 		}
-		NbtCompound nbt = stack.getNbt();
-		if (nbt != null && nbt.contains(NBT_FULL_AT) && world.getTime() >= nbt.getLong(NBT_FULL_AT)) {
-			nbt.remove(NBT_FULL_AT);
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
+		if (nbt != null && nbt.contains(NBT_FULL_AT) && world.getTime() >= nbt.getNbt().getLong(NBT_FULL_AT)) {
 			if (nbt.isEmpty()) {
-				stack.setNbt(null);
+				stack.remove(DataComponentTypes.CUSTOM_DATA);
 			}
 			return true;
 		}
@@ -196,18 +198,14 @@ public class InfiniteEnergyPotionItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip").formatted(Formatting.GRAY));
-		if (isRecharging(stack, world)) {
-			NbtCompound nbt = stack.getNbt();
-			long remain = nbt == null ? 0 : nbt.getLong(NBT_FULL_AT) - world.getTime();
-			int sec = (int) Math.ceil(Math.max(0, remain) / 20.0);
-			tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip.recharging", sec)
+		if (isEmptyByNbt(stack)) {
+			tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip.recharging")
 					.formatted(Formatting.AQUA));
 		} else {
 			tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip.ready")
 					.formatted(Formatting.GREEN));
 		}
-		// 不调用 super.appendTooltip：PotionItem 会按空药水追加“无效果”提示
 	}
 }

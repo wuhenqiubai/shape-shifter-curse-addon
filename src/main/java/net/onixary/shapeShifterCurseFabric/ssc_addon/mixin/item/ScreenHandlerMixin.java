@@ -3,7 +3,6 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.item;
 import io.github.apace100.apoli.component.PowerHolderComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.MusicDiscItem;
 import net.minecraft.item.PotionItem;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
@@ -56,7 +55,7 @@ public abstract class ScreenHandlerMixin {
 					if (actionType == SlotActionType.PICKUP) {
 						ItemStack cursorStack = this.getCursorStack();
 						if (!cursorStack.isEmpty() && PotionBagItem.isStorable(cursorStack)
-								&& PotionBagItem.insertIntoBag(stack, cursorStack) > 0) {
+								&& PotionBagItem.insertIntoBag(stack, cursorStack, player.getWorld().getRegistryManager()) > 0) {
 							player.playSound(SoundEvents.ITEM_BUNDLE_INSERT, 0.8F,
 									0.8F + player.getWorld().getRandom().nextFloat() * 0.4F);
 							slot.markDirty();
@@ -77,7 +76,7 @@ public abstract class ScreenHandlerMixin {
 					// Check if cursor has a music disc - allow charging
 					ItemStack cursorStack = this.getCursorStack();
 					// Try to charge the jukebox with the disc
-					if (cursorStack != null && !cursorStack.isEmpty() && cursorStack.getItem() instanceof MusicDiscItem &&
+					if (cursorStack != null && !cursorStack.isEmpty() && cursorStack.contains(net.minecraft.component.DataComponentTypes.JUKEBOX_PLAYABLE) &&
 							AllayJukeboxItem.tryChargeWithDisc(stack, cursorStack)) {
 						// Play charge sound
 						player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
@@ -134,7 +133,7 @@ public abstract class ScreenHandlerMixin {
 					continue;
 				}
 				ItemStack slotStack = slot.getStack();
-				if (!ItemStack.canCombine(cursor, slotStack)) {
+				if (!ItemStack.areItemsAndComponentsEqual(cursor, slotStack)) {
 					continue;
 				}
 				if (pass == 0 && slotStack.getCount() >= maxStack) {

@@ -1,23 +1,34 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.network;
 
-import io.netty.buffer.Unpooled;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
+import net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent;
+import net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent;
+import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPGroupHeal;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaTeleport;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPrimary;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
+import net.onixary.shapeShifterCurseFabric.util.FormTextureUtils;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-//import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.Ability_AllayHeal;
 
 
 public class SscAddonNetworking {
@@ -109,238 +120,228 @@ public class SscAddonNetworking {
 	}
 
 	/** 风灵「疾风连爪」：同步爪击阶段(phase)与准星条进度给客户端。 */
-	public static void syncClawState(net.minecraft.server.network.ServerPlayerEntity player, int phase, float crosshairProgress) {
-		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+	public static void syncClawState(ServerPlayerEntity player, int phase, float crosshairProgress) {
+		PacketByteBuf buf = PacketByteBufs.create();
 		buf.writeInt(phase);
 		buf.writeFloat(crosshairProgress);
-		ServerPlayNetworking.send(player, PACKET_CLAW_STATE, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_CLAW_STATE), buf));
 	}
 
 	/** 风灵「风之冲刺」：同步阶段(phase)与目标悬浮 Y 给客户端（驱动落点预览）。 */
-	public static void syncDashState(net.minecraft.server.network.ServerPlayerEntity player, int phase, double targetY) {
-		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+	public static void syncDashState(ServerPlayerEntity player, int phase, double targetY) {
+		PacketByteBuf buf = PacketByteBufs.create();
 		buf.writeInt(phase);
 		buf.writeDouble(targetY);
-		ServerPlayNetworking.send(player, PACKET_DASH_STATE, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_DASH_STATE), buf));
 	}
 
 	/** 进化美西螈「投掷水矛」：向追踪该玩家的客户端 + 玩家自身广播蓄力手持水矛渲染状态。 */
-	public static void syncSpearChargeState(net.minecraft.server.network.ServerPlayerEntity player, boolean charging) {
-		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+	public static void syncSpearChargeState(ServerPlayerEntity player, boolean charging) {
+		PacketByteBuf buf = PacketByteBufs.create();
 		buf.writeUuid(player.getUuid());
 		buf.writeBoolean(charging);
-		for (net.minecraft.server.network.ServerPlayerEntity viewer :
-				net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(player)) {
-			ServerPlayNetworking.send(viewer, PACKET_SPEAR_CHARGE_STATE, net.fabricmc.fabric.api.networking.v1.PacketByteBufs.copy(buf));
+		for (ServerPlayerEntity viewer :
+				PlayerLookup.tracking(player)) {
+			ServerPlayNetworking.send(viewer, new BytePayload(BytePayload.id(PACKET_SPEAR_CHARGE_STATE), PacketByteBufs.copy(buf)));
 		}
-		ServerPlayNetworking.send(player, PACKET_SPEAR_CHARGE_STATE, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_SPEAR_CHARGE_STATE), buf));
 	}
 
 	public static void registerServerReceivers() {
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_KEY_PRESS, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_KEY_PRESS), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			int keyId = buf.readInt();
-			server.execute(() -> handleKeyPress(player, keyId));
+			ctx.server().execute(() -> handleKeyPress(ctx.player(), keyId));
 		});
 
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_MANCIANIMA_TELEPORT, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_MANCIANIMA_TELEPORT), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			byte mode = buf.readByte();
-			server.execute(() -> MancianimaTeleport.execute(player, mode));
+			ctx.server().execute(() -> MancianimaTeleport.execute(ctx.player(), mode));
 		});
 
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_MANCIANIMA_PRIMARY, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> MancianimaPrimary.execute(player));
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_MANCIANIMA_PRIMARY), (BytePayload payload, ServerPlayNetworking.Context ctx) -> { PacketByteBuf buf = payload.data(); ctx.server().execute(() -> MancianimaPrimary.execute(ctx.player())); });
 
 		// 白名单 GUI - 添加
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_WHITELIST_GUI_ADD, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_WHITELIST_GUI_ADD), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			UUID target = buf.readUuid();
-			server.execute(() -> {
-				if (isRateLimited(player)) return; // 防 spam
-				if (target.equals(player.getUuid())) return; // 不允许把自己加入自己的白名单
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return; // 防 spam
+				if (target.equals(ctx.player().getUuid())) return; // 不允许把自己加入自己的白名单
 				// 限制单玩家白名单总容量，防恶意客户端纯增加坚持性 tag 撑爆服务端存储
 				String tag = AllaySPGroupHeal.WHITELIST_TAG_PREFIX + target.toString();
-				long existing = player.getCommandTags().stream()
+				long existing = ctx.player().getCommandTags().stream()
 					.filter(t -> t.startsWith(AllaySPGroupHeal.WHITELIST_TAG_PREFIX)).count();
-				if (!player.getCommandTags().contains(tag) && existing >= 256L) return; // 每人最多 256 个
-				player.getCommandTags().add(tag);
-				sendWhitelistSync(player);
+				if (!ctx.player().getCommandTags().contains(tag) && existing >= 256L) return; // 每人最多 256 个
+				ctx.player().getCommandTags().add(tag);
+				sendWhitelistSync(ctx.player());
 			});
 		});
 
 		// 白名单 GUI - 移除
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_WHITELIST_GUI_REMOVE, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_WHITELIST_GUI_REMOVE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			UUID target = buf.readUuid();
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
 				String tag = AllaySPGroupHeal.WHITELIST_TAG_PREFIX + target.toString();
-				player.getCommandTags().remove(tag);
-				sendWhitelistSync(player);
+				ctx.player().getCommandTags().remove(tag);
+				sendWhitelistSync(ctx.player());
 			});
 		});
 
 		// 白名单 GUI - 切换默认/自定义模式
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_WHITELIST_GUI_MODE, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_WHITELIST_GUI_MODE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			byte mode = buf.readByte();
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				WhitelistUtils.setCustomMode(player, mode == 1);
-				sendWhitelistSync(player);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				WhitelistUtils.setCustomMode(ctx.player(), mode == 1);
+				sendWhitelistSync(ctx.player());
 			});
 		});
 
 		// 白名单 GUI - 生物移除
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_WHITELIST_GUI_MOB_REMOVE, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_WHITELIST_GUI_MOB_REMOVE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			UUID mobUuid = buf.readUuid();
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				WhitelistUtils.removeMobFromWhitelist(player, mobUuid);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				WhitelistUtils.removeMobFromWhitelist(ctx.player(), mobUuid);
 				// 同时清掉友军标记双写时写入的 player 前缀 tag，避免残留导致 count 不一致
-				AllaySPGroupHeal.removeFromWhitelistByUuid(player, mobUuid);
-				sendWhitelistSync(player);
+				AllaySPGroupHeal.removeFromWhitelistByUuid(ctx.player(), mobUuid);
+				sendWhitelistSync(ctx.player());
 			});
 		});
 
 		// SSCA 美西螈装死 - 提前结束（装死期间按 sp_secondary）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_PLAY_DEAD_END, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> {
-				if (!player.hasStatusEffect(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.PLAYING_DEAD)) return;
-				player.removeStatusEffect(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.PLAYING_DEAD);
-				player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
-				player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.SLOWNESS);
-				player.setPose(net.minecraft.entity.EntityPose.STANDING);
-				// 提前结束：CD 从此刻起算 25 秒
-				net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils.setResourceValueAndSync(player, net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers.SP_SECONDARY_CD, 500);
-			});
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_PLAY_DEAD_END), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> {
+			if (!ctx.player().hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) return;
+			ctx.player().removeStatusEffect(SscAddon.PLAYING_DEAD_ENTRY);
+			ctx.player().removeStatusEffect(StatusEffects.BLINDNESS);
+			ctx.player().removeStatusEffect(StatusEffects.SLOWNESS);
+			ctx.player().setPose(net.minecraft.entity.EntityPose.STANDING);
+			// 提前结束：CD 从此刻起算 25 秒
+			PowerUtils.setResourceValueAndSync(ctx.player(), FormIdentifiers.SP_SECONDARY_CD, 500);
+		}));
 
 		// SSCA 美西螈漩涡蓄力 - 开始 / 释放
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_START, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.start(player));
-		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_RELEASE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.release(player));
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_START), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.start(ctx.player())));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_RELEASE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.release(ctx.player())));
 
 		// SSCA 进化美西螈技能：主「投掷水矛」 / 次「涡流引导」
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_UPGRADE_AXOLOTL_SPEAR, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.onKeyPress(player));
-		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_UPGRADE_AXOLOTL_VORTEX, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.onKeyPress(player));
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_UPGRADE_AXOLOTL_SPEAR), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.onKeyPress(ctx.player())));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_UPGRADE_AXOLOTL_VORTEX), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager.onKeyPress(ctx.player())));
 
 		// 风灵「疾风连爪」：客户端上报左键按住状态
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_CLAW_HOLD, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_CLAW_HOLD), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			boolean hold = buf.readBoolean();
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.setHolding(player, hold));
+			ctx.server().execute(() -> WindSpiritClawManager.setHolding(ctx.player(), hold));
 		});
 
 		// 风灵副技能：sp_secondary 触发 +50% 增伤 buff
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_CLAW_BUFF, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.activateSecondaryBuff(player));
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_CLAW_BUFF), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager.activateSecondaryBuff(ctx.player())));
 
 		// 风灵「风之冲刺」：主技能键（服务端按当前阶段分支：起飞 / 悬浮中冲刺）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_WIND_DASH, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.onKeyPress(player));
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_WIND_DASH), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager.onKeyPress(ctx.player())));
 
 		// 荧光幼灵技能按键：主要（法阵激光）/ 次要（潮汐波动）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FLUO_LASER, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentLaserManager.onKeyPress(player));
-		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FLUO_TIDAL, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.onKeyPress(player));
-		});
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FLUO_LASER), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentLaserManager.onKeyPress(ctx.player())));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FLUO_TIDAL), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager.onKeyPress(ctx.player())));
 
 		// ===== SSCA 进化加点系统 =====
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_SELECT_ROUTE, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_EVO_SELECT_ROUTE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			String routeId = buf.readString(256);
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				EvolutionManager.selectRoute(player, routeId);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				EvolutionManager.selectRoute(ctx.player(), routeId);
 			});
 		});
 
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_SELECT_BRANCH, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_EVO_SELECT_BRANCH), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			String branchId = buf.readString(256);
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				EvolutionManager.selectBranch(player, branchId);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				EvolutionManager.selectBranch(ctx.player(), branchId);
 			});
 		});
 
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_UNLOCK, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_EVO_UNLOCK), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			String nodeId = buf.readString(256);
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				EvolutionManager.tryUnlock(player, nodeId);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				EvolutionManager.tryUnlock(ctx.player(), nodeId);
 			});
 		});
 
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_UNLOCK_BATCH, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_EVO_UNLOCK_BATCH), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			int count = Math.max(0, Math.min(64, buf.readInt()));
 			java.util.List<String> ids = new java.util.ArrayList<>(count);
 			for (int i = 0; i < count; i++) ids.add(buf.readString(256));
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				for (String id : ids) EvolutionManager.tryUnlock(player, id);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				for (String id : ids) EvolutionManager.tryUnlock(ctx.player(), id);
 			});
 		});
 
 		// 开局选形态界面：直接走 SSCA 进化路线进入选定形态
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_SSCA_START_ROUTE, (server, player, handler, buf, responseSender) -> {
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SSCA_START_ROUTE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			PacketByteBuf buf = payload.data();
 			String formId = buf.readString(256);
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				EvolutionManager.startSscaRoute(player, formId);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				EvolutionManager.startSscaRoute(ctx.player(), formId);
 			});
 		});
 
 		// 客机加入后请求：把所有在场玩家的形态 ID + 皮肤数据广播给「所有在线玩家」（含请求者与已在线客机），
 		// 绕过 CCA 同步的不确定性，修复刚进游戏 / 新玩家加入时看其它玩家是默认白模型。
 		// 形态模型由客机据 formId 重建 origin 决定，颜色据皮肤数据上色。
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_REQUEST_ALL_FORM_SYNC, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> {
-				java.util.List<net.minecraft.server.network.ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
-				for (net.minecraft.server.network.ServerPlayerEntity recipient : players) {
-					net.minecraft.network.PacketByteBuf out = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
-					out.writeInt(players.size());
-					for (net.minecraft.server.network.ServerPlayerEntity p : players) {
-						out.writeUuid(p.getUuid());
-						net.minecraft.util.Identifier fid =
-								net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.get(p).nowFormID;
-						out.writeString(fid == null ? "" : fid.toString());
-						// 皮肤数据：保留原皮 / 是否启用形态颜色 / 五种颜色(ABGR) / 灰度反转 / 随机音效
-						net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent skin =
-								net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
-						out.writeBoolean(skin.shouldKeepOriginalSkin());
-						out.writeBoolean(skin.isEnableFormColor());
-						net.onixary.shapeShifterCurseFabric.util.FormTextureUtils.ColorSetting c = skin.getFormColor();
-						out.writeInt(c.getPrimaryColor());
-						out.writeInt(c.getAccentColor1());
-						out.writeInt(c.getAccentColor2());
-						out.writeInt(c.getEyeColorA());
-						out.writeInt(c.getEyeColorB());
-						out.writeBoolean(c.getPrimaryGreyReverse());
-						out.writeBoolean(c.getAccent1GreyReverse());
-						out.writeBoolean(c.getAccent2GreyReverse());
-						out.writeBoolean(skin.isEnableFormRandomSound());
-					}
-					ServerPlayNetworking.send(recipient, PACKET_BROADCAST_FORMS, out);
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_REQUEST_ALL_FORM_SYNC), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> {
+			List<ServerPlayerEntity> players = ctx.server().getPlayerManager().getPlayerList();
+			for (ServerPlayerEntity recipient : players) {
+				PacketByteBuf out = PacketByteBufs.create();
+				out.writeInt(players.size());
+				for (ServerPlayerEntity p : players) {
+					out.writeUuid(p.getUuid());
+					Identifier fid =
+							RegPlayerFormComponent.PLAYER_FORM.get(p).nowFormID;
+					out.writeString(fid == null ? "" : fid.toString());
+					// 皮肤数据：保留原皮 / 是否启用形态颜色 / 五种颜色(ABGR) / 灰度反转 / 随机音效
+					PlayerSkinComponent skin =
+							RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
+					out.writeBoolean(skin.shouldKeepOriginalSkin());
+					out.writeBoolean(skin.isEnableFormColor());
+					FormTextureUtils.ColorSetting c = skin.getFormColor();
+					out.writeInt(c.getPrimaryColor());
+					out.writeInt(c.getAccentColor1());
+					out.writeInt(c.getAccentColor2());
+					out.writeInt(c.getEyeColorA());
+					out.writeInt(c.getEyeColorB());
+					out.writeBoolean(c.getPrimaryGreyReverse());
+					out.writeBoolean(c.getAccent1GreyReverse());
+					out.writeBoolean(c.getAccent2GreyReverse());
+					out.writeBoolean(skin.isEnableFormRandomSound());
 				}
-				// 同步 SSCA 进化路线定义给请求者（客户端进化树 UI 渲染需要，多人环境客户端无 datapack 数据）
-				net.minecraft.network.PacketByteBuf routesOut = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
-				java.util.Map<String, String> rawRoutes =
-						net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE.getRawJson();
-				routesOut.writeInt(rawRoutes.size());
-				for (java.util.Map.Entry<String, String> e : rawRoutes.entrySet()) {
-					routesOut.writeString(e.getKey(), 256);
-					routesOut.writeString(e.getValue(), 2000000);
-				}
-				ServerPlayNetworking.send(player, PACKET_EVO_ROUTES_SYNC, routesOut);
-			});
-		});
+				ServerPlayNetworking.send(recipient, new BytePayload(BytePayload.id(PACKET_BROADCAST_FORMS), out));
+			}
+			// 同步 SSCA 进化路线定义给请求者（客户端进化树 UI 渲染需要，多人环境客户端无 datapack 数据）
+			PacketByteBuf routesOut = PacketByteBufs.create();
+			Map<String, String> rawRoutes =
+					EvolutionRegistry.INSTANCE.getRawJson();
+			routesOut.writeInt(rawRoutes.size());
+			for (Map.Entry<String, String> e : rawRoutes.entrySet()) {
+				routesOut.writeString(e.getKey(), 256);
+				routesOut.writeString(e.getValue(), 2000000);
+			}
+			ServerPlayNetworking.send(ctx.player(), new BytePayload(BytePayload.id(PACKET_EVO_ROUTES_SYNC), routesOut));
+		}));
 	}
 
 	/** 服务端：把指定玩家当前白名单推送到其客户端，用于打开/刷新白名单 GUI。 */
@@ -351,7 +352,7 @@ public class SscAddonNetworking {
 		java.util.Set<UUID> mobSet = new java.util.HashSet<>(mobs);
 		List<UUID> filteredPlayers = new java.util.ArrayList<>();
 		for (UUID u : uuids) if (!mobSet.contains(u)) filteredPlayers.add(u);
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+		PacketByteBuf buf = PacketByteBufs.create();
 		buf.writeBoolean(WhitelistUtils.isCustomMode(player));
 		buf.writeInt(filteredPlayers.size());
 		for (UUID u : filteredPlayers) buf.writeUuid(u);
@@ -362,7 +363,7 @@ public class SscAddonNetworking {
 			String typeId = WhitelistUtils.getMobTypeId(player, u);
 			buf.writeString(typeId != null ? typeId : "");
 		}
-		ServerPlayNetworking.send(player, PACKET_WHITELIST_GUI_SYNC, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_WHITELIST_GUI_SYNC), buf));
 	}
 
 	private static void handleKeyPress(ServerPlayerEntity player, int keyId) {

@@ -4,6 +4,7 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.item.HeldItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.RotationAxis;
@@ -30,7 +31,7 @@ public class UpgradeAxolotlFirstPersonSpearMixin {
 		if (player != null && hand == Hand.MAIN_HAND
 				&& UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
 			ItemStack spear = new ItemStack(SscAddon.WATER_SPEAR);
-			spear.getOrCreateNbt().putInt("CustomModelData", 1);
+			spear.set(net.minecraft.component.DataComponentTypes.CUSTOM_MODEL_DATA, new net.minecraft.component.type.CustomModelDataComponent(1));
 			return spear;
 		}
 		return item;

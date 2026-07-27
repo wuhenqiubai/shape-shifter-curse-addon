@@ -10,6 +10,7 @@ import net.minecraft.item.PotionItem;
 import net.minecraft.item.SplashPotionItem;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -47,7 +48,7 @@ public class PotionBagScreenHandler extends ScreenHandler {
 		};
 
 		// Load NBT
-		loadFromNbt(bagStack.getNbt());
+		loadFromNbt(bagStack.getOrDefault(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.DEFAULT).getNbt());
 		// 清理已充满的无限药水空瓶标记，使打开时袋内显示正常名称
 		cleanRechargedInfinitePotions();
 
@@ -135,12 +136,13 @@ public class PotionBagScreenHandler extends ScreenHandler {
 
 	private void loadFromNbt(NbtCompound nbt) {
 		if (nbt != null && nbt.contains("Items", 9)) {
+			net.minecraft.registry.DynamicRegistryManager registries = player.getWorld().getRegistryManager();
 			NbtList list = nbt.getList("Items", 10);
 			for (int i = 0; i < list.size(); ++i) {
 				NbtCompound itemTag = list.getCompound(i);
 				int slot = itemTag.getByte("Slot") & 255;
 				if (slot >= 0 && slot < inventory.size()) {
-					inventory.setStack(slot, ItemStack.fromNbt(itemTag));
+					ItemStack.fromNbt(registries, itemTag).ifPresent(s -> inventory.setStack(slot, s));
 				}
 			}
 		}
@@ -148,17 +150,18 @@ public class PotionBagScreenHandler extends ScreenHandler {
 
 	private void saveToNbt() {
 		if (!bagStack.isEmpty()) {
+			net.minecraft.registry.DynamicRegistryManager registries = player.getWorld().getRegistryManager();
 			NbtList list = new NbtList();
 			for (int i = 0; i < inventory.size(); ++i) {
-				ItemStack stack = inventory.getStack(i);
-				if (!stack.isEmpty()) {
+				ItemStack s = inventory.getStack(i);
+				if (!s.isEmpty()) {
 					NbtCompound itemTag = new NbtCompound();
 					itemTag.putByte("Slot", (byte) i);
-					stack.writeNbt(itemTag);
+					itemTag = (NbtCompound) s.encode(registries, itemTag);
 					list.add(itemTag);
 				}
 			}
-			bagStack.getOrCreateNbt().put("Items", list);
+			net.minecraft.component.type.NbtComponent.set(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, bagStack, bn -> bn.put("Items", list));
 		}
 	}
 
@@ -201,16 +204,16 @@ public class PotionBagScreenHandler extends ScreenHandler {
 	 *
 	 * @return 该槽位物品；不存在时返回 {@link ItemStack#EMPTY}
 	 */
-	public static ItemStack getStoredStack(ItemStack bagStack, int slot) {
-		NbtCompound nbt = bagStack.getNbt();
-		if (nbt == null || !nbt.contains("Items", 9)) {
-			return ItemStack.EMPTY;
-		}
-		NbtList list = nbt.getList("Items", 10);
+	public static ItemStack getStoredStack(ItemStack bagStack, int slot, RegistryWrapper.WrapperLookup registries) {
+		net.minecraft.component.type.NbtComponent nbt = bagStack.get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA);
+		if (nbt == null) return ItemStack.EMPTY;
+		NbtCompound nbtCompound = nbt.getNbt();
+		if (!nbtCompound.contains("Items", 9)) return ItemStack.EMPTY;
+		NbtList list = nbtCompound.getList("Items", 10);
 		for (int i = 0; i < list.size(); ++i) {
 			NbtCompound itemTag = list.getCompound(i);
 			if ((itemTag.getByte("Slot") & 255) == slot) {
-				return ItemStack.fromNbt(itemTag);
+				return ItemStack.fromNbt(registries, itemTag).orElse(ItemStack.EMPTY);
 			}
 		}
 		return ItemStack.EMPTY;
@@ -220,9 +223,9 @@ public class PotionBagScreenHandler extends ScreenHandler {
 	 * 写回药水包指定槽位的物品（{@code stack} 为空则移除该槽位条目）。
 	 * 供快捷投放栏消耗药水后更新存储，与 GUI 的 {@link #saveToNbt} 使用同一 NBT 结构。
 	 */
-	public static void setStoredStack(ItemStack bagStack, int slot, ItemStack stack) {
-		NbtCompound nbt = bagStack.getOrCreateNbt();
-		NbtList list = nbt.contains("Items", 9) ? nbt.getList("Items", 10) : new NbtList();
+	public static void setStoredStack(ItemStack bagStack, int slot, ItemStack stack, RegistryWrapper.WrapperLookup registries) {
+		net.minecraft.component.type.NbtComponent nbt = bagStack.getOrDefault(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.DEFAULT);
+		net.minecraft.nbt.NbtList list = nbt.getNbt().contains("Items", 9) ? nbt.getNbt().getList("Items", 10) : new net.minecraft.nbt.NbtList();
 		for (int i = list.size() - 1; i >= 0; --i) {
 			if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
 				list.remove(i);
@@ -231,10 +234,10 @@ public class PotionBagScreenHandler extends ScreenHandler {
 		if (!stack.isEmpty()) {
 			NbtCompound itemTag = new NbtCompound();
 			itemTag.putByte("Slot", (byte) slot);
-			stack.writeNbt(itemTag);
+			itemTag = (NbtCompound) stack.encode(registries, itemTag);
 			list.add(itemTag);
 		}
-		nbt.put("Items", list);
+		net.minecraft.component.type.NbtComponent.set(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, bagStack, bn -> bn.put("Items", list));
 	}
 
 }

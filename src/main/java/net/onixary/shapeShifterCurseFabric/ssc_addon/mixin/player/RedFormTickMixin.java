@@ -6,7 +6,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
+import net.minecraft.network.packet.c2s.common.SyncedClientOptions;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -33,10 +33,10 @@ import java.util.Set;
 public class RedFormTickMixin {
 
 	// 捕获玩家客户端语言设置，存入SscAddon.PLAYER_LANGUAGES
-	@Inject(method = "setClientSettings", at = @At("HEAD"))
-	private void onSetClientSettings(ClientSettingsC2SPacket packet, CallbackInfo ci) {
+	@Inject(method = "setClientOptions", at = @At("HEAD"))
+	private void onSetClientSettings(SyncedClientOptions clientOptions, CallbackInfo ci) {
 		ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
-		SscAddon.PLAYER_LANGUAGES.put(player.getUuid(), packet.language());
+		SscAddon.PLAYER_LANGUAGES.put(player.getUuid(), clientOptions.language());
 	}
 
 	@Inject(method = "tick", at = @At("HEAD"))
@@ -103,11 +103,12 @@ public class RedFormTickMixin {
 				ItemStack stack = player.getInventory().getStack(i);
 				if (stack.isOf(SscAddon.POTION_BAG)) {
 					// Found a bag, drop its contents
-					if (stack.getNbt() != null && stack.hasNbt() && stack.getNbt().contains("Items", 9)) {
-						NbtList list = stack.getNbt().getList("Items", 10);
+						if (stack.contains(net.minecraft.component.DataComponentTypes.CUSTOM_DATA) && stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA).getNbt().contains("Items", 9)) {
+							NbtList list = stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA).getNbt().getList("Items", 10);
 						for (int j = 0; j < list.size(); ++j) {
 							NbtCompound itemTag = list.getCompound(j);
-							ItemStack contentStack = ItemStack.fromNbt(itemTag);
+								net.minecraft.registry.RegistryWrapper.WrapperLookup registries = player.getWorld().getRegistryManager();
+								ItemStack contentStack = ItemStack.fromNbt(registries, itemTag).orElse(ItemStack.EMPTY);
 							if (!contentStack.isEmpty()) {
 								player.dropItem(contentStack, false, true);
 							}
@@ -197,7 +198,7 @@ public class RedFormTickMixin {
 				if (i == targetSlot) continue;
 				ItemStack slotStack = inv.main.get(i);
 				if (slotStack.isEmpty()) continue;
-				if (!ItemStack.canCombine(slotStack, moved)) continue;
+				if (!ItemStack.areItemsAndComponentsEqual(slotStack, moved)) continue;
 				int room = slotStack.getMaxCount() - slotStack.getCount();
 				if (room <= 0) continue;
 				int merge = Math.min(room, moved.getCount());

@@ -2,7 +2,6 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityGroup;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageTypes;
@@ -95,7 +94,7 @@ public abstract class SscAddonLivingEntityMixin {
 		if (self instanceof MobEntity mob
 				&& source.getAttacker() instanceof PlayerEntity player) {
 			// 裁决者: 所有亡灵触发挑衅
-			if (mob.getGroup() == EntityGroup.UNDEAD
+			if (mob.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD)
 					&& FormUtils.isForm(player, FormIdentifiers.ANUBIS_WOLF_SP)) {
 				UndeadNeutralState.PROVOKE_TIMESTAMPS.put(player.getUuid(), mob.getWorld().getTime());
 			}
@@ -260,7 +259,7 @@ public abstract class SscAddonLivingEntityMixin {
 
 	@ModifyVariable(method = "addStatusEffect(Lnet/minecraft/entity/effect/StatusEffectInstance;Lnet/minecraft/entity/Entity;)Z", at = @At("HEAD"), argsOnly = true)
 	private StatusEffectInstance modifyStatusEffect(StatusEffectInstance effect) {
-		if (!effect.getEffectType().isInstant() && PowerHolderComponent.hasPower((LivingEntity) (Object) this, EffectEfficiencyReductionPower.class)) {
+		if (!effect.getEffectType().value().isInstant() && PowerHolderComponent.hasPower((LivingEntity) (Object) this, EffectEfficiencyReductionPower.class)) {
 			int originalAmp = effect.getAmplifier();
 			int newDuration;
 
@@ -291,8 +290,7 @@ public abstract class SscAddonLivingEntityMixin {
 					effect.isAmbient(),
 					effect.shouldShowParticles(),
 					effect.shouldShowIcon(),
-					null,
-					effect.getFactorCalculationData()
+				null
 			);
 		}
 		return effect;

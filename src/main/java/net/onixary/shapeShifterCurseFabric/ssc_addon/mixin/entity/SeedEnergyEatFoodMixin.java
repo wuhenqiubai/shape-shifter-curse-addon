@@ -5,6 +5,7 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
+import net.minecraft.component.type.FoodComponent;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -23,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class SeedEnergyEatFoodMixin {
 
     @Inject(method = "eatFood", at = @At("RETURN"))
-    private void my_addon$onEatFoodReturn(World world, ItemStack stack, CallbackInfoReturnable<ItemStack> cir) {
+    private void my_addon$onEatFoodReturn(World world, ItemStack stack, FoodComponent foodComponent, CallbackInfoReturnable<ItemStack> cir) {
         if (world.isClient) return;
         LivingEntity self = (LivingEntity) (Object) this;
         if (!(self instanceof ServerPlayerEntity sp)) return;

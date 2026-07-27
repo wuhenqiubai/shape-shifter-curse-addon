@@ -1,5 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.story;
 
+import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -26,12 +27,14 @@ public final class TideSpiritStoryState extends PersistentState {
 
 	public static TideSpiritStoryState get(MinecraftServer server) {
 		return server.getOverworld().getPersistentStateManager().getOrCreate(
-				TideSpiritStoryState::fromNbt,
-				TideSpiritStoryState::new,
+				new PersistentState.Type<>(
+						TideSpiritStoryState::new,
+						TideSpiritStoryState::fromNbt,
+						DataFixTypes.LEVEL),
 				KEY);
 	}
 
-	public static TideSpiritStoryState fromNbt(NbtCompound nbt) {
+	public static TideSpiritStoryState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
 		TideSpiritStoryState s = new TideSpiritStoryState();
 		readUuidList(nbt, "tipped", s.tippedPlayers);
 		return s;

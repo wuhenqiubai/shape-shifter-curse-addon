@@ -1,12 +1,10 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
-import net.fabricmc.fabric.api.item.v1.FabricItem;
+import net.minecraft.component.type.AttributeModifierSlot;
+import net.minecraft.component.type.AttributeModifiersComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -31,8 +29,8 @@ import java.util.List;
 public class WaterSpearItem extends TridentItem {
 	private static final int TICKS_PER_DURABILITY = 20;
 
-	public WaterSpearItem(FabricItem.Settings settings) {
-		super((Item.Settings) settings);
+	public WaterSpearItem(Item.Settings settings) {
+		super(settings);
 	}
 
 	@Override
@@ -107,8 +105,7 @@ public class WaterSpearItem extends TridentItem {
 			world.playSound(null, x, y, z, SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 1.0F, 0.8F);
 		}
 
-		stack.damage(1, attacker, e -> e.sendToolBreakStatus(attacker.getActiveHand()));
-
+		stack.damage(1, attacker, EquipmentSlot.MAINHAND);
 		return true;
 	}
 
@@ -132,8 +129,7 @@ public class WaterSpearItem extends TridentItem {
 		}
 
 		if (!world.isClient && entity instanceof LivingEntity livingEntity && world.getTime() % TICKS_PER_DURABILITY == 0) {
-			stack.damage(1, livingEntity, e -> {
-			});
+			stack.damage(1, livingEntity, EquipmentSlot.MAINHAND);
 		}
 	}
 
@@ -148,13 +144,14 @@ public class WaterSpearItem extends TridentItem {
 	}
 
 	@Override
-	public Multimap<EntityAttribute, EntityAttributeModifier> getAttributeModifiers(EquipmentSlot slot) {
-		if (slot == EquipmentSlot.MAINHAND) {
-			ImmutableMultimap.Builder<EntityAttribute, EntityAttributeModifier> builder = ImmutableMultimap.builder();
-			builder.put(EntityAttributes.GENERIC_ATTACK_DAMAGE, new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, "Tool modifier", 8.0, EntityAttributeModifier.Operation.ADDITION));
-			builder.put(EntityAttributes.GENERIC_ATTACK_SPEED, new EntityAttributeModifier(ATTACK_SPEED_MODIFIER_ID, "Tool modifier", -3.0, EntityAttributeModifier.Operation.ADDITION));
-			return builder.build();
-		}
-		return super.getAttributeModifiers(slot);
+	public AttributeModifiersComponent getAttributeModifiers() {
+		AttributeModifiersComponent.Builder builder = AttributeModifiersComponent.builder();
+		builder.add(EntityAttributes.GENERIC_ATTACK_DAMAGE,
+				new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 8.0, EntityAttributeModifier.Operation.ADD_VALUE),
+				AttributeModifierSlot.MAINHAND);
+		builder.add(EntityAttributes.GENERIC_ATTACK_SPEED,
+				new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -3.0, EntityAttributeModifier.Operation.ADD_VALUE),
+				AttributeModifierSlot.MAINHAND);
+		return builder.build();
 	}
 }

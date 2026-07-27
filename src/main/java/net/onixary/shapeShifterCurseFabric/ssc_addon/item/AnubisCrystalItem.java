@@ -2,10 +2,10 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
@@ -13,10 +13,8 @@ import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -34,8 +32,8 @@ public class AnubisCrystalItem extends TrinketItem {
 	 * 注册到沙漠神殿战利品表（15%概率，1个）
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (id.equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (key.getValue().equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(ConstantLootNumberProvider.create(1.0F))
 						.conditionally(RandomChanceLootCondition.builder(0.15F))
@@ -51,11 +49,11 @@ public class AnubisCrystalItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
 		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_2").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_3").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_4").formatted(Formatting.RED));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

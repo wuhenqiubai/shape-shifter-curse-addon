@@ -5,6 +5,7 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.feature.HeldItemFeatureRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.component.DataComponentTypes;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Arm;
@@ -39,7 +40,7 @@ public class UpgradeAxolotlThirdPersonSpearMixin {
 		if (entity instanceof AbstractClientPlayerEntity
 				&& UpgradeAxolotlSpearRenderState.isCharging(entity.getUuid())) {
 			ItemStack spear = new ItemStack(SscAddon.WATER_SPEAR);
-			spear.getOrCreateNbt().putInt("CustomModelData", 1);
+			spear.set(net.minecraft.component.DataComponentTypes.CUSTOM_MODEL_DATA, new net.minecraft.component.type.CustomModelDataComponent(1));
 			return spear;
 		}
 		return original.call(entity);

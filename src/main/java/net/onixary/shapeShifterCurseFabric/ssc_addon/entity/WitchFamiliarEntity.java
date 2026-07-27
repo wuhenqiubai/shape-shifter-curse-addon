@@ -252,7 +252,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 
 		for (Entity targetEntity : entityList) {
 			// 跳过爆炸免疫实体
-			if (targetEntity.isImmuneToExplosion()) continue;
+			if (targetEntity.isImmuneToExplosion(null)) continue;
 			// 跳过非生物实体或不应受火环影响的实体
 			if (!(targetEntity instanceof LivingEntity living)) continue;
 			if (!shouldFireRingAffect(living)) continue;
@@ -279,7 +279,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 			// 但应用爆炸击退
 			double knockbackIntensity;
 			if (targetEntity instanceof LivingEntity le) {
-				knockbackIntensity = ProtectionEnchantment.transformExplosionKnockback(le, intensity);
+				knockbackIntensity = intensity;  // ProtectionEnchantment removed in 1.21.1
 			} else {
 				knockbackIntensity = intensity;
 			}
@@ -360,10 +360,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * 使 SSC 的 MobEntityTeamMixin 能正确识别女巫使魔为劫掠阵营成员，
 	 * 从而让拥有 PillagerFriendlyPower 的使魔形态玩家被视为队友
 	 */
-	@Override
-	public EntityGroup getGroup() {
-		return EntityGroup.ILLAGER;
-	}
+
 
 	// ========== 免疫系统（与SP使魔形态一致） ==========
 

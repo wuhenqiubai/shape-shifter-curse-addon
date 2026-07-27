@@ -1,18 +1,19 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import dev.emi.trinkets.api.SlotReference;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import dev.emi.trinkets.api.TrinketItem;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -25,15 +26,11 @@ public class PortableFridgeItem extends TrinketItem {
 	}
 
 	public static int getCharge(ItemStack stack) {
-		if (!stack.hasNbt()) return 0;
-		if (stack.getNbt() != null) {
-			return stack.getNbt().getInt("Charge");
-		}
-		return 0;
+		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getInt("Charge");
 	}
 
 	public static void setCharge(ItemStack stack, int amount) {
-		stack.getOrCreateNbt().putInt("Charge", Math.max(0, Math.min(amount, MAX_CHARGE)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, (net.minecraft.nbt.NbtCompound nbt) -> nbt.putInt("Charge", Math.max(0, Math.min(amount, MAX_CHARGE))));
 	}
 
 	@Override
@@ -99,10 +96,10 @@ public class PortableFridgeItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("tooltip.ssc_addon.portable_fridge.desc").formatted(Formatting.AQUA));
 		tooltip.add(Text.translatable("tooltip.ssc_addon.portable_fridge.status", getCharge(stack), MAX_CHARGE).formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("tooltip.ssc_addon.portable_fridge.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }
