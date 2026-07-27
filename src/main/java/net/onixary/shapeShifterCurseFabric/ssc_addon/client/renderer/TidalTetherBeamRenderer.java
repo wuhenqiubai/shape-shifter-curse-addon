@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class TidalTetherBeamRenderer {
 
     /** 原版守卫者激光贴图。 */
-    private static final Identifier BEAM_TEXTURE = new Identifier("textures/entity/guardian_beam.png");
+    private static final Identifier BEAM_TEXTURE = Identifier.of("textures/entity/guardian_beam.png");
 
     /** key = 水球 entityId，value = 被拴目标列表 + 过期时刻。 */
     private static final Map<Integer, Entry> ACTIVE = new ConcurrentHashMap<>();

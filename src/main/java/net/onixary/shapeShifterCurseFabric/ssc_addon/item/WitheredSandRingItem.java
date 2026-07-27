@@ -42,7 +42,7 @@ public class WitheredSandRingItem extends TrinketItem {
 	 */
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (id.equals(new Identifier("minecraft", "chests/desert_pyramid"))) {
+			if (id.equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(ConstantLootNumberProvider.create(1.0F))
 						.conditionally(RandomChanceLootCondition.builder(0.15F))

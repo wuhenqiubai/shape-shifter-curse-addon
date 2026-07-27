@@ -15,6 +15,8 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.state.property.Properties;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -102,11 +104,11 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 血量减少修饰符UUID
 	 */
-	private static final UUID HEALTH_MODIFIER_UUID = UUID.fromString("a7b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d");
+	private static final Identifier HEALTH_MODIFIER_UUID = Identifier.of("a7b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d");
 	/**
 	 * 充能减速修饰符UUID
 	 */
-	private static final UUID CHARGE_SLOW_UUID = UUID.fromString("b8c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e");
+	private static final Identifier CHARGE_SLOW_UUID = Identifier.of("b8c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e");
 	// ==================== 状态追踪 ====================
 	private static final ConcurrentHashMap<UUID, DomainData> ACTIVE_DOMAINS = new ConcurrentHashMap<>();
 	private static final ConcurrentHashMap<UUID, Long> COOLDOWN_PLAYERS = new ConcurrentHashMap<>();
@@ -900,10 +902,10 @@ public class AnubisWolfSpDeathDomain {
 		Team team = sb.getTeam(name);
 		if (team == null) {
 			team = sb.addTeam(name);
-			team.setColor(net.minecraft.util.Formatting.DARK_PURPLE);
+			team.setColor(Formatting.DARK_PURPLE);
 		}
 		// 把 SP阿努比斯加入 team
-		sb.addPlayerToTeam(player.getEntityName(), team);
+		sb.addScoreHolderToTeam(String.valueOf(player.getDisplayName()), team);
 	}
 
 	/**
@@ -918,9 +920,9 @@ public class AnubisWolfSpDeathDomain {
 		}
 		Scoreboard sb = world.getScoreboard();
 		Team team = sb.getTeam(data.teamName);
-		Team currentTeam = sb.getTeam(entity.getEntityName());
+		Team currentTeam = sb.getTeam(String.valueOf(entity.getDisplayName()));
 		if (team != null && (currentTeam == null || !currentTeam.equals(team))) {
-			sb.addPlayerToTeam(entity.getEntityName(), team);
+			sb.addScoreHolderToTeam(String.valueOf(entity.getDisplayName()), team);
 		}
 		entity.setGlowing(true);
 	}
@@ -932,9 +934,9 @@ public class AnubisWolfSpDeathDomain {
 		if (data.teamName == null) return;
 		Scoreboard sb = world.getScoreboard();
 		Team team = sb.getTeam(data.teamName);
-		Team currentTeam = sb.getTeam(entity.getEntityName());
+		Team currentTeam = sb.getTeam(String.valueOf(entity.getDisplayName()));
 		if (team != null && currentTeam != null && currentTeam.equals(team)) {
-			sb.removePlayerFromTeam(entity.getEntityName(), team);
+			sb.removeScoreHolderFromTeam(String.valueOf(entity.getDisplayName()), team);
 		}
 		entity.setGlowing(false);
 	}
@@ -990,7 +992,7 @@ public class AnubisWolfSpDeathDomain {
 			Team team = sb.getTeam(data.teamName);
 			if (team != null) {
 				for (String memberName : new HashSet<>(team.getPlayerList())) {
-					sb.removePlayerFromTeam(memberName, team);
+					sb.removeScoreHolderFromTeam(memberName, team);
 				}
 				sb.removeTeam(team);
 			}
@@ -1044,9 +1046,8 @@ public class AnubisWolfSpDeathDomain {
 
 		EntityAttributeModifier modifier = new EntityAttributeModifier(
 				HEALTH_MODIFIER_UUID,
-				"Death Domain Health Reduction",
 				reduction,
-				EntityAttributeModifier.Operation.ADDITION
+				EntityAttributeModifier.Operation.ADD_VALUE
 		);
 		healthAttr.addPersistentModifier(modifier);
 
@@ -1093,9 +1094,8 @@ public class AnubisWolfSpDeathDomain {
 		speedAttr.removeModifier(CHARGE_SLOW_UUID);
 		EntityAttributeModifier modifier = new EntityAttributeModifier(
 				CHARGE_SLOW_UUID,
-				"Death Domain Charge Slow",
 				CHARGE_SLOW_FACTOR - 1.0, // -0.7 = 减速70%
-				EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+				EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 		);
 		speedAttr.addTemporaryModifier(modifier);
 	}

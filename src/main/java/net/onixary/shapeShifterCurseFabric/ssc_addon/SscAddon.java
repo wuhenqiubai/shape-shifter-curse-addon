@@ -122,7 +122,7 @@ public class SscAddon implements ModInitializer {
 	public static final Item POTION_BAG = new PotionBagItem(new Item.Settings().maxCount(1));
 	public static final EntityType<FrostBallEntity> FROST_BALL_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "frost_ball"),
+			Identifier.of("ssc_addon", "frost_ball"),
 			FabricEntityTypeBuilder.<FrostBallEntity>create(SpawnGroup.MISC, FrostBallEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
@@ -131,7 +131,7 @@ public class SscAddon implements ModInitializer {
 	// 进化美西螈「投掷水矛」直线水矛投射物（无重力匀速）
 	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "thrown_water_spear"),
+			Identifier.of("ssc_addon", "thrown_water_spear"),
 			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity::new)
 					.dimensions(EntityDimensions.fixed(0.4f, 0.4f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
@@ -140,7 +140,7 @@ public class SscAddon implements ModInitializer {
 	// red 狐火火球投射物
 	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity> FOX_FIREBALL_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "fox_fireball"),
+			Identifier.of("ssc_addon", "fox_fireball"),
 			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(2)
@@ -149,7 +149,7 @@ public class SscAddon implements ModInitializer {
 	// 寄生果蝠「感染孢子炸弹」投掷物
 	public static final EntityType<InfectionSporeBombEntity> INFECTION_SPORE_BOMB_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "infection_spore_bomb"),
+			Identifier.of("ssc_addon", "infection_spore_bomb"),
 			FabricEntityTypeBuilder.<InfectionSporeBombEntity>create(SpawnGroup.MISC, InfectionSporeBombEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
@@ -158,7 +158,7 @@ public class SscAddon implements ModInitializer {
 	// 寄生果蝠主技能「灵果寄生」投掷物
 	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile> PARASITIC_SEED_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "parasitic_seed"),
+			Identifier.of("ssc_addon", "parasitic_seed"),
 			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
@@ -167,7 +167,7 @@ public class SscAddon implements ModInitializer {
 	public static final ScreenHandlerType<PotionBagScreenHandler> POTION_BAG_SCREEN_HANDLER = new ScreenHandlerType<>(PotionBagScreenHandler::new, FeatureSet.empty());
 	public static final EntityType<FrostStormEntity> FROST_STORM_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "frost_storm"),
+			Identifier.of("ssc_addon", "frost_storm"),
 			FabricEntityTypeBuilder.<FrostStormEntity>create(SpawnGroup.MISC, FrostStormEntity::new)
 					.dimensions(EntityDimensions.fixed(1.0f, 2.0f))
 					.trackRangeBlocks(64).trackedUpdateRate(10)
@@ -176,7 +176,7 @@ public class SscAddon implements ModInitializer {
 	// 荧光幼灵 - 潮汐波动粒子球实体
 	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity> TIDAL_ORB_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "tidal_orb"),
+			Identifier.of("ssc_addon", "tidal_orb"),
 			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeBlocks(64).trackedUpdateRate(1)
@@ -185,7 +185,7 @@ public class SscAddon implements ModInitializer {
 	// 荧光幼灵 - 法阵激光实体
 	public static final EntityType<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity> LASER_BEAM_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "laser_beam"),
+			Identifier.of("ssc_addon", "laser_beam"),
 			FabricEntityTypeBuilder.<net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity>create(SpawnGroup.MISC, net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeBlocks(96).trackedUpdateRate(1)
@@ -194,7 +194,7 @@ public class SscAddon implements ModInitializer {
 	public static final Item SP_UPGRADE_THING = new SpUpgradeItem(new Item.Settings().maxCount(1));
 	public static final Item PORTABLE_MOISTURIZER = new PortableMoisturizerItem(new Item.Settings().maxCount(1));	public static final EntityType<WaterSpearEntity> WATER_SPEAR_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "water_spear"),
+			Identifier.of("ssc_addon", "water_spear"),
 			FabricEntityTypeBuilder.<WaterSpearEntity>create(SpawnGroup.MISC, WaterSpearEntity::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeBlocks(4).trackedUpdateRate(20)
@@ -247,7 +247,7 @@ public class SscAddon implements ModInitializer {
 	// Entities
 	public static final EntityType<AllayFriendMarkerEntity> FRIEND_MARKER_ENTITY_TYPE = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "friend_marker"),
+			Identifier.of("ssc_addon", "friend_marker"),
 			FabricEntityTypeBuilder.<AllayFriendMarkerEntity>create(SpawnGroup.MISC, AllayFriendMarkerEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(4).trackedUpdateRate(10)
@@ -255,7 +255,7 @@ public class SscAddon implements ModInitializer {
 	);
 	public static final EntityType<AllayClearMarkerEntity> CLEAR_MARKER_ENTITY_TYPE = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "clear_friend_marker"),
+			Identifier.of("ssc_addon", "clear_friend_marker"),
 			FabricEntityTypeBuilder.<AllayClearMarkerEntity>create(SpawnGroup.MISC, AllayClearMarkerEntity::new)
 					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
 					.trackRangeBlocks(4).trackedUpdateRate(10)
@@ -264,7 +264,7 @@ public class SscAddon implements ModInitializer {
 	// 女巫使魔实体
 	public static final EntityType<WitchFamiliarEntity> WITCH_FAMILIAR_ENTITY = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "witch_familiar"),
+			Identifier.of("ssc_addon", "witch_familiar"),
 			FabricEntityTypeBuilder.<WitchFamiliarEntity>create(SpawnGroup.MONSTER, WitchFamiliarEntity::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.7f))
 					.trackRangeBlocks(64).trackedUpdateRate(3)
@@ -289,12 +289,12 @@ public class SscAddon implements ModInitializer {
 			new Item.Settings().maxCount(1), net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.Type.LINGERING);
 	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SpecialRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
 	// 幻形之梦 音乐唱片（Shape Shifter's Dream）：流式音效 + vanilla 唱片物品，145 秒
-	public static final Identifier SHAPE_SHIFTERS_DREAM_ID = new Identifier("ssc_addon", "shape_shifters_dream");
+	public static final Identifier SHAPE_SHIFTERS_DREAM_ID = Identifier.of("ssc_addon", "shape_shifters_dream");
 	public static final SoundEvent SHAPE_SHIFTERS_DREAM_EVENT = SoundEvent.of(SHAPE_SHIFTERS_DREAM_ID);
 	public static final Item MUSIC_DISC_SHAPE_SHIFTERS_DREAM = new net.minecraft.item.MusicDiscItem(
 			15, SHAPE_SHIFTERS_DREAM_EVENT, new Item.Settings().maxCount(1).rarity(net.minecraft.util.Rarity.RARE), 145);
 	public static final ItemGroup SSC_ADDON_GROUP = Registry.register(Registries.ITEM_GROUP,
-			new Identifier("ssc_addon", "group"),
+			Identifier.of("ssc_addon", "group"),
 			FabricItemGroup.builder()
 					.displayName(Text.translatable("itemGroup.ssc_addon.group"))
 					.icon(() -> new net.minecraft.item.ItemStack(SP_UPGRADE_THING))
@@ -339,8 +339,8 @@ public class SscAddon implements ModInitializer {
 					})
 					.build());
 	// SP Allay sound events
-	public static final Identifier ALLAY_HEAL_MUSIC_ID = new Identifier("ssc_addon", "allay_heal_music");
-	public static final Identifier ALLAY_SPEED_MUSIC_ID = new Identifier("ssc_addon", "allay_speed_music");
+	public static final Identifier ALLAY_HEAL_MUSIC_ID = Identifier.of("ssc_addon", "allay_heal_music");
+	public static final Identifier ALLAY_SPEED_MUSIC_ID = Identifier.of("ssc_addon", "allay_speed_music");
 	public static final SoundEvent ALLAY_HEAL_MUSIC_EVENT = SoundEvent.of(ALLAY_HEAL_MUSIC_ID);
 	public static final SoundEvent ALLAY_SPEED_MUSIC_EVENT = SoundEvent.of(ALLAY_SPEED_MUSIC_ID);
 
@@ -407,81 +407,81 @@ public class SscAddon implements ModInitializer {
 	}
 
 	private void registerStatusEffects() {
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "fox_fire_burn"), FOX_FIRE_BURN);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "playing_dead"), PLAYING_DEAD);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "blue_fire_ring"), BLUE_FIRE_RING);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "true_invisibility"), TRUE_INVISIBILITY);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "pre_invisibility"), PRE_INVISIBILITY);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "stun"), STUN);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "rooted"), ROOTED);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "guaranteed_crit"), GUARANTEED_CRIT);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "frost_freeze"), FROST_FREEZE);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "frost_fall"), FROST_FALL);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "purified"), PURIFIED);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "bat_regen"), BAT_REGEN);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "bat_poison"), BAT_POISON);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "bat_absorption"), BAT_ABSORPTION);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "mist_form"), MIST_FORM);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "mist_charging"), MIST_CHARGING);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "sand_blind"), SAND_BLIND);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "deafen"), DEAFEN);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_1"), EROSION_BRAND_MARKER_1);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_2"), EROSION_BRAND_MARKER_2);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "erosion_brand_marker_3"), EROSION_BRAND_MARKER_3);
-		Registry.register(Registries.STATUS_EFFECT, new Identifier("ssc_addon", "tidal_slow"), TIDAL_SLOW);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "fox_fire_burn"), FOX_FIRE_BURN);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "playing_dead"), PLAYING_DEAD);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "blue_fire_ring"), BLUE_FIRE_RING);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "true_invisibility"), TRUE_INVISIBILITY);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "pre_invisibility"), PRE_INVISIBILITY);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "stun"), STUN);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "rooted"), ROOTED);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "guaranteed_crit"), GUARANTEED_CRIT);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_freeze"), FROST_FREEZE);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_fall"), FROST_FALL);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "purified"), PURIFIED);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_regen"), BAT_REGEN);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_poison"), BAT_POISON);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_absorption"), BAT_ABSORPTION);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_form"), MIST_FORM);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_charging"), MIST_CHARGING);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "sand_blind"), SAND_BLIND);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "deafen"), DEAFEN);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_1"), EROSION_BRAND_MARKER_1);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_2"), EROSION_BRAND_MARKER_2);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_3"), EROSION_BRAND_MARKER_3);
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "tidal_slow"), TIDAL_SLOW);
 	}
 
 	private void registerItems() {
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "sp_upgrade_thing"), SP_UPGRADE_THING);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "portable_moisturizer"), PORTABLE_MOISTURIZER);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "snowball_launcher"), SNOWBALL_LAUNCHER);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "portable_fridge"), PORTABLE_FRIDGE);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "blue_fire_amulet"), BLUE_FIRE_AMULET);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "frost_amulet"), FROST_AMULET);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "blood_garnet"), BLOOD_GARNET);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "bloodlust_ring"), BLOODLUST_RING);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "humus_ring"), HUMUS_RING);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "twin_pod"), TWIN_POD);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "invisibility_cloak"), INVISIBILITY_CLOAK);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "lifesaving_cat_tail"), LIFESAVING_CAT_TAIL);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "phantom_bell"), PHANTOM_BELL);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "water_spear"), WATER_SPEAR);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "potion_bag"), POTION_BAG);
-		Registry.register(Registries.SCREEN_HANDLER, new Identifier("ssc_addon", "potion_bag"), POTION_BAG_SCREEN_HANDLER);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "evolution_stone"), EVOLUTION_STONE);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "coral_ball"), CORAL_BALL);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "active_coral_necklace"), ACTIVE_CORAL_NECKLACE);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wind_spirit_stamina_necklace"), WIND_SPIRIT_STAMINA_NECKLACE);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "nova_revive_necklace"), NOVA_REVIVE_NECKLACE);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "anubis_crystal"), ANUBIS_CRYSTAL);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "ankh_stone"), ANKH_STONE);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "binding_anklet"), BINDING_ANKLET);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "sp_upgrade_thing"), SP_UPGRADE_THING);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "portable_moisturizer"), PORTABLE_MOISTURIZER);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "snowball_launcher"), SNOWBALL_LAUNCHER);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "portable_fridge"), PORTABLE_FRIDGE);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "blue_fire_amulet"), BLUE_FIRE_AMULET);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "frost_amulet"), FROST_AMULET);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "blood_garnet"), BLOOD_GARNET);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "bloodlust_ring"), BLOODLUST_RING);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "humus_ring"), HUMUS_RING);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "twin_pod"), TWIN_POD);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "invisibility_cloak"), INVISIBILITY_CLOAK);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "lifesaving_cat_tail"), LIFESAVING_CAT_TAIL);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "phantom_bell"), PHANTOM_BELL);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "water_spear"), WATER_SPEAR);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "potion_bag"), POTION_BAG);
+		Registry.register(Registries.SCREEN_HANDLER, Identifier.of("ssc_addon", "potion_bag"), POTION_BAG_SCREEN_HANDLER);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "evolution_stone"), EVOLUTION_STONE);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "coral_ball"), CORAL_BALL);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "active_coral_necklace"), ACTIVE_CORAL_NECKLACE);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "wind_spirit_stamina_necklace"), WIND_SPIRIT_STAMINA_NECKLACE);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "nova_revive_necklace"), NOVA_REVIVE_NECKLACE);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "anubis_crystal"), ANUBIS_CRYSTAL);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "ankh_stone"), ANKH_STONE);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "binding_anklet"), BINDING_ANKLET);
 		net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem.registerLootTable();
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "erosion_sand_prism"), EROSION_SAND_PRISM);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "withered_sand_ring"), WITHERED_SAND_RING);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "allay_heal_wand"), ALLAY_HEAL_WAND);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "allay_jukebox"), ALLAY_JUKEBOX);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "friend_marker"), FRIEND_MARKER);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "clear_friend_marker"), CLEAR_FRIEND_MARKER);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "witch_familiar_spawn_egg"), WITCH_FAMILIAR_SPAWN_EGG);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion"), INFINITE_ENERGY_POTION);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion_splash"), INFINITE_ENERGY_POTION_SPLASH);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "infinite_energy_potion_lingering"), INFINITE_ENERGY_POTION_LINGERING);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wither_potion"), WITHER_POTION);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wither_potion_splash"), WITHER_POTION_SPLASH);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "wither_potion_lingering"), WITHER_POTION_LINGERING);
-		Registry.register(Registries.ITEM, new Identifier("ssc_addon", "music_disc_shape_shifters_dream"), MUSIC_DISC_SHAPE_SHIFTERS_DREAM);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "erosion_sand_prism"), EROSION_SAND_PRISM);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "withered_sand_ring"), WITHERED_SAND_RING);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "allay_heal_wand"), ALLAY_HEAL_WAND);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "allay_jukebox"), ALLAY_JUKEBOX);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "friend_marker"), FRIEND_MARKER);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "clear_friend_marker"), CLEAR_FRIEND_MARKER);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "witch_familiar_spawn_egg"), WITCH_FAMILIAR_SPAWN_EGG);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "infinite_energy_potion"), INFINITE_ENERGY_POTION);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "infinite_energy_potion_splash"), INFINITE_ENERGY_POTION_SPLASH);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "infinite_energy_potion_lingering"), INFINITE_ENERGY_POTION_LINGERING);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "wither_potion"), WITHER_POTION);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "wither_potion_splash"), WITHER_POTION_SPLASH);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "wither_potion_lingering"), WITHER_POTION_LINGERING);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", "music_disc_shape_shifters_dream"), MUSIC_DISC_SHAPE_SHIFTERS_DREAM);
 		// 酿造（饮用+火药→喷溅；喷溅+龙息→滞留）完全由 BrewingRegistryInfiniteMixin 接管：
 		// 直接拦截 hasRecipe/craft 驱动产出，槽位放行由 BrewingStandInfinitePotionMixin 处理。
 		// 旧的 ITEM_RECIPES 注册需构造 PotionBrewing$Mix，在 Forge/Sinytra Connector 下构造签名不同会崩溃，已移除。
 	}
 
 	private void registerRecipeSerializers() {
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "refill_moisturizer"), REFILL_MOISTURIZER_SERIALIZER);
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "reload_snowball_launcher"), RELOAD_SNOWBALL_LAUNCHER_SERIALIZER);
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "infinite_energy_potion_crafting"), INFINITE_ENERGY_POTION_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "refill_moisturizer"), REFILL_MOISTURIZER_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "reload_snowball_launcher"), RELOAD_SNOWBALL_LAUNCHER_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "infinite_energy_potion_crafting"), INFINITE_ENERGY_POTION_SERIALIZER);
 	}
 
 	// 拆分的私有方法
@@ -527,14 +527,14 @@ public class SscAddon implements ModInitializer {
 		// 美西螈SP为人形不缩放(scale=1.0)，但仍需 RESET 兜底清除变身前残留的缩放值
 		axolotlForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(1.0f, 1.0f));
 		RegPlayerForms.registerPlayerForm(axolotlForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_sp")).registerForm(1, 5, axolotlForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_axolotl_sp")).registerForm(1, 5, axolotlForm));
 
 		// 进化美西螈（Upgrade Axolotl）- SSCA 进化加点路线起点形态，复用 SP 美西螈模型/动画，能力按进化树解锁
 		Form_Axolotl3 upgradeAxolotlForm = new Form_Axolotl3(FormIdentifiers.UPGRADE_AXOLOTL);
 		upgradeAxolotlForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		upgradeAxolotlForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(1.0f, 1.0f));
 		RegPlayerForms.registerPlayerForm(upgradeAxolotlForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_upgrade_axolotl")).registerForm(1, 5, upgradeAxolotlForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_upgrade_axolotl")).registerForm(1, 5, upgradeAxolotlForm));
 
 		// 荧光幼灵（Axolotl Fluorescent）- SP美西螈经进化石进化获得，复用美西螈模型/动画，体型缩小到 0.75
 		Form_AxolotlFluorescent fluorescentForm = new Form_AxolotlFluorescent(FormIdentifiers.AXOLOTL_FLUORESCENT);
@@ -542,14 +542,14 @@ public class SscAddon implements ModInitializer {
 		// 体型等比缩小到 0.75（宽高/眼高/碰撞箱一致），兜底清除变身前残留缩放
 		fluorescentForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.75f));
 		RegPlayerForms.registerPlayerForm(fluorescentForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_fluorescent")).registerForm(1, 5, fluorescentForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_axolotl_fluorescent")).registerForm(1, 5, fluorescentForm));
 
 		// 阿澪（Aling）- 特殊形态，基于荧光幼灵（技能完全一致），专属模型/贴图，颜色不可改。复用 Form_AxolotlFluorescent 类。
 		Form_AxolotlFluorescent alingForm = new Form_AxolotlFluorescent(FormIdentifiers.AXOLOTL_ALING);
 		alingForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		alingForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.75f));
 		RegPlayerForms.registerPlayerForm(alingForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_axolotl_aling")).registerForm(1, 5, alingForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_axolotl_aling")).registerForm(1, 5, alingForm));
 
 		Form_FamiliarFox3 familiarFoxForm = new Form_FamiliarFox3(FormIdentifiers.FAMILIAR_FOX_SP);
 		familiarFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
@@ -557,7 +557,7 @@ public class SscAddon implements ModInitializer {
 		familiarFoxForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(familiarFoxForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_sp")).registerForm(1, 5, familiarFoxForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_familiar_fox_sp")).registerForm(1, 5, familiarFoxForm));
 
 		// 进化使魔（复用使魔模型/动画，能力按进化解锁——批次2 形态骨架）
 		Form_FamiliarFox3 upgradeFamiliarFoxForm = new Form_FamiliarFox3(FormIdentifiers.UPGRADE_FAMILIAR_FOX);
@@ -566,7 +566,7 @@ public class SscAddon implements ModInitializer {
 		upgradeFamiliarFoxForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(upgradeFamiliarFoxForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_upgrade_familiar_fox")).registerForm(1, 5, upgradeFamiliarFoxForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_upgrade_familiar_fox")).registerForm(1, 5, upgradeFamiliarFoxForm));
 
 		// 契灵（Mancianima）—— 复用使魔模型/动画，经月髓环/进化石进化获得。
 		// 之前是纯数据驱动(ssc_form json)，但原版新版 DynamicForm 缺 originLayerID 字段会 NPE 致其注册失败消失，
@@ -577,7 +577,7 @@ public class SscAddon implements ModInitializer {
 		mancianimaForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.45f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(mancianimaForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_mancianima")).registerForm(1, 5, mancianimaForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_familiar_fox_mancianima")).registerForm(1, 5, mancianimaForm));
 
 		Form_FamiliarFoxRed familiarFoxRedForm = new Form_FamiliarFoxRed(FormIdentifiers.FAMILIAR_FOX_RED);
 		familiarFoxRedForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
@@ -585,7 +585,7 @@ public class SscAddon implements ModInitializer {
 		familiarFoxRedForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.55f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(familiarFoxRedForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_familiar_fox_red")).registerForm(1, 5, familiarFoxRedForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_familiar_fox_red")).registerForm(1, 5, familiarFoxRedForm));
 
 		Form_SnowFoxSP snowFoxForm = new Form_SnowFoxSP(FormIdentifiers.SNOW_FOX_SP);
 		snowFoxForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
@@ -593,14 +593,14 @@ public class SscAddon implements ModInitializer {
 		snowFoxForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.45f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(snowFoxForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_snow_fox_sp")).registerForm(1, 7, snowFoxForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_snow_fox_sp")).registerForm(1, 7, snowFoxForm));
 
 		Form_Allay allayForm = new Form_Allay(FormIdentifiers.ALLAY_SP);
 		allayForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
 		// 悦灵缩放与原版 ALLAY_SP 代码注册一致(scale=0.35, eye_scale=1.0 保持正常视角高度)
 		allayForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.35f, 1.0f));
 		RegPlayerForms.registerPlayerForm(allayForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_allay_sp")).registerForm(1, 8, allayForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_allay_sp")).registerForm(1, 8, allayForm));
 
 		Form_FeralCatSP wildCatForm = new Form_FeralCatSP(FormIdentifiers.WILD_CAT_SP);
 		wildCatForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
@@ -609,7 +609,7 @@ public class SscAddon implements ModInitializer {
 		wildCatForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.55f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(wildCatForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_wild_cat_sp")).registerForm(1, 5, wildCatForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_wild_cat_sp")).registerForm(1, 5, wildCatForm));
 
 		// 风灵（月髓环豹猫）——完全复用原版豹猫 Form_Ocelot3 的模型与动画，四足兽形，可疾跑；核心为「疾风连爪」左键连击技能
 		Form_Ocelot3 ocelotSpForm = new Form_Ocelot3(FormIdentifiers.OCELOT_SP);
@@ -619,7 +619,7 @@ public class SscAddon implements ModInitializer {
 		// 缩放与原版豹猫 ocelot_3 一致（RegPlayerForms 里 OCELOT_3 用 0.75f/0.6f）
 		ocelotSpForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.6f));
 		RegPlayerForms.registerPlayerForm(ocelotSpForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_ocelot_wind_spirit")).registerForm(1, 5, ocelotSpForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_ocelot_wind_spirit")).registerForm(1, 5, ocelotSpForm));
 
 		// 朔望（月髓环豹猫）——与风灵同源，复用原版豹猫 Form_Ocelot3 模型动画，四足兽形；定位九命灵猫（生存/不死），技能待设计
 		Form_Ocelot3 ocelotNovaForm = new Form_Ocelot3(FormIdentifiers.OCELOT_NOVA);
@@ -629,7 +629,7 @@ public class SscAddon implements ModInitializer {
 		// 缩放与原版豹猫 ocelot_3 一致（与风灵相同 0.75f/0.6f）
 		ocelotNovaForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.75f, 0.6f));
 		RegPlayerForms.registerPlayerForm(ocelotNovaForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_ocelot_nova")).registerForm(1, 5, ocelotNovaForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_ocelot_nova")).registerForm(1, 5, ocelotNovaForm));
 
 		// Fallen Allay SP
 		Form_FallenAllaySP fallenAllayForm = new Form_FallenAllaySP(FormIdentifiers.FALLEN_ALLAY_SP);
@@ -637,7 +637,7 @@ public class SscAddon implements ModInitializer {
 		// 堕落悦灵复用悦灵模型，缩放与原版 ALLAY_SP 一致(scale=0.35, eye_scale=1.0)
 		fallenAllayForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.35f, 1.0f));
 		RegPlayerForms.registerPlayerForm(fallenAllayForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_fallen_allay_sp")).registerForm(1, 8, fallenAllayForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_fallen_allay_sp")).registerForm(1, 8, fallenAllayForm));
 
 		// Anubis Wolf SP
 		Form_AnubisWolfSP anubisWolfForm = new Form_AnubisWolfSP(FormIdentifiers.ANUBIS_WOLF_SP);
@@ -647,7 +647,7 @@ public class SscAddon implements ModInitializer {
 		anubisWolfForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.8f, 0.6f));
 
 		RegPlayerForms.registerPlayerForm(anubisWolfForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_anubis_wolf_sp")).registerForm(1, 12, anubisWolfForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_anubis_wolf_sp")).registerForm(1, 12, anubisWolfForm));
 
 		// Golden Sandstorm SP (金沙岚)
 		Form_GoldenSandstormSP goldenSandstormForm = new Form_GoldenSandstormSP(FormIdentifiers.GOLDEN_SANDSTORM_SP);
@@ -656,7 +656,7 @@ public class SscAddon implements ModInitializer {
 		// 金沙岚复用阿努比斯之狼四足模型，缩放与原版 ANUBIS_WOLF_3 一致(scale=0.8, eye_scale=0.6)
 		goldenSandstormForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.8f, 0.6f));
 		RegPlayerForms.registerPlayerForm(goldenSandstormForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_golden_sandstorm_sp")).registerForm(1, 12, goldenSandstormForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_golden_sandstorm_sp")).registerForm(1, 12, goldenSandstormForm));
 
 		// 吸血蝙蝠（Desmodus）SP形态 - 复用蝙蝠模型/动画，经月髓环在诅咒之月夜进化获得
 		Form_BatDesmodus batDesmodusForm = new Form_BatDesmodus(FormIdentifiers.BAT_DESMODUS);
@@ -664,7 +664,7 @@ public class SscAddon implements ModInitializer {
 		// 蝙蝠缩放需与原版 bat_3 一致（宽度/高度0.5、眼睛/碰撞箱0.6），否则保持上个形态大小不缩放
 		batDesmodusForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
 		RegPlayerForms.registerPlayerForm(batDesmodusForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_bat_desmodus")).registerForm(1, 12, batDesmodusForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_bat_desmodus")).registerForm(1, 12, batDesmodusForm));
 
 		// 寄生果蝠 - 原版三阶段蝙蝠使用进化石进化获得，复用蝙蝠模型/动画
 		Form_BatParasiticFruit batParasiticFruitForm = new Form_BatParasiticFruit(FormIdentifiers.BAT_PARASITIC_FRUIT);
@@ -672,7 +672,7 @@ public class SscAddon implements ModInitializer {
 		// 蝙蝠缩放需与原版 bat_3 一致（宽度/高度0.5、眼睛/碰撞箱0.6），否则保持上个形态大小不缩放
 		batParasiticFruitForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.5f, 0.6f));
 		RegPlayerForms.registerPlayerForm(batParasiticFruitForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_bat_parasitic_fruit")).registerForm(1, 12, batParasiticFruitForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_bat_parasitic_fruit")).registerForm(1, 12, batParasiticFruitForm));
 	}
 
 	private void registerCommands() {
@@ -775,7 +775,7 @@ public class SscAddon implements ModInitializer {
 						WATER_SPEAR_CRAFT_CD.put(player.getUuid(), wsT + WATER_SPEAR_CRAFT_CD_TICKS);
 						player.getItemCooldownManager().set(net.minecraft.item.Items.ARROW, WATER_SPEAR_CRAFT_CD_TICKS);
 						net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils.resetCooldown(player,
-								new net.minecraft.util.Identifier("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
+								Identifier.of("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
 						WS_DBG.warn("[WS-CD] 水矛消失 @tick {} → 重启合成冷却(从消失起算 {}t)", wsT, WATER_SPEAR_CRAFT_CD_TICKS);
 					}
 				}

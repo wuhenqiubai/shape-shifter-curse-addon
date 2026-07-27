@@ -10,7 +10,7 @@ import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormCompon
 
 public class FormUtils {
 	// 通过实体类型ID判断，避免在Mixin类中直接引用原版模组类导致类加载级联
-	private static final Identifier TRANSFORMATIVE_WOLF_TYPE_ID = new Identifier("shape-shifter-curse", "t_wolf");
+	private static final Identifier TRANSFORMATIVE_WOLF_TYPE_ID = Identifier.of("shape-shifter-curse", "t_wolf");
 
 	private FormUtils() {
 	}

@@ -14,7 +14,7 @@ public class EffectEfficiencyReductionPower extends Power {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(new Identifier("ssc_addon", "effect_efficiency_reduction"),
+		return new PowerFactory<>(Identifier.of("ssc_addon", "effect_efficiency_reduction"),
 				new SerializableData(),
 				data -> (type, entity) -> new EffectEfficiencyReductionPower(type, entity)
 		).allowCondition();

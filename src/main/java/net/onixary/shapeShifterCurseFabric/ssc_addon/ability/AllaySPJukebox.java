@@ -38,8 +38,8 @@ public class AllaySPJukebox {
     }
 
     public static final double RANGE = 20.0;
-    private static final UUID SPEED_MODIFIER_UUID = UUID.fromString("a3b4c5d6-e7f8-9012-3456-789abcdef012");
-    private static final String SPEED_MODIFIER_NAME = "allay_jukebox_speed";
+    private static final Identifier SPEED_MODIFIER_UUID = Identifier.of("a3b4c5d6-e7f8-9012-3456-789abcdef012");
+    private static final Identifier SPEED_MODIFIER_NAME = Identifier.of("allay_jukebox_speed");
     private static final double SPEED_BONUS = 0.10; // 10% speed
 
     // Track per-player: -1 = not playing, 0 = speed music, 1 = heal music
@@ -110,7 +110,7 @@ public class AllaySPJukebox {
             return;
         }
         IForm currentForm = FormUtils.getCurrentForm(player);
-        boolean isAllaySp = currentForm != null && currentForm.getFormID().equals(new Identifier("my_addon", "allay_sp"));
+        boolean isAllaySp = currentForm != null && currentForm.getFormID().equals(Identifier.of("my_addon", "allay_sp"));
 
         // Check if cleanup is needed (if form changed OR item is missing/inactive)
         // Note: we check form first. If not Allay SP, we just cleanup and return.
@@ -217,8 +217,8 @@ public class AllaySPJukebox {
         EntityAttributeModifier existing = speedAttr.getModifier(SPEED_MODIFIER_UUID);
         if (existing == null) {
             speedAttr.addTemporaryModifier(new EntityAttributeModifier(
-                    SPEED_MODIFIER_UUID, SPEED_MODIFIER_NAME,
-                    SPEED_BONUS, EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+                    SPEED_MODIFIER_NAME,
+                    SPEED_BONUS, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
             ));
         }
     }

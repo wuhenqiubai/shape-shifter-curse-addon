@@ -35,7 +35,7 @@ public class TransformingControllerFeralAnimMixin {
 
 	/** 主包「直立→四足」变身动画 id（与 TransformingController.registerAnim 中一致）。 */
 	private static final Identifier SSC_ADDON_NORMAL_TO_FERAL_ANIM =
-			new Identifier("shape-shifter-curse", "player_on_transform_normal_to_feral");
+			Identifier.of("shape-shifter-curse", "player_on_transform_normal_to_feral");
 
 	@Inject(method = "getAnimation", at = @At("HEAD"), cancellable = true)
 	private void sscAddon$forceFeralTransformAnim(PlayerEntity player, AnimSystem.AnimSystemData data,

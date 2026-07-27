@@ -11,6 +11,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.onixary.shapeShifterCurseFabric.minion.IPlayerEntityMinion;
 import net.onixary.shapeShifterCurseFabric.minion.MinionRegister;
@@ -90,19 +91,19 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 嚎叫减速修饰符UUID
 	 */
-	private static final UUID HOWL_SLOW_UUID = UUID.fromString("c9d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f");
+	private static final Identifier HOWL_SLOW_UUID = Identifier.of("c9d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f");
 	/**
 	 * 领域增强攻击力修饰符UUID
 	 */
-	private static final UUID DOMAIN_ATTACK_UUID = UUID.fromString("d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a");
+	private static final Identifier DOMAIN_ATTACK_UUID = Identifier.of("d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a");
 	/**
 	 * 领域增强生命值修饰符UUID
 	 */
-	private static final UUID DOMAIN_HEALTH_UUID = UUID.fromString("e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b");
+	private static final Identifier DOMAIN_HEALTH_UUID = Identifier.of("e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b");
 	/**
 	 * 饰品攻击力削减修饰符UUID
 	 */
-	private static final UUID TRINKET_DAMAGE_UUID = UUID.fromString("f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c");
+	private static final Identifier TRINKET_DAMAGE_UUID = Identifier.of("f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c");
 	/**
 	 * 饰品攻击力削减比例（-25%）
 	 */
@@ -110,7 +111,7 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 饰品血量削减修饰符UUID
 	 */
-	private static final UUID TRINKET_HEALTH_UUID = UUID.fromString("a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d");
+	private static final Identifier TRINKET_HEALTH_UUID = Identifier.of("a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d");
 	/**
 	 * 饰品血量削减比例（-35%）
 	 */
@@ -328,16 +329,16 @@ public class AnubisWolfSpSummonWolves {
 			EntityAttributeInstance healthAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
 			if (healthAttr != null) {
 				healthAttr.addPersistentModifier(new EntityAttributeModifier(
-						DOMAIN_HEALTH_UUID, "domain_bonus_health",
-						DOMAIN_BONUS_HEALTH, EntityAttributeModifier.Operation.ADDITION));
+						DOMAIN_HEALTH_UUID,
+						DOMAIN_BONUS_HEALTH, EntityAttributeModifier.Operation.ADD_VALUE));
 				wolf.setHealth((float) healthAttr.getValue());
 			}
 			// 额外攻击力
 			EntityAttributeInstance attackAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
 			if (attackAttr != null) {
 				attackAttr.addPersistentModifier(new EntityAttributeModifier(
-						DOMAIN_ATTACK_UUID, "domain_bonus_attack",
-						DOMAIN_BONUS_ATTACK, EntityAttributeModifier.Operation.ADDITION));
+						DOMAIN_ATTACK_UUID,
+						DOMAIN_BONUS_ATTACK, EntityAttributeModifier.Operation.ADD_VALUE));
 			}
 			// 速度I效果
 			wolf.addStatusEffect(new StatusEffectInstance(
@@ -349,14 +350,14 @@ public class AnubisWolfSpSummonWolves {
 			EntityAttributeInstance atkAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
 			if (atkAttr != null && atkAttr.getModifier(TRINKET_DAMAGE_UUID) == null) {
 				atkAttr.addPersistentModifier(new EntityAttributeModifier(
-						TRINKET_DAMAGE_UUID, "trinket_damage_reduction",
-						TRINKET_DAMAGE_REDUCTION, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+						TRINKET_DAMAGE_UUID,
+						TRINKET_DAMAGE_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
 			EntityAttributeInstance hpAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
 			if (hpAttr != null && hpAttr.getModifier(TRINKET_HEALTH_UUID) == null) {
 				hpAttr.addPersistentModifier(new EntityAttributeModifier(
-						TRINKET_HEALTH_UUID, "trinket_health_reduction",
-						TRINKET_HEALTH_REDUCTION, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+						TRINKET_HEALTH_UUID,
+						TRINKET_HEALTH_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 				// 同步当前血量到新上限
 				wolf.setHealth(Math.min(wolf.getHealth(), (float) hpAttr.getValue()));
 			}
@@ -457,9 +458,9 @@ public class AnubisWolfSpSummonWolves {
 		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr != null && speedAttr.getModifier(HOWL_SLOW_UUID) == null) {
 			speedAttr.addTemporaryModifier(new EntityAttributeModifier(
-					HOWL_SLOW_UUID, "howl_slow",
+					HOWL_SLOW_UUID,
 					HOWL_SLOW_FACTOR - 1.0, // -0.5 = 保留50%
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 
@@ -491,8 +492,8 @@ public class AnubisWolfSpSummonWolves {
 				EntityAttributeModifier dmgMod = attackAttr.getModifier(TRINKET_DAMAGE_UUID);
 				if (hasCrystal && dmgMod == null) {
 					attackAttr.addPersistentModifier(new EntityAttributeModifier(
-							TRINKET_DAMAGE_UUID, "trinket_damage_reduction",
-							TRINKET_DAMAGE_REDUCTION, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+							TRINKET_DAMAGE_UUID,
+							TRINKET_DAMAGE_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 				} else if (!hasCrystal && dmgMod != null) {
 					attackAttr.removeModifier(TRINKET_DAMAGE_UUID);
 				}
@@ -504,8 +505,8 @@ public class AnubisWolfSpSummonWolves {
 				EntityAttributeModifier hpMod = healthAttr.getModifier(TRINKET_HEALTH_UUID);
 				if (hasCrystal && hpMod == null) {
 					healthAttr.addPersistentModifier(new EntityAttributeModifier(
-							TRINKET_HEALTH_UUID, "trinket_health_reduction",
-							TRINKET_HEALTH_REDUCTION, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+							TRINKET_HEALTH_UUID,
+							TRINKET_HEALTH_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 					wolf.setHealth(Math.min(wolf.getHealth(), (float) healthAttr.getValue()));
 				} else if (!hasCrystal && hpMod != null) {
 					healthAttr.removeModifier(TRINKET_HEALTH_UUID);

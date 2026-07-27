@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon;
 
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageType;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -34,8 +34,8 @@ import java.util.Map;
 
 public class SpUpgradeItem extends Item {
 
-	public static final RegistryKey<DamageType> CURSED_EROSION = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("my_addon", "cursed_erosion"));
-	public static final RegistryKey<DamageType> CURSED_BURST = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("my_addon", "cursed_burst"));
+	public static final RegistryKey<DamageType> CURSED_EROSION = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("my_addon", "cursed_erosion"));
+	public static final RegistryKey<DamageType> CURSED_BURST = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("my_addon", "cursed_burst"));
 	/**
 	 * Map storing the mapping from Base Form ID to Target SP Form ID
 	 * Key: Current Origin ID (Identifier), Value: Target Origin ID (Identifier)
@@ -65,7 +65,7 @@ public class SpUpgradeItem extends Item {
 	}
 
 	public static void registerUpgrade(String fromNamespace, String fromPath, String toNamespace, String toPath) {
-		UPGRADE_MAP.put(new Identifier(fromNamespace, fromPath), new Identifier(toNamespace, toPath));
+		UPGRADE_MAP.put(Identifier.of(fromNamespace, fromPath), Identifier.of(toNamespace, toPath));
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class SpUpgradeItem extends Item {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
 		return 32;
 	}
 
@@ -113,15 +113,15 @@ public class SpUpgradeItem extends Item {
 					stack.decrement(1);
 				}
 				// 成就：Boom Boom Boom! - 错误使用月髓环导致爆炸
-				AdvancementUtils.grant(player, new Identifier("ssc_addon", "boom_boom_boom"));
+				AdvancementUtils.grant(player, Identifier.of("ssc_addon", "boom_boom_boom"));
 			} else if (isValidForm && isCursedMoon) {
 				// Success: Base Form + Cursed Moon
 
 				// 5% Chance for Red Form (when upgrading to SP Fox)
-				if (targetFormId != null && targetFormId.equals(new Identifier("my_addon", "familiar_fox_sp"))
-						&& new Identifier("shape-shifter-curse", "familiar_fox_3").equals(getPlayerFormID(player))
+				if (targetFormId != null && targetFormId.equals(Identifier.of("my_addon", "familiar_fox_sp"))
+						&& Identifier.of("shape-shifter-curse", "familiar_fox_3").equals(getPlayerFormID(player))
 						&& world.random.nextFloat() < 0.05f) {
-					Identifier redFormId = new Identifier("my_addon", "familiar_fox_red");
+					Identifier redFormId = Identifier.of("my_addon", "familiar_fox_red");
 					IForm redForm = RegPlayerForms.getPlayerForm(redFormId);
 					if (redForm != null) {
 						// 带黑屏淡入淡出动画变身（原版 1.10.1 把 handleDirectTransform 拆为 startTransform/immediatelyTransform，
@@ -150,7 +150,7 @@ public class SpUpgradeItem extends Item {
 						stack.decrement(1);
 					}
 					// 成就：今晚月色真美 - 首次使用月髓环成功变形
-					AdvancementUtils.grant(player, new Identifier("ssc_addon", "tonight_moon_beautiful"));
+					AdvancementUtils.grant(player, Identifier.of("ssc_addon", "tonight_moon_beautiful"));
 					// 成就（可选）：每种目标形态对应的子成就，未注册时静默跳过
 					Identifier subAdv = MoonMarrowFormAdvancements.get(targetFormId);
 					if (subAdv != null) {
@@ -244,8 +244,8 @@ public class SpUpgradeItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
-		super.appendTooltip(stack, world, tooltip, context);
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+		super.appendTooltip(stack, context, tooltip, type);
 		tooltip.add(Text.translatable("item.ssc_addon.sp_upgrade_thing.tooltip"));
 	}
 }

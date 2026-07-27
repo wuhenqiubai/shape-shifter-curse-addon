@@ -74,19 +74,19 @@ public class Form_AxolotlFluorescent extends NormalForm {
 	}
 
 	public void Anim_registerAnims() {
-		anim_swimming = new AnimationHolder(new Identifier(MOD_ID, "axolotl_2_swimming"), true);
-		anim_swimming_idle = new AnimationHolder(new Identifier(MOD_ID, "axolotl_2_swimming_idle"), true);
-		anim_crawling = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_crawling"), true);
-		anim_crawling_idle = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_crawling_idle"), true);
-		anim_crawling_attack_once = new AnimationHolder(new Identifier(MOD_ID, "axolotl_2_crawling_attack_once"), true);
-		anim_crawling_tool_swing = new AnimationHolder(new Identifier(MOD_ID, "axolotl_2_crawling_tool_swing"), true);
-		anim_crawling_jump = new AnimationHolder(new Identifier(MOD_ID, "axolotl_2_crawling_jump"), true);
-		anim_walking = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_walk"), true);
-		anim_running = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_run"), true);
-		anim_jump = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_jump"), true);
-		anim_idle = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_idle"), true);
-		anim_rush_jump = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_rush_jump"), true, 1, 10);
-		anim_sleep = new AnimationHolder(new Identifier(MOD_ID, "axolotl_3_idle"), true, 0f);
+		anim_swimming = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_swimming"), true);
+		anim_swimming_idle = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_swimming_idle"), true);
+		anim_crawling = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_crawling"), true);
+		anim_crawling_idle = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_crawling_idle"), true);
+		anim_crawling_attack_once = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_crawling_attack_once"), true);
+		anim_crawling_tool_swing = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_crawling_tool_swing"), true);
+		anim_crawling_jump = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_crawling_jump"), true);
+		anim_walking = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_walk"), true);
+		anim_running = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_run"), true);
+		anim_jump = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_jump"), true);
+		anim_idle = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_idle"), true);
+		anim_rush_jump = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_rush_jump"), true, 1, 10);
+		anim_sleep = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_idle"), true, 0f);
 	}
 
 	@Override

@@ -32,7 +32,7 @@ import java.util.UUID;
 public class AllaySPGroupHeal {
 
 	public static final String WHITELIST_TAG_PREFIX = "ssc_allay_wl:";
-	private static final Identifier HEAL_EXECUTE_ID = new Identifier("my_addon", "form_allay_sp_group_heal_heal_execute");
+	private static final Identifier HEAL_EXECUTE_ID = Identifier.of("my_addon", "form_allay_sp_group_heal_heal_execute");
 	private static final Identifier SOLO_DAMAGE_TIMER_ID = FormIdentifiers.ALLAY_GROUP_HEAL_SOLO_DAMAGE_TIMER;
 	private static final double HEAL_RADIUS = 20.0;
 	private static final float HEAL_AMOUNT = 20.0f;
@@ -80,7 +80,7 @@ public class AllaySPGroupHeal {
 		}
 		spawnHealParticles(world, allayPlayer);
 		// 只有SP悦灵自己能听见
-		allayPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.0f);
+		allayPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
 
 		// 获取范围内所有活体
 		Box box = allayPlayer.getBoundingBox().expand(HEAL_RADIUS);
@@ -94,7 +94,7 @@ public class AllaySPGroupHeal {
 				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
 				spawnHealParticles(world, entity);
 				// 播放声音：治疗者听见私有声音，其他人听见空间声音
-				allayPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.0f);
+				allayPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
 				world.playSound(allayPlayer, entity.getX(), entity.getY(), entity.getZ(),
 						SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.0f);
 			}

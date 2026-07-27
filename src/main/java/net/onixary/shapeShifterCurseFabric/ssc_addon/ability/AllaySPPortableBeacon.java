@@ -16,7 +16,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 
 public class AllaySPPortableBeacon {
 
-    private static final Identifier BEACON_ACTIVE_ID = new Identifier("my_addon", "form_allay_sp_beacon_active");
+    private static final Identifier BEACON_ACTIVE_ID = Identifier.of("my_addon", "form_allay_sp_beacon_active");
 
 	private AllaySPPortableBeacon() {
 		// Utility class
@@ -60,14 +60,14 @@ public class AllaySPPortableBeacon {
 	private static void activateBeacon(ServerPlayerEntity player) {
 		PowerUtils.setResourceValueAndSync(player, BEACON_ACTIVE_ID, 1);
 
-		player.playSound(SoundEvents.BLOCK_BEACON_ACTIVATE, SoundCategory.PLAYERS, 1.0f, 1.0f);
+		player.playSound(SoundEvents.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
 		player.sendMessage(Text.translatable("message.ssc_addon.beacon.activated"), true);
 	}
 
 	public static void deactivateBeacon(ServerPlayerEntity player) {
 		PowerUtils.setResourceValueAndSync(player, BEACON_ACTIVE_ID, 0);
 
-		player.playSound(SoundEvents.BLOCK_BEACON_DEACTIVATE, SoundCategory.PLAYERS, 1.0f, 1.0f);
+		player.playSound(SoundEvents.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.0f);
 		player.sendMessage(Text.translatable("message.ssc_addon.beacon.deactivated"), true);
 	}
 }

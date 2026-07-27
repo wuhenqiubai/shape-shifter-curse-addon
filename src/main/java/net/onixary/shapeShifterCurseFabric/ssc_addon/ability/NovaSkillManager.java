@@ -16,6 +16,7 @@ import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import org.joml.Vector3f;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -66,7 +67,7 @@ public final class NovaSkillManager {
     private static final int MAX_RADIUS = 12;           // 最远半径 12 格
     private static final float MAX_DAMAGE = 50.0f;      // 致命伤害 50
     // 蓄力期代码减速：GENERIC_MOVEMENT_SPEED MULTIPLY_TOTAL -0.70 = 精确减速 70%（非药水缓慢，可精确到 70%）
-    private static final UUID CHARGE_SLOW_UUID = UUID.fromString("9f3c1e5a-7b2d-4c8e-a1f6-0d9e8c7b6a54");
+    private static final Identifier CHARGE_SLOW_UUID = Identifier.of("9f3c1e5a-7b2d-4c8e-a1f6-0d9e8c7b6a54");
     private static final double CHARGE_SLOW_AMOUNT = -0.70;
 
     private static final Map<UUID, Float> DODGE = new ConcurrentHashMap<>();
@@ -196,8 +197,8 @@ public final class NovaSkillManager {
         if (speed != null) {
             speed.removeModifier(CHARGE_SLOW_UUID);
             speed.addTemporaryModifier(new EntityAttributeModifier(
-                    CHARGE_SLOW_UUID, "Nova Charge Slow", CHARGE_SLOW_AMOUNT,
-                    EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                    CHARGE_SLOW_UUID, CHARGE_SLOW_AMOUNT,
+                    EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
     }
 

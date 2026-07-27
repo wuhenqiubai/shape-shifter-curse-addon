@@ -20,7 +20,7 @@ public class AdaptiveSwimmingPower extends Power {
 
 	public static PowerFactory<Power> createFactory() {
 		return new PowerFactory<>(
-				new Identifier("my_addon", "adaptive_swimming"),
+				Identifier.of("my_addon", "adaptive_swimming"),
 				new SerializableData()
 						.add("acceleration", SerializableDataTypes.FLOAT, 0.02f)
 						.add("friction", SerializableDataTypes.FLOAT, 0.9f),

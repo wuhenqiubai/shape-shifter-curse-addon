@@ -16,7 +16,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
  */
 public final class VillagerTradeGuardHandler {
 
-	private static final Identifier FAMILIAR_FOX_SP = new Identifier("my_addon", "form_familiar_fox_sp");
+	private static final Identifier FAMILIAR_FOX_SP = Identifier.of("my_addon", "form_familiar_fox_sp");
 
 	private VillagerTradeGuardHandler() {
 	}

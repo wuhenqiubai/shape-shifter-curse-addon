@@ -116,7 +116,7 @@ public class AllaySPTotem {
 
 		if (deactivatedAny) {
 			player.sendMessage(Text.translatable("message.ssc_addon.totem.deactivated"), true);
-			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 1.0f, 0.5f);
+			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
 		}
 	}
 
@@ -163,7 +163,7 @@ public class AllaySPTotem {
 			}
 
 			player.sendMessage(Text.translatable("message.ssc_addon.totem.deactivated"), true);
-			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 1.0f, 0.5f);
+			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
 
 			if (player instanceof ServerPlayerEntity serverPlayer) {
 				updateActiveTotemTracking(serverPlayer, false);
@@ -184,7 +184,7 @@ public class AllaySPTotem {
 			}
 
 			player.sendMessage(Text.translatable("message.ssc_addon.totem.activated"), true);
-			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 1.0f, 2.0f);
+			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 2.0f);
 
 			if (player instanceof ServerPlayerEntity serverPlayer) {
 				updateActiveTotemTracking(serverPlayer, true);

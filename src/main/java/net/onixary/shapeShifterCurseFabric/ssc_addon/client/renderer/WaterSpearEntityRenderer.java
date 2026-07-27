@@ -45,6 +45,6 @@ public class WaterSpearEntityRenderer extends EntityRenderer<WaterSpearEntity> {
 
 	@Override
 	public Identifier getTexture(WaterSpearEntity entity) {
-		return new Identifier("textures/atlas/blocks.png");
+		return Identifier.of("textures/atlas/blocks.png");
 	}
 }

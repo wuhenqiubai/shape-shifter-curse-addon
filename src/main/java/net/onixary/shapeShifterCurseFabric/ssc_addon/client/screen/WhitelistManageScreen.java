@@ -559,7 +559,7 @@ public class WhitelistManageScreen extends Screen {
 	private net.minecraft.item.ItemStack tryGetSpawnEgg(String typeId) {
 		if (typeId == null || typeId.isEmpty()) return net.minecraft.item.ItemStack.EMPTY;
 		try {
-			Identifier id = new Identifier(typeId);
+			Identifier id = Identifier.of(typeId);
 			EntityType<?> t = Registries.ENTITY_TYPE.get(id);
 			if (t == null) return net.minecraft.item.ItemStack.EMPTY;
 			net.minecraft.item.SpawnEggItem egg = net.minecraft.item.SpawnEggItem.forEntity(t);
@@ -573,7 +573,7 @@ public class WhitelistManageScreen extends Screen {
 	private Text resolveSpeciesName(MobEntry entry) {
 		if (entry.typeId() != null) {
 			try {
-				Identifier id = new Identifier(entry.typeId());
+				Identifier id = Identifier.of(entry.typeId());
 				EntityType<?> t = Registries.ENTITY_TYPE.get(id);
 				if (t != null) return t.getName();
 			} catch (Exception ignored) {}

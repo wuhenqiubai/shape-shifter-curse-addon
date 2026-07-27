@@ -5,6 +5,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.TidalOrbEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -33,13 +34,13 @@ public final class FluorescentTidalManager {
 
     /** 客户端同步状态：0=空闲，1=蓄力中，2=球飞行中。 */
     public static final net.minecraft.util.Identifier TIDAL_STATE =
-            new net.minecraft.util.Identifier("my_addon", "form_axolotl_fluorescent_tidal_state");
+            Identifier.of("my_addon", "form_axolotl_fluorescent_tidal_state");
 
     private static final int CHARGE_TICKS = 25;       // 1.25 秒蓄力
     private static final int CD_TICKS = 160;          // 8 秒 CD（球消失后起算）
     private static final double CHARGE_SPEED_PENALTY = -0.5;  // 蓄力期间移动 -50%
 
-    private static final UUID CHARGE_SPEED_UUID = UUID.fromString("9d2b3c4d-5e6f-7081-92a3-b4c5d6e7f819");
+    private static final Identifier CHARGE_SPEED_UUID = Identifier.of("9d2b3c4d-5e6f-7081-92a3-b4c5d6e7f819");
 
     private enum State { IDLE, CHARGING, FLYING }
 
@@ -199,8 +200,8 @@ public final class FluorescentTidalManager {
         attr.removeModifier(CHARGE_SPEED_UUID);
         if (apply) {
             attr.addTemporaryModifier(new net.minecraft.entity.attribute.EntityAttributeModifier(
-                    CHARGE_SPEED_UUID, "Tidal Charge Slow", CHARGE_SPEED_PENALTY,
-                    net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                    CHARGE_SPEED_UUID, CHARGE_SPEED_PENALTY,
+                    net.minecraft.entity.attribute.EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
     }
 

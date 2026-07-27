@@ -30,7 +30,7 @@ import java.util.List;
  */
 public class TwinPodItem extends TrinketItem {
 
-	private static final Identifier MINESHAFT_LOOT = new Identifier("minecraft", "chests/abandoned_mineshaft");
+	private static final Identifier MINESHAFT_LOOT = Identifier.of("minecraft", "chests/abandoned_mineshaft");
 
 	public TwinPodItem(Settings settings) {
 		super(settings);

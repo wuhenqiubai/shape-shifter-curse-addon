@@ -39,7 +39,7 @@ public class SnowballLauncherItem extends Item {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
 		return 72000;
 	}
 
@@ -57,7 +57,7 @@ public class SnowballLauncherItem extends Item {
 
 	@Override
 	public void usageTick(World world, LivingEntity user, ItemStack stack, int remainingUseTicks) {
-		int usedTicks = getMaxUseTime(stack) - remainingUseTicks;
+		int usedTicks = getMaxUseTime(stack, user) - remainingUseTicks;
 		// Fire every 7 ticks (approx 1.15x speed of Bottled Blizzard which is 8 ticks)
 		if (usedTicks % 7 == 0) {
 			fire(world, user, stack);

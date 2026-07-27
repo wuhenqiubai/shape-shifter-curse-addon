@@ -20,10 +20,11 @@ public class BatPoisonEffect extends StatusEffect {
     }
 
     @Override
-    public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+    public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
         if (entity.getHealth() > 1.0f) {
             entity.damage(entity.getDamageSources().magic(), 1.0f);
         }
+        return false;
     }
 
     @Override

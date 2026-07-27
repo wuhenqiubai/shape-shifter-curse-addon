@@ -20,7 +20,7 @@ public final class AdvancementUtils {
 	 * 仅服务端可用；客户端调用会静默忽略。
 	 *
 	 * @param player    目标玩家
-	 * @param advId     成就 Identifier，如 new Identifier("ssc_addon", "ssc_addon/tonight_moon_beautiful")
+	 * @param advId     成就 Identifier，如 Identifier.of("ssc_addon", "ssc_addon/tonight_moon_beautiful")
 	 */
 	public static void grant(PlayerEntity player, Identifier advId) {
 		if (player == null || player.getWorld().isClient) return;

@@ -28,7 +28,7 @@ import org.joml.Matrix4f;
  */
 @Environment(EnvType.CLIENT)
 public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
-	private static final Identifier TEXTURE = new Identifier("minecraft", "textures/misc/white.png");
+	private static final Identifier TEXTURE = Identifier.of("minecraft", "textures/misc/white.png");
 
 	private static final float[] CYAN   = {0.35f, 0.90f, 1.00f, 0.85f};
 	private static final float[] BLUE   = {0.35f, 0.55f, 1.00f, 0.85f};

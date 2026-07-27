@@ -117,7 +117,7 @@ public class BindingAnkletItem extends TrinketItem {
 	/*  战利品注入：劫掠者哨塔 25%                                       */
 	/* ------------------------------------------------------------ */
 
-	private static final Identifier PILLAGER_OUTPOST_LOOT = new Identifier("minecraft", "chests/pillager_outpost");
+	private static final Identifier PILLAGER_OUTPOST_LOOT = Identifier.of("minecraft", "chests/pillager_outpost");
 
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {

@@ -75,7 +75,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(new Identifier("my_addon", "mist_form"),
+		return new PowerFactory<>(Identifier.of("my_addon", "mist_form"),
 				new SerializableData()
 						.add("cooldown", SerializableDataTypes.INT, 200)
 						.add("duration", SerializableDataTypes.INT, 90)

@@ -21,72 +21,72 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 public class SscAddonNetworking {
-	public static final Identifier PACKET_KEY_PRESS = new Identifier("my_addon", "key_press");
+	public static final Identifier PACKET_KEY_PRESS = Identifier.of("my_addon", "key_press");
 	/** 契灵 - 次要技能：瞬移。payload: byte mode (0=RAYCAST, 1=PLATFORM) */
-	public static final Identifier PACKET_MANCIANIMA_TELEPORT = new Identifier("my_addon", "mancianima_teleport");
+	public static final Identifier PACKET_MANCIANIMA_TELEPORT = Identifier.of("my_addon", "mancianima_teleport");
 	/** 契灵 - 主要技能：三段标记。无 payload，服务端根据当前状态分支。 */
-	public static final Identifier PACKET_MANCIANIMA_PRIMARY = new Identifier("my_addon", "mancianima_primary");
+	public static final Identifier PACKET_MANCIANIMA_PRIMARY = Identifier.of("my_addon", "mancianima_primary");
 	/** 风灵「疾风连爪」：C2S 上报左键按住(boolean)；S2C 同步爪击阶段(int)+准星条进度(float)。 */
-	public static final Identifier PACKET_CLAW_HOLD = new Identifier("my_addon", "claw_hold");
-	public static final Identifier PACKET_CLAW_STATE = new Identifier("my_addon", "claw_state");
+	public static final Identifier PACKET_CLAW_HOLD = Identifier.of("my_addon", "claw_hold");
+	public static final Identifier PACKET_CLAW_STATE = Identifier.of("my_addon", "claw_state");
 	/** 风灵副技能：C2S 按 sp_secondary 触发 +50% 增伤 buff。无 payload。 */
-	public static final Identifier PACKET_CLAW_BUFF = new Identifier("my_addon", "claw_buff");
+	public static final Identifier PACKET_CLAW_BUFF = Identifier.of("my_addon", "claw_buff");
 	/** 风灵「风之冲刺」：C2S 按主技能键（无 payload，服务端按阶段分支）；S2C 同步阶段(int)+targetY(double)。 */
-	public static final Identifier PACKET_WIND_DASH = new Identifier("my_addon", "wind_dash");
-	public static final Identifier PACKET_DASH_STATE = new Identifier("my_addon", "dash_state");
+	public static final Identifier PACKET_WIND_DASH = Identifier.of("my_addon", "wind_dash");
+	public static final Identifier PACKET_DASH_STATE = Identifier.of("my_addon", "dash_state");
 
 	// ===== 白名单 GUI 网络包 =====
 	/** S2C：服务端把调用者当前白名单 UUID 集合推给客户端，用于打开/刷新 GUI。payload: int n + n*UUID */
-	public static final Identifier PACKET_WHITELIST_GUI_SYNC = new Identifier("my_addon", "whitelist_gui_sync");
+	public static final Identifier PACKET_WHITELIST_GUI_SYNC = Identifier.of("my_addon", "whitelist_gui_sync");
 	/** C2S：玩家在 GUI 中请求把某 UUID 加入自己的白名单。payload: UUID */
-	public static final Identifier PACKET_WHITELIST_GUI_ADD = new Identifier("my_addon", "whitelist_gui_add");
+	public static final Identifier PACKET_WHITELIST_GUI_ADD = Identifier.of("my_addon", "whitelist_gui_add");
 	/** C2S：玩家在 GUI 中请求把某 UUID 从自己的白名单移除。payload: UUID */
-	public static final Identifier PACKET_WHITELIST_GUI_REMOVE = new Identifier("my_addon", "whitelist_gui_remove");
+	public static final Identifier PACKET_WHITELIST_GUI_REMOVE = Identifier.of("my_addon", "whitelist_gui_remove");
 	/** C2S：玩家切换模式。payload: byte (0=默认, 1=自定义) */
-	public static final Identifier PACKET_WHITELIST_GUI_MODE = new Identifier("my_addon", "whitelist_gui_mode");
+	public static final Identifier PACKET_WHITELIST_GUI_MODE = Identifier.of("my_addon", "whitelist_gui_mode");
 	/** C2S：玩家从生物白名单中移除一个 UUID。payload: UUID */
-	public static final Identifier PACKET_WHITELIST_GUI_MOB_REMOVE = new Identifier("my_addon", "whitelist_gui_mob_remove");
+	public static final Identifier PACKET_WHITELIST_GUI_MOB_REMOVE = Identifier.of("my_addon", "whitelist_gui_mob_remove");
 
 	/** C2S：美西螈装死期间按技能键请求提前结束装死。无 payload。 */
-	public static final Identifier PACKET_PLAY_DEAD_END = new Identifier("my_addon", "play_dead_end");
+	public static final Identifier PACKET_PLAY_DEAD_END = Identifier.of("my_addon", "play_dead_end");
 
 	/** C2S：美西螈漩涡开始蓄力。无 payload。 */
-	public static final Identifier PACKET_VORTEX_START = new Identifier("my_addon", "vortex_start");
+	public static final Identifier PACKET_VORTEX_START = Identifier.of("my_addon", "vortex_start");
 	/** C2S：美西螈漩涡释放（提前释放）。无 payload。 */
-	public static final Identifier PACKET_VORTEX_RELEASE = new Identifier("my_addon", "vortex_release");
+	public static final Identifier PACKET_VORTEX_RELEASE = Identifier.of("my_addon", "vortex_release");
 
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
-	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = new Identifier("my_addon", "upgrade_axolotl_spear");
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
 	/** C2S：进化美西螈次技能「涡流引导」按键。无 payload。 */
-	public static final Identifier PACKET_UPGRADE_AXOLOTL_VORTEX = new Identifier("my_addon", "upgrade_axolotl_vortex");
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_VORTEX = Identifier.of("my_addon", "upgrade_axolotl_vortex");
 	/** S2C：进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（对追踪者+自身广播）。payload: UUID + boolean charging */
-	public static final Identifier PACKET_SPEAR_CHARGE_STATE = new Identifier("my_addon", "spear_charge_state");
+	public static final Identifier PACKET_SPEAR_CHARGE_STATE = Identifier.of("my_addon", "spear_charge_state");
 
 	// ===== 荧光幼灵技能网络包 =====
 	/** C2S：荧光幼灵主要技能（法阵激光）按键。无 payload。 */
-	public static final Identifier PACKET_FLUO_LASER = new Identifier("my_addon", "fluo_laser_key");
+	public static final Identifier PACKET_FLUO_LASER = Identifier.of("my_addon", "fluo_laser_key");
 	/** C2S：荧光幼灵次要技能（潮汐波动）按键。无 payload。 */
-	public static final Identifier PACKET_FLUO_TIDAL = new Identifier("my_addon", "fluo_tidal_key");
+	public static final Identifier PACKET_FLUO_TIDAL = Identifier.of("my_addon", "fluo_tidal_key");
 	/** S2C：荧光幼灵「潮汐束缚」把被拴目标的 entityId 同步给客机，用于渲染守卫者激光。payload: varint orbId + varint count + count*varint entityId */
-	public static final Identifier PACKET_TIDAL_TETHER = new Identifier("my_addon", "tidal_tether");
+	public static final Identifier PACKET_TIDAL_TETHER = Identifier.of("my_addon", "tidal_tether");
 
 	// ===== SSCA 进化加点系统网络包（框架） =====
 	/** C2S：玩家选择进化路线。payload: String routeId */
-	public static final Identifier PACKET_EVO_SELECT_ROUTE = new Identifier("my_addon", "evo_select_route");
+	public static final Identifier PACKET_EVO_SELECT_ROUTE = Identifier.of("my_addon", "evo_select_route");
 	/** C2S：玩家选择 SP 分支。payload: String branchId */
-	public static final Identifier PACKET_EVO_SELECT_BRANCH = new Identifier("my_addon", "evo_select_branch");
+	public static final Identifier PACKET_EVO_SELECT_BRANCH = Identifier.of("my_addon", "evo_select_branch");
 	/** C2S：玩家请求解锁一个天赋节点。payload: String nodeId */
-	public static final Identifier PACKET_EVO_UNLOCK = new Identifier("my_addon", "evo_unlock");
+	public static final Identifier PACKET_EVO_UNLOCK = Identifier.of("my_addon", "evo_unlock");
 	/** C2S：一次性提交多个待确认节点（按点击顺序），服务端限频一次后顺序逐个解锁。payload: int count + count*String */
-	public static final Identifier PACKET_EVO_UNLOCK_BATCH = new Identifier("my_addon", "evo_unlock_batch");
+	public static final Identifier PACKET_EVO_UNLOCK_BATCH = Identifier.of("my_addon", "evo_unlock_batch");
 	/** C2S：开局选形态界面选定一个 SSCA 进化形态、直接走 SSCA 路线进化。payload: String formId */
-	public static final Identifier PACKET_SSCA_START_ROUTE = new Identifier("my_addon", "ssca_start_route");
+	public static final Identifier PACKET_SSCA_START_ROUTE = Identifier.of("my_addon", "ssca_start_route");
 	/** C2S：客机加入后请求服务端把所有在场玩家的形态+皮肤同步过来（修复客机看其它玩家默认白模型）。无 payload */
-	public static final Identifier PACKET_REQUEST_ALL_FORM_SYNC = new Identifier("my_addon", "request_all_form_sync");
+	public static final Identifier PACKET_REQUEST_ALL_FORM_SYNC = Identifier.of("my_addon", "request_all_form_sync");
 	/** S2C：服务端广播所有在场玩家的形态 ID。payload: int count + count*(UUID + String formId) */
-	public static final Identifier PACKET_BROADCAST_FORMS = new Identifier("my_addon", "broadcast_forms");
+	public static final Identifier PACKET_BROADCAST_FORMS = Identifier.of("my_addon", "broadcast_forms");
 	/** S2C：把所有 SSCA 进化路线定义（JSON）同步给客户端，供进化树 UI 渲染。payload: int count + count*(routeId + rawJson) */
-	public static final Identifier PACKET_EVO_ROUTES_SYNC = new Identifier("my_addon", "evo_routes_sync");
+	public static final Identifier PACKET_EVO_ROUTES_SYNC = Identifier.of("my_addon", "evo_routes_sync");
 
 	/** C2S 限频：每玩家每个事件类型记录上一次服务端接收时间，防外挂客户端 spam。 */
 	private static final Map<UUID, Long> LAST_WHITELIST_PACKET_TICK = new ConcurrentHashMap<>();

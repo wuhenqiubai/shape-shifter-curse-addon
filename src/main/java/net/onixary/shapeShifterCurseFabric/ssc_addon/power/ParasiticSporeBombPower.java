@@ -51,7 +51,7 @@ public class ParasiticSporeBombPower extends ActiveCooldownPower {
     }
 
     public static PowerFactory<Power> createFactory() {
-        return new PowerFactory<>(new Identifier("my_addon", "parasitic_spore_bomb"),
+        return new PowerFactory<>(Identifier.of("my_addon", "parasitic_spore_bomb"),
                 new SerializableData()
                         .add("cooldown", SerializableDataTypes.INT, 400)
                         .add("hud_render", ApoliDataTypes.HUD_RENDER, HudRender.DONT_RENDER)

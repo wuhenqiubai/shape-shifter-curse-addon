@@ -37,7 +37,7 @@ public class SnowFoxSpFormSpeedPower extends Power {
 
 	public static PowerFactory<Power> createFactory() {
 		return new PowerFactory<>(
-				new Identifier("ssc_addon", "snow_fox_sp_form_speed"),
+				Identifier.of("ssc_addon", "snow_fox_sp_form_speed"),
 				new SerializableData()
 						.add("resource", SerializableDataTypes.IDENTIFIER)
 						.add("melee_speed_bonus", SerializableDataTypes.DOUBLE, 0.1)

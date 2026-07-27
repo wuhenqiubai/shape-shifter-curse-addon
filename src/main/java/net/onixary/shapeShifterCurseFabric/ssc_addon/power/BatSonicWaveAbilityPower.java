@@ -52,7 +52,7 @@ public class BatSonicWaveAbilityPower extends ActiveCooldownPower {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(new Identifier("my_addon", "sonic_wave"),
+		return new PowerFactory<>(Identifier.of("my_addon", "sonic_wave"),
 				new SerializableData()
 						.add("cooldown", SerializableDataTypes.INT, 160)
 						.add("hud_render", ApoliDataTypes.HUD_RENDER, HudRender.DONT_RENDER)

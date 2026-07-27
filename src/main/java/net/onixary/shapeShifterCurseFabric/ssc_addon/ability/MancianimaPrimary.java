@@ -11,6 +11,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
@@ -55,7 +56,7 @@ public final class MancianimaPrimary {
 	public static final float DAMAGE_CAP = 20.0f;
 	public static final int MANA_REGEN_PAUSE_TICKS = 100;    // 5s
 	private static final net.minecraft.util.Identifier MANA_REGEN_PAUSE_RES =
-			new net.minecraft.util.Identifier("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
+			Identifier.of("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
 
 	/** 客户端按键调用的入口。 */
 	public static void execute(ServerPlayerEntity player) {

@@ -46,7 +46,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(new Identifier("my_addon", "true_invisibility"),
+		return new PowerFactory<>(Identifier.of("my_addon", "true_invisibility"),
 				new SerializableData()
 						.add("cooldown", SerializableDataTypes.INT, COOLDOWN_TICKS)
 						.add("duration", SerializableDataTypes.INT, 100)

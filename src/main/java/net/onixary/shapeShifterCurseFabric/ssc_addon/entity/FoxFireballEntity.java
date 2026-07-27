@@ -364,12 +364,12 @@ public class FoxFireballEntity extends ProjectileEntity implements net.minecraft
     }
 
     private DamageSource magicSource(LivingEntity target, LivingEntity owner) {
-        RegistryKey<DamageType> key = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("minecraft", "magic"));
+        RegistryKey<DamageType> key = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "magic"));
         return target.getDamageSources().create(key, owner, owner);
     }
 
     private DamageSource physicalSource(LivingEntity target, LivingEntity owner) {
-        RegistryKey<DamageType> key = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("minecraft", "mob_attack"));
+        RegistryKey<DamageType> key = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "mob_attack"));
         return target.getDamageSources().create(key, owner, owner);
     }
 

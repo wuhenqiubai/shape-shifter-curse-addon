@@ -4,6 +4,7 @@ import net.minecraft.client.resource.language.I18n;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -20,6 +21,8 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.AdvancementUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
+import java.util.List;
+
 public class EvolutionStoneItem extends Item {
 
 	public EvolutionStoneItem(Settings settings) {
@@ -32,7 +35,7 @@ public class EvolutionStoneItem extends Item {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
 		return 32;
 	}
 
@@ -52,50 +55,50 @@ public class EvolutionStoneItem extends Item {
 
 			if (playerFormID != null) {
 				// Allow Wild Cat (Feral Cat SP) to evolve to Wild Cat SP
-				if (playerFormID.equals(new Identifier("shape-shifter-curse", "feral_cat_sp"))) {
-					targetFormId = new Identifier("my_addon", "wild_cat_sp");
+				if (playerFormID.equals(Identifier.of("shape-shifter-curse", "feral_cat_sp"))) {
+					targetFormId = Identifier.of("my_addon", "wild_cat_sp");
 					canEvolve = true;
 				}
 				// Allow Snow Fox 3 (permanent phase) to evolve to Snow Fox SP
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "snow_fox_3"))) {
-					targetFormId = new Identifier("my_addon", "snow_fox_sp");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "snow_fox_3"))) {
+					targetFormId = Identifier.of("my_addon", "snow_fox_sp");
 					canEvolve = true;
 				}
 				// Allow Allay to evolve to SP Allay
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "allay_sp"))) {
-					targetFormId = new Identifier("my_addon", "allay_sp");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "allay_sp"))) {
+					targetFormId = Identifier.of("my_addon", "allay_sp");
 					canEvolve = true;
 				}
 				// 允许原版三阶段胡狼使用进化石进化为金沙岚
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "anubis_wolf_3"))) {
-					targetFormId = new Identifier("my_addon", "golden_sandstorm_sp");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "anubis_wolf_3"))) {
+					targetFormId = Identifier.of("my_addon", "golden_sandstorm_sp");
 					canEvolve = true;
 				}
 				// 允许原版三阶段使魔使用进化石进化为契灵（与月髓环→灵界之主的路径并行存在）
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "familiar_fox_3"))) {
-					targetFormId = new Identifier("my_addon", "familiar_fox_mancianima");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "familiar_fox_3"))) {
+					targetFormId = Identifier.of("my_addon", "familiar_fox_mancianima");
 					canEvolve = true;
 				}
 				// 允许进化使魔（SSCA 路线）使用进化石进化为契灵：需 50 级解锁两分支后才允许（门控在下方）
-				else if (playerFormID.equals(new Identifier("my_addon", "upgrade_familiar_fox"))) {
-					targetFormId = new Identifier("my_addon", "familiar_fox_mancianima");
+				else if (playerFormID.equals(Identifier.of("my_addon", "upgrade_familiar_fox"))) {
+					targetFormId = Identifier.of("my_addon", "familiar_fox_mancianima");
 					canEvolve = true;
 				}
 				// 允许原版三阶段蝙蝠使用进化石进化为寄生果蝠
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "bat_3"))) {
-					targetFormId = new Identifier("my_addon", "bat_parasitic_fruit");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "bat_3"))) {
+					targetFormId = Identifier.of("my_addon", "bat_parasitic_fruit");
 					canEvolve = true;
 				}
 				// 允许原版三阶段美西螈使用进化石进化为荧光幼灵
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "axolotl_3"))) {
-					targetFormId = new Identifier("my_addon", "axolotl_fluorescent");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "axolotl_3"))) {
+					targetFormId = Identifier.of("my_addon", "axolotl_fluorescent");
 					canEvolve = true;				}
 				// 允许进化美西螈（SSCA 路线）使用进化石进化为荧光幼灵：需 50 级解锁两分支后才允许（门控在下方）
-				else if (playerFormID.equals(new Identifier("my_addon", "upgrade_axolotl"))) {
-					targetFormId = new Identifier("my_addon", "axolotl_fluorescent");
+				else if (playerFormID.equals(Identifier.of("my_addon", "upgrade_axolotl"))) {
+					targetFormId = Identifier.of("my_addon", "axolotl_fluorescent");
 					canEvolve = true;				}				// 允许原版豹猫永久形态 ocelot_3 使用进化石进化为朔望（与月髓环→风灵并行存在，不同道具不冲突）
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "ocelot_3"))) {
-					targetFormId = new Identifier("my_addon", "ocelot_nova");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "ocelot_3"))) {
+					targetFormId = Identifier.of("my_addon", "ocelot_nova");
 					canEvolve = true;
 				}			}
 
@@ -120,7 +123,7 @@ public class EvolutionStoneItem extends Item {
 						stack.decrement(1);
 					}
 					// 成就：哦？玩家的样子......！- 首次使用进化石进化
-					AdvancementUtils.grant(player, new Identifier("ssc_addon", "player_form_shock"));
+					AdvancementUtils.grant(player, Identifier.of("ssc_addon", "player_form_shock"));
 				} else {
 					// 走 lang key，避免硬编码（合规 #48）
 					player.sendMessage(Text.translatable("message.ssc_addon.evolution_stone.target_not_found", targetFormId).formatted(Formatting.RED), false);
@@ -134,8 +137,8 @@ public class EvolutionStoneItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @org.jetbrains.annotations.Nullable World world, java.util.List<Text> tooltip, net.minecraft.client.item.TooltipContext context) {
-		super.appendTooltip(stack, world, tooltip, context);
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+		super.appendTooltip(stack, context, tooltip, type);
 		String key = "item.ssc_addon.evolution_stone.tooltip";
 		if (I18n.hasTranslation(key)) {
 			String translated = I18n.translate(key);

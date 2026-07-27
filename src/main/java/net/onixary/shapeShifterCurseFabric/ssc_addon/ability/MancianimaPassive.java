@@ -16,6 +16,7 @@ import net.minecraft.entity.mob.PillagerEntity;
 import net.minecraft.entity.mob.RavagerEntity;
 import net.minecraft.entity.mob.VindicatorEntity;
 import net.minecraft.entity.mob.WitchEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.village.raid.Raid;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.poi.PointOfInterestStorage;
@@ -87,7 +88,7 @@ public final class MancianimaPassive {
 
 	// “被君临”还在生效的村民/商人 UUID + 上次刷新 tick
 	private static final Map<UUID, Long> FLEE_AFFECTED = new ConcurrentHashMap<>();
-	private static final UUID MANCIANIMA_FEAR_SLOW_UUID = UUID.fromString("7f3e2c4a-3b16-4ad2-9d4d-2bf1d8a5d111");
+	private static final Identifier MANCIANIMA_FEAR_SLOW_UUID = Identifier.of("7f3e2c4a-3b16-4ad2-9d4d-2bf1d8a5d111");
 	private static final double FLEE_RADIUS = 12.0;
 	private static final int FLEE_LINGER_TICKS = 60; // 离开后 3s 才清除 debuff
 
@@ -181,8 +182,8 @@ public final class MancianimaPassive {
 			EntityAttributeInstance attr = m.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 			if (attr != null && attr.getModifier(MANCIANIMA_FEAR_SLOW_UUID) == null) {
 				attr.addPersistentModifier(new EntityAttributeModifier(MANCIANIMA_FEAR_SLOW_UUID,
-						"Mancianima fear slow", -0.25,
-						EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+						-0.25,
+						EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
 			FLEE_AFFECTED.put(m.getUuid(), now);
 		}
@@ -300,7 +301,7 @@ public final class MancianimaPassive {
 			if (p == null) continue;
 			BlockPos pp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
 			p.refreshPositionAndAngles(pp.getX() + 0.5, pp.getY(), pp.getZ() + 0.5, 0f, 0f);
-			p.initialize(world, world.getLocalDifficulty(pp), SpawnReason.EVENT, null, null);
+			p.initialize(world, world.getLocalDifficulty(pp), SpawnReason.EVENT, null);
 			p.setPersistent();
 			configureRaiderPatrol(p, villageCenter);
 			if (!leaderAssigned) {
@@ -317,7 +318,7 @@ public final class MancianimaPassive {
 			if (v == null) continue;
 			BlockPos vp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
 			v.refreshPositionAndAngles(vp.getX() + 0.5, vp.getY(), vp.getZ() + 0.5, 0f, 0f);
-			v.initialize(world, world.getLocalDifficulty(vp), SpawnReason.EVENT, null, null);
+			v.initialize(world, world.getLocalDifficulty(vp), SpawnReason.EVENT, null);
 			v.setPersistent();
 			configureRaiderPatrol(v, villageCenter);
 			world.spawnEntity(v);
@@ -328,7 +329,7 @@ public final class MancianimaPassive {
 			if (e == null) continue;
 			BlockPos ep = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
 			e.refreshPositionAndAngles(ep.getX() + 0.5, ep.getY(), ep.getZ() + 0.5, 0f, 0f);
-			e.initialize(world, world.getLocalDifficulty(ep), SpawnReason.EVENT, null, null);
+			e.initialize(world, world.getLocalDifficulty(ep), SpawnReason.EVENT, null);
 			e.setPersistent();
 			configureRaiderHome(e, villageCenter, 32);
 			world.spawnEntity(e);
@@ -339,7 +340,7 @@ public final class MancianimaPassive {
 			if (w == null) continue;
 			BlockPos wp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
 			w.refreshPositionAndAngles(wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5, 0f, 0f);
-			w.initialize(world, world.getLocalDifficulty(wp), SpawnReason.EVENT, null, null);
+			w.initialize(world, world.getLocalDifficulty(wp), SpawnReason.EVENT, null);
 			w.setPersistent();
 			configureRaiderHome(w, villageCenter, 32);
 			world.spawnEntity(w);
@@ -350,7 +351,7 @@ public final class MancianimaPassive {
 			if (r == null) continue;
 			BlockPos rp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
 			r.refreshPositionAndAngles(rp.getX() + 0.5, rp.getY(), rp.getZ() + 0.5, 0f, 0f);
-			r.initialize(world, world.getLocalDifficulty(rp), SpawnReason.EVENT, null, null);
+			r.initialize(world, world.getLocalDifficulty(rp), SpawnReason.EVENT, null);
 			r.setPersistent();
 			configureRaiderHome(r, villageCenter, 32);
 			world.spawnEntity(r);

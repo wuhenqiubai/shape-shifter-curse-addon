@@ -61,6 +61,6 @@ public class ThrownWaterSpearEntityRenderer extends EntityRenderer<ThrownWaterSp
 
 	@Override
 	public Identifier getTexture(ThrownWaterSpearEntity entity) {
-		return new Identifier("textures/atlas/blocks.png");
+		return Identifier.of("textures/atlas/blocks.png");
 	}
 }

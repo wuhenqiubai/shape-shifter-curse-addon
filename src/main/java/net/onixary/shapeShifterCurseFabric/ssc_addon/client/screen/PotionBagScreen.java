@@ -10,7 +10,7 @@ import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.screen.PotionBagScreenHandler;
 
 public class PotionBagScreen extends HandledScreen<PotionBagScreenHandler> {
-	private static final Identifier TEXTURE = new Identifier("ssc_addon", "textures/gui/container/potion_bag.png");
+	private static final Identifier TEXTURE = Identifier.of("ssc_addon", "textures/gui/container/potion_bag.png");
 
 	public PotionBagScreen(PotionBagScreenHandler handler, PlayerInventory inventory, Text title) {
 		super(handler, inventory, title);

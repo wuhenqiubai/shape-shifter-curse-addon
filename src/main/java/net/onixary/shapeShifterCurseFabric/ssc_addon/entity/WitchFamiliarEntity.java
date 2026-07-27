@@ -70,7 +70,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	private static final float PARTICLE_INNER_RADIUS = 1.5f; // 粒子内圈半径1.5格
 	// 原版使魔形态ID（用于友军判定）
 	// 注意：PlayerFormBase.FormID 不带 "form_" 前缀，getOriginID() 才会拼接
-	private static final Identifier VANILLA_FAMILIAR_FOX_3 = new Identifier("shape-shifter-curse", "familiar_fox_3");
+	private static final Identifier VANILLA_FAMILIAR_FOX_3 = Identifier.of("shape-shifter-curse", "familiar_fox_3");
 	private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 	private int fireRingCooldown = 0;
 	// 主人（女巫）UUID，用于跟随和攻击同步
@@ -256,7 +256,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		List<net.minecraft.entity.Entity> entityList = serverWorld.getOtherEntities(
 				this, new net.minecraft.util.math.Box(k, r, t, l, s, u));
 
-		RegistryKey<DamageType> onFireKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("minecraft", "on_fire"));
+		RegistryKey<DamageType> onFireKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "on_fire"));
 
 		for (net.minecraft.entity.Entity targetEntity : entityList) {
 			// 跳过爆炸免疫实体

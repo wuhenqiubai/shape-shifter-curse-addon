@@ -20,6 +20,7 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -59,7 +60,7 @@ public final class MancianimaMarkManager {
 	public static final int STAGE_GATE_TICKS = 60;            // 3s
 
 	/** S2C 包：将本地玩家持有的标记同步到客户端，用于 entity_glow */
-	public static final Identifier PACKET_MARK_SYNC = new Identifier("ssc_addon", "mancianima_mark_sync");
+	public static final Identifier PACKET_MARK_SYNC = Identifier.of("ssc_addon", "mancianima_mark_sync");
 
 	public static final class Mark {
 		public final UUID targetUuid;
@@ -342,7 +343,7 @@ public final class MancianimaMarkManager {
 			long lastCombat = LAST_COMBAT.getOrDefault(id, 0L);
 			if (now - lastCombat < OUT_OF_COMBAT_TICKS) continue;
 			// 消耗 mana 后 5s 内暂停自动回复（regen_pause_timer 资源 > 0 表示在暂停窗口）
-			int pauseTimer = PowerUtils.getResourceValue(sp, new Identifier("my_addon", "form_upgrade_familiar_fox_mana_regen_pause_pause_timer"));
+			int pauseTimer = PowerUtils.getResourceValue(sp, Identifier.of("my_addon", "form_upgrade_familiar_fox_mana_regen_pause_pause_timer"));
 			if (pauseTimer > 0) continue;
 			long lastRegen = LAST_MANA_REGEN.getOrDefault(id, 0L);
 			if (now - lastRegen < UPGRADE_FOX_MANA_REGEN_INTERVAL_TICKS) continue;
@@ -399,7 +400,7 @@ public final class MancianimaMarkManager {
 			buf.writeString(colorString(m.color));
 		}
 		try {
-			ServerPlayNetworking.send(player, PACKET_MARK_SYNC, buf);
+			ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_MARK_SYNC), buf));
 		} catch (Exception ignored) {}
 	}
 

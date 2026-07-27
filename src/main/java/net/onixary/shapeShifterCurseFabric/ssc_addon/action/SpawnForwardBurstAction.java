@@ -58,7 +58,7 @@ public class SpawnForwardBurstAction {
 
     public static ActionFactory<Entity> getFactory() {
         return new ActionFactory<>(
-                new Identifier("my_addon", "spawn_forward_burst"),
+                Identifier.of("my_addon", "spawn_forward_burst"),
                 new SerializableData()
                         .add("particle", SerializableDataTypes.PARTICLE_EFFECT_OR_TYPE)
                         .add("count", SerializableDataTypes.INT, 20)

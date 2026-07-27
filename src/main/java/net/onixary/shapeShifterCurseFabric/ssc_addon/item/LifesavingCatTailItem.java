@@ -31,7 +31,7 @@ public class LifesavingCatTailItem extends TrinketItem {
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
 			// Add Lifesaving Cat Tail to Cat drops (1% chance)
-			if (id.equals(new Identifier("minecraft", "entities/cat"))) {
+			if (id.equals(Identifier.of("minecraft", "entities/cat"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(ConstantLootNumberProvider.create(1.0f))
 						.conditionally(net.minecraft.loot.condition.RandomChanceLootCondition.builder(0.01f))

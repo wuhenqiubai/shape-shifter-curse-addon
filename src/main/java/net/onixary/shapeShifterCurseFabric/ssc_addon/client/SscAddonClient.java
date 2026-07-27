@@ -376,13 +376,13 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// Register predicate for 3D model when held (0.0 = inventory/ground, 1.0 = held)
 		// GUI/GROUND 渲染上下文时强制返回 0，避免 override 把物品栏图标也切到 3D
-		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "held"), (stack, world, entity, seed) ->
+		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, Identifier.of("ssc_addon", "held"), (stack, world, entity, seed) ->
 				net.onixary.shapeShifterCurseFabric.ssc_addon.util.RenderContextTracker.isGuiContext() ? 0.0F :
 				(entity != null && (entity.getMainHandStack() == stack || entity.getOffHandStack() == stack) ? 1.0F : 0.0F)
 		);
 
 		// Also register "throwing" predicate for trident animation support if needed
-		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "throwing"), (stack, world, entity, seed) ->
+		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, Identifier.of("ssc_addon", "throwing"), (stack, world, entity, seed) ->
 				entity != null && entity.isUsingItem() && entity.getActiveItem() == stack ? 1.0F : 0.0F
 		);
 
@@ -394,9 +394,9 @@ public class SscAddonClient implements ClientModInitializer {
 			}
 			return net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.isEmptyByNbt(stack) ? 1.0F : 0.0F;
 		};
-		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION, new Identifier("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
-		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_SPLASH, new Identifier("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
-		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_LINGERING, new Identifier("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_SPLASH, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_LINGERING, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
 
 		// SP技能键位现在由Apoli框架自动处理，无需手动轮询
 		// 如需添加新的非Apoli键位检测，可在此处注册

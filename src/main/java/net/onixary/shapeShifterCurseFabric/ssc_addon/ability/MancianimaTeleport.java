@@ -8,6 +8,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -52,8 +53,8 @@ public final class MancianimaTeleport {
 	/** 传送后冻结自然回蓝的 tick 数（5 秒） */
 	public static final int MANA_REGEN_PAUSE_TICKS = 100;
 	/** sp_mana_regen 的暂停计时子资源（apoli:multiple 子键 → power_id + "_" + sub_key） */
-	private static final net.minecraft.util.Identifier MANA_REGEN_PAUSE_RES =
-			new net.minecraft.util.Identifier("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
+	private static final Identifier MANA_REGEN_PAUSE_RES =
+			Identifier.of("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
 
 	private MancianimaTeleport() {
 	}

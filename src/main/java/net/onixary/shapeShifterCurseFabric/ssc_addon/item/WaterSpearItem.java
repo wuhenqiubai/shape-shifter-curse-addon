@@ -2,6 +2,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
+import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
@@ -11,6 +12,7 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.TridentItem;
 import net.minecraft.sound.SoundCategory;
@@ -29,14 +31,14 @@ import java.util.List;
 public class WaterSpearItem extends TridentItem {
 	private static final int TICKS_PER_DURABILITY = 20;
 
-	public WaterSpearItem(Settings settings) {
-		super(settings);
+	public WaterSpearItem(FabricItem.Settings settings) {
+		super((Item.Settings) settings);
 	}
 
 	@Override
 	public void onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks) {
 		if (user instanceof PlayerEntity playerEntity) {
-			int i = this.getMaxUseTime(stack) - remainingUseTicks;
+			int i = this.getMaxUseTime(stack, user) - remainingUseTicks;
 			if (i >= 10) {
 				float f = playerEntity.getYaw();
 				float g = playerEntity.getPitch();
@@ -64,7 +66,7 @@ public class WaterSpearItem extends TridentItem {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
 		return 72000;
 	}
 

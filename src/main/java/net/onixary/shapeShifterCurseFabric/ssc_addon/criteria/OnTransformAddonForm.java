@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 // 通用：附属形态切换成就触发器。条件可选指定 form_id，匹配则触发
 public class OnTransformAddonForm extends AbstractCriterion<OnTransformAddonForm.Condition> {
-    public static final Identifier ID = new Identifier("my_addon", "on_transform_addon_form");
+    public static final Identifier ID = Identifier.of("my_addon", "on_transform_addon_form");
 
     @Override
     public Identifier getId() {
@@ -26,7 +26,7 @@ public class OnTransformAddonForm extends AbstractCriterion<OnTransformAddonForm
     protected Condition conditionsFromJson(JsonObject obj, LootContextPredicate playerPredicate, AdvancementEntityPredicateDeserializer predicateDeserializer) {
         Identifier formId = null;
         if (obj.has("form_id")) {
-            formId = new Identifier(obj.get("form_id").getAsString());
+            formId = Identifier.of(obj.get("form_id").getAsString());
         }
         return new Condition(formId);
     }

@@ -17,15 +17,15 @@ public class SnowFoxSPManaBar implements HudRenderCallback {
 	private static final MinecraftClient mc = MinecraftClient.getInstance();
 
 	// 近战形态纹理
-	private static final Identifier MELEE_FULL = new Identifier("my_addon", "textures/gui/sp_snow_fox_mana_bar_melee_full.png");
-	private static final Identifier MELEE_EMPTY = new Identifier("my_addon", "textures/gui/sp_snow_fox_mana_bar_melee_empty.png");
+	private static final Identifier MELEE_FULL = Identifier.of("my_addon", "textures/gui/sp_snow_fox_mana_bar_melee_full.png");
+	private static final Identifier MELEE_EMPTY = Identifier.of("my_addon", "textures/gui/sp_snow_fox_mana_bar_melee_empty.png");
 	// 远程形态纹理
-	private static final Identifier RANGED_FULL = new Identifier("my_addon", "textures/gui/sp_snow_fox_mana_bar_ranged_full.png");
-	private static final Identifier RANGED_EMPTY = new Identifier("my_addon", "textures/gui/sp_snow_fox_mana_bar_ranged_empty.png");
+	private static final Identifier RANGED_FULL = Identifier.of("my_addon", "textures/gui/sp_snow_fox_mana_bar_ranged_full.png");
+	private static final Identifier RANGED_EMPTY = Identifier.of("my_addon", "textures/gui/sp_snow_fox_mana_bar_ranged_empty.png");
 
-	private static final Identifier RESOURCE_ID = new Identifier("my_addon", "form_snow_fox_sp_resource");
+	private static final Identifier RESOURCE_ID = Identifier.of("my_addon", "form_snow_fox_sp_resource");
 	// 近战/远程切换状态：0=近战，1=远程
-	private static final Identifier SWITCH_STATE_ID = new Identifier("my_addon", "form_snow_fox_sp_switch_state");
+	private static final Identifier SWITCH_STATE_ID = Identifier.of("my_addon", "form_snow_fox_sp_switch_state");
 
 	@Override
 	public void onHudRender(DrawContext context, float tickDelta) {

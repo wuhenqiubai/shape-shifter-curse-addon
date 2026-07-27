@@ -26,8 +26,8 @@ import net.onixary.shapeShifterCurseFabric.util.UIPositionUtils;
 @Environment(EnvType.CLIENT)
 public class MancianimaResistanceBar implements HudRenderCallback {
 	private static final MinecraftClient mc = MinecraftClient.getInstance();
-	private static final Identifier BAR_FULL = new Identifier("my_addon", "textures/gui/mancianima_resistance_full.png");
-	private static final Identifier BAR_EMPTY = new Identifier("my_addon", "textures/gui/mancianima_resistance_empty.png");
+	private static final Identifier BAR_FULL = Identifier.of("my_addon", "textures/gui/mancianima_resistance_full.png");
+	private static final Identifier BAR_EMPTY = Identifier.of("my_addon", "textures/gui/mancianima_resistance_empty.png");
 	private static final int MANA_WIDTH = 80;
 	private static final int FULL_WIDTH = 92;
 	private static final int HEIGHT = 5;

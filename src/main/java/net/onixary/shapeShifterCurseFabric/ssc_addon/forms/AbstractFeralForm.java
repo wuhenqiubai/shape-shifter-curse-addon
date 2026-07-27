@@ -69,22 +69,22 @@ public abstract class AbstractFeralForm extends Form_FeralBase {
 
 	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API；子类仍通过 super 调用初始化字段，故保留
 	public void Anim_registerAnims() {
-		anim_idle = new AnimationHolder(new Identifier(MOD_ID, getAnimId("idle")), true);
-		anim_sneak_idle = new AnimationHolder(new Identifier(MOD_ID, getAnimId("sneak_idle")), true);
-		anim_ride = new AnimationHolder(new Identifier(MOD_ID, getAnimId("ride")), true);
-		anim_walk = new AnimationHolder(new Identifier(MOD_ID, getAnimId("walk")), true, 1.2f, 2);
-		anim_sneak_walk = new AnimationHolder(new Identifier(MOD_ID, getAnimId("sneak_walk")), true);
-		anim_run = new AnimationHolder(new Identifier(MOD_ID, getAnimId("run")), true, 2.3f);
-		anim_float = new AnimationHolder(new Identifier(MOD_ID, getAnimId("float")), true);
-		anim_swim = new AnimationHolder(new Identifier(MOD_ID, getAnimId("swim")), true);
-		anim_dig = new AnimationHolder(new Identifier(MOD_ID, getAnimId("dig")), true);
-		anim_jump = new AnimationHolder(new Identifier(MOD_ID, getAnimId("jump")), true);
-		anim_climb = new AnimationHolder(new Identifier(MOD_ID, getAnimId("climb")), true);
-		anim_fall = new AnimationHolder(new Identifier(MOD_ID, getAnimId("fall")), true);
-		anim_attack = new AnimationHolder(new Identifier(MOD_ID, getAnimId("attack")), true);
-		anim_sleep = new AnimationHolder(new Identifier(MOD_ID, getAnimId("sleep")), true);
-		anim_elytra_fly = new AnimationHolder(new Identifier(MOD_ID, getAnimId("elytra_fly")), true);
-		anim_sneak_rush = new AnimationHolder(new Identifier(MOD_ID, getAnimId("run")), true, 2.3f);
+		anim_idle = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("idle")), true);
+		anim_sneak_idle = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("sneak_idle")), true);
+		anim_ride = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("ride")), true);
+		anim_walk = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("walk")), true, 1.2f, 2);
+		anim_sneak_walk = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("sneak_walk")), true);
+		anim_run = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("run")), true, 2.3f);
+		anim_float = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("float")), true);
+		anim_swim = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("swim")), true);
+		anim_dig = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("dig")), true);
+		anim_jump = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("jump")), true);
+		anim_climb = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("climb")), true);
+		anim_fall = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("fall")), true);
+		anim_attack = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("attack")), true);
+		anim_sleep = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("sleep")), true);
+		anim_elytra_fly = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("elytra_fly")), true);
+		anim_sneak_rush = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("run")), true, 2.3f);
 	}
 
 	protected String getAnimId(String animName) {
@@ -92,7 +92,7 @@ public abstract class AbstractFeralForm extends Form_FeralBase {
 	}
 
 	protected Identifier getAnimIdentifier(String animName) {
-		return new Identifier(MOD_ID, getAnimId(animName));
+		return Identifier.of(MOD_ID, getAnimId(animName));
 	}
 
 	@Override

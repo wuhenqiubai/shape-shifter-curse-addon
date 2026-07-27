@@ -25,7 +25,7 @@ import java.util.Map;
  */
 public final class EvolutionRegistry implements SimpleSynchronousResourceReloadListener {
     public static final EvolutionRegistry INSTANCE = new EvolutionRegistry();
-    private static final Identifier ID = new Identifier("ssc_addon", "ssca_evolution_routes");
+    private static final Identifier ID = Identifier.of("ssc_addon", "ssca_evolution_routes");
     private static final String DIR = "ssca_evolution/routes";
 
     private Map<String, EvolutionRoute> routes = new LinkedHashMap<>();

@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VortexChargeManager {
 	public static final Identifier VORTEX_STATE =
-			new Identifier("my_addon", "form_axolotl_sp_vortex_impact_vortex_state");
+			Identifier.of("my_addon", "form_axolotl_sp_vortex_impact_vortex_state");
 
 	private static final int AIR_PER_HIT = 8;
 	private static final int MAX_AIR_SPENT = 60;

@@ -32,7 +32,7 @@ public class PhantomBellTeleportAction {
 
 	public static ActionFactory<Entity> getFactory() {
 		return new ActionFactory<>(
-				new Identifier("ssc_addon", "phantom_bell_teleport"),
+				Identifier.of("ssc_addon", "phantom_bell_teleport"),
 				new SerializableData(),
 				(data, entity) -> {
 					log.debug("[PhantomBell] Action triggered!");

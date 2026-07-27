@@ -7,6 +7,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.windspirit.WindSpiritProjectilePressureMixin;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
@@ -82,4 +83,3 @@ public final class WindSpiritWindPressureManager {
         return null;
     }
 }
-

@@ -3,6 +3,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.PersistentState;
 
@@ -36,7 +37,7 @@ public final class MancianimaAssaultState extends PersistentState {
 	}
 
 	@Override
-	public NbtCompound writeNbt(NbtCompound nbt) {
+	public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		NbtList list = new NbtList();
 		for (Map.Entry<UUID, Long> e : lastRoll.entrySet()) {
 			NbtCompound c = new NbtCompound();

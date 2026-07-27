@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -56,7 +57,7 @@ public final class WindSpiritClawManager {
     private static final float FORWARD_LUNGE = 0.28f;
     private static final float PROGRESS_PER_HIT = 1.0f / 25.0f; // 最快频率下约 10 秒打空
 
-    private static final UUID SPEED_MOD_UUID = UUID.fromString("6a1d3c9e-7b2f-4c8a-9e1d-0f5a2c7b4d33");
+    private static final Identifier SPEED_MOD_UUID = Identifier.of("6a1d3c9e-7b2f-4c8a-9e1d-0f5a2c7b4d33");
     private static final String SPEED_MOD_NAME = "wind_spirit_claw_slow";
 
     public static final int PHASE_IDLE = 0;
@@ -232,12 +233,12 @@ public final class WindSpiritClawManager {
         double target = -factor; // MULTIPLY_TOTAL：-0.15 = 移速×0.85
         EntityAttributeModifier existing = attr.getModifier(SPEED_MOD_UUID);
         if (existing != null) {
-            if (Math.abs(existing.getValue() - target) < 1.0e-4) return;
+            if (Math.abs(existing.value() - target) < 1.0e-4) return;
             attr.removeModifier(SPEED_MOD_UUID);
         }
         attr.addTemporaryModifier(new EntityAttributeModifier(
-                SPEED_MOD_UUID, SPEED_MOD_NAME, target,
-                EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                SPEED_MOD_UUID, target,
+                EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
     private static void removeSpeedSlow(ServerPlayerEntity player) {
@@ -279,10 +280,10 @@ public final class WindSpiritClawManager {
         if (stack.isEmpty()) return false;
         double totalAdd = 0.0;
         for (EntityAttributeModifier m : stack
-                .getAttributeModifiers(EquipmentSlot.MAINHAND)
+                .appendAttributeModifiersTooltip(EquipmentSlot.MAINHAND)
                 .get(EntityAttributes.GENERIC_ATTACK_DAMAGE)) {
-            if (m.getOperation() == EntityAttributeModifier.Operation.ADDITION) {
-                totalAdd += m.getValue();
+            if (m.getOperation() == EntityAttributeModifier.Operation.ADD_VALUE) {
+                totalAdd += m.value();
             }
         }
         return totalAdd > 1.0;

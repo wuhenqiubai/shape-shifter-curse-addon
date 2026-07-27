@@ -37,7 +37,7 @@ import java.util.UUID;
  */
 public final class TideSpiritStoryManager {
 	/** 解锁成就：集齐蔚蓝港7本书 + 荧光幼灵形态。 */
-	public static final Identifier TIDE_SPIRIT_POWER_ADV = new Identifier("ssc_addon", "tide_spirit_power");
+	public static final Identifier TIDE_SPIRIT_POWER_ADV = Identifier.of("ssc_addon", "tide_spirit_power");
 	private static final int TIP_CHECK_INTERVAL = 20;
 	private static final int STORY_SLEEP_DURATION = 100;
 

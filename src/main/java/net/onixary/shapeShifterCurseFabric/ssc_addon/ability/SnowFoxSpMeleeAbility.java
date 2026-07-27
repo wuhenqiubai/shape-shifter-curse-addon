@@ -171,9 +171,9 @@ public class SnowFoxSpMeleeAbility {
     /*
     // 旧代码 (保留参考) 已移至PowerUtils
     
-    private static final Identifier RESOURCE_ID_OLD = new Identifier("my_addon", "form_snow_fox_sp_resource");
-    private static final Identifier REGEN_COOLDOWN_ID_OLD = new Identifier("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
-    private static final Identifier POWER_ID_OLD = new Identifier("my_addon", "form_snow_fox_sp_melee_primary");
+    private static final Identifier RESOURCE_ID_OLD = Identifier.of("my_addon", "form_snow_fox_sp_resource");
+    private static final Identifier REGEN_COOLDOWN_ID_OLD = Identifier.of("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
+    private static final Identifier POWER_ID_OLD = Identifier.of("my_addon", "form_snow_fox_sp_melee_primary");
     
     private static int getResourceValue(ServerPlayerEntity player) {
         try {

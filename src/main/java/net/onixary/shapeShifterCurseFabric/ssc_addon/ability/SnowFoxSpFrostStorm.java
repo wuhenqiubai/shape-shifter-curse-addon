@@ -37,8 +37,8 @@ public class SnowFoxSpFrostStorm {
     private static final int MANA_COST = 30; // 霜寒值消耗
     //未使用: private static final int COOLDOWN = 600;  30秒CD = 600tick
     
-    private static final Identifier RESOURCE_ID = new Identifier("my_addon", "form_snow_fox_sp_resource");
-    private static final Identifier REGEN_COOLDOWN_ID = new Identifier("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
+    private static final Identifier RESOURCE_ID = Identifier.of("my_addon", "form_snow_fox_sp_resource");
+    private static final Identifier REGEN_COOLDOWN_ID = Identifier.of("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
     
     /**
      * 开始蓄力（点按技能键时调用）
@@ -59,7 +59,7 @@ public class SnowFoxSpFrostStorm {
         // 检查霜寒值
         int currentMana = getResourceValue(player);
         if (currentMana < MANA_COST) {
-            player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.5f, 1.0f);
+            player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
             return false;
         }
         

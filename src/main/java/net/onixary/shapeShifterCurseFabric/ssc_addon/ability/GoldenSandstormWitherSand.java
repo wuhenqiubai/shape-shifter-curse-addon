@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -50,7 +51,7 @@ public class GoldenSandstormWitherSand {
 	/** 被打断CD时间（tick） */
 	private static final int INTERRUPT_CD_TICKS = 140; // 7秒
 	/** 蓄力减速修正器UUID */
-	private static final UUID CHARGE_SLOW_UUID = UUID.fromString("b8c9d0e1-f2a3-4b5c-8d6e-7f8901234567");
+	private static final Identifier CHARGE_SLOW_UUID = Identifier.of("b8c9d0e1-f2a3-4b5c-8d6e-7f8901234567");
 	private static final String CHARGE_SLOW_NAME = "Wither Sand Charge Slow";
 
 	// ==================== 状态追踪 ====================
@@ -204,8 +205,8 @@ public class GoldenSandstormWitherSand {
 		if (speedAttr != null) {
 			speedAttr.removeModifier(CHARGE_SLOW_UUID);
 			speedAttr.addTemporaryModifier(new EntityAttributeModifier(
-					CHARGE_SLOW_UUID, CHARGE_SLOW_NAME, -0.50,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+					CHARGE_SLOW_UUID, -0.50,
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 

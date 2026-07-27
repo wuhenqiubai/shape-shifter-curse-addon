@@ -56,21 +56,21 @@ public class SnowFoxSpTeleportAttack {
 
 		int currentMana = PowerUtils.getResourceValue(player, RESOURCE_ID);
 		if (currentMana < MANA_COST_FAIL) {
-			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.5f, 1.0f);
+			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
 			return false;
 		}
 
 		List<LivingEntity> targets = findTargets(player);
 
 		if (targets.isEmpty()) {
-			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0f, 1.0f);
+			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 1.0f, 1.0f);
 			PowerUtils.changeResourceValueAndSync(player, RESOURCE_ID, -MANA_COST_FAIL);
 			setRegenCooldown(player, 100);
 			return false;
 		}
 
 		if (currentMana < MANA_COST_SUCCESS) {
-			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.5f, 1.0f);
+			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
 			return false;
 		}
 
@@ -348,4 +348,3 @@ public class SnowFoxSpTeleportAttack {
 		}
 	}
 }
-

@@ -99,7 +99,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     public static PowerFactory<Power> createFactory() {
-        return new PowerFactory<>(new Identifier("my_addon", "parasitic_fruit_seed"),
+        return new PowerFactory<>(Identifier.of("my_addon", "parasitic_fruit_seed"),
                 new SerializableData()
                         .add("cooldown", SerializableDataTypes.INT, 200)
                         .add("duration", SerializableDataTypes.INT, DEFAULT_LIFE_TICKS)

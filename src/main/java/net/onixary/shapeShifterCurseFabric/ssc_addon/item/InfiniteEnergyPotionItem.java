@@ -144,7 +144,7 @@ public class InfiniteEnergyPotionItem extends Item {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
 		return type == Type.DRINK ? DRINK_TIME : 0;
 	}
 

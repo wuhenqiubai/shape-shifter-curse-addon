@@ -64,7 +64,7 @@ public class SscAddonActions {
 	}
 
 	public static void register() {
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "fallen_allay_scream"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "fallen_allay_scream"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -104,7 +104,7 @@ public class SscAddonActions {
 				}
 		));
 
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "summon_fallen_allay_vex"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "summon_fallen_allay_vex"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -140,7 +140,7 @@ public class SscAddonActions {
 		registerEntity(PhantomBellTeleportAction.getFactory());
 
 		// SP Allay Portable Beacon toggle
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "allay_sp_beacon_toggle"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "allay_sp_beacon_toggle"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -148,7 +148,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "item_cooldown"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "item_cooldown"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM)
 						.add("duration", SerializableDataTypes.INT),
@@ -158,7 +158,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "fire_breath"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "fire_breath"),
 				new SerializableData()
 						.add("distance", SerializableDataTypes.FLOAT)
 						.add("damage", SerializableDataTypes.FLOAT)
@@ -182,7 +182,7 @@ public class SscAddonActions {
 
 						if (dot > 0.8 && distSq < distance * distance) {
 							Vec3d oldVelocity = target.getVelocity();
-							RegistryKey<DamageType> magicKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("minecraft", "magic"));
+							RegistryKey<DamageType> magicKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "magic"));
 							if (target.damage(target.getDamageSources().create(magicKey, living, living), damageAmount)) {
 								target.setVelocity(oldVelocity);
 							}
@@ -201,7 +201,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerBiEntity(new ActionFactory<>(new Identifier("my_addon", "set_on_fire_attributed"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("my_addon", "set_on_fire_attributed"),
 				new SerializableData()
 						.add("duration", SerializableDataTypes.INT),
 				(data, pair) -> {
@@ -222,7 +222,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerBiEntity(new ActionFactory<>(new Identifier("my_addon", "damage_target_from_actor"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("my_addon", "damage_target_from_actor"),
 				new SerializableData()
 						.add("amount", SerializableDataTypes.FLOAT)
 						.add("damage_type", SerializableDataTypes.IDENTIFIER),
@@ -243,7 +243,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "force_pose"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "force_pose"),
 				new SerializableData()
 						.add("pose", SerializableDataTypes.STRING),
 				(data, entity) -> {
@@ -259,7 +259,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "adaptive_water_jump"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "adaptive_water_jump"),
 				new SerializableData()
 						.add("base_y", SerializableDataTypes.FLOAT, 0.4f)
 						.add("horizontal_momentum", SerializableDataTypes.FLOAT, 1.2f)
@@ -285,7 +285,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "clear_aggro"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "clear_aggro"),
 				new SerializableData()
 						.add("radius", SerializableDataTypes.DOUBLE, 64.0),
 				(data, entity) -> {
@@ -299,7 +299,7 @@ public class SscAddonActions {
 				}));
 
 		// SP雪狐 - 雪刺冲刺技能
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "snow_fox_sp_dash"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_dash"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -311,7 +311,7 @@ public class SscAddonActions {
 				}));
 
 		// SP雪狐 - 瞬移攻击技能
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "snow_fox_sp_teleport_attack"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_teleport_attack"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -323,7 +323,7 @@ public class SscAddonActions {
 				}));
 
 		// SP雪狐 - 法术冰球技能
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "snow_fox_sp_frost_ball"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_frost_ball"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -340,7 +340,7 @@ public class SscAddonActions {
 						int currentMana = PowerUtils.getResourceValue(player, FormIdentifiers.SNOW_FOX_RESOURCE);
 						int manaCost = 15;
 						if (currentMana < manaCost) {
-							player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.5f, 1.0f);
+							player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
 							return;
 						}
 						PowerUtils.changeResourceValueAndSync(player, FormIdentifiers.SNOW_FOX_RESOURCE, -manaCost);
@@ -362,7 +362,7 @@ public class SscAddonActions {
 				}));
 
 		// SP雪狐 - 冰风暴技能（点按开始蓄力）
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "snow_fox_sp_frost_storm"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_frost_storm"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -373,7 +373,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "trigger_play_dead"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "trigger_play_dead"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof LivingEntity living) {
@@ -407,7 +407,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "swim_jump_out"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "swim_jump_out"),
 				new SerializableData().add("multiplier", SerializableDataTypes.FLOAT, 2.0F),
 				(data, entity) -> {
 					// Must be in swimming pose (sprinting in water) to trigger
@@ -455,7 +455,7 @@ public class SscAddonActions {
 				}));
 
 		// ==== SP阿努比斯之狼 - 死亡领域 ====
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "anubis_wolf_sp_death_domain"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "anubis_wolf_sp_death_domain"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity sp) {
@@ -467,7 +467,7 @@ public class SscAddonActions {
 				}));
 
 		// ==== SP阿努比斯之狼 - 冥狼裁庭 ====
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "anubis_wolf_sp_summon_wolves"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "anubis_wolf_sp_summon_wolves"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity sp) {
@@ -479,7 +479,7 @@ public class SscAddonActions {
 				}));
 
 		// ==== 金沙岚SP - 侵蚀烙印命中处理 ====
-		registerBiEntity(new ActionFactory<>(new Identifier("ssc_addon", "golden_sandstorm_erosion_brand_hit"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_erosion_brand_hit"),
 				new SerializableData(),
 				(data, pair) -> {
 					Entity actor = pair.getLeft();
@@ -490,7 +490,7 @@ public class SscAddonActions {
 				}));
 
 		// ==== 金沙岚SP - 凋零金沙 ====
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "golden_sandstorm_wither_sand"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_wither_sand"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity sp) {
@@ -499,7 +499,7 @@ public class SscAddonActions {
 				}));
 
 		// ==== 金沙岚SP - 引爆烙印 ====
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "golden_sandstorm_detonate"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_detonate"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity sp) {
@@ -508,7 +508,7 @@ public class SscAddonActions {
 				}));
 
 		// ==== 金沙岚SP - 反噬冲击（被动） ====
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "golden_sandstorm_counter_burst"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_counter_burst"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity sp) {
@@ -523,7 +523,7 @@ public class SscAddonActions {
 		registerEntity(SpawnForwardBurstAction.getFactory());
 
 		// ==== red 狐火火球：发射火球投射物 + 近身 60°×4格 锥形霰击（5 魔法伤害，附属专用，只作用 red） ====
-		registerEntity(new ActionFactory<>(new Identifier("my_addon", "fox_fireball"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "fox_fireball"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (!(entity instanceof ServerPlayerEntity player)) return;
@@ -536,7 +536,7 @@ public class SscAddonActions {
 					world.spawnEntity(ball);
 					// 近身 60°、4 格锥形霰击：5 点魔法伤害，跳过白名单
 					Vec3d eye = player.getEyePos();
-					RegistryKey<DamageType> magicKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("minecraft", "magic"));
+					RegistryKey<DamageType> magicKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "magic"));
 					Box box = player.getBoundingBox().expand(4.0);
 					world.getEntitiesByClass(LivingEntity.class, box,
 							e -> e != player && e.isAlive() && !e.isSpectator()).forEach(t -> {

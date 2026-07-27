@@ -81,6 +81,10 @@ repositories {
         url = "https://maven.jamieswhiteshirt.com/libs-release"
         content { includeGroup "com.jamieswhiteshirt" }
     }
+    maven {
+        name = "RedlanceMinecraft"
+        url = "https://repo.redlance.org/public"
+    }
     maven { url "https://masa.dy.fi/maven" }
     maven { url "https://jitpack.io" }
     maven { url "https://maven.shedaniel.me" }
@@ -96,11 +100,11 @@ dependencies {
     // Fabric API
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    // Shape Shifter Curse Unofficial
-    modImplementation "maven.modrinth:shape-shifter-curse-unofficial-port:${project.sscu_version}"
+    // Shape Shifter Curse Unofficial Port
+    modImplementation "com.github.wuhenqiubai:Shape-Shifter-Curse_Unofficial-Port:ver~1.21.1_main-SNAPSHOT"
     
     // Player Animation Library
-    modImplementation "com.zigythebird.playeranim:PlayerAnimationLibFabric:${project.player_anim}"
+    modImplementation "com.zigythebird.playeranim:PlayerAnimationLibFabric:${project.pal_version}"
 
     // Apoli & Dependencies
     modImplementation "io.github.apace100:apoli:${project.apoli_version}"
@@ -135,7 +139,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 17
+    it.options.release = 21
     it.options.compilerArgs << '-Xlint:deprecation'
 }
 
@@ -145,8 +149,8 @@ java {
     // If you remove this line, sources will not be generated.
     withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 jar {

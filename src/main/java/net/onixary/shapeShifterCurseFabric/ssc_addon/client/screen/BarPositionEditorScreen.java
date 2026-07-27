@@ -38,8 +38,8 @@ import java.util.function.IntConsumer;
  */
 public class BarPositionEditorScreen extends Screen {
 
-    private static final Identifier VANILLA_WIDGETS = new Identifier("minecraft", "textures/gui/widgets.png");
-    private static final Identifier VANILLA_ICONS = new Identifier("minecraft", "textures/gui/icons.png");
+    private static final Identifier VANILLA_WIDGETS = Identifier.of("minecraft", "textures/gui/widgets.png");
+    private static final Identifier VANILLA_ICONS = Identifier.of("minecraft", "textures/gui/icons.png");
 
     private static final int BAR_W = 80;
     private static final int BAR_H = 5;

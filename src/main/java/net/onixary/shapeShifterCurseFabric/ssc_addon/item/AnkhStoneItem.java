@@ -77,7 +77,7 @@ public class AnkhStoneItem extends TrinketItem {
 	 */
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (id.equals(new Identifier("minecraft", "chests/desert_pyramid"))) {
+			if (id.equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(UniformLootNumberProvider.create(1.0f, 2.0f))
 						.conditionally(RandomChanceLootCondition.builder(0.15f))

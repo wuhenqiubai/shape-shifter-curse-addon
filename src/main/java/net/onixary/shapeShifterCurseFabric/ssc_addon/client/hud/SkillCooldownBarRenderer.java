@@ -37,8 +37,8 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 	private static final int TEX_H = 20;
 
 	// 贴图路径
-	private static final Identifier TEX_EMPTY = new Identifier("my_addon", "textures/gui/skill_cd_bar_empty.png");
-	private static final Identifier TEX_FULL = new Identifier("my_addon", "textures/gui/skill_cd_bar_full.png");
+	private static final Identifier TEX_EMPTY = Identifier.of("my_addon", "textures/gui/skill_cd_bar_empty.png");
+	private static final Identifier TEX_FULL = Identifier.of("my_addon", "textures/gui/skill_cd_bar_full.png");
 	private static final String SSCA_FORM_NAMESPACE = "my_addon";
 
 	// 技能触发偏差阈值：实际值与期望衰减值偏差超过此值视为技能触发
