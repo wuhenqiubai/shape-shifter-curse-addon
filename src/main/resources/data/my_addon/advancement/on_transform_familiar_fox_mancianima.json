@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "ssc_addon:binding_anklet"
+      "id": "ssc_addon:binding_anklet"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_familiar_fox_mancianima.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_familiar_fox_mancianima"
+    ]
+  ]
 }

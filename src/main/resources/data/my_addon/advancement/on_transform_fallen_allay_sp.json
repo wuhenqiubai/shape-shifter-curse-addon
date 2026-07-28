@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "minecraft:beacon"
+      "id": "minecraft:beacon"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_fallen_allay_sp.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_fallen_allay_sp"
+    ]
+  ]
 }

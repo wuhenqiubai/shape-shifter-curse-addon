@@ -386,7 +386,7 @@ public class StoryBookLoot implements ConfigChangeListener {
 		}
 
 		// 调试输出
-		LOGGER.info("[StoryBookLoot] Split content into {} pages", pages.size());
+//		LOGGER.info("[StoryBookLoot] Split content into {} pages", pages.size());
 
 		return pages;
 	}

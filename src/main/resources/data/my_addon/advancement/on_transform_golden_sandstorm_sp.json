@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "ssc_addon:withered_sand_ring"
+      "id": "ssc_addon:withered_sand_ring"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_golden_sandstorm_sp.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_golden_sandstorm_sp"
+    ]
+  ]
 }

@@ -1,7 +1,7 @@
 {
   "display": {
     "icon": {
-      "item": "minecraft:axolotl_bucket"
+      "id": "minecraft:axolotl_bucket"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_axolotl_aling.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_axolotl_aling"
+    ]
+  ]
 }

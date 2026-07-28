@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "ssc_addon:frost_amulet"
+      "id": "ssc_addon:frost_amulet"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_snow_fox_sp.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_snow_fox_sp"
+    ]
+  ]
 }

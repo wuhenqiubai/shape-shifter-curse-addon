@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "ssc_addon:allay_heal_wand"
+      "id": "ssc_addon:allay_heal_wand"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_allay_sp.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_allay_sp"
+    ]
+  ]
 }

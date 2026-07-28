@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "ssc_addon:phantom_bell"
+      "id": "ssc_addon:phantom_bell"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_familiar_fox_red.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_familiar_fox_red"
+    ]
+  ]
 }

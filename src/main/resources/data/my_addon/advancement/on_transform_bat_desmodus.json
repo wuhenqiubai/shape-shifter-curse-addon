@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "minecraft:phantom_membrane"
+      "id": "minecraft:phantom_membrane"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_bat_desmodus.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_bat_desmodus"
+    ]
+  ]
 }

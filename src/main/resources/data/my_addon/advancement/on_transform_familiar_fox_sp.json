@@ -1,7 +1,7 @@
-﻿{
+{
   "display": {
     "icon": {
-      "item": "ssc_addon:blue_fire_amulet"
+      "id": "ssc_addon:blue_fire_amulet"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_familiar_fox_sp.title"
@@ -23,5 +23,9 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [
+    [
+      "on_transform_familiar_fox_sp"
+    ]
+  ]
 }

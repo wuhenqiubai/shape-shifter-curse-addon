@@ -1,9 +1,15 @@
 {
   "parent": "ssc_addon:moon_marrow_whisper",
   "display": {
-    "icon": { "item": "ssc_addon:sp_upgrade_thing" },
-    "title": { "translate": "advancements.ssc_addon.tonight_moon_beautiful.title" },
-    "description": { "translate": "advancements.ssc_addon.tonight_moon_beautiful.description" },
+    "icon": {
+      "id": "ssc_addon:sp_upgrade_thing"
+    },
+    "title": {
+      "translate": "advancements.ssc_addon.tonight_moon_beautiful.title"
+    },
+    "description": {
+      "translate": "advancements.ssc_addon.tonight_moon_beautiful.description"
+    },
     "frame": "goal",
     "show_toast": true,
     "announce_to_chat": true,
@@ -14,5 +20,9 @@
       "trigger": "minecraft:impossible"
     }
   },
-  "requirements": [["use_moon_marrow_success"]]
+  "requirements": [
+    [
+      "use_moon_marrow_success"
+    ]
+  ]
 }
