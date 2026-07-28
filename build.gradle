@@ -148,10 +148,6 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
-    it.options.compilerArgs << '-Xlint:deprecation'
-}
-
-tasks.withType(JavaCompile).configureEach {
     // 忽略Java源码过时警告
     options.deprecation = false
     // 屏蔽所有编译器警告
