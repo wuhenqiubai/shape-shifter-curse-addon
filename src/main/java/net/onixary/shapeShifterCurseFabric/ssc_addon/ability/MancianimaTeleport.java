@@ -1,24 +1,24 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.onixary.shapeShifterCurseFabric.mana.ManaComponent;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
@@ -53,46 +53,46 @@ public final class MancianimaTeleport {
 	/** 传送后冻结自然回蓝的 tick 数（5 秒） */
 	public static final int MANA_REGEN_PAUSE_TICKS = 100;
 	/** sp_mana_regen 的暂停计时子资源（apoli:multiple 子键 → power_id + "_" + sub_key） */
-	private static final Identifier MANA_REGEN_PAUSE_RES =
-			Identifier.of("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
+	private static final ResourceLocation MANA_REGEN_PAUSE_RES =
+			ResourceLocation.fromNamespaceAndPath("my_addon", "form_familiar_fox_sp_mana_regen_regen_pause_timer");
 
 	private MancianimaTeleport() {
 	}
 
 	/** 模式 0 = RAYCAST，1 = PLATFORM。客户端发送，服务端只信任模式（看向矢量自行从玩家状态读取）。 */
-	public static boolean execute(ServerPlayerEntity player, byte mode) {
+	public static boolean execute(ServerPlayer player, byte mode) {
 		if (!isMancianima(player)) return false;
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_SECONDARY_CD) > 0) return false;
 
 		// 红标联动：如果准星在某个被本玩家红标的生物上，启动 1s 引导
-		net.minecraft.entity.LivingEntity redTarget = tryFindRedMarkedInCrosshair(player);
+		net.minecraft.world.entity.LivingEntity redTarget = tryFindRedMarkedInCrosshair(player);
 		if (redTarget != null) {
 			if (net.onixary.shapeShifterCurseFabric.mana.ManaUtils.getPlayerMana(player) < RED_MARK_MANA_COST) {
-				player.sendMessage(Text.translatable("message.ssc_addon.mancianima.teleport.no_mana"), true);
+				player.displayClientMessage(Component.translatable("message.ssc_addon.mancianima.teleport.no_mana"), true);
 				return false;
 			}
-			if (MancianimaMarkManager.CHANNELING.containsKey(player.getUuid())) return false;
-			long now = ((ServerWorld) player.getWorld()).getTime();
-			MancianimaMarkManager.CHANNELING.put(player.getUuid(),
-					new MancianimaMarkManager.ChannelState(redTarget.getUuid(), now + RED_MARK_CHANNEL_TICKS, 2));
-			player.sendMessage(Text.translatable("message.ssc_addon.mancianima.teleport.channeling"), true);
+			if (MancianimaMarkManager.CHANNELING.containsKey(player.getUUID())) return false;
+			long now = ((ServerLevel) player.level()).getGameTime();
+			MancianimaMarkManager.CHANNELING.put(player.getUUID(),
+					new MancianimaMarkManager.ChannelState(redTarget.getUUID(), now + RED_MARK_CHANNEL_TICKS, 2));
+			player.displayClientMessage(Component.translatable("message.ssc_addon.mancianima.teleport.channeling"), true);
 			return true;
 		}
 
 		if (ManaUtils.getPlayerMana(player) < MANA_COST) {
-			player.sendMessage(Text.translatable("message.ssc_addon.mancianima.teleport.no_mana"), true);
+			player.displayClientMessage(Component.translatable("message.ssc_addon.mancianima.teleport.no_mana"), true);
 			return false;
 		}
 
-		Vec3d eye = player.getEyePos();
-		Vec3d look = player.getRotationVector().normalize();
-		ServerWorld world = (ServerWorld) player.getWorld();
+		Vec3 eye = player.getEyePosition();
+		Vec3 look = player.getLookAngle().normalize();
+		ServerLevel world = (ServerLevel) player.level();
 
-		Vec3d targetFeet;
+		Vec3 targetFeet;
 		if (mode == 1) {
 			targetFeet = computePlatformLanding(world, eye, look, player);
 			if (targetFeet == null) {
-				player.sendMessage(Text.translatable("message.ssc_addon.mancianima.teleport.no_platform"), true);
+				player.displayClientMessage(Component.translatable("message.ssc_addon.mancianima.teleport.no_platform"), true);
 				return false; // 无平台 → 拒绝传送、不消耗CD/法力
 			}
 		} else {
@@ -105,7 +105,7 @@ public final class MancianimaTeleport {
 		// 视野判定既能挡隔栅栏/隔墙传送（落点腰部被遮挡），又允许正常登高/跳跃落点（#6）。
 		if (!isSafeLanding(world, player, targetFeet)
 				|| (mode == 1 && !isLandingVisible(world, player, targetFeet))) {
-			player.sendMessage(Text.translatable("message.ssc_addon.mancianima.teleport.no_platform"), true);
+			player.displayClientMessage(Component.translatable("message.ssc_addon.mancianima.teleport.no_platform"), true);
 			return false;
 		}
 
@@ -117,10 +117,10 @@ public final class MancianimaTeleport {
 				player.getX(), player.getY() + 1.0, player.getZ(),
 				20, 0.3, 0.5, 0.3, 0.05);
 		world.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.2f);
+				SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.2f);
 
 		// 执行传送（保留视角方向）
-		player.teleport(world, targetFeet.x, targetFeet.y, targetFeet.z, player.getYaw(), player.getPitch());
+		player.teleportTo(world, targetFeet.x, targetFeet.y, targetFeet.z, player.getYRot(), player.getXRot());
 
 		// 落点粒子 + 音效（对周围所有玩家可见/可听）
 		ParticleUtils.spawnParticles(world, ParticleTypes.PORTAL,
@@ -130,7 +130,7 @@ public final class MancianimaTeleport {
 				targetFeet.x, targetFeet.y + 1.0, targetFeet.z,
 				20, 0.3, 0.5, 0.3, 0.05);
 		world.playSound(null, targetFeet.x, targetFeet.y, targetFeet.z,
-				SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.0f);
+				SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
 
 		// 扣除法力 + 设置CD
 		ManaComponent mana = ManaUtils.getManaComponent(player);
@@ -143,37 +143,37 @@ public final class MancianimaTeleport {
 		return true;
 	}
 
-	private static boolean isMancianima(PlayerEntity player) {
+	private static boolean isMancianima(Player player) {
 		IForm form = FormUtils.getCurrentForm(player);
 		return form != null && FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(form.getFormID());
 	}
 
 	/** 准星上是否有被本玩家红标的目标？返回该目标，否则 null。 */
-	private static net.minecraft.entity.LivingEntity tryFindRedMarkedInCrosshair(ServerPlayerEntity player) {
-		MancianimaMarkManager.Mark m = MancianimaMarkManager.getMark(player.getUuid());
+	private static net.minecraft.world.entity.LivingEntity tryFindRedMarkedInCrosshair(ServerPlayer player) {
+		MancianimaMarkManager.Mark m = MancianimaMarkManager.getMark(player.getUUID());
 		if (m == null || m.color != MancianimaMarkManager.MarkColor.RED) return null;
-		Vec3d eye = player.getEyePos();
-		Vec3d look = player.getRotationVector().normalize();
-		Vec3d end = eye.add(look.multiply(RED_MARK_TARGET_RANGE));
-		ServerWorld world = (ServerWorld) player.getWorld();
-		net.minecraft.util.math.Box searchBox = new net.minecraft.util.math.Box(eye, end).expand(2.0);
+		Vec3 eye = player.getEyePosition();
+		Vec3 look = player.getLookAngle().normalize();
+		Vec3 end = eye.add(look.scale(RED_MARK_TARGET_RANGE));
+		ServerLevel world = (ServerLevel) player.level();
+		net.minecraft.world.phys.AABB searchBox = new net.minecraft.world.phys.AABB(eye, end).inflate(2.0);
 		double bestDist = Double.MAX_VALUE;
-		net.minecraft.entity.LivingEntity best = null;
-		for (net.minecraft.entity.Entity e : world.getOtherEntities(player, searchBox,
-				net.minecraft.predicate.entity.EntityPredicates.EXCEPT_SPECTATOR)) {
-			if (!(e instanceof net.minecraft.entity.LivingEntity le) || !le.isAlive()) continue;
-			if (!le.getUuid().equals(m.targetUuid)) continue;
-			net.minecraft.util.math.Box box = e.getBoundingBox().expand(1.0); // "大致对准"放宽
-			java.util.Optional<Vec3d> hit = box.raycast(eye, end);
+		net.minecraft.world.entity.LivingEntity best = null;
+		for (net.minecraft.world.entity.Entity e : world.getEntities(player, searchBox,
+				net.minecraft.world.entity.EntitySelector.NO_SPECTATORS)) {
+			if (!(e instanceof net.minecraft.world.entity.LivingEntity le) || !le.isAlive()) continue;
+			if (!le.getUUID().equals(m.targetUuid)) continue;
+			net.minecraft.world.phys.AABB box = e.getBoundingBox().inflate(1.0); // "大致对准"放宽
+			java.util.Optional<Vec3> hit = box.clip(eye, end);
 			if (hit.isEmpty()) continue;
-			double d = eye.squaredDistanceTo(hit.get());
+			double d = eye.distanceToSqr(hit.get());
 			if (d < bestDist) { bestDist = d; best = le; }
 		}
 		return best;
 	}
 
 	/** MancianimaMarkManager 引导 tick 末尾调用：执行红标瞬移斩杀。 */
-	public static void executeRedMarkChannelComplete(ServerPlayerEntity marker, net.minecraft.entity.LivingEntity target) {
+	public static void executeRedMarkChannelComplete(ServerPlayer marker, net.minecraft.world.entity.LivingEntity target) {
 		if (target == null || !target.isAlive()) {
 			PowerUtils.setResourceValueAndSync(marker, FormIdentifiers.SP_SECONDARY_CD, RED_FAIL_CD_TICKS);
 			return;
@@ -181,25 +181,25 @@ public final class MancianimaTeleport {
 		// 扣 mana
 		ManaComponent mana = ManaUtils.getManaComponent(marker);
 		if (mana != null) mana.setMana(Math.max(0.0, mana.getMana() - RED_MARK_MANA_COST));
-		ServerWorld world = (ServerWorld) marker.getWorld();
+		ServerLevel world = (ServerLevel) marker.level();
 		// 计算落点：目标身后1格地面
-		Vec3d targetPos = target.getPos();
-		Vec3d targetLook = target.getRotationVector().normalize();
-		Vec3d behind = targetPos.subtract(targetLook.x, 0, targetLook.z).add(0, 0, 0); // 1 格后方
-		Vec3d landing = adjustBehindTarget(world, target, behind);
+		Vec3 targetPos = target.position();
+		Vec3 targetLook = target.getLookAngle().normalize();
+		Vec3 behind = targetPos.subtract(targetLook.x, 0, targetLook.z).add(0, 0, 0); // 1 格后方
+		Vec3 landing = adjustBehindTarget(world, target, behind);
 		// 出发粒子
 		ParticleUtils.spawnParticles(world, ParticleTypes.PORTAL,
 				marker.getX(), marker.getY() + 1.0, marker.getZ(),
 				40, 0.3, 0.8, 0.3, 0.6);
 		// 传送
-		marker.teleport(world, landing.x, landing.y, landing.z, marker.getYaw(), marker.getPitch());
+		marker.teleportTo(world, landing.x, landing.y, landing.z, marker.getYRot(), marker.getXRot());
 		// 让契灵看向目标
 		double dx = target.getX() - landing.x;
 		double dz = target.getZ() - landing.z;
 		float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
-		marker.setYaw(yaw);
-		marker.setPitch(0);
-		marker.networkHandler.requestTeleport(landing.x, landing.y, landing.z, yaw, 0);
+		marker.setYRot(yaw);
+		marker.setXRot(0);
+		marker.connection.teleport(landing.x, landing.y, landing.z, yaw, 0);
 		// 落点粒子
 		ParticleUtils.spawnParticles(world, ParticleTypes.PORTAL,
 				landing.x, landing.y + 1.0, landing.z,
@@ -208,10 +208,10 @@ public final class MancianimaTeleport {
 		float missing = target.getMaxHealth() - target.getHealth();
 		float dmg = (float) Math.min(RED_MARK_DAMAGE_CAP, missing * RED_MARK_DAMAGE_PERCENT);
 		boolean wasAlive = target.isAlive();
-		target.damage(world.getDamageSources().playerAttack(marker), dmg);
+		target.hurt(world.damageSources().playerAttack(marker), dmg);
 		// 广播暴击音效
 		world.playSound(null, target.getX(), target.getY(), target.getZ(),
-				SoundEvents.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS, 1.0f, 1.0f);
+				SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 1.0f);
 		// 设置 CD + 暂停回蓝
 		PowerUtils.setResourceValueAndSync(marker, FormIdentifiers.SP_SECONDARY_CD, RED_KILL_NO_KILL_CD_TICKS);
 		PowerUtils.setResourceValueAndSync(marker, MANA_REGEN_PAUSE_RES, MANA_REGEN_PAUSE_TICKS);
@@ -224,59 +224,59 @@ public final class MancianimaTeleport {
 			PowerUtils.setResourceValueAndSync(marker, FormIdentifiers.MANCIANIMA_RESISTANCE, max);
 			// 斩杀回满魔力，与主技能保持一致
 			ManaUtils.setPlayerMana(marker, ManaUtils.getPlayerMaxMana(marker));
-			marker.sendMessage(Text.translatable("message.ssc_addon.mancianima.teleport.kill_bonus"), true);
+			marker.displayClientMessage(Component.translatable("message.ssc_addon.mancianima.teleport.kill_bonus"), true);
 		}
 		// 红标使命达成 → 清除
-		MancianimaMarkManager.clearMark(world.getServer(), marker.getUuid());
+		MancianimaMarkManager.clearMark(world.getServer(), marker.getUUID());
 	}
 
 	/** 计算红标瞬移落点：优先目标后方1格地面；后方>2格悬崖→旁侧；旁侧无地→后方1格悬空。 */
-	private static Vec3d adjustBehindTarget(ServerWorld world, net.minecraft.entity.LivingEntity target, Vec3d desired) {
+	private static Vec3 adjustBehindTarget(ServerLevel world, net.minecraft.world.entity.LivingEntity target, Vec3 desired) {
 		// 落点 Y：从 desired Y 向下扫最多 3 格寻找地面
 		double baseY = target.getY();
-		BlockPos basePos = BlockPos.ofFloored(desired.x, baseY, desired.z);
+		BlockPos basePos = BlockPos.containing(desired.x, baseY, desired.z);
 		// 检查后方1格地面是否存在（脚下方块实心）
-		BlockPos floorBelow = basePos.down();
+		BlockPos floorBelow = basePos.below();
 		boolean hasGround = !world.getBlockState(floorBelow).getCollisionShape(world, floorBelow).isEmpty();
-		if (hasGround) return new Vec3d(desired.x, baseY, desired.z);
+		if (hasGround) return new Vec3(desired.x, baseY, desired.z);
 		// 没地面 → 检查目标旁侧
-		Vec3d targetLook = target.getRotationVector().normalize();
-		Vec3d sideRight = new Vec3d(-targetLook.z, 0, targetLook.x).multiply(1.0);
-		Vec3d sidePos = target.getPos().add(sideRight);
-		BlockPos sideBelow = BlockPos.ofFloored(sidePos.x, baseY, sidePos.z).down();
+		Vec3 targetLook = target.getLookAngle().normalize();
+		Vec3 sideRight = new Vec3(-targetLook.z, 0, targetLook.x).scale(1.0);
+		Vec3 sidePos = target.position().add(sideRight);
+		BlockPos sideBelow = BlockPos.containing(sidePos.x, baseY, sidePos.z).below();
 		if (!world.getBlockState(sideBelow).getCollisionShape(world, sideBelow).isEmpty()) {
-			return new Vec3d(sidePos.x, baseY, sidePos.z);
+			return new Vec3(sidePos.x, baseY, sidePos.z);
 		}
 		// 都没有 → 仍传后方1格（空中）
-		return new Vec3d(desired.x, baseY, desired.z);
+		return new Vec3(desired.x, baseY, desired.z);
 	}
 
 	/**
 	 * RAYCAST 模式：沿视线最远 8 格，碰到方块时回退一点防卡墙。
 	 * 共享算法（客户端可调用同一份逻辑做预览）。
 	 */
-	public static Vec3d computeRaycastLanding(World world, Vec3d eye, Vec3d look, PlayerEntity player) {
-		Vec3d end = eye.add(look.multiply(MAX_RANGE));
-		BlockHitResult hit = world.raycast(new RaycastContext(
+	public static Vec3 computeRaycastLanding(Level world, Vec3 eye, Vec3 look, Player player) {
+		Vec3 end = eye.add(look.scale(MAX_RANGE));
+		BlockHitResult hit = world.clip(new ClipContext(
 				eye, end,
-				RaycastContext.ShapeType.COLLIDER,
-				RaycastContext.FluidHandling.NONE,
+				ClipContext.Block.COLLIDER,
+				ClipContext.Fluid.NONE,
 				player));
-		Vec3d landingEye;
+		Vec3 landingEye;
 		if (hit.getType() == HitResult.Type.MISS) {
 			landingEye = end;
 		} else {
 			// 从碰撞点回退 0.4 格，避免脚部嵌入墙体
-			landingEye = hit.getPos().add(look.multiply(-0.4));
+			landingEye = hit.getLocation().add(look.scale(-0.4));
 		}
 		// 转换为脚部坐标（玩家视高约 1.62）
 		double feetY = landingEye.y - (player.getEyeY() - player.getY());
 		// 防止 feetY 嵌入地面：若脚下方块为实心则向上抬一格
-		BlockPos feetPos = BlockPos.ofFloored(landingEye.x, feetY, landingEye.z);
+		BlockPos feetPos = BlockPos.containing(landingEye.x, feetY, landingEye.z);
 		if (!world.getBlockState(feetPos).getCollisionShape(world, feetPos).isEmpty()) {
 			feetY = feetPos.getY() + 1.0;
 		}
-		return new Vec3d(landingEye.x, feetY, landingEye.z);
+		return new Vec3(landingEye.x, feetY, landingEye.z);
 	}
 
 	/**
@@ -290,42 +290,42 @@ public final class MancianimaTeleport {
 	 * </ul>
 	 * 站立条件只要求：方块顶面非空 + 上方有约 1.8 格空气；不限制平台尺寸。
 	 */
-	public static Vec3d computePlatformLanding(World world, Vec3d eye, Vec3d look, PlayerEntity player) {
-		Vec3d end = eye.add(look.multiply(MAX_RANGE));
-		BlockHitResult hit = world.raycast(new RaycastContext(
+	public static Vec3 computePlatformLanding(Level world, Vec3 eye, Vec3 look, Player player) {
+		Vec3 end = eye.add(look.scale(MAX_RANGE));
+		BlockHitResult hit = world.clip(new ClipContext(
 				eye, end,
-				RaycastContext.ShapeType.COLLIDER,
-				RaycastContext.FluidHandling.NONE,
+				ClipContext.Block.COLLIDER,
+				ClipContext.Fluid.NONE,
 				player));
 
 		if (hit.getType() == HitResult.Type.BLOCK) {
-			Vec3d hitPos = hit.getPos();
+			Vec3 hitPos = hit.getLocation();
 			// Case 1：命中方块顶面 → 直接以命中点 XZ 落脚（瞄哪站哪）
-			if (hit.getSide() == Direction.UP) {
+			if (hit.getDirection() == Direction.UP) {
 				BlockPos solid = hit.getBlockPos();
 				Double topY = collisionTopY(world, solid);
 				if (topY != null && hasHeadroom(world, hitPos.x, topY, hitPos.z)
-						&& isSafeLanding(world, player, new Vec3d(hitPos.x, topY, hitPos.z))) {
-					Vec3d landing = new Vec3d(hitPos.x, topY, hitPos.z);
+						&& isSafeLanding(world, player, new Vec3(hitPos.x, topY, hitPos.z))) {
+					Vec3 landing = new Vec3(hitPos.x, topY, hitPos.z);
 					if (withinRange(eye, landing)) return landing;
 				}
 			}
 			// Case 2：命中侧面/底面 → 在命中点前方的空气列里找最贴近命中 Y 的平台（用命中点 XZ）
-			BlockPos airCol = hit.getBlockPos().offset(hit.getSide());
-			Vec3d landing = findBestInColumn(world, player, hitPos.x, hitPos.z, airCol.getX(), airCol.getZ(), hitPos.y, eye, hitPos);
+			BlockPos airCol = hit.getBlockPos().relative(hit.getDirection());
+			Vec3 landing = findBestInColumn(world, player, hitPos.x, hitPos.z, airCol.getX(), airCol.getZ(), hitPos.y, eye, hitPos);
 			if (landing != null) return landing;
 		}
 
 		// Case 3：射线无阻挡 → 沿射线 march，取离"射线终点"3D 距离最近的平台（远偏置）
-		Vec3d best = null;
+		Vec3 best = null;
 		double bestSqToEnd = Double.MAX_VALUE;
 		double step = 0.5;
 		for (double d = 1.0; d <= MAX_RANGE; d += step) {
-			Vec3d sample = eye.add(look.multiply(d));
-			Vec3d landing = findBestInColumn(world, player, sample.x, sample.z,
-					MathHelper.floor(sample.x), MathHelper.floor(sample.z), sample.y, eye, end);
+			Vec3 sample = eye.add(look.scale(d));
+			Vec3 landing = findBestInColumn(world, player, sample.x, sample.z,
+					Mth.floor(sample.x), Mth.floor(sample.z), sample.y, eye, end);
 			if (landing == null) continue;
-			double sq = landing.squaredDistanceTo(end);
+			double sq = landing.distanceToSqr(end);
 			if (sq < bestSqToEnd) {
 				bestSqToEnd = sq;
 				best = landing;
@@ -340,21 +340,21 @@ public final class MancianimaTeleport {
 	 * 候选窗口为 [refY-3, refY+1]，避免从远处低高度射线样本误取脚下地面。
 	 * 在窗口内全部候选中取离 anchor（射线终点/命中点）3D 距离最近的一个。
 	 */
-	private static Vec3d findBestInColumn(World world, PlayerEntity player, double exactX, double exactZ,
-	                                       int bx, int bz, double refY, Vec3d eye, Vec3d anchor) {
-		int topY = MathHelper.floor(refY) + 1;
-		int bottomY = MathHelper.floor(refY) - 3;
-		Vec3d best = null;
+	private static Vec3 findBestInColumn(Level world, Player player, double exactX, double exactZ,
+	                                       int bx, int bz, double refY, Vec3 eye, Vec3 anchor) {
+		int topY = Mth.floor(refY) + 1;
+		int bottomY = Mth.floor(refY) - 3;
+		Vec3 best = null;
 		double bestSq = Double.MAX_VALUE;
 		for (int y = topY; y >= bottomY; y--) {
 			BlockPos pos = new BlockPos(bx, y, bz);
 			Double topYExact = collisionTopY(world, pos);
 			if (topYExact == null) continue;
 			if (!hasHeadroom(world, exactX, topYExact, exactZ)) continue;
-			Vec3d candidate = new Vec3d(exactX, topYExact, exactZ);
+			Vec3 candidate = new Vec3(exactX, topYExact, exactZ);
 			if (!isSafeLanding(world, player, candidate)) continue;
 			if (!withinRange(eye, candidate)) continue;
-			double sq = candidate.squaredDistanceTo(anchor);
+			double sq = candidate.distanceToSqr(anchor);
 			if (sq < bestSq) {
 				bestSq = sq;
 				best = candidate;
@@ -364,11 +364,11 @@ public final class MancianimaTeleport {
 	}
 
 	/** 返回方块碰撞箱顶面世界 Y；空碰撞箱（空气/植物等）返回 null。支持楼梯/台阶。 */
-	private static Double collisionTopY(World world, BlockPos pos) {
+	private static Double collisionTopY(Level world, BlockPos pos) {
 		BlockState state = world.getBlockState(pos);
 		VoxelShape shape = state.getCollisionShape(world, pos);
 		if (shape.isEmpty()) return null;
-		double maxY = shape.getMax(Direction.Axis.Y);
+		double maxY = shape.max(Direction.Axis.Y);
 		if (maxY <= 0) return null;
 		return pos.getY() + maxY;
 	}
@@ -377,10 +377,10 @@ public final class MancianimaTeleport {
 	 * 检查 (x,z) 处脚位 feetY 上方约 1.8 格空气（玩家身高）。
 	 * 用 floor(feetY + 0.5) 作为起点跳过平台本身（包括台阶/楼梯顶面）。
 	 */
-	private static boolean hasHeadroom(World world, double x, double feetY, double z) {
-		int bx = MathHelper.floor(x);
-		int bz = MathHelper.floor(z);
-		int startY = MathHelper.floor(feetY + 0.5);
+	private static boolean hasHeadroom(Level world, double x, double feetY, double z) {
+		int bx = Mth.floor(x);
+		int bz = Mth.floor(z);
+		int startY = Mth.floor(feetY + 0.5);
 		for (int dy = 0; dy < 2; dy++) {
 			BlockPos p = new BlockPos(bx, startY + dy, bz);
 			VoxelShape shape = world.getBlockState(p).getCollisionShape(world, p);
@@ -390,34 +390,34 @@ public final class MancianimaTeleport {
 	}
 
 	/** 落点距离硬限制（眼睛到落点直线距离）。 */
-	private static boolean withinRange(Vec3d eye, Vec3d landing) {
-		return eye.squaredDistanceTo(landing) <= (MAX_RANGE + 0.5) * (MAX_RANGE + 0.5);
+	private static boolean withinRange(Vec3 eye, Vec3 landing) {
+		return eye.distanceToSqr(landing) <= (MAX_RANGE + 0.5) * (MAX_RANGE + 0.5);
 	}
 
 	/** 检查落点处玩家完整碰撞箱是否为空。 */
-	private static boolean isSafeLanding(World world, PlayerEntity player, Vec3d feet) {
-		Box box = playerBoxAt(player, feet.x, feet.y, feet.z);
-		return world.isSpaceEmpty(player, box);
+	private static boolean isSafeLanding(Level world, Player player, Vec3 feet) {
+		AABB box = playerBoxAt(player, feet.x, feet.y, feet.z);
+		return world.noCollision(player, box);
 	}
 
 	/** 落点必须在玩家视野内：眼睛→落点腰部的视线不被方块（含栅栏/墙）遮挡。用于杜绝平台模式隔障传送（#6）。 */
-	private static boolean isLandingVisible(World world, PlayerEntity player, Vec3d targetFeet) {
-		Vec3d eye = player.getEyePos();
+	private static boolean isLandingVisible(Level world, Player player, Vec3 targetFeet) {
+		Vec3 eye = player.getEyePosition();
 		// 取落点身体中心高度作为可见性参考点（约 0.5~0.9 格高），避免只检查脚底被台阶误判
-		Vec3d targetCenter = targetFeet.add(0, Math.min(0.9, Math.max(0.5, player.getHeight() / 2.0)), 0);
-		BlockHitResult hit = world.raycast(new RaycastContext(
+		Vec3 targetCenter = targetFeet.add(0, Math.min(0.9, Math.max(0.5, player.getBbHeight() / 2.0)), 0);
+		BlockHitResult hit = world.clip(new ClipContext(
 				eye, targetCenter,
-				RaycastContext.ShapeType.COLLIDER,
-				RaycastContext.FluidHandling.NONE,
+				ClipContext.Block.COLLIDER,
+				ClipContext.Fluid.NONE,
 				player));
 		if (hit.getType() != HitResult.Type.BLOCK) return true;
 		// 命中方块点比落点更近（留 0.25 容差）→ 视线被遮挡 → 落点不可见 → 拒绝传送
-		return hit.getPos().squaredDistanceTo(eye) + 0.25 >= targetCenter.squaredDistanceTo(eye);
+		return hit.getLocation().distanceToSqr(eye) + 0.25 >= targetCenter.distanceToSqr(eye);
 	}
 
-	private static Box playerBoxAt(PlayerEntity player, double x, double y, double z) {
-		double halfWidth = Math.max(0.3, player.getWidth() / 2.0);
-		double height = Math.max(1.8, player.getHeight());
-		return new Box(x - halfWidth, y, z - halfWidth, x + halfWidth, y + height, z + halfWidth).contract(1.0E-7);
+	private static AABB playerBoxAt(Player player, double x, double y, double z) {
+		double halfWidth = Math.max(0.3, player.getBbWidth() / 2.0);
+		double height = Math.max(1.8, player.getBbHeight());
+		return new AABB(x - halfWidth, y, z - halfWidth, x + halfWidth, y + height, z + halfWidth).deflate(1.0E-7);
 	}
 }

@@ -5,16 +5,16 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -47,9 +47,9 @@ public final class WindDashClient {
         ClientTickEvents.END_CLIENT_TICK.register(WindDashClient::onClientTick);
     }
 
-    private static void onClientTick(MinecraftClient client) {
-        ClientPlayerEntity player = client.player;
-        ClientWorld world = client.world;
+    private static void onClientTick(Minecraft client) {
+        LocalPlayer player = client.player;
+        ClientLevel world = client.level;
         if (player == null || world == null) {
             lastPressed = false;
             return;
@@ -57,8 +57,8 @@ public final class WindDashClient {
 
         boolean isWindSpirit = isWindSpirit(player);
         // 按键边沿检测（仅风灵、无 GUI）
-        boolean pressed = isWindSpirit && client.currentScreen == null
-                && SscAddonKeybindings.getPrimaryKey().isPressed();
+        boolean pressed = isWindSpirit && client.screen == null
+                && SscAddonKeybindings.getPrimaryKey().isDown();
         if (pressed && !lastPressed) {
             ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_WIND_DASH), PacketByteBufs.empty()));
         }
@@ -67,7 +67,7 @@ public final class WindDashClient {
         // 悬浮阶段渲染绿色落点预览
         if (isWindSpirit && DashClientState.phase == DashClientState.PHASE_HOVER) {
             if ((previewTick++ % PREVIEW_INTERVAL) == 0) {
-                Vec3d landing = computeHorizontalLanding(world, player);
+                Vec3 landing = computeHorizontalLanding(world, player);
                 if (landing != null) {
                     renderGreenLanding(world, landing);
                 }
@@ -83,37 +83,37 @@ public final class WindDashClient {
      * 计算冲刺落点：用完整 3D 准星射线（含俯仰角），命中方块取该处地面（水平距离≤MAX_RANGE）；
      * 打空（看天空）才退到水平最远 MAX_RANGE。瞄近处地面=近落点，瞄远处=远落点。
      */
-    private static Vec3d computeHorizontalLanding(ClientWorld world, ClientPlayerEntity player) {
-        Vec3d eye = player.getEyePos();
-        Vec3d look = player.getRotationVector().normalize();
-        Vec3d flatLook = new Vec3d(look.x, 0, look.z);
+    private static Vec3 computeHorizontalLanding(ClientLevel world, LocalPlayer player) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getLookAngle().normalize();
+        Vec3 flatLook = new Vec3(look.x, 0, look.z);
         double flatLen = flatLook.length();
         double max3D = flatLen > 1.0e-4 ? MAX_RANGE / flatLen : MAX_RANGE;
-        Vec3d end3D = eye.add(look.multiply(max3D));
-        BlockHitResult bhr = world.raycast(new RaycastContext(eye, end3D,
-                RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, player));
+        Vec3 end3D = eye.add(look.scale(max3D));
+        BlockHitResult bhr = world.clip(new ClipContext(eye, end3D,
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
         if (bhr.getType() != HitResult.Type.MISS) {
-            Vec3d hit = bhr.getPos();
+            Vec3 hit = bhr.getLocation();
             double groundY = findGroundYClient(world, hit.x, hit.z, Math.min(hit.y, player.getY()));
-            return new Vec3d(hit.x, groundY, hit.z);
+            return new Vec3(hit.x, groundY, hit.z);
         }
-        Vec3d flatDir;
+        Vec3 flatDir;
         if (flatLen > 1.0e-4) {
             flatDir = flatLook.normalize();
         } else {
-            float yaw = player.getYaw();
-            flatDir = new Vec3d(-MathHelper.sin(yaw * 0.017453292f), 0, MathHelper.cos(yaw * 0.017453292f));
+            float yaw = player.getYRot();
+            flatDir = new Vec3(-Mth.sin(yaw * 0.017453292f), 0, Mth.cos(yaw * 0.017453292f));
         }
         double hx = player.getX() + flatDir.x * MAX_RANGE;
         double hz = player.getZ() + flatDir.z * MAX_RANGE;
         double gy = findGroundYClient(world, hx, hz, player.getY());
-        return new Vec3d(hx, gy, hz);
+        return new Vec3(hx, gy, hz);
     }
 
-    private static double findGroundYClient(ClientWorld world, double x, double z, double fromY) {
-        BlockPos.Mutable mpos = new BlockPos.Mutable();
+    private static double findGroundYClient(ClientLevel world, double x, double z, double fromY) {
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
         int startY = (int) Math.floor(fromY) + 1;
-        for (int y = startY; y >= startY - 20 && y >= world.getBottomY(); y--) {
+        for (int y = startY; y >= startY - 20 && y >= world.getMinBuildHeight(); y--) {
             mpos.set(x, y, z);
             var st = world.getBlockState(mpos);
             if (!st.isAir() && !st.getCollisionShape(world, mpos).isEmpty()) {
@@ -124,8 +124,8 @@ public final class WindDashClient {
     }
 
     /** 绿色落点指示器：中心 + 圆环 + 向上细柱（仿契灵紫色落点）。 */
-    private static void renderGreenLanding(ClientWorld world, Vec3d landing) {
-        DustParticleEffect dust = new DustParticleEffect(GREEN, 1.4f);
+    private static void renderGreenLanding(ClientLevel world, Vec3 landing) {
+        DustParticleOptions dust = new DustParticleOptions(GREEN, 1.4f);
         double cx = landing.x;
         double cy = landing.y + 0.05;
         double cz = landing.z;
@@ -143,7 +143,7 @@ public final class WindDashClient {
         }
     }
 
-    private static boolean isWindSpirit(ClientPlayerEntity player) {
+    private static boolean isWindSpirit(LocalPlayer player) {
         try {
             IForm form = player.getComponent(RegPlayerFormComponent.PLAYER_FORM).nowForm;
             if (form == null) return false;

@@ -1,20 +1,20 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.network.packet.c2s.common.SyncedClientOptions;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ClientInformation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.onixary.shapeShifterCurseFabric.cursed_moon.CursedMoon;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
@@ -29,68 +29,68 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.HashSet;
 import java.util.Set;
 
-@Mixin(ServerPlayerEntity.class)
+@Mixin(ServerPlayer.class)
 public class RedFormTickMixin {
 
 	// 捕获玩家客户端语言设置，存入SscAddon.PLAYER_LANGUAGES
-	@Inject(method = "setClientOptions", at = @At("HEAD"))
-	private void onSetClientSettings(SyncedClientOptions clientOptions, CallbackInfo ci) {
-		ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
-		SscAddon.PLAYER_LANGUAGES.put(player.getUuid(), clientOptions.language());
+	@Inject(method = "updateOptions", at = @At("HEAD"))
+	private void onSetClientSettings(ClientInformation clientOptions, CallbackInfo ci) {
+		ServerPlayer player = (ServerPlayer) (Object) this;
+		SscAddon.PLAYER_LANGUAGES.put(player.getUUID(), clientOptions.language());
 	}
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void onTick(CallbackInfo ci) {
-		ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
+		ServerPlayer player = (ServerPlayer) (Object) this;
 
 		// Performance check: Only run logic every 20 ticks (1 second)
-		if (player.age % 20 != 0) return;
+		if (player.tickCount % 20 != 0) return;
 
-		boolean isCursedMoon = CursedMoon.isCursedMoonDay(player.getWorld());
+		boolean isCursedMoon = CursedMoon.isCursedMoonDay(player.level());
 
 		// Reset the attempt tag if it is not Cursed Moon
-		if (!isCursedMoon && player.getCommandTags().contains("ssc_addon_red_attempted")) {
-			player.getCommandTags().remove("ssc_addon_red_attempted");
+		if (!isCursedMoon && player.getTags().contains("ssc_addon_red_attempted")) {
+			player.getTags().remove("ssc_addon_red_attempted");
 		}
 
 		// Potion Bag Logic
 		IForm currentForm = FormUtils.getCurrentForm(player);
-		boolean isRedForm = currentForm != null && currentForm.getFormID().equals(Identifier.of("my_addon", "familiar_fox_red"));
+		boolean isRedForm = currentForm != null && currentForm.getFormID().equals(ResourceLocation.fromNamespaceAndPath("my_addon", "familiar_fox_red"));
 
 		// SP Form + Cursed Moon Transformation Logic
-		if (currentForm != null && currentForm.getFormID().equals(Identifier.of("my_addon", "familiar_fox_sp")) && isCursedMoon && !player.getCommandTags().contains("ssc_addon_red_attempted")) {
-			player.addCommandTag("ssc_addon_red_attempted");
+		if (currentForm != null && currentForm.getFormID().equals(ResourceLocation.fromNamespaceAndPath("my_addon", "familiar_fox_sp")) && isCursedMoon && !player.getTags().contains("ssc_addon_red_attempted")) {
+			player.addTag("ssc_addon_red_attempted");
 			// 5% Chance to transform to Red
 			if (player.getRandom().nextFloat() < 0.05f) {
-				Identifier redFormId = Identifier.of("my_addon", "familiar_fox_red");
+				ResourceLocation redFormId = ResourceLocation.fromNamespaceAndPath("my_addon", "familiar_fox_red");
 				IForm redForm = RegPlayerForms.getPlayerForm(redFormId);
 				if (redForm != null) {
 					TransformManager.immediatelyTransform(player, redForm);
 
 					// 10 Minutes = 12000 ticks
-					long expireTime = player.getWorld().getTime() + 12000;
-					player.addCommandTag("ssc_addon_red_expire:" + expireTime);
+					long expireTime = player.level().getGameTime() + 12000;
+					player.addTag("ssc_addon_red_expire:" + expireTime);
 
-					player.sendMessage(Text.translatable("message.ssc_addon.red_transformation_special").formatted(Formatting.GREEN), false);
-					player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.PLAYERS, 1.0F, 1.0F);
+					player.displayClientMessage(Component.translatable("message.ssc_addon.red_transformation_special").withStyle(ChatFormatting.GREEN), false);
+					player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 1.0F, 1.0F);
 					return; // Exit after successful transformation
 				}
 			}
 		}
 
 		// === SP Allay Form: Auto-grant heal wand (slot 0) and jukebox (slot 1) ===
-		boolean isAllaySp = currentForm != null && currentForm.getFormID().equals(Identifier.of("my_addon", "allay_sp"));
+		boolean isAllaySp = currentForm != null && currentForm.getFormID().equals(ResourceLocation.fromNamespaceAndPath("my_addon", "allay_sp"));
 		if (isAllaySp) {
 			placeFormItemSafe(player, 0, SscAddon.ALLAY_HEAL_WAND);
 			placeFormItemSafe(player, 1, SscAddon.ALLAY_JUKEBOX);
 		} else {
 			// Not Allay SP: Remove any allay items found
-			for (int i = 0; i < player.getInventory().size(); ++i) {
-				ItemStack stack = player.getInventory().getStack(i);
-				if (stack.isOf(SscAddon.ALLAY_HEAL_WAND)) {
-					player.getInventory().setStack(i, ItemStack.EMPTY);
-				} else if (stack.isOf(SscAddon.ALLAY_JUKEBOX)) {
-					player.getInventory().setStack(i, ItemStack.EMPTY);
+			for (int i = 0; i < player.getInventory().getContainerSize(); ++i) {
+				ItemStack stack = player.getInventory().getItem(i);
+				if (stack.is(SscAddon.ALLAY_HEAL_WAND)) {
+					player.getInventory().setItem(i, ItemStack.EMPTY);
+				} else if (stack.is(SscAddon.ALLAY_JUKEBOX)) {
+					player.getInventory().setItem(i, ItemStack.EMPTY);
 				}
 			}
 		}
@@ -99,32 +99,32 @@ public class RedFormTickMixin {
 			placeFormItemSafe(player, 8, SscAddon.POTION_BAG);
 		} else {
 			// Not Red Form: Remove any Potion Bag found
-			for (int i = 0; i < player.getInventory().size(); ++i) {
-				ItemStack stack = player.getInventory().getStack(i);
-				if (stack.isOf(SscAddon.POTION_BAG)) {
+			for (int i = 0; i < player.getInventory().getContainerSize(); ++i) {
+				ItemStack stack = player.getInventory().getItem(i);
+				if (stack.is(SscAddon.POTION_BAG)) {
 					// Found a bag, drop its contents
-						if (stack.contains(net.minecraft.component.DataComponentTypes.CUSTOM_DATA) && stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA).getNbt().contains("Items", 9)) {
-							NbtList list = stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA).getNbt().getList("Items", 10);
+						if (stack.has(net.minecraft.core.component.DataComponents.CUSTOM_DATA) && stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA).getUnsafe().contains("Items", 9)) {
+							ListTag list = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA).getUnsafe().getList("Items", 10);
 						for (int j = 0; j < list.size(); ++j) {
-							NbtCompound itemTag = list.getCompound(j);
-								net.minecraft.registry.RegistryWrapper.WrapperLookup registries = player.getWorld().getRegistryManager();
-								ItemStack contentStack = ItemStack.fromNbt(registries, itemTag).orElse(ItemStack.EMPTY);
+							CompoundTag itemTag = list.getCompound(j);
+								net.minecraft.core.HolderLookup.Provider registries = player.level().registryAccess();
+								ItemStack contentStack = ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY);
 							if (!contentStack.isEmpty()) {
-								player.dropItem(contentStack, false, true);
+								player.drop(contentStack, false, true);
 							}
 						}
 					}
 					// Remove bag itself
-					player.getInventory().setStack(i, ItemStack.EMPTY);
+					player.getInventory().setItem(i, ItemStack.EMPTY);
 				}
 			}
 		}
 
 		Set<String> tagsToRemove = new HashSet<>();
 		boolean shouldRevert = false;
-		long currentTime = player.getWorld().getTime();
+		long currentTime = player.level().getGameTime();
 
-		for (String tag : player.getCommandTags()) {
+		for (String tag : player.getTags()) {
 			if (tag.startsWith("ssc_addon_red_expire:")) {
 				try {
 					long expireTime = Long.parseLong(tag.split(":")[1]);
@@ -142,19 +142,19 @@ public class RedFormTickMixin {
 
 		if (!tagsToRemove.isEmpty()) {
 			for (String tag : tagsToRemove) {
-				player.getCommandTags().remove(tag);
+				player.getTags().remove(tag);
 			}
 		}
 
 		if (shouldRevert) {
-			Identifier spFormId = Identifier.of("my_addon", "familiar_fox_sp");
+			ResourceLocation spFormId = ResourceLocation.fromNamespaceAndPath("my_addon", "familiar_fox_sp");
 			IForm spForm = RegPlayerForms.getPlayerForm(spFormId);
 			if (spForm != null) {
 				// Use setFormDirectly instead of handleDirectTransform to avoid animation
 				TransformManager.immediatelyTransform(player, spForm);
 
 				// Spawn a large amount of white particles to cover the player
-				if (player.getWorld() instanceof ServerWorld serverWorld) {
+				if (player.level() instanceof ServerLevel serverWorld) {
 					// 100 CLOUD particles + 50 POOF particles
 					net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CLOUD, player.getX(), player.getY() + 1.0, player.getZ(), 100, 0.5, 1.0, 0.5, 0.1);
 					net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld, ParticleTypes.POOF, player.getX(), player.getY() + 1.0, player.getZ(), 50, 0.5, 1.0, 0.5, 0.1);
@@ -162,11 +162,11 @@ public class RedFormTickMixin {
 
 
 				// Clear the negative effects immediately (just in case they were applied, though we removed that logic)
-				player.removeStatusEffect(StatusEffects.SLOWNESS);
-				player.removeStatusEffect(StatusEffects.JUMP_BOOST);
+				player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
+				player.removeEffect(MobEffects.JUMP);
 
 				// Send timeout message
-				player.sendMessage(Text.translatable("message.ssc_addon.red_revert_timeout").formatted(Formatting.GREEN), false);
+				player.displayClientMessage(Component.translatable("message.ssc_addon.red_revert_timeout").withStyle(ChatFormatting.GREEN), false);
 			}
 		}
 	}
@@ -181,48 +181,48 @@ public class RedFormTickMixin {
 	 * 最后把形态物品放进目标槽位。
 	 */
 	@org.spongepowered.asm.mixin.Unique
-	private void placeFormItemSafe(ServerPlayerEntity player, int targetSlot, Item formItem) {
-		PlayerInventory inv = player.getInventory();
-		ItemStack existing = inv.getStack(targetSlot);
+	private void placeFormItemSafe(ServerPlayer player, int targetSlot, Item formItem) {
+		Inventory inv = player.getInventory();
+		ItemStack existing = inv.getItem(targetSlot);
 
 		// Step 1: 目标槽位已是该物品 → 不动
-		if (existing.isOf(formItem)) return;
+		if (existing.is(formItem)) return;
 
 		// 先把原物品 copy 出来，并清空源槽，以便插入算法不会再把它放回原位
 		ItemStack moved = existing.copy();
-		inv.setStack(targetSlot, ItemStack.EMPTY);
+		inv.setItem(targetSlot, ItemStack.EMPTY);
 
 		if (!moved.isEmpty()) {
 			// Step 2: 优先合并到背包内同种物品（遍历整个主物品栏 0~35，含快捷栏，跳过 targetSlot）
-			for (int i = 0; i < inv.main.size() && !moved.isEmpty(); ++i) {
+			for (int i = 0; i < inv.items.size() && !moved.isEmpty(); ++i) {
 				if (i == targetSlot) continue;
-				ItemStack slotStack = inv.main.get(i);
+				ItemStack slotStack = inv.items.get(i);
 				if (slotStack.isEmpty()) continue;
-				if (!ItemStack.areItemsAndComponentsEqual(slotStack, moved)) continue;
-				int room = slotStack.getMaxCount() - slotStack.getCount();
+				if (!ItemStack.isSameItemSameComponents(slotStack, moved)) continue;
+				int room = slotStack.getMaxStackSize() - slotStack.getCount();
 				if (room <= 0) continue;
 				int merge = Math.min(room, moved.getCount());
-				slotStack.increment(merge);
-				moved.decrement(merge);
+				slotStack.grow(merge);
+				moved.shrink(merge);
 			}
 
 			// Step 3: 还有剩余 → 找空槽（排除 targetSlot）
 			if (!moved.isEmpty()) {
-				for (int i = 0; i < inv.main.size() && !moved.isEmpty(); ++i) {
+				for (int i = 0; i < inv.items.size() && !moved.isEmpty(); ++i) {
 					if (i == targetSlot) continue;
-					if (!inv.main.get(i).isEmpty()) continue;
-					inv.main.set(i, moved.copy());
+					if (!inv.items.get(i).isEmpty()) continue;
+					inv.items.set(i, moved.copy());
 					moved.setCount(0);
 				}
 			}
 
 			// Step 4: 仍有剩余 → 丢到地上
 			if (!moved.isEmpty()) {
-				player.dropItem(moved, false, true);
+				player.drop(moved, false, true);
 			}
 		}
 
 		// 最后放入形态物品
-		inv.setStack(targetSlot, new ItemStack(formItem));
+		inv.setItem(targetSlot, new ItemStack(formItem));
 	}
 }

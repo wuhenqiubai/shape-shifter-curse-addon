@@ -3,10 +3,10 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker;
 import me.shedaniel.clothconfig2.gui.ClothConfigScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonConfig;
 
 import java.util.Iterator;
@@ -28,17 +28,17 @@ public final class ClothConfigInjector {
 
     public static void register() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            Screen s = client.currentScreen;
+            Screen s = client.screen;
             if (!(s instanceof ClothConfigScreen)) return;
             String title = s.getTitle() == null ? "" : s.getTitle().getString();
             if (!isSscConfig(title)) return;
             try {
-                List<ClickableWidget> buttons = Screens.getButtons(s);
+                List<AbstractWidget> buttons = Screens.getButtons(s);
                 // 开关 OFF 时：不仅不注入，还要把上一次（开关曾经 ON 时）已经塞进去的按钮拔掉，
                 // 否则玩家在配置界面打开过一次后即便关闭开关也会留个入口，呈现"无法关闭"的假象。
                 if (!SSCAddonConfig.client().enableColorEditor) {
                     if (containsSscaButton(buttons)) {
-                        Iterator<ClickableWidget> it = buttons.iterator();
+                        Iterator<AbstractWidget> it = buttons.iterator();
                         while (it.hasNext()) {
                             if (it.next() instanceof SscaAdvButton) it.remove();
                         }
@@ -47,9 +47,9 @@ public final class ClothConfigInjector {
                 }
                 if (containsSscaButton(buttons)) return; // 已有，无需重复 add
                 int btnW = 120;
-                ButtonWidget btn = new SscaAdvButton(
+                Button btn = new SscaAdvButton(
                         s.width - btnW - 6, 6, btnW, 20,
-                        Text.translatable("text.ssc_addon.adv_color.title"),
+                        Component.translatable("text.ssc_addon.adv_color.title"),
                         b -> client.setScreen(new AdvancedColorScreen(s)));
                 buttons.add(btn);
             } catch (Throwable ignored) {
@@ -58,8 +58,8 @@ public final class ClothConfigInjector {
         });
     }
 
-    private static boolean containsSscaButton(List<ClickableWidget> buttons) {
-        for (ClickableWidget w : buttons) {
+    private static boolean containsSscaButton(List<AbstractWidget> buttons) {
+        for (AbstractWidget w : buttons) {
             if (w instanceof SscaAdvButton) return true;
         }
         return false;
@@ -75,9 +75,9 @@ public final class ClothConfigInjector {
     }
 
     /** 仅作 marker 用，便于扫描时去重判别。 */
-    private static final class SscaAdvButton extends ButtonWidget {
-        private SscaAdvButton(int x, int y, int w, int h, Text msg, PressAction onPress) {
-            super(x, y, w, h, msg, onPress, ButtonWidget.DEFAULT_NARRATION_SUPPLIER);
+    private static final class SscaAdvButton extends Button {
+        private SscaAdvButton(int x, int y, int w, int h, Component msg, OnPress onPress) {
+            super(x, y, w, h, msg, onPress, Button.DEFAULT_NARRATION);
         }
     }
 }

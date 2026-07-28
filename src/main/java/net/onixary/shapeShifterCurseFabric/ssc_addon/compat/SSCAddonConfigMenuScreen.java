@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.compat;
 
 import me.shedaniel.autoconfig.AutoConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonServerConfig;
 
@@ -22,7 +22,7 @@ public class SSCAddonConfigMenuScreen extends Screen {
 	private final Screen parent;
 
 	public SSCAddonConfigMenuScreen(Screen parent) {
-		super(Text.translatable("text.ssc_addon.config.title"));
+		super(Component.translatable("text.ssc_addon.config.title"));
 		this.parent = parent;
 	}
 
@@ -39,53 +39,53 @@ public class SSCAddonConfigMenuScreen extends Screen {
 
 		// 客户端配置按钮
 		addBtn(xPos, yPos, btnW, btnH,
-				Text.translatable("text.autoconfig.ssc_addon_client.title"),
+				Component.translatable("text.autoconfig.ssc_addon_client.title"),
 				() -> AutoConfig.getConfigScreen(SSCAddonClientConfig.class, this).get());
 		yPos += btnH + gap;
 
 		// 服务端配置按钮
 		addBtn(xPos, yPos, btnW, btnH,
-				Text.translatable("text.autoconfig.ssc_addon_server.title"),
+				Component.translatable("text.autoconfig.ssc_addon_server.title"),
 				() -> AutoConfig.getConfigScreen(SSCAddonServerConfig.class, this).get());
 		yPos += btnH + gap;
 
 		// 特殊键位设置按钮（按形态自定义主/副技能触发键）
 		addBtn(xPos, yPos, btnW, btnH,
-				Text.translatable("text.ssc_addon.config.open_keybinds"),
+				Component.translatable("text.ssc_addon.config.open_keybinds"),
 				() -> new net.onixary.shapeShifterCurseFabric.ssc_addon.client.keybind.SscAddonKeybindFormListScreen(this));
 		yPos += btnH + gap;
 
 		// 颜色编辑器（仅在 enableColorEditor=true 时显示；进入后可通过界面内按钮跳转到预设管理）
 		if (showColorBtn) {
 			addBtn(xPos, yPos, btnW, btnH,
-					Text.translatable("text.ssc_addon.config.open_color_editor"),
+					Component.translatable("text.ssc_addon.config.open_color_editor"),
 					() -> new net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.AdvancedColorScreen(this));
 			yPos += btnH + gap;
 		}
 
 		// 关闭按钮
-		addDrawableChild(ButtonWidget.builder(
-				Text.translatable("text.ssc_addon.config.close"),
-				button -> close()
-		).size(btnW, btnH).position(xPos, yPos).build());
+		addRenderableWidget(Button.builder(
+				Component.translatable("text.ssc_addon.config.close"),
+				button -> onClose()
+		).size(btnW, btnH).pos(xPos, yPos).build());
 	}
 
-	private void addBtn(int x, int y, int w, int h, Text text, Supplier<Screen> screenSupplier) {
-		addDrawableChild(ButtonWidget.builder(text, button ->
-				MinecraftClient.getInstance().setScreen(screenSupplier.get())
-		).size(w, h).position(x, y).build());
-	}
-
-	@Override
-	public void close() {
-		MinecraftClient.getInstance().setScreen(parent);
+	private void addBtn(int x, int y, int w, int h, Component text, Supplier<Screen> screenSupplier) {
+		addRenderableWidget(Button.builder(text, button ->
+				Minecraft.getInstance().setScreen(screenSupplier.get())
+		).size(w, h).pos(x, y).build());
 	}
 
 	@Override
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void onClose() {
+		Minecraft.getInstance().setScreen(parent);
+	}
+
+	@Override
+	public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
 		this.renderBackground(context, mouseX, mouseY, delta);
 		super.render(context, mouseX, mouseY, delta);
 		// 在标题位置渲染界面标题
-		context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0xFFFFFF);
+		context.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
 	}
 }

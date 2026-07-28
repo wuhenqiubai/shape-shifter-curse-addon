@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 
 /**
  * 幽雾化形 - 雾化状态标记效果。
@@ -10,8 +10,8 @@ import net.minecraft.entity.effect.StatusEffectCategory;
  * 由 MistFormAbilityPower 负责粒子、隐身与计时逻辑。
  * 本身不附带任何属性修改，仅作纯粹的状态标记。
  */
-public class MistFormEffect extends StatusEffect {
+public class MistFormEffect extends MobEffect {
 	public MistFormEffect() {
-		super(StatusEffectCategory.BENEFICIAL, 0xB0B8C0); // 雾灰色
+		super(MobEffectCategory.BENEFICIAL, 0xB0B8C0); // 雾灰色
 	}
 }

@@ -6,9 +6,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
 import dev.emi.trinkets.api.TrinketsApi;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 
 /**
  * Trinkets 饰品检测工具：判断实体是否正戴着某饰品。
@@ -20,7 +20,7 @@ public final class TrinketUtils {
 
     /** 该实体（玩家）是否正装备着指定饰品物品。 */
     public static boolean isWearing(LivingEntity entity, Item item) {
-        if (!(entity instanceof PlayerEntity player)) {
+        if (!(entity instanceof Player player)) {
             return false;
         }
         try {

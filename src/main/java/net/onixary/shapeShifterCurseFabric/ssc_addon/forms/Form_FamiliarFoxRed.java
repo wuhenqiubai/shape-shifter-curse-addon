@@ -5,10 +5,10 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public class Form_FamiliarFoxRed extends Form_FamiliarFox3 {
-	public Form_FamiliarFoxRed(Identifier formID) {
+	public Form_FamiliarFoxRed(ResourceLocation formID) {
 		super(formID);
 	}
 }

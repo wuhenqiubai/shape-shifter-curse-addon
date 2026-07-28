@@ -19,7 +19,7 @@ public final class StorySleepTimeGuardHandler {
 
 	public static void register() {
 		EntitySleepEvents.ALLOW_RESETTING_TIME.register(player -> {
-			UUID uuid = player.getUuid();
+			UUID uuid = player.getUUID();
 			if (MoonScarStoryManager.isStorySleeping(uuid) || TideSpiritStoryManager.isStorySleeping(uuid)) {
 				return false; // 剧情真睡：不重置时间 / 不跳夜
 			}

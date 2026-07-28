@@ -3,8 +3,8 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.FriendlyByteBuf;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -31,28 +31,28 @@ public final class WindSpiritClawClient {
                 ClawClientState.reset();
                 return;
             }
-            ClientPlayerEntity player = client.player;
+            LocalPlayer player = client.player;
             IForm form = RegPlayerFormComponent.PLAYER_FORM.get(player).nowForm;
             boolean isOcelot = form != null && form.getFormID() != null
                     && FormIdentifiers.OCELOT_SP.equals(form.getFormID());
 
             boolean hold;
-            if (!isOcelot || client.currentScreen != null) {
+            if (!isOcelot || client.screen != null) {
                 hold = false; // 非风灵 或 打开 GUI → 不触发
             } else {
-                hold = client.options.attackKey.isPressed();
+                hold = client.options.keyAttack.isDown();
             }
 
             if (hold != lastHold) {
-                PacketByteBuf buf = PacketByteBufs.create();
+                FriendlyByteBuf buf = PacketByteBufs.create();
                 buf.writeBoolean(hold);
                 ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_CLAW_HOLD), buf));
                 lastHold = hold;
             }
 
             // 副技能：sp_secondary 边沿 → 发增伤 buff 包
-            boolean secPressed = isOcelot && client.currentScreen == null
-                    && SscAddonKeybindings.getSecondaryKey().isPressed();
+            boolean secPressed = isOcelot && client.screen == null
+                    && SscAddonKeybindings.getSecondaryKey().isDown();
             if (secPressed && !lastSecPressed) {
                 ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_CLAW_BUFF), PacketByteBufs.empty()));
             }

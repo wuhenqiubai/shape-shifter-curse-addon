@@ -1,21 +1,21 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.item.ItemStack;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -58,7 +58,7 @@ public final class WindSpiritClawManager {
     private static final float FORWARD_LUNGE = 0.28f;
     private static final float PROGRESS_PER_HIT = 1.0f / 25.0f; // 最快频率下约 10 秒打空
 
-    private static final Identifier SPEED_MOD_UUID = Identifier.of("6a1d3c9e-7b2f-4c8a-9e1d-0f5a2c7b4d33");
+    private static final ResourceLocation SPEED_MOD_UUID = ResourceLocation.parse("6a1d3c9e-7b2f-4c8a-9e1d-0f5a2c7b4d33");
     private static final String SPEED_MOD_NAME = "wind_spirit_claw_slow";
 
     public static final int PHASE_IDLE = 0;
@@ -86,12 +86,12 @@ public final class WindSpiritClawManager {
     }
 
     /** 客户端上报左键按住状态。 */
-    public static void setHolding(ServerPlayerEntity player, boolean holding) {
+    public static void setHolding(ServerPlayer player, boolean holding) {
         if (!FormUtils.isOcelotSP(player)) {
             clear(player);
             return;
         }
-        ClawState s = STATES.computeIfAbsent(player.getUuid(), k -> new ClawState());
+        ClawState s = STATES.computeIfAbsent(player.getUUID(), k -> new ClawState());
         s.holding = holding;
         if (holding && s.phase == PHASE_IDLE) {
             s.phase = PHASE_CLAW;
@@ -101,18 +101,18 @@ public final class WindSpiritClawManager {
     }
 
     /** 每服务端 tick 对每个在线玩家调用。 */
-    public static void tick(ServerPlayerEntity player) {
+    public static void tick(ServerPlayer player) {
         // 副技能 buff 计时（独立于连击状态）
-        Integer buff = BUFF_TICKS.get(player.getUuid());
+        Integer buff = BUFF_TICKS.get(player.getUUID());
         if (buff != null) {
-            if (buff <= 1 || !FormUtils.isOcelotSP(player)) BUFF_TICKS.remove(player.getUuid());
-            else BUFF_TICKS.put(player.getUuid(), buff - 1);
+            if (buff <= 1 || !FormUtils.isOcelotSP(player)) BUFF_TICKS.remove(player.getUUID());
+            else BUFF_TICKS.put(player.getUUID(), buff - 1);
         }
 
-        ClawState s = STATES.get(player.getUuid());
+        ClawState s = STATES.get(player.getUUID());
         if (s == null) return;
 
-        if (player.isDead() || !FormUtils.isOcelotSP(player)) {
+        if (player.isDeadOrDying() || !FormUtils.isOcelotSP(player)) {
             clear(player);
             return;
         }
@@ -125,12 +125,12 @@ public final class WindSpiritClawManager {
         }
 
         // 同步爪击阶段 + 准星条进度给客户端
-        if (STATES.containsKey(player.getUuid())) {
+        if (STATES.containsKey(player.getUUID())) {
             SscAddonNetworking.syncClawState(player, s.phase, crosshairProgress(s));
         }
     }
 
-    private static void tickClaw(ServerPlayerEntity player, ClawState s) {
+    private static void tickClaw(ServerPlayer player, ClawState s) {
         s.holdTicks++;
         applySpeedSlow(player, slowFactor(s.holdTicks));
 
@@ -146,7 +146,7 @@ public final class WindSpiritClawManager {
             performClawAttack(player, s);
             s.sinceLastAttack = 0;
             s.progress -= PROGRESS_PER_HIT;
-            player.resetLastAttackedTicks(); // 让原版减伤/准星充能反映爪击节奏
+            player.resetAttackStrengthTicker(); // 让原版减伤/准星充能反映爪击节奏
         }
 
         if (s.progress <= 0.0f || s.holdTicks >= MAX_CLAW_TICKS) {
@@ -156,7 +156,7 @@ public final class WindSpiritClawManager {
         }
     }
 
-    private static void tickOverheat(ServerPlayerEntity player, ClawState s) {
+    private static void tickOverheat(ServerPlayer player, ClawState s) {
         removeSpeedSlow(player);
 
         // 停手后立即从当前进度慢慢回满（无延迟）；期间左键 = 弱普攻（getRecoveryMultiplier 缩放 0→90%）。
@@ -180,70 +180,70 @@ public final class WindSpiritClawManager {
 
     private static void enterOverheat(ClawState s) {
         s.phase = PHASE_OVERHEAT;
-        s.recovery = MathHelper.clamp(s.progress, 0.0f, 1.0f); // 从当前剩余进度开始回满（打得越久剩越少、回越久）
+        s.recovery = Mth.clamp(s.progress, 0.0f, 1.0f); // 从当前剩余进度开始回满（打得越久剩越少、回越久）
     }
 
-    private static void performClawAttack(ServerPlayerEntity player, ClawState s) {
-        ServerWorld sw = (ServerWorld) player.getWorld();
+    private static void performClawAttack(ServerPlayer player, ClawState s) {
+        ServerLevel sw = (ServerLevel) player.level();
 
-        Vec3d look = player.getRotationVec(1.0f);
+        Vec3 look = player.getViewVector(1.0f);
         double randSide = (player.getRandom().nextDouble() - 0.5) * 1.2;
         double randUp = (player.getRandom().nextDouble() - 0.5) * 0.6;
-        Vec3d side = new Vec3d(-look.z, 0, look.x).normalize();
-        Vec3d center = player.getEyePos()
-                .add(look.multiply(REACH))
-                .add(side.multiply(randSide))
+        Vec3 side = new Vec3(-look.z, 0, look.x).normalize();
+        Vec3 center = player.getEyePosition()
+                .add(look.scale(REACH))
+                .add(side.scale(randSide))
                 .add(0, randUp, 0);
 
         // MC 原版攻击冷却减伤系数（真实充能进度）× 爪击时长衰减
-        float g = player.getAttackCooldownProgress(0.5f);
+        float g = player.getAttackStrengthScale(0.5f);
         float vanillaFactor = 0.2f + g * g * 0.8f;
         float clawFactor = 1.0f - Math.min(DMG_DECAY_MAX, DMG_DECAY_PER_SEC * (s.holdTicks / 20.0f));
         float dmg = BASE_DAMAGE * vanillaFactor * clawFactor;
 
-        Box box = new Box(center.subtract(RADIUS, RADIUS, RADIUS), center.add(RADIUS, RADIUS, RADIUS));
-        for (Entity e : sw.getOtherEntities(player, box)) {
+        AABB box = new AABB(center.subtract(RADIUS, RADIUS, RADIUS), center.add(RADIUS, RADIUS, RADIUS));
+        for (Entity e : sw.getEntities(player, box)) {
             if (!(e instanceof LivingEntity living)) continue;
             if (WhitelistUtils.isProtected(player, living)) continue; // 默认白名单
-            living.damage(player.getDamageSources().playerAttack(player), dmg);
-            Vec3d push = living.getPos().subtract(player.getPos());
-            if (push.lengthSquared() < 1.0e-4) push = look;
+            living.hurt(player.damageSources().playerAttack(player), dmg);
+            Vec3 push = living.position().subtract(player.position());
+            if (push.lengthSqr() < 1.0e-4) push = look;
             push = push.normalize();
-            living.takeKnockback(0.35, -push.x, -push.z);
+            living.knockback(0.35, -push.x, -push.z);
         }
 
-        sw.spawnParticles(ParticleTypes.SWEEP_ATTACK, center.x, center.y, center.z, 1, 0, 0, 0, 0);
+        sw.sendParticles(ParticleTypes.SWEEP_ATTACK, center.x, center.y, center.z, 1, 0, 0, 0, 0);
 
-        Vec3d flat = new Vec3d(look.x, 0, look.z).normalize().multiply(FORWARD_LUNGE);
-        player.addVelocity(flat.x, 0.0, flat.z);
-        player.velocityModified = true;
+        Vec3 flat = new Vec3(look.x, 0, look.z).normalize().scale(FORWARD_LUNGE);
+        player.push(flat.x, 0.0, flat.z);
+        player.hurtMarked = true;
 
-        player.addExhaustion(EXHAUSTION_PER_HIT);
+        player.causeFoodExhaustion(EXHAUSTION_PER_HIT);
 
         sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, 0.7f, 1.4f);
+                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.7f, 1.4f);
     }
 
     private static float slowFactor(int holdTicks) {
         return Math.min(SPD_DECAY_MAX, SPD_DECAY_PER_SEC * (holdTicks / 20.0f));
     }
 
-    private static void applySpeedSlow(ServerPlayerEntity player, float factor) {
-        EntityAttributeInstance attr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+    private static void applySpeedSlow(ServerPlayer player, float factor) {
+        AttributeInstance attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (attr == null) return;
         double target = -factor; // MULTIPLY_TOTAL：-0.15 = 移速×0.85
-        EntityAttributeModifier existing = attr.getModifier(SPEED_MOD_UUID);
+        AttributeModifier existing = attr.getModifier(SPEED_MOD_UUID);
         if (existing != null) {
-            if (Math.abs(existing.value() - target) < 1.0e-4) return;
+            if (Math.abs(existing.amount() - target) < 1.0e-4) return;
             attr.removeModifier(SPEED_MOD_UUID);
         }
-        attr.addTemporaryModifier(new EntityAttributeModifier(
+        attr.addTransientModifier(new AttributeModifier(
                 SPEED_MOD_UUID, target,
-                EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
-    private static void removeSpeedSlow(ServerPlayerEntity player) {
-        EntityAttributeInstance attr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+    private static void removeSpeedSlow(ServerPlayer player) {
+        AttributeInstance attr = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (attr != null && attr.getModifier(SPEED_MOD_UUID) != null) {
             attr.removeModifier(SPEED_MOD_UUID);
         }
@@ -258,59 +258,59 @@ public final class WindSpiritClawManager {
     /** 准星条=耐力：爪击期=剩余进度(随每次爪击下降)；过热期=从当前进度回满(0→1)；空闲=1。 */
     public static float crosshairProgress(ClawState s) {
         return switch (s.phase) {
-            case PHASE_CLAW -> MathHelper.clamp(s.progress, 0.0f, 1.0f);
-            case PHASE_OVERHEAT -> MathHelper.clamp(s.recovery, 0.0f, 1.0f);
+            case PHASE_CLAW -> Mth.clamp(s.progress, 0.0f, 1.0f);
+            case PHASE_OVERHEAT -> Mth.clamp(s.recovery, 0.0f, 1.0f);
             default -> 1.0f;
         };
     }
 
     /** 徒手/非武器近战伤害倍率 = 过热回复缩放(0-0.9) × 副技能 buff(1.5)。给 ClawDamageBoostMixin 用。 */
-    public static float getNormalMeleeMultiplier(ServerPlayerEntity player) {
+    public static float getNormalMeleeMultiplier(ServerPlayer player) {
         float recovery = 1.0f;
-        ClawState s = STATES.get(player.getUuid());
+        ClawState s = STATES.get(player.getUUID());
         if (s != null && s.phase == PHASE_OVERHEAT) {
             recovery = s.recovery * 0.9f; // 回复进度 0→1 映射伤害 0→90%
         }
-        float buff = BUFF_TICKS.containsKey(player.getUuid()) ? BUFF_MULT : 1.0f;
+        float buff = BUFF_TICKS.containsKey(player.getUUID()) ? BUFF_MULT : 1.0f;
         return recovery * buff;
     }
 
     /** 是否手持武器（与主包 is_weapon 一致：主手攻击力加成 &gt; 1）。拿武器时不吃疾风连爪/副技能加伤（火把/食物/方块等非武器仍吃）。 */
-    public static boolean isHoldingWeapon(ServerPlayerEntity player) {
-        ItemStack stack = player.getMainHandStack();
+    public static boolean isHoldingWeapon(ServerPlayer player) {
+        ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return false;
         AtomicReference<Double> totalAdd = new AtomicReference<>(0.0);
-        stack.getItem().getAttributeModifiers().applyModifiers(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
-            if (attribute == EntityAttributes.GENERIC_ATTACK_DAMAGE && modifier.operation() == EntityAttributeModifier.Operation.ADD_VALUE) {
-                totalAdd.updateAndGet(v -> v + modifier.value());
+        stack.getItem().getDefaultAttributeModifiers().forEach(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+            if (attribute == Attributes.ATTACK_DAMAGE && modifier.operation() == AttributeModifier.Operation.ADD_VALUE) {
+                totalAdd.updateAndGet(v -> v + modifier.amount());
             }
         });
         return totalAdd.get() > 1.0;
     }
 
     /** 副技能（sp_secondary）：0.5 秒内徒手/形态伤害 +50%，cd 2 秒。 */
-    public static void activateSecondaryBuff(ServerPlayerEntity player) {
+    public static void activateSecondaryBuff(ServerPlayer player) {
         if (!FormUtils.isOcelotSP(player)) return;
         if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_SECONDARY_CD) > 0) return; // CD 中
-        BUFF_TICKS.put(player.getUuid(), BUFF_DURATION);
+        BUFF_TICKS.put(player.getUUID(), BUFF_DURATION);
         PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_SECONDARY_CD, SECONDARY_CD_TICKS);
-        ServerWorld sw = (ServerWorld) player.getWorld();
+        ServerLevel sw = (ServerLevel) player.level();
         sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.ENTITY_PLAYER_ATTACK_STRONG, SoundCategory.PLAYERS, 0.8f, 1.6f);
-        sw.spawnParticles(ParticleTypes.CRIT, player.getX(), player.getY() + 1.0, player.getZ(), 20, 0.4, 0.5, 0.4, 0.2);
+                SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 0.8f, 1.6f);
+        sw.sendParticles(ParticleTypes.CRIT, player.getX(), player.getY() + 1.0, player.getZ(), 20, 0.4, 0.5, 0.4, 0.2);
     }
 
     /** 彻底清理：移除状态 + 移速修饰符，并通知客户端准星条消失。 */
-    public static void clear(ServerPlayerEntity player) {
+    public static void clear(ServerPlayer player) {
         removeSpeedSlow(player);
-        if (STATES.remove(player.getUuid()) != null) {
+        if (STATES.remove(player.getUUID()) != null) {
             SscAddonNetworking.syncClawState(player, PHASE_IDLE, 1.0f);
         }
     }
 
-    public static void onPlayerDisconnect(ServerPlayerEntity player) {
+    public static void onPlayerDisconnect(ServerPlayer player) {
         removeSpeedSlow(player);
-        STATES.remove(player.getUuid());
-        BUFF_TICKS.remove(player.getUuid());
+        STATES.remove(player.getUUID());
+        BUFF_TICKS.remove(player.getUUID());
     }
 }

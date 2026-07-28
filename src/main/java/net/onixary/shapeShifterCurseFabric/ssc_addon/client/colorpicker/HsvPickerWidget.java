@@ -1,11 +1,10 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.Selectable;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-
 import java.util.function.IntConsumer;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 
 /**
  * HSV 全色图拾色控件：
@@ -15,7 +14,7 @@ import java.util.function.IntConsumer;
  *
  * 仅做"选择→回调 RGB int(无 Alpha)"，外部把 alpha 合并。
  */
-public class HsvPickerWidget implements Element, Selectable {
+public class HsvPickerWidget implements GuiEventListener, NarratableEntry {
     private final int x;
     private final int y;
     private final int svSize;        // SV 方块边长
@@ -53,7 +52,7 @@ public class HsvPickerWidget implements Element, Selectable {
     public int totalWidth()  { return svSize + gap + hueBarW; }
     public int totalHeight() { return svSize; }
 
-    public void render(DrawContext ctx, int mouseX, int mouseY) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY) {
         // SV 方块：先填当前色相的纯色作为底，再两层渐变叠出 S/V
         int baseHue = hsvToRgb(hue, 1f, 1f) | 0xFF000000;
         ctx.fill(x, y, x + svSize, y + svSize, baseHue);
@@ -86,7 +85,7 @@ public class HsvPickerWidget implements Element, Selectable {
     }
 
     /** SV 方块用 24x24 采样块绘制，避免逐像素 fill 性能压力。 */
-    private void drawSvSampled(DrawContext ctx) {
+    private void drawSvSampled(GuiGraphics ctx) {
         final int cells = 24;
         for (int cx = 0; cx < cells; cx++) {
             for (int cy = 0; cy < cells; cy++) {
@@ -102,7 +101,7 @@ public class HsvPickerWidget implements Element, Selectable {
         }
     }
 
-    private void drawHueBar(DrawContext ctx, int hx, int hy, int hw, int hh) {
+    private void drawHueBar(GuiGraphics ctx, int hx, int hy, int hw, int hh) {
         // 32 段近似
         final int seg = 32;
         for (int i = 0; i < seg; i++) {
@@ -114,7 +113,7 @@ public class HsvPickerWidget implements Element, Selectable {
         }
     }
 
-    private void drawBorder(DrawContext ctx, int bx, int by, int bw, int bh, int color) {
+    private void drawBorder(GuiGraphics ctx, int bx, int by, int bw, int bh, int color) {
         ctx.fill(bx, by, bx + bw, by + 1, color);
         ctx.fill(bx, by + bh - 1, bx + bw, by + bh, color);
         ctx.fill(bx, by, bx + 1, by + bh, color);
@@ -158,9 +157,9 @@ public class HsvPickerWidget implements Element, Selectable {
     public boolean isFocused() { return focused; }
 
     @Override
-    public SelectionType getType() { return focused ? SelectionType.FOCUSED : SelectionType.NONE; }
+    public NarrationPriority narrationPriority() { return focused ? NarrationPriority.FOCUSED : NarrationPriority.NONE; }
     @Override
-    public void appendNarrations(NarrationMessageBuilder builder) {}
+    public void updateNarration(NarrationElementOutput builder) {}
 
     private boolean isInSv(double mx, double my) {
         return mx >= x && mx < x + svSize && my >= y && my < y + svSize;

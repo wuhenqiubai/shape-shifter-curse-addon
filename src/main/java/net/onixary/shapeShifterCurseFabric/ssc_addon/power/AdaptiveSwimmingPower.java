@@ -5,8 +5,8 @@ import io.github.apace100.apoli.power.PowerType;
 import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
 
 public class AdaptiveSwimmingPower extends Power {
 	private final float acceleration;
@@ -20,7 +20,7 @@ public class AdaptiveSwimmingPower extends Power {
 
 	public static PowerFactory<Power> createFactory() {
 		return new PowerFactory<>(
-				Identifier.of("my_addon", "adaptive_swimming"),
+				ResourceLocation.fromNamespaceAndPath("my_addon", "adaptive_swimming"),
 				new SerializableData()
 						.add("acceleration", SerializableDataTypes.FLOAT, 0.02f)
 						.add("friction", SerializableDataTypes.FLOAT, 0.9f),

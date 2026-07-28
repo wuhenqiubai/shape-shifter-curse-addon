@@ -1,12 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.palette;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent;
 import net.onixary.shapeShifterCurseFabric.util.FormTextureUtils;
@@ -29,15 +29,15 @@ public class PalettePresetsScreen extends Screen {
 
     /** 每行的 widget 引用，便于滚动时统一更新 y/visible。 */
     private static final class SlotRow {
-        TextFieldWidget nameField;
-        TextFieldWidget codeField;
-        ButtonWidget applyBtn;
-        ButtonWidget exportBtn;
+        EditBox nameField;
+        EditBox codeField;
+        Button applyBtn;
+        Button exportBtn;
     }
 
     private final List<SlotRow> slotRows = new ArrayList<>();
 
-    private Text statusLine = Text.empty();
+    private Component statusLine = Component.empty();
     private int previewSlotIdx = -1;
 
     // 槽位输入 debounce 保存：每次编辑只打标记，tick/关屏时再写盘
@@ -73,7 +73,7 @@ public class PalettePresetsScreen extends Screen {
     private int scrollOffset = 0;
 
     public PalettePresetsScreen(Screen parent) {
-        super(Text.translatable("text.ssc_addon.palette.title"));
+        super(Component.translatable("text.ssc_addon.palette.title"));
         this.parent = parent;
     }
 
@@ -83,21 +83,21 @@ public class PalettePresetsScreen extends Screen {
         slotRows.clear();
 
         // 顶部右侧：同步开关 + 复制当前
-        addDrawableChild(ButtonWidget.builder(getSyncBtnText(), btn -> {
+        addRenderableWidget(Button.builder(getSyncBtnText(), btn -> {
             PalettePresetStore store = PalettePresetStore.get();
             store.setGlobalSync(!store.isGlobalSync());
-            MinecraftClient.getInstance().setScreen(new PalettePresetsScreen(parent));
-        }).size(160, 20).position(width - 330, 22).build());
+            Minecraft.getInstance().setScreen(new PalettePresetsScreen(parent));
+        }).size(160, 20).pos(width - 330, 22).build());
 
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.palette.btn.export_current"),
-                btn -> exportCurrent()).size(160, 20).position(width - 165, 22).build());
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.palette.btn.export_current"),
+                btn -> exportCurrent()).size(160, 20).pos(width - 165, 22).build());
 
         // 「打开配色文件夹」：放在左侧预览框「当前颜色」标签下方，居中于预览框
         int openFolderBtnW = 100;
         int openFolderBtnX = PREVIEW_X + (PREVIEW_W - openFolderBtnW) / 2;
         int openFolderBtnY = PREVIEW_LABEL_Y + 12;
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.palette.btn.open_folder"),
-                btn -> openConfigFolder()).size(openFolderBtnW, 20).position(openFolderBtnX, openFolderBtnY).build());
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.palette.btn.open_folder"),
+                btn -> openConfigFolder()).size(openFolderBtnW, 20).pos(openFolderBtnX, openFolderBtnY).build());
 
         // 计算滚动列表视口
         final int startX = PREVIEW_X + PREVIEW_W + 14;
@@ -118,33 +118,33 @@ public class PalettePresetsScreen extends Screen {
             int y = baseY + i * ROW_H;
             SlotRow row = new SlotRow();
 
-            row.nameField = new TextFieldWidget(this.textRenderer, x, y, NAME_W, 18,
-                    Text.translatable("text.ssc_addon.palette.slot_name_placeholder"));
+            row.nameField = new EditBox(this.font, x, y, NAME_W, 18,
+                    Component.translatable("text.ssc_addon.palette.slot_name_placeholder"));
             row.nameField.setMaxLength(24);
-            row.nameField.setText(slots.get(idx).name);
-            row.nameField.setChangedListener(s -> {
+            row.nameField.setValue(slots.get(idx).name);
+            row.nameField.setResponder(s -> {
                 PalettePresetStore.get().getSlots().get(idx).name = s;
                 markSlotsDirty();
             });
-            addDrawableChild(row.nameField);
+            addRenderableWidget(row.nameField);
             x += NAME_W + GAP;
 
-            row.codeField = new TextFieldWidget(this.textRenderer, x, y, CODE_W, 18,
-                    Text.translatable("text.ssc_addon.palette.code_placeholder"));
+            row.codeField = new EditBox(this.font, x, y, CODE_W, 18,
+                    Component.translatable("text.ssc_addon.palette.code_placeholder"));
             row.codeField.setMaxLength(64);
-            row.codeField.setText(slots.get(idx).code);
-            row.codeField.setChangedListener(s -> onCodeFieldChanged(idx, s, row.codeField));
-            addDrawableChild(row.codeField);
+            row.codeField.setValue(slots.get(idx).code);
+            row.codeField.setResponder(s -> onCodeFieldChanged(idx, s, row.codeField));
+            addRenderableWidget(row.codeField);
             x += CODE_W + GAP;
 
-            row.applyBtn = ButtonWidget.builder(Text.translatable("text.ssc_addon.palette.btn.apply"),
-                    b -> doApply(idx)).size(BTN_W, 20).position(x, y - 1).build();
-            addDrawableChild(row.applyBtn);
+            row.applyBtn = Button.builder(Component.translatable("text.ssc_addon.palette.btn.apply"),
+                    b -> doApply(idx)).size(BTN_W, 20).pos(x, y - 1).build();
+            addRenderableWidget(row.applyBtn);
             x += BTN_W + GAP;
 
-            row.exportBtn = ButtonWidget.builder(Text.translatable("text.ssc_addon.palette.btn.export"),
-                    b -> doExport(idx)).size(BTN_W, 20).position(x, y - 1).build();
-            addDrawableChild(row.exportBtn);
+            row.exportBtn = Button.builder(Component.translatable("text.ssc_addon.palette.btn.export"),
+                    b -> doExport(idx)).size(BTN_W, 20).pos(x, y - 1).build();
+            addRenderableWidget(row.exportBtn);
 
             slotRows.add(row);
         }
@@ -159,23 +159,23 @@ public class PalettePresetsScreen extends Screen {
 
         // 「→ 颜色编辑器」：如果是从 AdvancedColorScreen 跳进来的（parent 是它），直接复用原实例，
         // 保留 working 状态不丢。否则 fallback 新建一个。
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.palette.btn.to_editor"),
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.palette.btn.to_editor"),
             b -> {
                 if (this.parent instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.AdvancedColorScreen) {
-                    MinecraftClient.getInstance().setScreen(this.parent);
+                    Minecraft.getInstance().setScreen(this.parent);
                 } else {
-                    MinecraftClient.getInstance().setScreen(
+                    Minecraft.getInstance().setScreen(
                             new net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.AdvancedColorScreen(this.parent));
                 }
-            }).size(botBtnW, botBtnH).position(botStartX, closeY).build());
+            }).size(botBtnW, botBtnH).pos(botStartX, closeY).build());
 
         // 关闭
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.config.close"),
-            b -> close()).size(botBtnW, botBtnH).position(botStartX + botBtnW + botGap, closeY).build());
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.config.close"),
+            b -> onClose()).size(botBtnW, botBtnH).pos(botStartX + botBtnW + botGap, closeY).build());
 
         // 全部导出
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.palette.btn.export_all"),
-            btn -> exportAllToFile()).size(botBtnW, botBtnH).position(botStartX + (botBtnW + botGap) * 2, closeY).build());
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.palette.btn.export_all"),
+            btn -> exportAllToFile()).size(botBtnW, botBtnH).pos(botStartX + (botBtnW + botGap) * 2, closeY).build());
 
         updateRowPositions();
 
@@ -184,7 +184,7 @@ public class PalettePresetsScreen extends Screen {
 
     /** 由调色屏教程跳转而来时，自动续讲「预设管理」教程。 */
     private void maybeContinuePresetTutorial(int botStartX, int closeY, int botBtnW) {
-        if (this.client == null) return;
+        if (this.minecraft == null) return;
         if (!net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.AdvancedColorScreen.PENDING_PRESET_TUTORIAL) return;
         net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.AdvancedColorScreen.PENDING_PRESET_TUTORIAL = false;
 
@@ -211,7 +211,7 @@ public class PalettePresetsScreen extends Screen {
                 () -> new int[]{botStartX - 2, closeY - 2, botBtnW + 4, 24},
                 "text.ssc_addon.palette.tutorial.step.back_editor"));
 
-        this.client.setScreen(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.ColorTutorialOverlay(
+        this.minecraft.setScreen(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.ColorTutorialOverlay(
                 this, () -> {}, steps));
     }
 
@@ -245,13 +245,13 @@ public class PalettePresetsScreen extends Screen {
 
     // === 业务逻辑 ===
 
-    private void onCodeFieldChanged(int idx, String text, TextFieldWidget field) {
+    private void onCodeFieldChanged(int idx, String text, EditBox field) {
         String trimmed = text == null ? "" : text.trim();
         PalettePresetStore.Slot slot = PalettePresetStore.get().getSlots().get(idx);
         if (trimmed.isEmpty()) {
             slot.code = "";
             markSlotsDirty();
-            field.setEditableColor(0xFFFFFF);
+            field.setTextColor(0xFFFFFF);
             return;
         }
         try {
@@ -259,13 +259,13 @@ public class PalettePresetsScreen extends Screen {
             slot.code = trimmed.toUpperCase();
             if (slot.name == null || slot.name.isEmpty()) {
                 slot.name = "Preset " + (idx + 1);
-                if (idx < slotRows.size()) slotRows.get(idx).nameField.setText(slot.name);
+                if (idx < slotRows.size()) slotRows.get(idx).nameField.setValue(slot.name);
             }
             markSlotsDirty();
-            field.setEditableColor(0xFFFFFF);
+            field.setTextColor(0xFFFFFF);
             setStatus("text.ssc_addon.palette.status.auto_saved", idx + 1);
         } catch (PaletteCodec.DecodeException e) {
-            field.setEditableColor(0xFF5555);
+            field.setTextColor(0xFF5555);
         }
     }
 
@@ -304,8 +304,8 @@ public class PalettePresetsScreen extends Screen {
     }
 
     private void doApply(int idx) {
-        ClientPlayerEntity p = MinecraftClient.getInstance().player;
-        if (p == null || p.networkHandler == null) { setStatus("text.ssc_addon.palette.status.no_player"); return; }
+        LocalPlayer p = Minecraft.getInstance().player;
+        if (p == null || p.connection == null) { setStatus("text.ssc_addon.palette.status.no_player"); return; }
         PalettePresetStore.Slot slot = PalettePresetStore.get().getSlots().get(idx);
         if (slot.isEmpty()) { setStatus("text.ssc_addon.palette.status.empty_slot"); return; }
         PaletteCodec.PaletteData data;
@@ -320,14 +320,14 @@ public class PalettePresetsScreen extends Screen {
         }
         // 独立打开（无编辑器父屏）：保持原有「直接落盘 + 广播」语义
         PaletteConfigSync.apply(data);
-        p.networkHandler.sendChatCommand("ssc_addon palette apply " + slot.code);
+        p.connection.sendCommand("ssc_addon palette apply " + slot.code);
         setStatus("text.ssc_addon.palette.status.apply_sent", idx + 1);
     }
 
     private void doExport(int idx) {
         PalettePresetStore.Slot slot = PalettePresetStore.get().getSlots().get(idx);
         if (slot.isEmpty()) { setStatus("text.ssc_addon.palette.status.empty_slot"); return; }
-        MinecraftClient.getInstance().keyboard.setClipboard(slot.code);
+        Minecraft.getInstance().keyboardHandler.setClipboard(slot.code);
         setStatus("text.ssc_addon.palette.status.exported", idx + 1);
     }
 
@@ -335,12 +335,12 @@ public class PalettePresetsScreen extends Screen {
     private void exportAllToFile() {
         java.nio.file.Path p = PalettePresetStore.get().exportAllToSharedFile();
         if (p == null) { setStatus("text.ssc_addon.palette.status.export_all_failed"); return; }
-        MinecraftClient.getInstance().keyboard.setClipboard(p.toString());
+        Minecraft.getInstance().keyboardHandler.setClipboard(p.toString());
         setStatus("text.ssc_addon.palette.status.export_all_ok", p.toString());
     }
 
     private void exportCurrent() {
-        ClientPlayerEntity p = MinecraftClient.getInstance().player;
+        LocalPlayer p = Minecraft.getInstance().player;
         if (p == null) { setStatus("text.ssc_addon.palette.status.no_player"); return; }
         try {
             PlayerSkinComponent skin = RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
@@ -352,29 +352,29 @@ public class PalettePresetsScreen extends Screen {
                     FormTextureUtils.ABGR2RGBA(cs.getEyeColorA()),
                     FormTextureUtils.ABGR2RGBA(cs.getEyeColorB()),
                     cs.getPrimaryGreyReverse(), cs.getAccent1GreyReverse(), cs.getAccent2GreyReverse());
-            MinecraftClient.getInstance().keyboard.setClipboard(code);
+            Minecraft.getInstance().keyboardHandler.setClipboard(code);
             setStatus("text.ssc_addon.palette.status.current_exported");
         } catch (RuntimeException e) {
             setStatus("text.ssc_addon.palette.status.record_failed");
         }
     }
 
-    private void setStatus(String key, Object... args) { this.statusLine = Text.translatable(key, args); }
+    private void setStatus(String key, Object... args) { this.statusLine = Component.translatable(key, args); }
 
     /** 在系统文件管理器打开 config/ssca/（配色预设存储目录）。 */
     private void openConfigFolder() {
         java.nio.file.Path dir = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ssca");
         try { java.nio.file.Files.createDirectories(dir); } catch (java.io.IOException ignored) {}
-        net.minecraft.util.Util.getOperatingSystem().open(dir.toFile());
+        net.minecraft.Util.getPlatform().openFile(dir.toFile());
         setStatus("text.ssc_addon.palette.status.folder_opened");
     }
 
-    private Text getSyncBtnText() {
+    private Component getSyncBtnText() {
         PalettePresetStore store = PalettePresetStore.get();
-        Text state = Text.translatable(store.isGlobalSync()
+        Component state = Component.translatable(store.isGlobalSync()
                 ? "text.ssc_addon.palette.sync.global"
                 : "text.ssc_addon.palette.sync.per_scope");
-        return Text.translatable("text.ssc_addon.palette.sync.label", state);
+        return Component.translatable("text.ssc_addon.palette.sync.label", state);
     }
 
     /** 焦点行的 code（无焦点或为空 → null = 玩家当前真实配色）。 */
@@ -411,23 +411,23 @@ public class PalettePresetsScreen extends Screen {
     }
 
     @Override
-    public void close() { MinecraftClient.getInstance().setScreen(parent); }
+    public void onClose() { Minecraft.getInstance().setScreen(parent); }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY,  delta);
         updateRowPositions();
         updatePreviewSelection();
         super.render(context, mouseX, mouseY, delta);
 
         // 标题
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 8, 0xFFFFFF);
+        context.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
 
         // 左上角预览框（始终显示当前形态，焦点行决定预览的是哪个 code）
         context.fill(PREVIEW_X, PREVIEW_Y, PREVIEW_X + PREVIEW_W, PREVIEW_Y + PREVIEW_H, 0x88000000);
-        context.drawBorder(PREVIEW_X, PREVIEW_Y, PREVIEW_W, PREVIEW_H, 0xFFAAAAAA);
+        context.renderOutline(PREVIEW_X, PREVIEW_Y, PREVIEW_W, PREVIEW_H, 0xFFAAAAAA);
 
-        ClientPlayerEntity p = MinecraftClient.getInstance().player;
+        LocalPlayer p = Minecraft.getInstance().player;
         if (p != null) {
             int cx = PREVIEW_X + PREVIEW_W / 2;
             int cy = PREVIEW_Y + PREVIEW_H - 12;
@@ -436,18 +436,18 @@ public class PalettePresetsScreen extends Screen {
         }
 
         // 预览标签
-        Text previewLabel = previewSlotIdx >= 0
-                ? Text.translatable("text.ssc_addon.palette.preview.slot", previewSlotIdx + 1)
-                : Text.translatable("text.ssc_addon.palette.preview.current");
-        context.drawCenteredTextWithShadow(this.textRenderer, previewLabel,
+        Component previewLabel = previewSlotIdx >= 0
+                ? Component.translatable("text.ssc_addon.palette.preview.slot", previewSlotIdx + 1)
+                : Component.translatable("text.ssc_addon.palette.preview.current");
+        context.drawCenteredString(this.font, previewLabel,
                 PREVIEW_X + PREVIEW_W / 2, PREVIEW_LABEL_Y, 0xCCCCCC);
 
         // 列标题
-        context.drawTextWithShadow(this.textRenderer,
-                Text.translatable("text.ssc_addon.palette.header.name"),
+        context.drawString(this.font,
+                Component.translatable("text.ssc_addon.palette.header.name"),
                 viewportLeft + 4, viewportY - 12, 0xFFFFAA);
-        context.drawTextWithShadow(this.textRenderer,
-                Text.translatable("text.ssc_addon.palette.header.code"),
+        context.drawString(this.font,
+                Component.translatable("text.ssc_addon.palette.header.code"),
                 viewportLeft + NAME_W + GAP + 4, viewportY - 12, 0xFFFFAA);
 
         // 滚动条
@@ -462,7 +462,7 @@ public class PalettePresetsScreen extends Screen {
 
         // 状态行
         if (statusLine != null) {
-            context.drawCenteredTextWithShadow(this.textRenderer, statusLine,
+            context.drawCenteredString(this.font, statusLine,
                     this.width / 2, viewportY + viewportH + 8, 0xAAFFAA);
         }
     }

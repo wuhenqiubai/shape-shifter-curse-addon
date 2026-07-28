@@ -1,43 +1,54 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.entity;
 
-import net.minecraft.entity.*;
-import net.minecraft.util.math.Box;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
-import net.minecraft.entity.ai.goal.*;
-import net.minecraft.entity.attribute.DefaultAttributeContainer;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.damage.DamageType;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.SweetBerryBushBlock;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-
-import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.entity.mob.VexEntity;
-import net.minecraft.entity.mob.WitchEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.raid.RaiderEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtHelper;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraft.world.event.GameEvent;
-import net.minecraft.world.explosion.Explosion;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.TargetGoal;
+import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Vex;
+import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.raid.Raider;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SweetBerryBushBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
@@ -50,7 +61,7 @@ import java.util.UUID;
  * 女巫使魔 - 一种伴随女巫自然生成的敌对生物
  * 使用原版使魔外观，拥有火环技能，属于劫掠阵营
  */
-public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
+public class WitchFamiliarEntity extends Monster implements GeoEntity {
 
 	// 火环参数
 	private static final int FIRE_RING_COOLDOWN_MAX = 240;  // 12秒冷却
@@ -62,22 +73,22 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	private static final float PARTICLE_INNER_RADIUS = 1.5f; // 粒子内圈半径1.5格
 	// 原版使魔形态ID（用于友军判定）
 	// 注意：PlayerFormBase.FormID 不带 "form_" 前缀，getOriginID() 才会拼接
-	private static final Identifier VANILLA_FAMILIAR_FOX_3 = Identifier.of("shape-shifter-curse", "familiar_fox_3");
+	private static final ResourceLocation VANILLA_FAMILIAR_FOX_3 = ResourceLocation.fromNamespaceAndPath("shape-shifter-curse", "familiar_fox_3");
 	private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 	private int fireRingCooldown = 0;
 	// 主人（女巫）UUID，用于跟随和攻击同步
 	private UUID ownerUuid;
 
-	public WitchFamiliarEntity(EntityType<? extends HostileEntity> entityType, World world) {
+	public WitchFamiliarEntity(EntityType<? extends Monster> entityType, Level world) {
 		super(entityType, world);
 	}
 
-	public static DefaultAttributeContainer.Builder createWitchFamiliarAttributes() {
-		return HostileEntity.createHostileAttributes()
-				.add(EntityAttributes.GENERIC_MAX_HEALTH, 14.0)       // 7颗心（与使魔形态一致）
-				.add(EntityAttributes.GENERIC_ATTACK_DAMAGE, 4.0)     // 2颗心近战伤害
-				.add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.35)   // 与狼相近的移速
-				.add(EntityAttributes.GENERIC_FOLLOW_RANGE, 20.0);    // 追踪范围
+	public static AttributeSupplier.Builder createWitchFamiliarAttributes() {
+		return Monster.createMonsterAttributes()
+				.add(Attributes.MAX_HEALTH, 14.0)       // 7颗心（与使魔形态一致）
+				.add(Attributes.ATTACK_DAMAGE, 4.0)     // 2颗心近战伤害
+				.add(Attributes.MOVEMENT_SPEED, 0.35)   // 与狼相近的移速
+				.add(Attributes.FOLLOW_RANGE, 20.0);    // 追踪范围
 	}
 
 	public UUID getOwnerUuid() {
@@ -91,28 +102,28 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	/**
 	 * 从世界中获取主人女巫实体
 	 */
-	public WitchEntity getOwnerWitch() {
+	public Witch getOwnerWitch() {
 		if (this.ownerUuid == null) return null;
-		if (!(this.getWorld() instanceof ServerWorld serverWorld)) return null;
+		if (!(this.level() instanceof ServerLevel serverWorld)) return null;
 		var entity = serverWorld.getEntity(this.ownerUuid);
-		if (entity instanceof WitchEntity witch && witch.isAlive()) return witch;
+		if (entity instanceof Witch witch && witch.isAlive()) return witch;
 		return null;
 	}
 
 	@Override
-	protected void initGoals() {
+	protected void registerGoals() {
 		// 移动/战斗目标
-		this.goalSelector.add(0, new SwimGoal(this));
-		this.goalSelector.add(1, new MeleeAttackGoal(this, 1.2, false));
-		this.goalSelector.add(2, new FollowOwnerWitchGoal(this, 1.0, 10.0f, 3.0f, 16.0f));
-		this.goalSelector.add(3, new WanderAroundFarGoal(this, 0.8));
-		this.goalSelector.add(4, new LookAtEntityGoal(this, PlayerEntity.class, 8.0f));
-		this.goalSelector.add(5, new LookAroundGoal(this));
+		this.goalSelector.addGoal(0, new FloatGoal(this));
+		this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.2, false));
+		this.goalSelector.addGoal(2, new FollowOwnerWitchGoal(this, 1.0, 10.0f, 3.0f, 16.0f));
+		this.goalSelector.addGoal(3, new WaterAvoidingRandomStrollGoal(this, 0.8));
+		this.goalSelector.addGoal(4, new LookAtPlayerGoal(this, Player.class, 8.0f));
+		this.goalSelector.addGoal(5, new RandomLookAroundGoal(this));
 
 		// 索敌目标（排除友军）
-		this.targetSelector.add(1, new CopyOwnerTargetGoal(this));
-		this.targetSelector.add(2, new RevengeGoal(this, RaiderEntity.class, WitchFamiliarEntity.class));
-		this.targetSelector.add(3, new ActiveTargetGoal<>(this, PlayerEntity.class, true, this::shouldAttackPlayer));
+		this.targetSelector.addGoal(1, new CopyOwnerTargetGoal(this));
+		this.targetSelector.addGoal(2, new HurtByTargetGoal(this, Raider.class, WitchFamiliarEntity.class));
+		this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, true, this::shouldAttackPlayer));
 	}
 
 	/**
@@ -120,7 +131,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * 不攻击：原版使魔、堕落悦灵形态的玩家（劫掠阵营友军）
 	 */
 	private boolean shouldAttackPlayer(LivingEntity target) {
-		if (!(target instanceof PlayerEntity player)) return false;
+		if (!(target instanceof Player player)) return false;
 		return !FormUtils.isAnyForm(player,
 				FormIdentifiers.FALLEN_ALLAY_SP,
 				VANILLA_FAMILIAR_FOX_3
@@ -128,36 +139,36 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	}
 
 	@Override
-	public boolean canTarget(LivingEntity target) {
+	public boolean canAttack(LivingEntity target) {
 		// 不攻击劫掠阵营、恼鬼、女巫、其他女巫使魔
-		if (target instanceof RaiderEntity) return false;
-		if (target instanceof VexEntity) return false;
-		if (target instanceof WitchEntity) return false;
+		if (target instanceof Raider) return false;
+		if (target instanceof Vex) return false;
+		if (target instanceof Witch) return false;
 		if (target instanceof WitchFamiliarEntity) return false;
-		return super.canTarget(target);
+		return super.canAttack(target);
 	}
 
 	@Override
-	public void mobTick() {
-		super.mobTick();
+	public void customServerAiStep() {
+		super.customServerAiStep();
 
 		if (fireRingCooldown > 0) fireRingCooldown--;
 
 		// 灵魂火焰粒子效果（与原版使魔形态一致，每10tick产生一次）
-		if (!this.getWorld().isClient() && this.age % 10 == 0 && this.getWorld() instanceof ServerWorld sw) {
+		if (!this.level().isClientSide() && this.tickCount % 10 == 0 && this.level() instanceof ServerLevel sw) {
 			ParticleUtils.spawnParticles(sw, ParticleTypes.SOUL_FIRE_FLAME,
 					this.getX(), this.getY() + 0.5, this.getZ(), 1, 0.2, 0.3, 0.2, 0.0);
 		}
 
 		// 仅在有攻击目标且目标在火环范围内时释放火环
-		if (!this.getWorld().isClient() && fireRingCooldown <= 0 && this.getTarget() != null
-				&& this.squaredDistanceTo(this.getTarget()) <= FIRE_RING_EFFECT_RADIUS * FIRE_RING_EFFECT_RADIUS) {
+		if (!this.level().isClientSide() && fireRingCooldown <= 0 && this.getTarget() != null
+				&& this.distanceToSqr(this.getTarget()) <= FIRE_RING_EFFECT_RADIUS * FIRE_RING_EFFECT_RADIUS) {
 			useFireRing();
 			fireRingCooldown = FIRE_RING_COOLDOWN_MAX;
 		}
 
 		// 无主使魔认主逻辑：每秒检查一次，视线范围内有女巫则认主
-		if (!this.getWorld().isClient() && this.ownerUuid == null && this.age % 20 == 0) {
+		if (!this.level().isClientSide() && this.ownerUuid == null && this.tickCount % 20 == 0) {
 			tryBondWithNearbyWitch();
 		}
 	}
@@ -167,22 +178,22 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * 认主后会自动被 FollowOwnerWitchGoal 和 CopyOwnerTargetGoal 管理
 	 */
 	private void tryBondWithNearbyWitch() {
-		if (!(this.getWorld() instanceof ServerWorld serverWorld)) return;
+		if (!(this.level() instanceof ServerLevel serverWorld)) return;
 
 		double searchRange = 16.0; // 16格搜索范围
-		List<WitchEntity> witches = serverWorld.getEntitiesByClass(
-				WitchEntity.class,
-				this.getBoundingBox().expand(searchRange),
-				witch -> witch.isAlive() && this.canSee(witch)
+		List<Witch> witches = serverWorld.getEntitiesOfClass(
+				Witch.class,
+				this.getBoundingBox().inflate(searchRange),
+				witch -> witch.isAlive() && this.hasLineOfSight(witch)
 		);
 
 		if (witches.isEmpty()) return;
 
 		// 找最近的女巫
-		WitchEntity nearest = null;
+		Witch nearest = null;
 		double nearestDistSq = Double.MAX_VALUE;
-		for (WitchEntity witch : witches) {
-			double distSq = this.squaredDistanceTo(witch);
+		for (Witch witch : witches) {
+			double distSq = this.distanceToSqr(witch);
 			if (distSq < nearestDistSq) {
 				nearestDistSq = distSq;
 				nearest = witch;
@@ -190,7 +201,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		}
 
 		if (nearest != null) {
-			this.setOwnerUuid(nearest.getUuid());
+			this.setOwnerUuid(nearest.getUUID());
 			// 产生爱心粒子表示认主成功
 			ParticleUtils.spawnParticles(serverWorld, ParticleTypes.HEART,
 					this.getX(), this.getY() + 0.8, this.getZ(), 3, 0.3, 0.3, 0.3, 0.0);
@@ -202,16 +213,16 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * 原版参数：power=3, explosion_damage_entity=false, entity_action={damage 8 on_fire + set_on_fire 10}
 	 */
 	private void useFireRing() {
-		if (!(this.getWorld() instanceof ServerWorld serverWorld)) return;
+		if (!(this.level() instanceof ServerLevel serverWorld)) return;
 
 		double x = this.getX();
 		double y = this.getY();
 		double z = this.getZ();
 
 		// 音效
-		serverWorld.playSound(null, x, y, z, SoundEvents.ITEM_FIRECHARGE_USE, SoundCategory.HOSTILE, 0.5f, 1.0f);
-		serverWorld.playSound(null, x, y, z, SoundEvents.BLOCK_FIRE_AMBIENT, SoundCategory.HOSTILE, 0.5f, 1.0f);
-		serverWorld.playSound(null, x, y, z, SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.HOSTILE, 0.5f, 1.0f);
+		serverWorld.playSound(null, x, y, z, SoundEvents.FIRECHARGE_USE, SoundSource.HOSTILE, 0.5f, 1.0f);
+		serverWorld.playSound(null, x, y, z, SoundEvents.FIRE_AMBIENT, SoundSource.HOSTILE, 0.5f, 1.0f);
+		serverWorld.playSound(null, x, y, z, SoundEvents.EVOKER_PREPARE_SUMMON, SoundSource.HOSTILE, 0.5f, 1.0f);
 
 		// 粒子效果 - 外圈火焰（半径4格，64个采样点）
 		for (int i = 0; i < 64; i++) {
@@ -231,39 +242,39 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.SOUL_FIRE_FLAME, x, y + 0.5, z, 8, 2.0, 1.0, 2.0, 0.0);
 
 		// 爆炸游戏事件（原版会触发）
-		serverWorld.emitGameEvent(this, GameEvent.EXPLODE, this.getPos());
+		serverWorld.gameEvent(this, GameEvent.EXPLODE, this.position());
 
 		// === 复刻原版 ExplosionDamageEntityAction 逻辑 ===
-		Vec3d explosionPos = this.getPos();
+		Vec3 explosionPos = this.position();
 		float q = FIRE_RING_EFFECT_RADIUS; // power * 2.0 = 6.0
 
-		int k = MathHelper.floor(explosionPos.getX() - q - 1.0);
-		int l = MathHelper.floor(explosionPos.getX() + q + 1.0);
-		int r = MathHelper.floor(explosionPos.getY() - q - 1.0);
-		int s = MathHelper.floor(explosionPos.getY() + q + 1.0);
-		int t = MathHelper.floor(explosionPos.getZ() - q - 1.0);
-		int u = MathHelper.floor(explosionPos.getZ() + q + 1.0);
+		int k = Mth.floor(explosionPos.x() - q - 1.0);
+		int l = Mth.floor(explosionPos.x() + q + 1.0);
+		int r = Mth.floor(explosionPos.y() - q - 1.0);
+		int s = Mth.floor(explosionPos.y() + q + 1.0);
+		int t = Mth.floor(explosionPos.z() - q - 1.0);
+		int u = Mth.floor(explosionPos.z() + q + 1.0);
 
 		// 获取范围内所有实体（排除自身）
-		List<Entity> entityList = serverWorld.getOtherEntities(
-				this, new Box(k, r, t, l, s, u));
+		List<Entity> entityList = serverWorld.getEntities(
+				this, new AABB(k, r, t, l, s, u));
 
-		RegistryKey<DamageType> onFireKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "on_fire"));
+		ResourceKey<DamageType> onFireKey = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("minecraft", "on_fire"));
 
 		for (Entity targetEntity : entityList) {
 			// 跳过爆炸免疫实体
-			if (targetEntity.isImmuneToExplosion(null)) continue;
+			if (targetEntity.ignoreExplosion(null)) continue;
 			// 跳过非生物实体或不应受火环影响的实体
 			if (!(targetEntity instanceof LivingEntity living)) continue;
 			if (!shouldFireRingAffect(living)) continue;
 
 			// 计算归一化距离
-			double w = Math.sqrt(targetEntity.squaredDistanceTo(explosionPos)) / (double) q;
+			double w = Math.sqrt(targetEntity.distanceToSqr(explosionPos)) / (double) q;
 			if (w > 1.0) continue;
 
-			double dx = targetEntity.getX() - explosionPos.getX();
-			double dy = (targetEntity instanceof TntEntity ? targetEntity.getY() : targetEntity.getEyeY()) - explosionPos.getY();
-			double dz = targetEntity.getZ() - explosionPos.getZ();
+			double dx = targetEntity.getX() - explosionPos.x();
+			double dy = (targetEntity instanceof PrimedTnt ? targetEntity.getY() : targetEntity.getEyeY()) - explosionPos.y();
+			double dz = targetEntity.getZ() - explosionPos.z();
 			double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 			if (dist == 0.0) continue;
 
@@ -272,7 +283,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 			dz /= dist;
 
 			// 暴露度计算（视线检查）
-			double exposure = Explosion.getExposure(explosionPos, targetEntity);
+			double exposure = Explosion.getSeenPercent(explosionPos, targetEntity);
 			double intensity = (1.0 - w) * exposure;
 
 			// explosion_damage_entity = false，不造成爆炸伤害
@@ -283,12 +294,12 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 			} else {
 				knockbackIntensity = intensity;
 			}
-			targetEntity.setVelocity(targetEntity.getVelocity().add(
+			targetEntity.setDeltaMovement(targetEntity.getDeltaMovement().add(
 					dx * knockbackIntensity, dy * knockbackIntensity, dz * knockbackIntensity));
 
 			// entity_action: damage 8 on_fire + set_on_fire 10秒
-			living.damage(living.getDamageSources().create(onFireKey, this), FIRE_RING_DAMAGE);
-			living.setOnFireFor(FIRE_RING_IGNITE_SECONDS);
+			living.hurt(living.damageSources().source(onFireKey, this), FIRE_RING_DAMAGE);
+			living.igniteForSeconds(FIRE_RING_IGNITE_SECONDS);
 		}
 	}
 
@@ -298,12 +309,12 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	private boolean shouldFireRingAffect(LivingEntity entity) {
 		if (!entity.isAlive()) return false;
 		// 不影响劫掠阵营
-		if (entity instanceof RaiderEntity) return false;
-		if (entity instanceof VexEntity) return false;
-		if (entity instanceof WitchEntity) return false;
+		if (entity instanceof Raider) return false;
+		if (entity instanceof Vex) return false;
+		if (entity instanceof Witch) return false;
 		if (entity instanceof WitchFamiliarEntity) return false;
 		// 不影响原版使魔/堕落悦灵形态的玩家（劫掠阵营友军）
-		if (entity instanceof PlayerEntity player) {
+		if (entity instanceof Player player) {
 			return !FormUtils.isAnyForm(player,
 					FormIdentifiers.FALLEN_ALLAY_SP,
 					VANILLA_FAMILIAR_FOX_3);
@@ -314,20 +325,20 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	// ========== 持久化 ==========
 
 	@Override
-	public void writeCustomDataToNbt(NbtCompound nbt) {
-		super.writeCustomDataToNbt(nbt);
+	public void addAdditionalSaveData(CompoundTag nbt) {
+		super.addAdditionalSaveData(nbt);
 		nbt.putInt("FireRingCooldown", fireRingCooldown);
 		if (this.ownerUuid != null) {
-			nbt.put("OwnerUUID", NbtHelper.fromUuid(this.ownerUuid));
+			nbt.put("OwnerUUID", NbtUtils.createUUID(this.ownerUuid));
 		}
 	}
 
 	@Override
-	public void readCustomDataFromNbt(NbtCompound nbt) {
-		super.readCustomDataFromNbt(nbt);
+	public void readAdditionalSaveData(CompoundTag nbt) {
+		super.readAdditionalSaveData(nbt);
 		fireRingCooldown = nbt.getInt("FireRingCooldown");
-		if (nbt.containsUuid("OwnerUUID")) {
-			this.ownerUuid = nbt.getUuid("OwnerUUID");
+		if (nbt.hasUUID("OwnerUUID")) {
+			this.ownerUuid = nbt.getUUID("OwnerUUID");
 		}
 	}
 
@@ -335,23 +346,23 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 
 	@Override
 	protected SoundEvent getAmbientSound() {
-		return SoundEvents.ENTITY_FOX_AMBIENT;
+		return SoundEvents.FOX_AMBIENT;
 	}
 
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source) {
-		return SoundEvents.ENTITY_FOX_HURT;
+		return SoundEvents.FOX_HURT;
 	}
 
 	@Override
 	protected SoundEvent getDeathSound() {
-		return SoundEvents.ENTITY_FOX_DEATH;
+		return SoundEvents.FOX_DEATH;
 	}
 
 	// ========== GeoEntity 实现 ==========
 
 	@Override
-	public boolean isFireImmune() {
+	public boolean fireImmune() {
 		return true;
 	}
 
@@ -369,36 +380,36 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * （对应 form_familiar_fox_3_no_buff_effect.json）
 	 */
 	@Override
-	public boolean canHaveStatusEffect(StatusEffectInstance effect) {
-		StatusEffect type = effect.getEffectType().value();
-		if (type == StatusEffects.POISON
-				|| type == StatusEffects.HUNGER
-				|| type == StatusEffects.SPEED
-				|| type == StatusEffects.HASTE
-				|| type == StatusEffects.STRENGTH
-				|| type == StatusEffects.REGENERATION
-				|| type == StatusEffects.FIRE_RESISTANCE
-				|| type == StatusEffects.WATER_BREATHING
-				|| type == StatusEffects.NIGHT_VISION
-				|| type == StatusEffects.RESISTANCE
-				|| type == StatusEffects.INVISIBILITY
-				|| type == StatusEffects.HEALTH_BOOST
-				|| type == StatusEffects.WITHER
-				|| type == StatusEffects.ABSORPTION) {
+	public boolean canBeAffected(MobEffectInstance effect) {
+		MobEffect type = effect.getEffect().value();
+		if (type == MobEffects.POISON
+				|| type == MobEffects.HUNGER
+				|| type == MobEffects.MOVEMENT_SPEED
+				|| type == MobEffects.DIG_SPEED
+				|| type == MobEffects.DAMAGE_BOOST
+				|| type == MobEffects.REGENERATION
+				|| type == MobEffects.FIRE_RESISTANCE
+				|| type == MobEffects.WATER_BREATHING
+				|| type == MobEffects.NIGHT_VISION
+				|| type == MobEffects.DAMAGE_RESISTANCE
+				|| type == MobEffects.INVISIBILITY
+				|| type == MobEffects.HEALTH_BOOST
+				|| type == MobEffects.WITHER
+				|| type == MobEffects.ABSORPTION) {
 			return false;
 		}
-		return super.canHaveStatusEffect(effect);
+		return super.canBeAffected(effect);
 	}
 
 	/**
 	 * 免疫浆果丛减速效果
 	 */
 	@Override
-	public void slowMovement(BlockState state, Vec3d multiplier) {
+	public void makeStuckInBlock(BlockState state, Vec3 multiplier) {
 		if (state.getBlock() instanceof SweetBerryBushBlock) {
 			return; // 浆果丛不对女巫使魔产生减速
 		}
-		super.slowMovement(state, multiplier);
+		super.makeStuckInBlock(state, multiplier);
 	}
 
 	/**
@@ -406,14 +417,14 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * （对应 form_familiar_fox_3_no_attack_witch.json + hurt_when_attack_witch.json）
 	 */
 	@Override
-	public boolean damage(DamageSource source, float amount) {
+	public boolean hurt(DamageSource source, float amount) {
 		// 浆果丛免疫
-		if ("sweetBerryBush".equals(source.getName())) {
+		if ("sweetBerryBush".equals(source.getMsgId())) {
 			return false;
 		}
 
 		// 原版使魔/堕落悦灵形态玩家攻击女巫使魔 → 和SSC原版攻击劫掠阵营效果一致
-		if (source.getAttacker() instanceof PlayerEntity player) {
+		if (source.getEntity() instanceof Player player) {
 			if (FormUtils.isAnyForm(player,
 					FormIdentifiers.FALLEN_ALLAY_SP,
 					VANILLA_FAMILIAR_FOX_3)) {
@@ -422,7 +433,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 			}
 		}
 
-		return super.damage(source, amount);
+		return super.hurt(source, amount);
 	}
 
 	/**
@@ -431,49 +442,49 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	 * - 玩家自伤1HP + 击退（hurt_when_attack_witch）
 	 * - 播放末影之眼消散音效
 	 */
-	private void handleFamiliarPlayerAttack(PlayerEntity player) {
-		if (!(this.getWorld() instanceof ServerWorld serverWorld)) return;
+	private void handleFamiliarPlayerAttack(Player player) {
+		if (!(this.level() instanceof ServerLevel serverWorld)) return;
 
 		// 治疗女巫使魔20HP
 		this.heal(20.0f);
 
 		// 播放音效
 		serverWorld.playSound(null, this.getX(), this.getY(), this.getZ(),
-				SoundEvents.ENTITY_ENDER_EYE_DEATH, SoundCategory.NEUTRAL, 1.0f, 1.0f);
+				SoundEvents.ENDER_EYE_DEATH, SoundSource.NEUTRAL, 1.0f, 1.0f);
 
 		// 玩家自伤1HP
-		player.damage(player.getDamageSources().generic(), 1.0f);
+		player.hurt(player.damageSources().generic(), 1.0f);
 
 		// 玩家击退（向后 z:-0.5，向上 y:0.5，local_horizontal_normalized空间）
-		Vec3d lookDir = player.getRotationVector();
+		Vec3 lookDir = player.getLookAngle();
 		double horizontalLen = Math.sqrt(lookDir.x * lookDir.x + lookDir.z * lookDir.z);
 		if (horizontalLen > 0.001) {
 			// 归一化水平方向后施加击退
-			player.addVelocity(
+			player.push(
 					-lookDir.x / horizontalLen * 0.5,
 					0.5,
 					-lookDir.z / horizontalLen * 0.5
 			);
 		} else {
-			player.addVelocity(0, 0.5, 0);
+			player.push(0, 0.5, 0);
 		}
-		player.velocityModified = true;
+		player.hurtMarked = true;
 	}
 
 	/**
 	 * 水中移动不减速（消除水中阻力）
 	 */
 	@Override
-	public void travel(Vec3d movementInput) {
-		if (this.isLogicalSideForUpdatingMovement() && this.isTouchingWater()) {
+	public void travel(Vec3 movementInput) {
+		if (this.isControlledByLocalInstance() && this.isInWater()) {
 			// 水中使用更高的移动系数和更低的阻力，接近陆地速度
-			this.updateVelocity(0.04f, movementInput); // 原版水中为0.02f
-			this.move(MovementType.SELF, this.getVelocity());
-			this.setVelocity(this.getVelocity().multiply(0.9)); // 原版水中为0.8
-			if (!this.hasNoGravity()) {
-				this.setVelocity(this.getVelocity().add(0.0, -0.04, 0.0));
+			this.moveRelative(0.04f, movementInput); // 原版水中为0.02f
+			this.move(MoverType.SELF, this.getDeltaMovement());
+			this.setDeltaMovement(this.getDeltaMovement().scale(0.9)); // 原版水中为0.8
+			if (!this.isNoGravity()) {
+				this.setDeltaMovement(this.getDeltaMovement().add(0.0, -0.04, 0.0));
 			}
-			this.updateLimbs(false);
+			this.calculateEntityAnimation(false);
 		} else {
 			super.travel(movementInput);
 		}
@@ -492,7 +503,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		}));
 		// 攻击动画
 		controllers.add(new AnimationController<>(this, "attack", 0, state -> {
-			if (this.handSwinging) {
+			if (this.swinging) {
 				return state.setAndContinue(RawAnimation.begin().thenPlay("attack"));
 			}
 			state.getController().forceAnimationReset();
@@ -518,7 +529,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		private final float maxDistance;      // 超过此距离传送
 		private final float minDistance;      // 靠近到此距离停止
 		private final float startDistance;    // 距离超过此值开始跟随
-		private WitchEntity owner;
+		private Witch owner;
 		private int updateCountdown;
 
 		public FollowOwnerWitchGoal(WitchFamiliarEntity familiar, double speed, float maxDistance, float minDistance, float startDistance) {
@@ -527,25 +538,25 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 			this.maxDistance = maxDistance;
 			this.minDistance = minDistance;
 			this.startDistance = startDistance;
-			this.setControls(EnumSet.of(Control.MOVE, Control.LOOK));
+			this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
 		}
 
 		@Override
-		public boolean canStart() {
-			WitchEntity witch = this.familiar.getOwnerWitch();
+		public boolean canUse() {
+			Witch witch = this.familiar.getOwnerWitch();
 			if (witch == null) return false;
 			// 正在攻击时不跟随（让战斗目标优先）
 			if (this.familiar.getTarget() != null) return false;
-			if (this.familiar.squaredDistanceTo(witch) < (double) this.startDistance * this.startDistance) return false;
+			if (this.familiar.distanceToSqr(witch) < (double) this.startDistance * this.startDistance) return false;
 			this.owner = witch;
 			return true;
 		}
 
 		@Override
-		public boolean shouldContinue() {
-			if (this.familiar.getNavigation().isIdle()) return false;
+		public boolean canContinueToUse() {
+			if (this.familiar.getNavigation().isDone()) return false;
 			if (this.familiar.getTarget() != null) return false;
-			return this.familiar.squaredDistanceTo(this.owner) > (double) this.minDistance * this.minDistance;
+			return this.familiar.distanceToSqr(this.owner) > (double) this.minDistance * this.minDistance;
 		}
 
 		@Override
@@ -561,18 +572,18 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 
 		@Override
 		public void tick() {
-			this.familiar.getLookControl().lookAt(this.owner, 10.0f, (float) this.familiar.getMaxLookPitchChange());
+			this.familiar.getLookControl().setLookAt(this.owner, 10.0f, (float) this.familiar.getMaxHeadXRot());
 
 			if (--this.updateCountdown <= 0) {
 				this.updateCountdown = 10;  // 每10 tick更新一次路径
 
-				double distSq = this.familiar.squaredDistanceTo(this.owner);
+				double distSq = this.familiar.distanceToSqr(this.owner);
 
 				// 距离过远：传送到主人身边
 				if (distSq >= (double) this.maxDistance * this.maxDistance) {
 					tryTeleportToOwner();
 				} else {
-					this.familiar.getNavigation().startMovingTo(this.owner, this.speed);
+					this.familiar.getNavigation().moveTo(this.owner, this.speed);
 				}
 			}
 		}
@@ -581,17 +592,17 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		 * 传送到主人身边（类似狼传送逻辑）
 		 */
 		private void tryTeleportToOwner() {
-			BlockPos ownerPos = this.owner.getBlockPos();
+			BlockPos ownerPos = this.owner.blockPosition();
 			for (int i = 0; i < 10; i++) {
-				int dx = this.familiar.getRandom().nextBetween(-3, 3);
-				int dz = this.familiar.getRandom().nextBetween(-3, 3);
-				BlockPos target = ownerPos.add(dx, 0, dz);
+				int dx = this.familiar.getRandom().nextIntBetweenInclusive(-3, 3);
+				int dz = this.familiar.getRandom().nextIntBetweenInclusive(-3, 3);
+				BlockPos target = ownerPos.offset(dx, 0, dz);
 				// 简单检查：非固体方块（脚下）且站立位也非固体
-				if (this.familiar.getWorld().getBlockState(target).isAir()
-						|| !this.familiar.getWorld().getBlockState(target).isSolidBlock(this.familiar.getWorld(), target)) {
-					this.familiar.refreshPositionAndAngles(
+				if (this.familiar.level().getBlockState(target).isAir()
+						|| !this.familiar.level().getBlockState(target).isRedstoneConductor(this.familiar.level(), target)) {
+					this.familiar.moveTo(
 							target.getX() + 0.5, ownerPos.getY(), target.getZ() + 0.5,
-							this.familiar.getYaw(), this.familiar.getPitch());
+							this.familiar.getYRot(), this.familiar.getXRot());
 					this.familiar.getNavigation().stop();
 					return;
 				}
@@ -602,7 +613,7 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 	/**
 	 * 复制主人女巫的攻击目标（类似狼跟随主人攻击逻辑）
 	 */
-	static class CopyOwnerTargetGoal extends TrackTargetGoal {
+	static class CopyOwnerTargetGoal extends TargetGoal {
 		private final WitchFamiliarEntity familiar;
 		private LivingEntity ownerTarget;
 		private int lastCheckTime;
@@ -613,36 +624,36 @@ public class WitchFamiliarEntity extends HostileEntity implements GeoEntity {
 		}
 
 		@Override
-		public boolean canStart() {
-			WitchEntity owner = this.familiar.getOwnerWitch();
+		public boolean canUse() {
+			Witch owner = this.familiar.getOwnerWitch();
 			if (owner == null) return false;
 			this.ownerTarget = owner.getTarget();
 			if (this.ownerTarget == null) return false;
 			// 不能攻击友军
-			return this.familiar.canTarget(this.ownerTarget);
+			return this.familiar.canAttack(this.ownerTarget);
 		}
 
 		@Override
 		public void start() {
 			this.familiar.setTarget(this.ownerTarget);
 			super.start();
-			this.lastCheckTime = this.familiar.age;
+			this.lastCheckTime = this.familiar.tickCount;
 		}
 
 		@Override
-		public boolean shouldContinue() {
+		public boolean canContinueToUse() {
 			// 每40 tick检查一次主人的目标是否变化
-			if (this.familiar.age - this.lastCheckTime > 40) {
-				WitchEntity owner = this.familiar.getOwnerWitch();
+			if (this.familiar.tickCount - this.lastCheckTime > 40) {
+				Witch owner = this.familiar.getOwnerWitch();
 				if (owner != null) {
 					LivingEntity newTarget = owner.getTarget();
-					if (newTarget != null && newTarget != this.familiar.getTarget() && this.familiar.canTarget(newTarget)) {
+					if (newTarget != null && newTarget != this.familiar.getTarget() && this.familiar.canAttack(newTarget)) {
 						this.familiar.setTarget(newTarget);
 					}
 				}
-				this.lastCheckTime = this.familiar.age;
+				this.lastCheckTime = this.familiar.tickCount;
 			}
-			return super.shouldContinue();
+			return super.canContinueToUse();
 		}
 	}
 }

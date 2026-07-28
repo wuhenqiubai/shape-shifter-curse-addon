@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -25,17 +25,17 @@ public final class FluorescentLaserManager {
 	}
 
 	/** 客户端「按下主要技能键」时调用。 */
-	public static void onKeyPress(ServerPlayerEntity player) {
+	public static void onKeyPress(ServerPlayer player) {
 		if (!FormUtils.isAxolotlFluorescent(player)) return;
 		// CD 中不可用
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_PRIMARY_CD) > 0) return;
 		// 已有活跃激光 → 忽略
-		LaserBeamEntity existing = ACTIVE.get(player.getUuid());
+		LaserBeamEntity existing = ACTIVE.get(player.getUUID());
 		if (existing != null && existing.isAlive()) return;
-		if (!(player.getWorld() instanceof ServerWorld sw)) return;
+		if (!(player.level() instanceof ServerLevel sw)) return;
 		LaserBeamEntity laser = new LaserBeamEntity(sw, player);
-		sw.spawnEntity(laser);
-		ACTIVE.put(player.getUuid(), laser);
+		sw.addFreshEntity(laser);
+		ACTIVE.put(player.getUUID(), laser);
 	}
 
 	public static void onPlayerDisconnect(UUID uuid) {

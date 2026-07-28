@@ -12,6 +12,7 @@ base {
 
 loom {
     mixin {
+        useLegacyMixinAp = true
         defaultRefmapName = "ssc-addon.refmap.json"
     }
 }
@@ -94,7 +95,8 @@ repositories {
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+//    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     // Fabric API
@@ -102,6 +104,7 @@ dependencies {
 
     // Shape Shifter Curse Unofficial Port
     modImplementation "com.github.wuhenqiubai:Shape-Shifter-Curse_Unofficial-Port:ver~1.21.1_main-SNAPSHOT"
+//    include "com.github.wuhenqiubai:Shape-Shifter-Curse_Unofficial-Port:ver~1.21.1_main-SNAPSHOT"
     
     // Player Animation Library
     modImplementation "com.zigythebird.playeranim:PlayerAnimationLibFabric:${project.pal_version}"
@@ -141,6 +144,13 @@ processResources {
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
     it.options.compilerArgs << '-Xlint:deprecation'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    // 忽略Java源码过时警告
+    options.deprecation = false
+    // 屏蔽所有编译器警告
+    options.compilerArgs = ["-Xlint:-deprecation", "-Xlint:-removal"]
 }
 
 java {

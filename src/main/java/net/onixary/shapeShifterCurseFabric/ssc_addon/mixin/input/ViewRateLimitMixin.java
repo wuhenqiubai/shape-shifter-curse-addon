@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.input;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,18 +28,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ViewRateLimitMixin {
 
 	@Shadow
-	public float prevYaw;
+	public float yRotO;
 	@Shadow
-	public float prevPitch;
+	public float xRotO;
 
 	// ===== 限速曲线（度/秒）=====
+	@Unique
 	private static final double RATE_START = 25.0;
+	@Unique
 	private static final double RATE_END = 5.0;
+	@Unique
 	private static final int CHARGE_5S_TICK = 100;
+	@Unique
 	private static final int CHARGE_7S_TICK = 140;
 
 	// ===== 加速度参数 =====
+	@Unique
 	private static final double ACCEL_TIME_SEC = 0.5;   // 10 tick 加速到限速
+	@Unique
 	private static final double DECEL_TIME_SEC = 1.5;   // 1.5s 减速到 0
 
 	// ===== 内部角速度状态（度/秒，yaw/pitch 分量）=====
@@ -50,12 +56,12 @@ public abstract class ViewRateLimitMixin {
 	@Unique
 	private static long ssca$lastNanos = 0L;
 
-	@Inject(method = "changeLookDirection", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "turn", at = @At("HEAD"), cancellable = true)
 	private void ssca$smoothView(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
 		Entity self = (Entity) (Object) this;
-		MinecraftClient mc = MinecraftClient.getInstance();
+		Minecraft mc = Minecraft.getInstance();
 		if (mc == null || self != mc.player) return;
-		ClientPlayerEntity player = mc.player;
+		LocalPlayer player = mc.player;
 		LaserBeamEntity laser = LaserBeamEntity.getActiveForClient(player);
 		if (laser == null) {
 			// 无激光：重置状态，放行原版
@@ -114,14 +120,15 @@ public abstract class ViewRateLimitMixin {
 			ci.cancel();
 			return;
 		}
-		player.setYaw(player.getYaw() + (float) dYaw);
-		player.setPitch(MathHelper.clamp(player.getPitch() + (float) dPitch, -90.0F, 90.0F));
-		this.prevYaw += (float) dYaw;
-		this.prevPitch = MathHelper.clamp(this.prevPitch + (float) dPitch, -90.0F, 90.0F);
+		player.setYRot(player.getYRot() + (float) dYaw);
+		player.setXRot(Mth.clamp(player.getXRot() + (float) dPitch, -90.0F, 90.0F));
+		this.yRotO += (float) dYaw;
+		this.xRotO = Mth.clamp(this.xRotO + (float) dPitch, -90.0F, 90.0F);
 		ci.cancel();
 	}
 
 	/** 当前限速（度/秒），按激光阶段/时间计算。 */
+	@Unique
 	private static double currentLimit(LaserBeamEntity laser) {
 		int phaseId = laser.getPhaseId();
 		int pt = laser.getPhaseTick();
@@ -137,6 +144,7 @@ public abstract class ViewRateLimitMixin {
 	}
 
 	/** 将 current 以每步最多 maxStep 的速度向 target 逼近（线性）。 */
+	@Unique
 	private static double approach(double current, double target, double maxStep) {
 		double diff = target - current;
 		if (Math.abs(diff) <= maxStep) return target;

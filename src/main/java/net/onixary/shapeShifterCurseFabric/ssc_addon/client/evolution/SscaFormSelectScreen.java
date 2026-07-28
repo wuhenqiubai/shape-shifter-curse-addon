@@ -2,18 +2,18 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.evolution;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.MultilineText;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.MultiLineLabel;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionNode;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry;
@@ -36,12 +36,12 @@ public class SscaFormSelectScreen extends Screen {
 
     /** 一个可在开局选择的 SSCA 进化形态条目。 */
     private static final class StartForm {
-        final Identifier formId;
+        final ResourceLocation formId;
         final Item icon;
         final String nameKey;
         final String descKey;
 
-        StartForm(Identifier formId, Item icon, String nameKey, String descKey) {
+        StartForm(ResourceLocation formId, Item icon, String nameKey, String descKey) {
             this.formId = formId;
             this.icon = icon;
             this.nameKey = nameKey;
@@ -86,7 +86,7 @@ public class SscaFormSelectScreen extends Screen {
         ordered.addAll(remain.values());
 
         for (EvolutionRoute route : ordered) {
-            Identifier fid = route.startForm;
+            ResourceLocation fid = route.startForm;
             String ns = fid.getNamespace();
             String path = fid.getPath();
             // 图标取初始节点图标；名称 / 描述按形态 id 推导对应 lang key
@@ -112,7 +112,7 @@ public class SscaFormSelectScreen extends Screen {
     private int page = 0;
 
     public SscaFormSelectScreen(Screen parent) {
-        super(Text.translatable("evolution.my_addon.start.select.title"));
+        super(Component.translatable("evolution.my_addon.start.select.title"));
         this.parent = parent;
     }
 
@@ -132,27 +132,27 @@ public class SscaFormSelectScreen extends Screen {
         boolean multiPage = forms.size() > 1;
 
         // 翻页按钮（面板两侧中部）；仅有一页时禁用，体现可翻页框架
-        ButtonWidget prev = ButtonWidget.builder(Text.literal("<"), b -> prevPage())
-                .dimensions(px + 6, py + PANEL_H / 2 - 10, 20, 20).build();
+        Button prev = Button.builder(Component.literal("<"), b -> prevPage())
+                .bounds(px + 6, py + PANEL_H / 2 - 10, 20, 20).build();
         prev.active = multiPage;
-        this.addDrawableChild(prev);
+        this.addRenderableWidget(prev);
 
-        ButtonWidget next = ButtonWidget.builder(Text.literal(">"), b -> nextPage())
-                .dimensions(px + PANEL_W - 26, py + PANEL_H / 2 - 10, 20, 20).build();
+        Button next = Button.builder(Component.literal(">"), b -> nextPage())
+                .bounds(px + PANEL_W - 26, py + PANEL_H / 2 - 10, 20, 20).build();
         next.active = multiPage;
-        this.addDrawableChild(next);
+        this.addRenderableWidget(next);
 
         // 选择此形态
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.translatable("evolution.my_addon.start.select.choose"),
+        this.addRenderableWidget(Button.builder(
+                Component.translatable("evolution.my_addon.start.select.choose"),
                 b -> chooseCurrentForm()
-        ).dimensions(this.width / 2 - 80, py + PANEL_H - 54, 160, 20).build());
+        ).bounds(this.width / 2 - 80, py + PANEL_H - 54, 160, 20).build());
 
         // 返回
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.translatable("gui.back"),
-                b -> this.close()
-        ).dimensions(this.width / 2 - 60, py + PANEL_H - 30, 120, 20).build());
+        this.addRenderableWidget(Button.builder(
+                Component.translatable("gui.back"),
+                b -> this.onClose()
+        ).bounds(this.width / 2 - 60, py + PANEL_H - 30, 120, 20).build());
     }
 
     private void prevPage() {
@@ -174,15 +174,15 @@ public class SscaFormSelectScreen extends Screen {
             return;
         }
         StartForm form = forms.get(page);
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(form.formId.toString());
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeUtf(form.formId.toString());
         ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SSCA_START_ROUTE), buf));
         // 关闭所有界面，让玩家看到进化动画
-        MinecraftClient.getInstance().setScreen(null);
+        Minecraft.getInstance().setScreen(null);
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         this.renderBackground(ctx, mouseX, mouseY, delta);
 
         int px = panelX();
@@ -192,38 +192,38 @@ public class SscaFormSelectScreen extends Screen {
         drawBorder(ctx, px, py, PANEL_W, PANEL_H, 0xFFB8893A);
 
         // 标题
-        ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, py + 10, 0xFFE8C66A);
+        ctx.drawCenteredString(this.font, this.title, this.width / 2, py + 10, 0xFFE8C66A);
 
         if (!forms.isEmpty()) {
             // 页码
-            Text pageInfo = Text.translatable("evolution.my_addon.start.select.page", page + 1, forms.size());
-            ctx.drawCenteredTextWithShadow(this.textRenderer, pageInfo, this.width / 2, py + 24, 0xFFAAAAAA);
+            Component pageInfo = Component.translatable("evolution.my_addon.start.select.page", page + 1, forms.size());
+            ctx.drawCenteredString(this.font, pageInfo, this.width / 2, py + 24, 0xFFAAAAAA);
 
             StartForm form = forms.get(page);
 
             // 形态图标（放大）
             int iconCenterX = this.width / 2;
             int iconTopY = py + 44;
-            ctx.getMatrices().push();
-            ctx.getMatrices().translate(iconCenterX - 8 * ICON_SCALE, iconTopY, 0);
-            ctx.getMatrices().scale(ICON_SCALE, ICON_SCALE, 1);
-            ctx.drawItem(new ItemStack(form.icon), 0, 0);
-            ctx.getMatrices().pop();
+            ctx.pose().pushPose();
+            ctx.pose().translate(iconCenterX - 8 * ICON_SCALE, iconTopY, 0);
+            ctx.pose().scale(ICON_SCALE, ICON_SCALE, 1);
+            ctx.renderItem(new ItemStack(form.icon), 0, 0);
+            ctx.pose().popPose();
 
             // 形态名称
-            Text name = Text.translatable(form.nameKey).formatted(Formatting.GOLD, Formatting.BOLD);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, name, this.width / 2, iconTopY + 16 * ICON_SCALE + 8, 0xFFFFFFFF);
+            Component name = Component.translatable(form.nameKey).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
+            ctx.drawCenteredString(this.font, name, this.width / 2, iconTopY + 16 * ICON_SCALE + 8, 0xFFFFFFFF);
 
             // 形态描述（多行居中）
-            MultilineText desc = MultilineText.create(this.textRenderer,
-                    Text.translatable(form.descKey).formatted(Formatting.GRAY), PANEL_W - 40);
-            desc.drawCenterWithShadow(ctx, this.width / 2, iconTopY + 16 * ICON_SCALE + 26);
+            MultiLineLabel desc = MultiLineLabel.create(this.font,
+                    Component.translatable(form.descKey).withStyle(ChatFormatting.GRAY), PANEL_W - 40);
+            desc.renderCentered(ctx, this.width / 2, iconTopY + 16 * ICON_SCALE + 26);
         }
 
         super.render(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawBorder(DrawContext ctx, int x, int y, int w, int h, int color) {
+    private void drawBorder(GuiGraphics ctx, int x, int y, int w, int h, int color) {
         ctx.fill(x, y, x + w, y + 1, color);
         ctx.fill(x, y + h - 1, x + w, y + h, color);
         ctx.fill(x, y, x + 1, y + h, color);
@@ -231,12 +231,12 @@ public class SscaFormSelectScreen extends Screen {
     }
 
     @Override
-    public void close() {
-        MinecraftClient.getInstance().setScreen(this.parent);
+    public void onClose() {
+        Minecraft.getInstance().setScreen(this.parent);
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

@@ -2,8 +2,8 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.render.form_render.DefaultModelAnimationSystem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -27,11 +27,11 @@ public class TailVerticalDragFixMixin {
 
     @WrapOperation(method = "finishRender",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/entity/player/PlayerEntity;getVelocity()Lnet/minecraft/util/math/Vec3d;"),
+                    target = "Lnet/minecraft/world/entity/player/Player;getDeltaMovement()Lnet/minecraft/world/phys/Vec3;"),
             require = 0)
-    private Vec3d ssc_addon$fixRemoteTailVerticalDrag(PlayerEntity player, Operation<Vec3d> original) {
-        Vec3d velocity = original.call(player);
-        double realVerticalDelta = player.getY() - player.prevY;
-        return new Vec3d(velocity.x, realVerticalDelta, velocity.z);
+    private Vec3 ssc_addon$fixRemoteTailVerticalDrag(Player player, Operation<Vec3> original) {
+        Vec3 velocity = original.call(player);
+        double realVerticalDelta = player.getY() - player.yo;
+        return new Vec3(velocity.x, realVerticalDelta, velocity.z);
     }
 }

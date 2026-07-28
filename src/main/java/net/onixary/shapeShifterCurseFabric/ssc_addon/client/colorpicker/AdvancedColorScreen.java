@@ -1,15 +1,15 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.CheckboxWidget;
-import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Checkbox;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import org.joml.Quaternionf;
 
 /**
@@ -34,18 +34,18 @@ public class AdvancedColorScreen extends Screen {
     private int editingIdx = AdvancedColorBridge.IDX_PRIMARY;
 
     // UI 控件引用
-    private final ButtonWidget[] colorTabs = new ButtonWidget[AdvancedColorBridge.COLOR_COUNT];
-    private TextFieldWidget rField, gField, bField, aField, hexField;
+    private final Button[] colorTabs = new Button[AdvancedColorBridge.COLOR_COUNT];
+    private EditBox rField, gField, bField, aField, hexField;
     private RgbSlider sliderR, sliderG, sliderB, sliderA;
     private HsvPickerWidget hsvPicker;
-    private CheckboxWidget[] grChecks = new CheckboxWidget[AdvancedColorBridge.GR_COUNT];
-    private CheckboxWidget enableCheck;
+    private Checkbox[] grChecks = new Checkbox[AdvancedColorBridge.GR_COUNT];
+    private Checkbox enableCheck;
 
     // 防止反向回填时触发 changed 回调形成循环
     private boolean suppressCallbacks = false;
 
     /** 状态提示行（复制成功 / 失败 / 保存成功 等）。 */
-    private Text statusLine = Text.empty();
+    private Component statusLine = Component.empty();
     /** 状态行设置时间（ms），用于渐隐。 */
     private long statusSetTimeMs = 0L;
     /** 渐隐参数：5s 后开始 fade，2s 完成。 */
@@ -53,13 +53,13 @@ public class AdvancedColorScreen extends Screen {
     private static final long STATUS_FADE_MS = 2000L;
 
     @SuppressWarnings("unused") // 预留给后续需要在编辑器中推送状态提示的使用场景
-    private void setStatus(Text t) {
+    private void setStatus(Component t) {
         this.statusLine = t;
         this.statusSetTimeMs = System.currentTimeMillis();
     }
 
     public AdvancedColorScreen(Screen parent) {
-        super(Text.translatable("text.ssc_addon.adv_color.title"));
+        super(Component.translatable("text.ssc_addon.adv_color.title"));
         this.parent = parent;
     }
 
@@ -75,16 +75,16 @@ public class AdvancedColorScreen extends Screen {
 
         // ====== 顶部：启用开关 + 5 个色块切换 ======
         int topY = 26;
-        enableCheck = CheckboxWidget.builder(Text.translatable("text.ssc_addon.adv_color.enable"), textRenderer)
+        enableCheck = Checkbox.builder(Component.translatable("text.ssc_addon.adv_color.enable"), font)
                 .pos(12, topY)
                 .maxWidth(20)
-                .checked(working.enabled)
-                .callback((checkbox, checked) -> {
+                .selected(working.enabled)
+                .onValueChange((checkbox, checked) -> {
                     working.enabled = checked;
                     AdvancedColorBridge.applyPreview(working);
                 })
                 .build();
-        addDrawableChild(enableCheck);
+        addRenderableWidget(enableCheck);
 
         // 5 个色块：在顶部右侧
         int swatchSize = 22;
@@ -98,7 +98,7 @@ public class AdvancedColorScreen extends Screen {
             SwatchButton btn = new SwatchButton(sx, topY, swatchSize, swatchSize,
                     b -> { editingIdx = idx; refreshAllFromWorking(); });
             colorTabs[i] = btn;
-            addDrawableChild(btn);
+            addRenderableWidget(btn);
         }
 
         // ====== 三栏并排 ======
@@ -123,15 +123,15 @@ public class AdvancedColorScreen extends Screen {
         gField = makeNumField(leftX + labelW, lineY + 22, fieldW, 0, 255, c -> updateColorChannel(1, c));
         bField = makeNumField(leftX + labelW, lineY + 44, fieldW, 0, 255, c -> updateColorChannel(2, c));
         aField = makeNumField(leftX + labelW, lineY + 66, fieldW, 0, 255, c -> updateColorChannel(3, c));
-        addDrawableChild(rField); addDrawableChild(gField); addDrawableChild(bField); addDrawableChild(aField);
+        addRenderableWidget(rField); addRenderableWidget(gField); addRenderableWidget(bField); addRenderableWidget(aField);
 
         // Hex 输入 (RRGGBB 或 AARRGGBB)
-        hexField = new TextFieldWidget(this.textRenderer, leftX, lineY + 92,
-                Math.min(110, colW), 18, Text.literal("#"));
+        hexField = new EditBox(this.font, leftX, lineY + 92,
+                Math.min(110, colW), 18, Component.literal("#"));
         // 9 = 「#」 + 8 位 AARRGGBB，避免带 # 的 8 位 hex 被截到 7 位
         hexField.setMaxLength(9);
-        hexField.setChangedListener(s -> { if (!suppressCallbacks) applyHexInput(s); });
-        addDrawableChild(hexField);
+        hexField.setResponder(s -> { if (!suppressCallbacks) applyHexInput(s); });
+        addRenderableWidget(hexField);
 
         // ---- 中栏：顶部预留预览框 76x90，下方四条滑条（缩小高度+行距） ----
         int sliderW = colW;
@@ -143,7 +143,7 @@ public class AdvancedColorScreen extends Screen {
         sliderG = new RgbSlider(midX, sliderTopY + sliderGap,      sliderW, sliderH, "G", 0,   c -> updateColorChannel(1, c));
         sliderB = new RgbSlider(midX, sliderTopY + sliderGap * 2,  sliderW, sliderH, "B", 0,   c -> updateColorChannel(2, c));
         sliderA = new RgbSlider(midX, sliderTopY + sliderGap * 3,  sliderW, sliderH, "A", 255, c -> updateColorChannel(3, c));
-        addDrawableChild(sliderR); addDrawableChild(sliderG); addDrawableChild(sliderB); addDrawableChild(sliderA);
+        addRenderableWidget(sliderR); addRenderableWidget(sliderG); addRenderableWidget(sliderB); addRenderableWidget(sliderA);
 
         // ---- 右栏：HSV 拾色 ----
         int svSize = Math.min(96, colH - 10);
@@ -170,16 +170,16 @@ public class AdvancedColorScreen extends Screen {
                 case 1 -> "text.ssc_addon.adv_color.grey_reverse.accent1";
                 default -> "text.ssc_addon.adv_color.grey_reverse.accent2";
             };
-            grChecks[i] = CheckboxWidget.builder(Text.translatable(key), textRenderer)
+            grChecks[i] = Checkbox.builder(Component.translatable(key), font)
                     .pos(rightX, grStartY + i * grRowH)
                     .maxWidth(20)
-                    .checked(working.greyReverse[idx])
-                    .callback((checkbox, checked) -> {
+                    .selected(working.greyReverse[idx])
+                    .onValueChange((checkbox, checked) -> {
                         working.greyReverse[idx] = checked;
                         AdvancedColorBridge.applyPreview(working);
                     })
                     .build();
-            addDrawableChild(grChecks[i]);
+            addRenderableWidget(grChecks[i]);
         }
 
         // ====== 底部：→预设 / 取消 / 保存（3 个按钮居中一行对齐）======
@@ -190,23 +190,23 @@ public class AdvancedColorScreen extends Screen {
         int botTotalW = botBtnW * 3 + botGap * 2;
         int botStartX = (width - botTotalW) / 2;
         // → 预设管理：传 this 而不是 this.parent，让预设屏关闭后能返回本屏实例，保留 working 状态
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.adv_color.btn.to_presets"),
-                b -> MinecraftClient.getInstance().setScreen(
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.adv_color.btn.to_presets"),
+                b -> Minecraft.getInstance().setScreen(
                         new net.onixary.shapeShifterCurseFabric.ssc_addon.client.palette.PalettePresetsScreen(this)
-                )).size(botBtnW, botBtnH).position(botStartX, btnY).build());
+                )).size(botBtnW, botBtnH).pos(botStartX, btnY).build());
         // 取消
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.adv_color.btn.cancel"),
-                b -> requestCancel()).size(botBtnW, botBtnH).position(botStartX + botBtnW + botGap, btnY).build());
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.adv_color.btn.cancel"),
+                b -> requestCancel()).size(botBtnW, botBtnH).pos(botStartX + botBtnW + botGap, btnY).build());
         // 保存
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.adv_color.btn.save"),
-                b -> doSave()).size(botBtnW, botBtnH).position(botStartX + (botBtnW + botGap) * 2, btnY).build());
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.adv_color.btn.save"),
+                b -> doSave()).size(botBtnW, botBtnH).pos(botStartX + (botBtnW + botGap) * 2, btnY).build());
 
         // 左下角：重新观看教程
-        addDrawableChild(ButtonWidget.builder(Text.translatable("text.ssc_addon.adv_color.tutorial.replay"),
+        addRenderableWidget(Button.builder(Component.translatable("text.ssc_addon.adv_color.tutorial.replay"),
                 b -> {
                     tutorialPrompted = true;   // 跳过确认框，直接重放
-                    this.client.setScreen(new ColorTutorialOverlay(this, () -> {}, buildTutorialSteps()));
-                }).size(64, 16).position(8, height - 22).build());
+                    this.minecraft.setScreen(new ColorTutorialOverlay(this, () -> {}, buildTutorialSteps()));
+                }).size(64, 16).pos(8, height - 22).build());
 
         refreshAllFromWorking();
 
@@ -218,7 +218,7 @@ public class AdvancedColorScreen extends Screen {
 
     /** 首次（当前存档未看过）进入颜色编辑器时，先弹「是否查看教程」确认框。 */
     private void maybeShowTutorial() {
-        if (this.client == null) return;
+        if (this.minecraft == null) return;
         if (tutorialPrompted) return;   // 同一界面实例只问一次，避免 init 重入递归
         String saveId = net.onixary.shapeShifterCurseFabric.ssc_addon.util.ClientSaveUtils.getCurrentSaveId();
         net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig cfg =
@@ -236,20 +236,20 @@ public class AdvancedColorScreen extends Screen {
         };
 
         // 先弹「是否查看教程」确认框：确认 → 播放教程；取消 → 标记已看过、直接进入编辑界面
-        net.minecraft.client.gui.screen.ConfirmScreen confirm = new net.minecraft.client.gui.screen.ConfirmScreen(
+        net.minecraft.client.gui.screens.ConfirmScreen confirm = new net.minecraft.client.gui.screens.ConfirmScreen(
                 yes -> {
                     if (yes) {
-                        this.client.setScreen(new ColorTutorialOverlay(this, markSeen, buildTutorialSteps()));
+                        this.minecraft.setScreen(new ColorTutorialOverlay(this, markSeen, buildTutorialSteps()));
                     } else {
                         markSeen.run();
-                        this.client.setScreen(this);
+                        this.minecraft.setScreen(this);
                     }
                 },
-                Text.translatable("text.ssc_addon.adv_color.tutorial.prompt.title"),
-                Text.translatable("text.ssc_addon.adv_color.tutorial.prompt.body"),
-                Text.translatable("text.ssc_addon.adv_color.tutorial.prompt.yes"),
-                Text.translatable("text.ssc_addon.adv_color.tutorial.prompt.no"));
-        this.client.setScreen(confirm);
+                Component.translatable("text.ssc_addon.adv_color.tutorial.prompt.title"),
+                Component.translatable("text.ssc_addon.adv_color.tutorial.prompt.body"),
+                Component.translatable("text.ssc_addon.adv_color.tutorial.prompt.yes"),
+                Component.translatable("text.ssc_addon.adv_color.tutorial.prompt.no"));
+        this.minecraft.setScreen(confirm);
     }
 
     /** 构造教程步骤列表（高亮区域用屏幕相对坐标实时计算）。 */
@@ -273,7 +273,7 @@ public class AdvancedColorScreen extends Screen {
                 "text.ssc_addon.adv_color.tutorial.step.goto_presets",
                 () -> {
                     PENDING_PRESET_TUTORIAL = true;
-                    MinecraftClient.getInstance().setScreen(
+                    Minecraft.getInstance().setScreen(
                             new net.onixary.shapeShifterCurseFabric.ssc_addon.client.palette.PalettePresetsScreen(this));
                 }));
         return steps;
@@ -283,8 +283,8 @@ public class AdvancedColorScreen extends Screen {
     public static boolean PENDING_PRESET_TUTORIAL = false;
 
     /** 由两个控件计算包围矩形（含小边距）。 */
-    private static int[] rectOf(net.minecraft.client.gui.widget.ClickableWidget a,
-                                net.minecraft.client.gui.widget.ClickableWidget b) {
+    private static int[] rectOf(net.minecraft.client.gui.components.AbstractWidget a,
+                                net.minecraft.client.gui.components.AbstractWidget b) {
         int x1 = Math.min(a.getX(), b.getX());
         int y1 = Math.min(a.getY(), b.getY());
         int x2 = Math.max(a.getX() + a.getWidth(), b.getX() + b.getWidth());
@@ -292,10 +292,10 @@ public class AdvancedColorScreen extends Screen {
         return new int[]{x1 - 2, y1 - 2, x2 - x1 + 4, y2 - y1 + 4};
     }
 
-    private TextFieldWidget makeNumField(int x, int y, int w, int min, int max, java.util.function.IntConsumer onValid) {
-        TextFieldWidget f = new TextFieldWidget(this.textRenderer, x, y, w, 18, Text.literal(""));
+    private EditBox makeNumField(int x, int y, int w, int min, int max, java.util.function.IntConsumer onValid) {
+        EditBox f = new EditBox(this.font, x, y, w, 18, Component.literal(""));
         f.setMaxLength(3);
-        f.setChangedListener(s -> {
+        f.setResponder(s -> {
             if (suppressCallbacks) return;
             try {
                 int v = Integer.parseInt(s.trim());
@@ -332,11 +332,11 @@ public class AdvancedColorScreen extends Screen {
             int g = (argb >>> 8) & 0xFF;
             int b = argb & 0xFF;
             // 全部 4 通道都回填（含触发通道本身：滑条<->文本框需保持两端一致）
-            rField.setText(String.valueOf(r)); sliderR.setIntValue(r);
-            gField.setText(String.valueOf(g)); sliderG.setIntValue(g);
-            bField.setText(String.valueOf(b)); sliderB.setIntValue(b);
-            aField.setText(String.valueOf(a)); sliderA.setIntValue(a);
-            hexField.setText(toHexString(argb));
+            rField.setValue(String.valueOf(r)); sliderR.setIntValue(r);
+            gField.setValue(String.valueOf(g)); sliderG.setIntValue(g);
+            bField.setValue(String.valueOf(b)); sliderB.setIntValue(b);
+            aField.setValue(String.valueOf(a)); sliderA.setIntValue(a);
+            hexField.setValue(toHexString(argb));
             hsvPicker.setFromRgb(argb & 0x00FFFFFF);
         } finally {
             suppressCallbacks = false;
@@ -351,11 +351,11 @@ public class AdvancedColorScreen extends Screen {
             int r = (argb >>> 16) & 0xFF;
             int g = (argb >>> 8) & 0xFF;
             int b = argb & 0xFF;
-            rField.setText(String.valueOf(r)); sliderR.setIntValue(r);
-            gField.setText(String.valueOf(g)); sliderG.setIntValue(g);
-            bField.setText(String.valueOf(b)); sliderB.setIntValue(b);
-            aField.setText(String.valueOf(a)); sliderA.setIntValue(a);
-            hexField.setText(toHexString(argb));
+            rField.setValue(String.valueOf(r)); sliderR.setIntValue(r);
+            gField.setValue(String.valueOf(g)); sliderG.setIntValue(g);
+            bField.setValue(String.valueOf(b)); sliderB.setIntValue(b);
+            aField.setValue(String.valueOf(a)); sliderA.setIntValue(a);
+            hexField.setValue(toHexString(argb));
         } finally {
             suppressCallbacks = false;
         }
@@ -392,10 +392,10 @@ public class AdvancedColorScreen extends Screen {
             int r = (argb >>> 16) & 0xFF;
             int g = (argb >>> 8) & 0xFF;
             int b = argb & 0xFF;
-            rField.setText(String.valueOf(r)); sliderR.setIntValue(r);
-            gField.setText(String.valueOf(g)); sliderG.setIntValue(g);
-            bField.setText(String.valueOf(b)); sliderB.setIntValue(b);
-            aField.setText(String.valueOf(a)); sliderA.setIntValue(a);
+            rField.setValue(String.valueOf(r)); sliderR.setIntValue(r);
+            gField.setValue(String.valueOf(g)); sliderG.setIntValue(g);
+            bField.setValue(String.valueOf(b)); sliderB.setIntValue(b);
+            aField.setValue(String.valueOf(a)); sliderA.setIntValue(a);
             hsvPicker.setFromRgb(argb & 0x00FFFFFF);
         } finally {
             suppressCallbacks = false;
@@ -410,16 +410,16 @@ public class AdvancedColorScreen extends Screen {
     // ====== 渲染 ======
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         this.renderBackground(ctx, mouseX, mouseY, delta);
         super.render(ctx, mouseX, mouseY, delta);
 
         // 标题
-        ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, width / 2, 8, 0xFFFFFF);
+        ctx.drawCenteredString(this.font, this.title, width / 2, 8, 0xFFFFFF);
 
         // 5 色块边框 + 选中高亮
         for (int i = 0; i < AdvancedColorBridge.COLOR_COUNT; i++) {
-            ButtonWidget btn = colorTabs[i];
+            Button btn = colorTabs[i];
             int bx = btn.getX(), by = btn.getY(), bw = btn.getWidth(), bh = btn.getHeight();
             int col = working.colorsARGB[i] | 0xFF000000; // 强制不透明显示
             ctx.fill(bx + 2, by + 2, bx + bw - 2, by + bh - 2, col);
@@ -432,15 +432,15 @@ public class AdvancedColorScreen extends Screen {
 
             // 鼠标 hover 时显示色块名 tooltip
             if (mouseX >= bx && mouseX < bx + bw && mouseY >= by && mouseY < by + bh) {
-                ctx.drawTooltip(this.textRenderer, slotNameText(i), mouseX, mouseY);
+                ctx.renderTooltip(this.font, slotNameText(i), mouseX, mouseY);
             }
         }
 
         // 色块下方居中：当前编辑色槽名（黄色 0xFFFFAA 与列标题统一）
         if (colorTabs[0] != null) {
             int labelY = colorTabs[0].getY() + colorTabs[0].getHeight() + 4;
-            ctx.drawCenteredTextWithShadow(this.textRenderer,
-                    Text.translatable("text.ssc_addon.adv_color.current_editing", slotNameText(editingIdx)),
+            ctx.drawCenteredString(this.font,
+                    Component.translatable("text.ssc_addon.adv_color.current_editing", slotNameText(editingIdx)),
                     width / 2, labelY, 0xFFFFAA);
         }
 
@@ -453,17 +453,17 @@ public class AdvancedColorScreen extends Screen {
         int midX   = leftX + colW + gapBetween;
         int rightX = midX + colW + gapBetween;
         int lineY = colTop + 14;
-        ctx.drawTextWithShadow(this.textRenderer, Text.translatable("text.ssc_addon.adv_color.col.rgba"), leftX, colTop, 0xFFFFAA);
-        ctx.drawTextWithShadow(this.textRenderer, Text.translatable("text.ssc_addon.adv_color.col.wheel"), rightX, colTop, 0xFFFFAA);
+        ctx.drawString(this.font, Component.translatable("text.ssc_addon.adv_color.col.rgba"), leftX, colTop, 0xFFFFAA);
+        ctx.drawString(this.font, Component.translatable("text.ssc_addon.adv_color.col.wheel"), rightX, colTop, 0xFFFFAA);
         // “滑条”标题：贴近第一条滑条左上方（与 init() 里 sliderTopY 取同一公式）
         int sliderTopY = colTop + 90 + 12;
-        ctx.drawTextWithShadow(this.textRenderer, Text.translatable("text.ssc_addon.adv_color.col.slider"), midX, sliderTopY - 11, 0xFFFFAA);
+        ctx.drawString(this.font, Component.translatable("text.ssc_addon.adv_color.col.slider"), midX, sliderTopY - 11, 0xFFFFAA);
 
         // 左栏 R/G/B/A label
-        ctx.drawTextWithShadow(this.textRenderer, Text.literal("R"), leftX + 4, lineY + 5,  0xFF6666);
-        ctx.drawTextWithShadow(this.textRenderer, Text.literal("G"), leftX + 4, lineY + 27, 0x66FF66);
-        ctx.drawTextWithShadow(this.textRenderer, Text.literal("B"), leftX + 4, lineY + 49, 0x6666FF);
-        ctx.drawTextWithShadow(this.textRenderer, Text.literal("A"), leftX + 4, lineY + 71, 0xCCCCCC);
+        ctx.drawString(this.font, Component.literal("R"), leftX + 4, lineY + 5,  0xFF6666);
+        ctx.drawString(this.font, Component.literal("G"), leftX + 4, lineY + 27, 0x66FF66);
+        ctx.drawString(this.font, Component.literal("B"), leftX + 4, lineY + 49, 0x6666FF);
+        ctx.drawString(this.font, Component.literal("A"), leftX + 4, lineY + 71, 0xCCCCCC);
 
         // 右栏拾色器渲染
         hsvPicker.render(ctx, mouseX, mouseY);
@@ -473,8 +473,8 @@ public class AdvancedColorScreen extends Screen {
         int previewX = midX + (colW - previewW) / 2;
         int previewY = colTop; // 顶到列顶，最大化可用空间
         ctx.fill(previewX, previewY, previewX + previewW, previewY + previewH, 0x88000000);
-        ctx.drawBorder(previewX, previewY, previewW, previewH, 0xFFAAAAAA);
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        ctx.renderOutline(previewX, previewY, previewW, previewH, 0xFFAAAAAA);
+        LocalPlayer player = Minecraft.getInstance().player;
         if (player != null) {
             // 预览已由 applyPreview 把 working 推到 PlayerSkinComponent，这里直接渲染玩家即可
             int cx = previewX + previewW / 2;
@@ -486,20 +486,20 @@ public class AdvancedColorScreen extends Screen {
             Quaternionf body = new Quaternionf().rotateZ((float) Math.PI);
             Quaternionf head = new Quaternionf().rotateX(g * 20.0F * 0.017453292F);
             body.mul(head);
-            float bh = player.bodyYaw, yaw = player.getYaw(), pitch = player.getPitch();
-            float phy = player.prevHeadYaw, hy = player.headYaw, pby = player.prevBodyYaw;
-            player.bodyYaw = 180.0F + f * 20.0F;
-            player.prevBodyYaw = player.bodyYaw;
-            player.setYaw(180.0F + f * 40.0F);
-            player.setPitch(-g * 20.0F);
-            player.headYaw = player.getYaw();
-            player.prevHeadYaw = player.getYaw();
+            float bh = player.yBodyRot, yaw = player.getYRot(), pitch = player.getXRot();
+            float phy = player.yHeadRotO, hy = player.yHeadRot, pby = player.yBodyRotO;
+            player.yBodyRot = 180.0F + f * 20.0F;
+            player.yBodyRotO = player.yBodyRot;
+            player.setYRot(180.0F + f * 40.0F);
+            player.setXRot(-g * 20.0F);
+            player.yHeadRot = player.getYRot();
+            player.yHeadRotO = player.getYRot();
             try {
-                InventoryScreen.drawEntity(ctx, (float)cx, (float)cy, 40, new org.joml.Vector3f(0.0f, player.getHeight() / 2.0f + 0.0625f * player.getScale(), 0.0f), body, head, player);
+                InventoryScreen.renderEntityInInventory(ctx, (float)cx, (float)cy, 40, new org.joml.Vector3f(0.0f, player.getBbHeight() / 2.0f + 0.0625f * player.getScale(), 0.0f), body, head, player);
             } finally {
-                player.bodyYaw = bh; player.prevBodyYaw = pby;
-                player.setYaw(yaw); player.setPitch(pitch);
-                player.prevHeadYaw = phy; player.headYaw = hy;
+                player.yBodyRot = bh; player.yBodyRotO = pby;
+                player.setYRot(yaw); player.setXRot(pitch);
+                player.yHeadRotO = phy; player.yHeadRot = hy;
             }
         }
 
@@ -519,7 +519,7 @@ public class AdvancedColorScreen extends Screen {
             }
             if (alpha > 4) {
                 int color = (alpha << 24) | 0xAAFFAA;
-                ctx.drawCenteredTextWithShadow(this.textRenderer, statusLine,
+                ctx.drawCenteredString(this.font, statusLine,
                         width / 2, height - 28 - 14, color);
             }
         }
@@ -589,7 +589,7 @@ public class AdvancedColorScreen extends Screen {
     // ====== 关闭 / 保存 / 取消 ======
 
     @Override
-    public void close() {
+    public void onClose() {
         // ESC 触发——视为请求取消
         requestCancel();
     }
@@ -597,7 +597,7 @@ public class AdvancedColorScreen extends Screen {
     private void requestCancel() {
         if (isDirty()) {
             // 3 选项未保存确认：保存并退出 / 直接退出 / 返回
-            MinecraftClient.getInstance().setScreen(new UnsavedConfirmScreen(this));
+            Minecraft.getInstance().setScreen(new UnsavedConfirmScreen(this));
         } else {
             performCancel();
         }
@@ -617,24 +617,24 @@ public class AdvancedColorScreen extends Screen {
 
     private void performCancel() {
         AdvancedColorBridge.restoreFromBackup(previewBackup);
-        MinecraftClient.getInstance().setScreen(parent);
+        Minecraft.getInstance().setScreen(parent);
     }
 
     private void doSave() {
         AdvancedColorBridge.commitSave(working);
         // 提交后 PlayerSkinComponent 会被服务端同步覆写，无需手动 restoreFromBackup
-        MinecraftClient.getInstance().setScreen(parent);
+        Minecraft.getInstance().setScreen(parent);
     }
 
     /** 5 个色槽对应的本地化名称。 */
-    private static Text slotNameText(int idx) {
+    private static Component slotNameText(int idx) {
         return switch (idx) {
-            case AdvancedColorBridge.IDX_PRIMARY -> Text.translatable("text.ssc_addon.adv_color.slot.primary");
-            case AdvancedColorBridge.IDX_ACCENT1 -> Text.translatable("text.ssc_addon.adv_color.slot.accent1");
-            case AdvancedColorBridge.IDX_ACCENT2 -> Text.translatable("text.ssc_addon.adv_color.slot.accent2");
-            case AdvancedColorBridge.IDX_EYE_A   -> Text.translatable("text.ssc_addon.adv_color.slot.eye_a");
-            case AdvancedColorBridge.IDX_EYE_B   -> Text.translatable("text.ssc_addon.adv_color.slot.eye_b");
-            default -> Text.literal("?");
+            case AdvancedColorBridge.IDX_PRIMARY -> Component.translatable("text.ssc_addon.adv_color.slot.primary");
+            case AdvancedColorBridge.IDX_ACCENT1 -> Component.translatable("text.ssc_addon.adv_color.slot.accent1");
+            case AdvancedColorBridge.IDX_ACCENT2 -> Component.translatable("text.ssc_addon.adv_color.slot.accent2");
+            case AdvancedColorBridge.IDX_EYE_A   -> Component.translatable("text.ssc_addon.adv_color.slot.eye_a");
+            case AdvancedColorBridge.IDX_EYE_B   -> Component.translatable("text.ssc_addon.adv_color.slot.eye_b");
+            default -> Component.literal("?");
         };
     }
 
@@ -644,12 +644,12 @@ public class AdvancedColorScreen extends Screen {
      * R/G/B/A 通道滑条。
      * 显示文本 "X: 123"，0~255 离散。
      */
-    private static class RgbSlider extends SliderWidget {
+    private static class RgbSlider extends AbstractSliderButton {
         private final String channelLabel;
         private final java.util.function.IntConsumer onValueChanged;
 
         RgbSlider(int x, int y, int w, int h, String channelLabel, int initial, java.util.function.IntConsumer onValueChanged) {
-            super(x, y, w, h, Text.literal(channelLabel + ": " + initial), initial / 255.0);
+            super(x, y, w, h, Component.literal(channelLabel + ": " + initial), initial / 255.0);
             this.channelLabel = channelLabel;
             this.onValueChanged = onValueChanged;
             updateMessage();
@@ -663,7 +663,7 @@ public class AdvancedColorScreen extends Screen {
         @Override
         protected void updateMessage() {
             int v = (int) Math.round(this.value * 255.0);
-            this.setMessage(Text.literal(channelLabel + ": " + v));
+            this.setMessage(Component.literal(channelLabel + ": " + v));
         }
 
         @Override
@@ -676,12 +676,12 @@ public class AdvancedColorScreen extends Screen {
     }
 
     /** 色块按钮：仅作为可点击 + 可叙述区域，vanilla 背景全部抑制；色块本身由 Screen.render() 自行绘制。 */
-    private static class SwatchButton extends ButtonWidget {
-        SwatchButton(int x, int y, int w, int h, PressAction onPress) {
-            super(x, y, w, h, Text.literal(""), onPress, ButtonWidget.DEFAULT_NARRATION_SUPPLIER);
+    private static class SwatchButton extends Button {
+        SwatchButton(int x, int y, int w, int h, OnPress onPress) {
+            super(x, y, w, h, Component.literal(""), onPress, Button.DEFAULT_NARRATION);
         }
         @Override
-        protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        protected void renderWidget(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
             // 不画任何 vanilla 背景，避免 hover 灰色覆盖外部色块绘制
         }
     }
@@ -691,7 +691,7 @@ public class AdvancedColorScreen extends Screen {
         private final AdvancedColorScreen owner;
 
         protected UnsavedConfirmScreen(AdvancedColorScreen owner) {
-            super(Text.translatable("text.ssc_addon.adv_color.confirm.unsaved_title"));
+            super(Component.translatable("text.ssc_addon.adv_color.confirm.unsaved_title"));
             this.owner = owner;
         }
 
@@ -704,29 +704,29 @@ public class AdvancedColorScreen extends Screen {
             // 按钮起始 y 放到画面中央 +20，腾出上方空间给标题与说明文字
             int y = height / 2 + 20;
 
-            addDrawableChild(ButtonWidget.builder(
-                    Text.translatable("text.ssc_addon.adv_color.confirm.save_and_exit"),
+            addRenderableWidget(Button.builder(
+                    Component.translatable("text.ssc_addon.adv_color.confirm.save_and_exit"),
                     b -> owner.doSave()
-            ).size(btnW, btnH).position(x, y).build());
+            ).size(btnW, btnH).pos(x, y).build());
 
-            addDrawableChild(ButtonWidget.builder(
-                    Text.translatable("text.ssc_addon.adv_color.confirm.discard_and_exit"),
+            addRenderableWidget(Button.builder(
+                    Component.translatable("text.ssc_addon.adv_color.confirm.discard_and_exit"),
                     b -> owner.performCancel()
-            ).size(btnW, btnH).position(x, y + (btnH + gap)).build());
+            ).size(btnW, btnH).pos(x, y + (btnH + gap)).build());
 
-            addDrawableChild(ButtonWidget.builder(
-                    Text.translatable("text.ssc_addon.adv_color.confirm.back"),
-                    b -> MinecraftClient.getInstance().setScreen(owner)
-            ).size(btnW, btnH).position(x, y + (btnH + gap) * 2).build());
+            addRenderableWidget(Button.builder(
+                    Component.translatable("text.ssc_addon.adv_color.confirm.back"),
+                    b -> Minecraft.getInstance().setScreen(owner)
+            ).size(btnW, btnH).pos(x, y + (btnH + gap) * 2).build());
         }
 
         @Override
-        public void render(DrawContext ctx, int mx, int my, float delta) {
+        public void render(GuiGraphics ctx, int mx, int my, float delta) {
             this.renderBackground(ctx, mx, my, delta);
             // 标题与说明文字往上挪，与按钮区分开
-            ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, width / 2, height / 2 - 40, 0xFFFFFF);
-            ctx.drawCenteredTextWithShadow(this.textRenderer,
-                    Text.translatable("text.ssc_addon.adv_color.confirm.unsaved_msg"),
+            ctx.drawCenteredString(this.font, this.title, width / 2, height / 2 - 40, 0xFFFFFF);
+            ctx.drawCenteredString(this.font,
+                    Component.translatable("text.ssc_addon.adv_color.confirm.unsaved_msg"),
                     width / 2, height / 2 - 20, 0xC0C0C0);
             super.render(ctx, mx, my, delta);
         }
@@ -741,8 +741,8 @@ public class AdvancedColorScreen extends Screen {
         }
 
         @Override
-        public void close() {
-            MinecraftClient.getInstance().setScreen(owner);
+        public void onClose() {
+            Minecraft.getInstance().setScreen(owner);
         }
     }
 }

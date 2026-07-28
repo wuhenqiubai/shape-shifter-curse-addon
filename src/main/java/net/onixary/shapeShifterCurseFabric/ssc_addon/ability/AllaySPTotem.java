@@ -3,25 +3,23 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.util.math.Box;
-
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.phys.AABB;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -47,7 +45,7 @@ public class AllaySPTotem {
 
 	private static void onServerTick(MinecraftServer server) {
 		// 每40tick（2秒）检查一次，平衡响应性和性能
-		long currentTick = server.getOverworld().getTime();
+		long currentTick = server.overworld().getGameTime();
 		if (currentTick % 40 != 0) {
 			return;
 		}
@@ -56,7 +54,7 @@ public class AllaySPTotem {
 		Iterator<UUID> it = playersWithActiveTotems.iterator();
 		while (it.hasNext()) {
 			UUID uuid = it.next();
-			ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+			ServerPlayer player = server.getPlayerList().getPlayer(uuid);
 
 			// 玩家离线或不存在，移除追踪
 			if (player == null) {
@@ -67,7 +65,7 @@ public class AllaySPTotem {
 			// 检查是否仍持有激活的图腾
 			boolean stillHasActiveTotem = false;
 
-			for (ItemStack stack : player.getInventory().main) {
+			for (ItemStack stack : player.getInventory().items) {
 				if (isActiveTotem(stack)) {
 					stillHasActiveTotem = true;
 					break;
@@ -75,7 +73,7 @@ public class AllaySPTotem {
 			}
 
 			if (!stillHasActiveTotem) {
-				for (ItemStack stack : player.getInventory().offHand) {
+				for (ItemStack stack : player.getInventory().offhand) {
 					if (isActiveTotem(stack)) {
 						stillHasActiveTotem = true;
 						break;
@@ -96,12 +94,12 @@ public class AllaySPTotem {
 		}
 	}
 
-	private static void deactivateAllTotems(ServerPlayerEntity player) {
+	private static void deactivateAllTotems(ServerPlayer player) {
 		// Check main inventory and offhand
 		boolean deactivatedAny = false;
 
 		// Check main inventory
-		for (ItemStack stack : player.getInventory().main) {
+		for (ItemStack stack : player.getInventory().items) {
 			if (isActiveTotem(stack)) {
 				deactivateTotem(stack);
 				deactivatedAny = true;
@@ -109,7 +107,7 @@ public class AllaySPTotem {
 		}
 
 		// Check offhand
-		for (ItemStack stack : player.getInventory().offHand) {
+		for (ItemStack stack : player.getInventory().offhand) {
 			if (isActiveTotem(stack)) {
 				deactivateTotem(stack);
 				deactivatedAny = true;
@@ -117,59 +115,59 @@ public class AllaySPTotem {
 		}
 
 		if (deactivatedAny) {
-			player.sendMessage(Text.translatable("message.ssc_addon.totem.deactivated"), true);
-			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
+			player.displayClientMessage(Component.translatable("message.ssc_addon.totem.deactivated"), true);
+			player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
 		}
 	}
 
 	private static void deactivateTotem(ItemStack stack) {
-		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+		CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> {
 			nbt.remove(ACTIVE_TAG);
 			nbt.remove("Enchantments");
 			nbt.remove("HideFlags");
 		});
 	}
 
-	private static TypedActionResult<ItemStack> onUseItem(PlayerEntity player, net.minecraft.world.World world, Hand hand) {
-		if (world.isClient) return TypedActionResult.pass(player.getStackInHand(hand));
+	private static InteractionResultHolder<ItemStack> onUseItem(Player player, net.minecraft.world.level.Level world, InteractionHand hand) {
+		if (world.isClientSide) return InteractionResultHolder.pass(player.getItemInHand(hand));
 
-		ItemStack stack = player.getStackInHand(hand);
+		ItemStack stack = player.getItemInHand(hand);
 
 		// Only function for Totem of Undying
-		if (!stack.isOf(Items.TOTEM_OF_UNDYING)) {
-			return TypedActionResult.pass(stack);
+		if (!stack.is(Items.TOTEM_OF_UNDYING)) {
+			return InteractionResultHolder.pass(stack);
 		}
 
 		// Must be SP Allay locally checked
 		if (!isSpAllay(player)) {
-			return TypedActionResult.pass(stack);
+			return InteractionResultHolder.pass(stack);
 		}
 
 		// Toggle Active State
-		NbtComponent customData = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT);
-		boolean isActive = customData.getNbt().getBoolean(ACTIVE_TAG);
+		CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+		boolean isActive = customData.getUnsafe().getBoolean(ACTIVE_TAG);
 
 		if (isActive) {
 			// Deactivate
-			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+			CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> {
 				nbt.remove(ACTIVE_TAG);
 				nbt.remove("Enchantments");
 				nbt.remove("HideFlags");
 			});
 
-			player.sendMessage(Text.translatable("message.ssc_addon.totem.deactivated"), true);
-			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
+			player.displayClientMessage(Component.translatable("message.ssc_addon.totem.deactivated"), true);
+			player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0f, 0.5f);
 
-			if (player instanceof ServerPlayerEntity serverPlayer) {
+			if (player instanceof ServerPlayer serverPlayer) {
 				updateActiveTotemTracking(serverPlayer, false);
 			}
 		} else {
 			// Activate
-			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+			CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> {
 				nbt.putBoolean(ACTIVE_TAG, true);
 				if (!nbt.contains("Enchantments")) {
-					NbtList enchantments = new NbtList();
-					NbtCompound unbreaking = new NbtCompound();
+					ListTag enchantments = new ListTag();
+					CompoundTag unbreaking = new CompoundTag();
 					unbreaking.putString("id", "minecraft:unbreaking");
 					unbreaking.putShort("lvl", (short) 1);
 					enchantments.add(unbreaking);
@@ -178,15 +176,15 @@ public class AllaySPTotem {
 				}
 			});
 
-			player.sendMessage(Text.translatable("message.ssc_addon.totem.activated"), true);
-			player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 2.0f);
+			player.displayClientMessage(Component.translatable("message.ssc_addon.totem.activated"), true);
+			player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0f, 2.0f);
 
-			if (player instanceof ServerPlayerEntity serverPlayer) {
+			if (player instanceof ServerPlayer serverPlayer) {
 				updateActiveTotemTracking(serverPlayer, true);
 			}
 		}
 
-		return TypedActionResult.success(stack);
+		return InteractionResultHolder.success(stack);
 	}
 
 	/**
@@ -196,14 +194,14 @@ public class AllaySPTotem {
 	 * @return true if an Allay SP totem was used and prevented death.
 	 */
 	public static boolean tryUseAllayTotem(LivingEntity entity) {
-		if (entity.getWorld().isClient) return false;
+		if (entity.level().isClientSide) return false;
 
 		// Get nearby players within range
-		Box box = entity.getBoundingBox().expand(RANGE);
-		List<PlayerEntity> nearbyPlayers = entity.getWorld().getEntitiesByClass(PlayerEntity.class, box, p -> p instanceof ServerPlayerEntity);
+		AABB box = entity.getBoundingBox().inflate(RANGE);
+		List<Player> nearbyPlayers = entity.level().getEntitiesOfClass(Player.class, box, p -> p instanceof ServerPlayer);
 
-		for (PlayerEntity player : nearbyPlayers) {
-			if (!(player instanceof ServerPlayerEntity serverPlayer)) continue;
+		for (Player player : nearbyPlayers) {
+			if (!(player instanceof ServerPlayer serverPlayer)) continue;
 
 			// a. Check if they are SP Allay
 			if (!isSpAllay(serverPlayer)) continue;
@@ -222,20 +220,20 @@ public class AllaySPTotem {
 
 			if (!activeTotem.isEmpty()) {
 				// d. Consume totem
-				activeTotem.decrement(1);
+				activeTotem.shrink(1);
 
 				// e. Trigger Effect on DYING ENTITY
 				entity.setHealth(1.0F);
-				entity.clearStatusEffects();
-				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, 100, 1)); // 5 seconds
-				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 900, 1)); // 45 seconds
-				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 800, 0)); // 40 seconds
+				entity.removeAllEffects();
+				entity.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 100, 1)); // 5 seconds
+				entity.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 900, 1)); // 45 seconds
+				entity.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 800, 0)); // 40 seconds
 
 				// Visuals: Totem of Undying particle/sound
-				entity.getWorld().sendEntityStatus(entity, (byte) 35);
+				entity.level().broadcastEntityEvent(entity, (byte) 35);
 
 				// Notify SP Allay
-				serverPlayer.sendMessage(Text.translatable("message.ssc_addon.totem.triggered", entity.getDisplayName()), true);
+				serverPlayer.displayClientMessage(Component.translatable("message.ssc_addon.totem.triggered", entity.getDisplayName()), true);
 
 				return true; // Prevent death
 			}
@@ -244,13 +242,13 @@ public class AllaySPTotem {
 		return false; // Did not prevent death
 	}
 
-	private static ItemStack findActiveTotem(ServerPlayerEntity player) {
+	private static ItemStack findActiveTotem(ServerPlayer player) {
 		// Check hands
-		if (isActiveTotem(player.getMainHandStack())) return player.getMainHandStack();
-		if (isActiveTotem(player.getOffHandStack())) return player.getOffHandStack();
+		if (isActiveTotem(player.getMainHandItem())) return player.getMainHandItem();
+		if (isActiveTotem(player.getOffhandItem())) return player.getOffhandItem();
 
 		// Check inventory main
-		for (ItemStack stack : player.getInventory().main) {
+		for (ItemStack stack : player.getInventory().items) {
 			if (isActiveTotem(stack)) return stack;
 		}
 
@@ -259,24 +257,24 @@ public class AllaySPTotem {
 
 	private static boolean isActiveTotem(ItemStack stack) {
 		// Check if item is Totem and has active tag
-		return !stack.isEmpty() && stack.isOf(Items.TOTEM_OF_UNDYING)
-			&& stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getBoolean(ACTIVE_TAG);
+		return !stack.isEmpty() && stack.is(Items.TOTEM_OF_UNDYING)
+			&& stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe().getBoolean(ACTIVE_TAG);
 	}
 
-	private static boolean isSpAllay(PlayerEntity player) {
-		return player instanceof ServerPlayerEntity sp && PowerUtils.isSpAllay(sp);
+	private static boolean isSpAllay(Player player) {
+		return player instanceof ServerPlayer sp && PowerUtils.isSpAllay(sp);
 	}
 
-	private static void updateActiveTotemTracking(ServerPlayerEntity player, boolean hasActiveTotem) {
+	private static void updateActiveTotemTracking(ServerPlayer player, boolean hasActiveTotem) {
 		if (hasActiveTotem) {
-			playersWithActiveTotems.add(player.getUuid());
+			playersWithActiveTotems.add(player.getUUID());
 		} else {
-			playersWithActiveTotems.remove(player.getUuid());
+			playersWithActiveTotems.remove(player.getUUID());
 		}
 	}
 
-	public static void clearPlayer(ServerPlayerEntity player) {
-		playersWithActiveTotems.remove(player.getUuid());
+	public static void clearPlayer(ServerPlayer player) {
+		playersWithActiveTotems.remove(player.getUUID());
 	}
 
 	public static void clearAll() {

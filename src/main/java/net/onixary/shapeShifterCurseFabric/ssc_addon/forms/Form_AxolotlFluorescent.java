@@ -1,7 +1,5 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.player_animation.AnimationHolder;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AbstractAnimStateController;
@@ -17,6 +15,9 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
 
 import static net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric.MOD_ID;
+
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 
 /**
  * 荧光幼灵（Axolotl Fluorescent）形态 —— 复用美西螈三阶段模型/动画。
@@ -49,28 +50,28 @@ public class Form_AxolotlFluorescent extends NormalForm {
 	private static AnimationHolder anim_rush_jump = AnimationHolder.EMPTY;
 	private static AnimationHolder anim_sleep = AnimationHolder.EMPTY;
 
-	public Form_AxolotlFluorescent(Identifier formID) {
+	public Form_AxolotlFluorescent(ResourceLocation formID) {
 		super(formID);
 	}
 
 	public void Anim_registerAnims() {
-		anim_swimming = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_swimming"), true);
-		anim_swimming_idle = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_swimming_idle"), true);
-		anim_crawling = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_crawling"), true);
-		anim_crawling_idle = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_crawling_idle"), true);
-		anim_crawling_attack_once = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_crawling_attack_once"), true);
-		anim_crawling_tool_swing = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_crawling_tool_swing"), true);
-		anim_crawling_jump = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_2_crawling_jump"), true);
-		anim_walking = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_walk"), true);
-		anim_running = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_run"), true);
-		anim_jump = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_jump"), true);
-		anim_idle = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_idle"), true);
-		anim_rush_jump = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_rush_jump"), true, 1, 10);
-		anim_sleep = new AnimationHolder(Identifier.of(MOD_ID, "axolotl_3_idle"), true, 0f);
+		anim_swimming = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_2_swimming"), true);
+		anim_swimming_idle = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_2_swimming_idle"), true);
+		anim_crawling = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_crawling"), true);
+		anim_crawling_idle = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_crawling_idle"), true);
+		anim_crawling_attack_once = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_2_crawling_attack_once"), true);
+		anim_crawling_tool_swing = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_2_crawling_tool_swing"), true);
+		anim_crawling_jump = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_2_crawling_jump"), true);
+		anim_walking = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_walk"), true);
+		anim_running = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_run"), true);
+		anim_jump = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_jump"), true);
+		anim_idle = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_idle"), true);
+		anim_rush_jump = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_rush_jump"), true, 1, 10);
+		anim_sleep = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, "axolotl_3_idle"), true, 0f);
 	}
 
 	@Override
-	public @Nullable AbstractAnimStateController getAnimStateController(PlayerEntity player, AnimSystem.AnimSystemData animSystemData, @NotNull Identifier animStateID) {
+	public @Nullable AbstractAnimStateController getAnimStateController(Player player, AnimSystem.AnimSystemData animSystemData, @NotNull ResourceLocation animStateID) {
 		@Nullable AnimStateEnum animStateEnum = AnimStateEnum.getStateEnum(animStateID);
 		if (animStateEnum != null) {
 			return switch (animStateEnum) {

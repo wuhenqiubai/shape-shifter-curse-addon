@@ -5,7 +5,7 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_Bat3;
 
 /**
@@ -14,7 +14,7 @@ import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_Bat3;
  * 主要玩法围绕将灵果种子附着在友方或敌方身上提供自适应辅助效果。
  */
 public class Form_BatParasiticFruit extends Form_Bat3 {
-    public Form_BatParasiticFruit(Identifier formID) {
+    public Form_BatParasiticFruit(ResourceLocation formID) {
         super(formID);
     }
 }

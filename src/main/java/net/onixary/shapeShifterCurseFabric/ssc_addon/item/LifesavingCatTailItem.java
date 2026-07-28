@@ -5,15 +5,15 @@ import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.loot.LootPool;
-import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
 import java.util.List;
@@ -22,19 +22,19 @@ public class LifesavingCatTailItem extends TrinketItem {
 
 	public static final int MAX_COOLDOWN = 3600;
 
-	public LifesavingCatTailItem(Settings settings) {
+	public LifesavingCatTailItem(Properties settings) {
 		super(settings);
 	}
 
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
 			// Add Lifesaving Cat Tail to Cat drops (1% chance)
-			if (key.getValue().equals(Identifier.of("minecraft", "entities/cat"))) {
-				LootPool.Builder poolBuilder = LootPool.builder()
-						.rolls(ConstantLootNumberProvider.create(1.0f))
-						.conditionally(net.minecraft.loot.condition.RandomChanceLootCondition.builder(0.01f))
-						.with(ItemEntry.builder(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.LIFESAVING_CAT_TAIL));
-				tableBuilder.pool(poolBuilder);
+			if (key.location().equals(ResourceLocation.fromNamespaceAndPath("minecraft", "entities/cat"))) {
+				LootPool.Builder poolBuilder = LootPool.lootPool()
+						.setRolls(ConstantValue.exactly(1.0f))
+						.when(net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition.randomChance(0.01f))
+						.add(LootItem.lootTableItem(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.LIFESAVING_CAT_TAIL));
+				tableBuilder.withPool(poolBuilder);
 			}
 		});
 	}
@@ -82,13 +82,13 @@ public class LifesavingCatTailItem extends TrinketItem {
 	/**
 	 * 根据CD进度获取Formatting颜色
 	 */
-	private Formatting getFormattingForProgress(float progress) {
+	private ChatFormatting getFormattingForProgress(float progress) {
 		if (progress < 0.33f) {
-			return Formatting.RED;
+			return ChatFormatting.RED;
 		} else if (progress < 0.66f) {
-			return Formatting.GOLD;
+			return ChatFormatting.GOLD;
 		} else {
-			return Formatting.GREEN;
+			return ChatFormatting.GREEN;
 		}
 	}
 
@@ -98,13 +98,13 @@ public class LifesavingCatTailItem extends TrinketItem {
 	}
 
 	@Override
-	public boolean isItemBarVisible(ItemStack stack) {
+	public boolean isBarVisible(ItemStack stack) {
 		// 只有在冷却中才显示进度条
 		return isOnCooldown();
 	}
 
 	@Override
-	public int getItemBarStep(ItemStack stack) {
+	public int getBarWidth(ItemStack stack) {
 		// 返回0-13的值，表示进度条的长度
 		// 冷却剩余越少，进度条越长
 		int remaining = getCooldownRemaining();
@@ -113,32 +113,32 @@ public class LifesavingCatTailItem extends TrinketItem {
 	}
 
 	@Override
-	public int getItemBarColor(ItemStack stack) {
+	public int getBarColor(ItemStack stack) {
 		int remaining = getCooldownRemaining();
 		float progress = 1.0f - ((float) remaining / MAX_COOLDOWN);
 		return getColorForProgress(progress);
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
 		// "保命猫尾"
 		// 装备到腰带栏生效，无法修补、叠加、附魔、交易
 		// 在sp野猫受到致命伤害时免疫一次死亡...
 		// tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.1").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.2").formatted(Formatting.BLUE));
+		tooltip.add(Component.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.2").withStyle(ChatFormatting.BLUE));
 
 		// 显示CD状态
 		if (isOnCooldown()) {
 			int remainingTicks = getCooldownRemaining();
 			int remainingSeconds = remainingTicks / 20;
 			float progress = 1.0f - ((float) remainingTicks / MAX_COOLDOWN);
-			Formatting color = getFormattingForProgress(progress);
-			tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.cooldown", remainingSeconds).formatted(color));
+			ChatFormatting color = getFormattingForProgress(progress);
+			tooltip.add(Component.translatable("item.ssc_addon.lifesaving_cat_tail.cooldown", remainingSeconds).withStyle(color));
 		} else {
-			tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.ready").formatted(Formatting.GREEN));
+			tooltip.add(Component.translatable("item.ssc_addon.lifesaving_cat_tail.ready").withStyle(ChatFormatting.GREEN));
 		}
 
-		tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, context, tooltip, type);
+		tooltip.add(Component.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
+		super.appendHoverText(stack, context, tooltip, type);
 	}
 }

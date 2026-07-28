@@ -4,15 +4,15 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.World;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -63,10 +63,10 @@ public final class SscAddonServerEvents {
 	public static void registerTickHandlers() {
 		ServerTickEvents.START_WORLD_TICK.register(world -> {
 			// 在服务器线程上处理断线玩家的领域方块还原
-			if (world.getRegistryKey() == World.OVERWORLD) {
+			if (world.dimension() == Level.OVERWORLD) {
 				AnubisWolfSpDeathDomain.tickCleanup();
 				// 契灵：每秒清理过期的恐惧减速 modifier
-				if (world.getServer().getTicks() % 20 == 0) {
+				if (world.getServer().getTickCount() % 20 == 0) {
 					MancianimaPassive
 							.serverGlobalFleeCleanup(world.getServer());
 					// 契灵劫掠军组生命周期推进（LINGER → MARCH → 脱适清理）
@@ -74,11 +74,11 @@ public final class SscAddonServerEvents {
 							.tickRaiderGroups(world.getServer());
 				}
 			}
-			for (ServerPlayerEntity player : world.getPlayers()) {
+			for (ServerPlayer player : world.players()) {
 				// 修复局域网多人游戏中远程玩家的自定义可食用物品Map未在服务端刷新的问题
 				// 原版mod在集成服务器(EnvType.CLIENT)环境下跳过了OnServerTick，导致非主机玩家无法食用自定义食物（如悦灵吃紫水晶）
 				if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT
-						&& player.age % 100 == 0) {
+						&& player.tickCount % 100 == 0) {
 					CustomEdibleUtils.ReloadPlayerCustomEdible(player);
 				}
 				SnowFoxSpMeleeAbility.tick(player);
@@ -110,7 +110,7 @@ public final class SscAddonServerEvents {
 
 		// END_SERVER_TICK：荧光幼灵技能 pendingCd 补设（球/盾消失后回调无法直接拿到 player）
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			Collection<ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
+			Collection<ServerPlayer> players = server.getPlayerList().getPlayers();
 			FluorescentTidalManager.tickPendingCd(players);
 		});
 	}
@@ -126,48 +126,48 @@ public final class SscAddonServerEvents {
 	 */
 	public static void registerStunOrphanCleanup() {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 				// [DEBUG] 水矛出现监测 + 硬上限：背包最多 1 把水矛，多余立即移除（兜底任何未知产出路径）
 				if (FormUtils.isAxolotlSP(player)) {
-					PlayerInventory inv = player.getInventory();
+					Inventory inv = player.getInventory();
 					int wsCnt = 0;
-					for (int i = 0; i < inv.size(); i++) {
-						if (inv.getStack(i).isOf(SscAddon.WATER_SPEAR)) {
+					for (int i = 0; i < inv.getContainerSize(); i++) {
+						if (inv.getItem(i).is(SscAddon.WATER_SPEAR)) {
 							wsCnt++;
 							if (wsCnt > 1) {
-								inv.setStack(i, ItemStack.EMPTY);
-								SscAddon.WS_DBG.warn("[WS-CAP] 移除多余水矛 slot={} @tick {}", i, server.getTicks());
+								inv.setItem(i, ItemStack.EMPTY);
+								SscAddon.WS_DBG.warn("[WS-CAP] 移除多余水矛 slot={} @tick {}", i, server.getTickCount());
 								wsCnt--;
 							}
 						}
 					}
-					Integer wsPrev = SscAddon.WS_LAST_SPEAR_COUNT.put(player.getUuid(), wsCnt);
+					Integer wsPrev = SscAddon.WS_LAST_SPEAR_COUNT.put(player.getUUID(), wsCnt);
 					if (wsPrev != null && wsCnt > wsPrev) {
-						long wsT = server.getTicks();
-						Long wsUntil = SscAddon.WATER_SPEAR_CRAFT_CD.get(player.getUuid());
+						long wsT = server.getTickCount();
+						Long wsUntil = SscAddon.WATER_SPEAR_CRAFT_CD.get(player.getUUID());
 						SscAddon.WS_DBG.warn("[WS-MONITOR] 水矛数 {}->{} @tick {} ; internalCD until={} cooling={} ; arrowCD={}",
 								wsPrev, wsCnt, wsT, wsUntil, (wsUntil != null && wsT < wsUntil),
-								player.getItemCooldownManager().isCoolingDown(Items.ARROW));
+								player.getCooldowns().isOnCooldown(Items.ARROW));
 					}
 					// 水矛从「有」变「无」(扛出/消耗) → 重启 Apoli 合成冷却，使「合成CD」从水矛消失那刻起算
 					// 否则持矛期间 active_self 的 cooldown 会走完，扛出后可立即秒合成（用户反馈的 bug）
 					if (wsPrev != null && wsPrev > 0 && wsCnt == 0) {
-						long wsT = server.getTicks();
-						SscAddon.WATER_SPEAR_CRAFT_CD.put(player.getUuid(), wsT + SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
-						player.getItemCooldownManager().set(Items.ARROW, SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
+						long wsT = server.getTickCount();
+						SscAddon.WATER_SPEAR_CRAFT_CD.put(player.getUUID(), wsT + SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
+						player.getCooldowns().addCooldown(Items.ARROW, SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
 						PowerUtils.resetCooldown(player,
-								Identifier.of("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
+								ResourceLocation.fromNamespaceAndPath("my_addon", "form_axolotl_sp_water_spear_craft_spear"));
 						SscAddon.WS_DBG.warn("[WS-CD] 水矛消失 @tick {} → 重启合成冷却(从消失起算 {}t)", wsT, SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
 					}
 				}
-				if (player.hasStatusEffect(SscAddon.STUN_ENTRY)) continue;
-				EntityAttributeInstance atk =
-						player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+				if (player.hasEffect(SscAddon.STUN_ENTRY)) continue;
+				AttributeInstance atk =
+						player.getAttribute(Attributes.ATTACK_DAMAGE);
 				if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {
 					atk.removeModifier(StunEffect.ATTACK_MODIFIER_UUID);
 				}
-				EntityAttributeInstance spd =
-						player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+				AttributeInstance spd =
+						player.getAttribute(Attributes.MOVEMENT_SPEED);
 				if (spd != null && spd.getModifier(StunEffect.SPEED_MODIFIER_UUID) != null) {
 					spd.removeModifier(StunEffect.SPEED_MODIFIER_UUID);
 				}
@@ -188,7 +188,7 @@ public final class SscAddonServerEvents {
 	 */
 	public static void registerFeralBodyYawSync() {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 				IForm form =
 						net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.getPlayerForm(player);
 				if (form == null
@@ -196,18 +196,18 @@ public final class SscAddonServerEvents {
 					continue;
 				}
 				// 把 bodyYaw 朝 headYaw 收敛（vanilla tickHeadTurn 同款：限速 + 夹角钳制）。
-				float headYaw = player.getHeadYaw();
-				float bodyYaw = player.bodyYaw;
-				float diff = MathHelper.wrapDegrees(headYaw - bodyYaw);
+				float headYaw = player.getYHeadRot();
+				float bodyYaw = player.yBodyRot;
+				float diff = Mth.wrapDegrees(headYaw - bodyYaw);
 				// 头身夹角钳制到 ±75°（超出部分立即并入身体朝向，避免极端扭头）
-				float clampedDiff = MathHelper.clamp(diff, -75.0f, 75.0f);
+				float clampedDiff = Mth.clamp(diff, -75.0f, 75.0f);
 				float overflow = diff - clampedDiff;
 				// 收敛速度：每 tick 最多转 10°，模拟身体平滑跟随视角
-				float step = MathHelper.clamp(clampedDiff, -10.0f, 10.0f);
+				float step = Mth.clamp(clampedDiff, -10.0f, 10.0f);
 				float newBodyYaw = bodyYaw + step + overflow;
 				if (newBodyYaw != bodyYaw) {
-					player.bodyYaw = newBodyYaw;
-					player.prevBodyYaw = newBodyYaw;
+					player.yBodyRot = newBodyYaw;
+					player.yBodyRotO = newBodyYaw;
 				}
 			}
 		});

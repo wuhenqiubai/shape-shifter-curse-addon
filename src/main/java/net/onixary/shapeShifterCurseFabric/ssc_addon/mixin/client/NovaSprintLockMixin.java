@@ -5,10 +5,11 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
-import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.player.LocalPlayer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -20,11 +21,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 读取同步到客户端的 apoli 资源 form_ocelot_nova_charging：为 1 时表示正在蓄力，
  * 此时阻止开始疾跑，并每 tick 强制取消当前疾跑——实现严格禁疾跑，而非仅靠减速近似。
  */
-@Mixin(ClientPlayerEntity.class)
+@Mixin(LocalPlayer.class)
 public abstract class NovaSprintLockMixin {
 
+    @Unique
     private boolean ssca$novaCharging() {
-        ClientPlayerEntity self = (ClientPlayerEntity) (Object) this;
+        LocalPlayer self = (LocalPlayer) (Object) this;
         return PowerUtils.getClientResourceValue(self, FormIdentifiers.OCELOT_NOVA_CHARGING) > 0;
     }
 
@@ -37,10 +39,10 @@ public abstract class NovaSprintLockMixin {
     }
 
     // 每 tick 强制取消当前疾跑（覆盖蓄力开始前已在疾跑的情况）
-    @Inject(method = "tickMovement", at = @At("HEAD"))
+    @Inject(method = "aiStep", at = @At("HEAD"))
     private void ssca$novaStopSprint(CallbackInfo ci) {
         if (ssca$novaCharging()) {
-            ((ClientPlayerEntity) (Object) this).setSprinting(false);
+            ((LocalPlayer) (Object) this).setSprinting(false);
         }
     }
 }

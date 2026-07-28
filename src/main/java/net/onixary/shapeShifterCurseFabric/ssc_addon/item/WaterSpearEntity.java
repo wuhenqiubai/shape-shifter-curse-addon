@@ -1,82 +1,82 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.TridentEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ThrownTrident;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 
 import java.util.List;
 
-public class WaterSpearEntity extends TridentEntity {
+public class WaterSpearEntity extends ThrownTrident {
 
 	private ItemStack waterSpearStack = new ItemStack(SscAddon.WATER_SPEAR);
 
-	public WaterSpearEntity(EntityType<? extends TridentEntity> entityType, World world) {
+	public WaterSpearEntity(EntityType<? extends ThrownTrident> entityType, Level world) {
 		super(SscAddon.WATER_SPEAR_ENTITY, world);
 		// 不可拾取：水矛只能合成获得（走 5 秒 CD + 最多一把），扔出即消耗
-		this.pickupType = net.minecraft.entity.projectile.PersistentProjectileEntity.PickupPermission.DISALLOWED;
+		this.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.DISALLOWED;
 	}
 
-	public WaterSpearEntity(World world, LivingEntity owner, ItemStack stack) {
+	public WaterSpearEntity(Level world, LivingEntity owner, ItemStack stack) {
 		super(SscAddon.WATER_SPEAR_ENTITY, world);
 		this.setOwner(owner);
-		this.setPosition(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
+		this.setPos(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
 		this.waterSpearStack = stack.copy();
 		// 不可拾取：水矛只能合成获得（走 5 秒 CD + 最多一把），扔出即消耗
-		this.pickupType = net.minecraft.entity.projectile.PersistentProjectileEntity.PickupPermission.DISALLOWED;
+		this.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.DISALLOWED;
 	}
 
-	public ItemStack getWeaponStack() {
+	public ItemStack getWeaponItem() {
 		return this.waterSpearStack;
 	}
 
 	@Override
-	public void readCustomDataFromNbt(NbtCompound nbt) {
-		super.readCustomDataFromNbt(nbt);
+	public void readAdditionalSaveData(CompoundTag nbt) {
+		super.readAdditionalSaveData(nbt);
 		if (nbt.contains("WaterSpear", 10)) {
-			net.minecraft.registry.RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : net.minecraft.registry.DynamicRegistryManager.EMPTY;
-			ItemStack.fromNbt(registries, nbt.getCompound("WaterSpear")).ifPresent(s -> this.waterSpearStack = s);
+			net.minecraft.core.HolderLookup.Provider registries = this.level() != null ? this.level().registryAccess() : net.minecraft.core.RegistryAccess.EMPTY;
+			ItemStack.parse(registries, nbt.getCompound("WaterSpear")).ifPresent(s -> this.waterSpearStack = s);
 		}
 	}
 
 	@Override
-	public void writeCustomDataToNbt(NbtCompound nbt) {
-		super.writeCustomDataToNbt(nbt);
-		net.minecraft.registry.RegistryWrapper.WrapperLookup registries2 = this.getWorld() != null ? this.getWorld().getRegistryManager() : net.minecraft.registry.DynamicRegistryManager.EMPTY;
-		nbt.put("WaterSpear", this.waterSpearStack.encode(registries2));
+	public void addAdditionalSaveData(CompoundTag nbt) {
+		super.addAdditionalSaveData(nbt);
+		net.minecraft.core.HolderLookup.Provider registries2 = this.level() != null ? this.level().registryAccess() : net.minecraft.core.RegistryAccess.EMPTY;
+		nbt.put("WaterSpear", this.waterSpearStack.save(registries2));
 	}
 
 
 	@Override
-	protected void onEntityHit(EntityHitResult entityHitResult) {
+	protected void onHitEntity(EntityHitResult entityHitResult) {
 		Entity entity = entityHitResult.getEntity();
-		World world = this.getWorld();
+		Level world = this.level();
 
-		if (!world.isClient && entity instanceof LivingEntity target) {
+		if (!world.isClientSide && entity instanceof LivingEntity target) {
 			// Direct damage
 			float damage = 10.0f;
-			target.damage(this.getDamageSources().trident(this, this.getOwner()), damage);
+			target.hurt(this.damageSources().trident(this, this.getOwner()), damage);
 
 			// Apply slowness
-			target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 100, 1));
+			target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 100, 1));
 
 			// Area damage
-			doAreaDamage(target.getPos().add(0, target.getHeight() / 2, 0), target);
+			doAreaDamage(target.position().add(0, target.getBbHeight() / 2, 0), target);
 		}
 
 		// Remove the spear after hitting
@@ -84,36 +84,36 @@ public class WaterSpearEntity extends TridentEntity {
 	}
 
 	@Override
-	protected void onBlockHit(BlockHitResult blockHitResult) {
-		World world = this.getWorld();
+	protected void onHitBlock(BlockHitResult blockHitResult) {
+		Level world = this.level();
 
-		if (!world.isClient) {
-			doAreaDamage(this.getPos(), null);
+		if (!world.isClientSide) {
+			doAreaDamage(this.position(), null);
 		}
 
 		// Remove the spear after hitting block
 		this.discard();
 	}
 
-	private void doAreaDamage(Vec3d pos, Entity directTarget) {
-		World world = this.getWorld();
+	private void doAreaDamage(Vec3 pos, Entity directTarget) {
+		Level world = this.level();
 		double x = pos.x;
 		double y = pos.y;
 		double z = pos.z;
 
 		// Get entities within 1.5 block radius (3 block diameter)
-		List<Entity> nearbyEntities = world.getOtherEntities(this.getOwner(), new Box(x - 1.5, y - 1.5, z - 1.5, x + 1.5, y + 1.5, z + 1.5));
+		List<Entity> nearbyEntities = world.getEntities(this.getOwner(), new AABB(x - 1.5, y - 1.5, z - 1.5, x + 1.5, y + 1.5, z + 1.5));
 		for (Entity nearEntity : nearbyEntities) {
 			if (nearEntity instanceof LivingEntity living && nearEntity != this.getOwner() && nearEntity != directTarget) {
-				living.damage(this.getDamageSources().trident(this, this.getOwner()), 4.0f);
+				living.hurt(this.damageSources().trident(this, this.getOwner()), 4.0f);
 			}
 		}
 
 		// Play splash sound and particles
-		world.playSound(null, x, y, z, SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 1.0F, 0.8F);
+		world.playSound(null, x, y, z, SoundEvents.GENERIC_SPLASH, SoundSource.PLAYERS, 1.0F, 0.8F);
 
 		// Spawn particles on server - 落地水花爆开（仿 RC-4 药水破碎特效）
-		if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
+		if (world instanceof net.minecraft.server.level.ServerLevel serverWorld) {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnWaterBurst(serverWorld, x, y, z, 1.0);
 		}
 	}
@@ -123,8 +123,8 @@ public class WaterSpearEntity extends TridentEntity {
 		super.tick();
 
 		// Spawn water trail particles
-		World world = this.getWorld();
-		if (world.isClient && !this.inGround) {
+		Level world = this.level();
+		if (world.isClientSide && !this.inGround) {
 			for (int i = 0; i < 2; i++) {
 				world.addParticle(ParticleTypes.DRIPPING_WATER, true,
 						this.getX() + (world.random.nextDouble() - 0.5) * 0.3,
@@ -136,17 +136,17 @@ public class WaterSpearEntity extends TridentEntity {
 	}
 
 	@Override
-	protected SoundEvent getHitSound() {
-		return SoundEvents.ENTITY_GENERIC_SPLASH;
+	protected SoundEvent getDefaultHitGroundSoundEvent() {
+		return SoundEvents.GENERIC_SPLASH;
 	}
 
 	@Override
-	public boolean hasNoGravity() {
+	public boolean isNoGravity() {
 		return false;
 	}
 
 	@Override
-	public void onPlayerCollision(PlayerEntity player) {
+	public void playerTouch(Player player) {
 		// 水矛扔出即消耗、永远不可拾取（含重启前旧 ALLOWED 实体）：碰撞不做任何拾取处理。
 		// 唯一获取途径=合成（5 秒 CD + 最多一把）。
 	}

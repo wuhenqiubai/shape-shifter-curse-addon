@@ -1,18 +1,18 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.onixary.shapeShifterCurseFabric.minion.IPlayerEntityMinion;
 import net.onixary.shapeShifterCurseFabric.minion.MinionRegister;
 import net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity;
@@ -91,19 +91,19 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 嚎叫减速修饰符UUID
 	 */
-	private static final Identifier HOWL_SLOW_UUID = Identifier.of("c9d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f");
+	private static final ResourceLocation HOWL_SLOW_UUID = ResourceLocation.parse("c9d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f");
 	/**
 	 * 领域增强攻击力修饰符UUID
 	 */
-	private static final Identifier DOMAIN_ATTACK_UUID = Identifier.of("d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a");
+	private static final ResourceLocation DOMAIN_ATTACK_UUID = ResourceLocation.parse("d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a");
 	/**
 	 * 领域增强生命值修饰符UUID
 	 */
-	private static final Identifier DOMAIN_HEALTH_UUID = Identifier.of("e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b");
+	private static final ResourceLocation DOMAIN_HEALTH_UUID = ResourceLocation.parse("e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b");
 	/**
 	 * 饰品攻击力削减修饰符UUID
 	 */
-	private static final Identifier TRINKET_DAMAGE_UUID = Identifier.of("f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c");
+	private static final ResourceLocation TRINKET_DAMAGE_UUID = ResourceLocation.parse("f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c");
 	/**
 	 * 饰品攻击力削减比例（-25%）
 	 */
@@ -111,7 +111,7 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 饰品血量削减修饰符UUID
 	 */
-	private static final Identifier TRINKET_HEALTH_UUID = Identifier.of("a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d");
+	private static final ResourceLocation TRINKET_HEALTH_UUID = ResourceLocation.parse("a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d");
 	/**
 	 * 饰品血量削减比例（-35%）
 	 */
@@ -132,7 +132,7 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 玩家按下次要技能键触发
 	 */
-	public static boolean execute(ServerPlayerEntity player) {
+	public static boolean execute(ServerPlayer player) {
 		// CD检查
 		int cdRemaining = PowerUtils.getResourceValue(player, FormIdentifiers.SP_SECONDARY_CD);
 		if (cdRemaining > 0) {
@@ -140,7 +140,7 @@ public class AnubisWolfSpSummonWolves {
 		}
 
 		// 重复释放检查（正在嚎叫/召唤中）
-		if (ACTIVE_SUMMONS.containsKey(player.getUuid())) {
+		if (ACTIVE_SUMMONS.containsKey(player.getUUID())) {
 			return false;
 		}
 
@@ -153,13 +153,13 @@ public class AnubisWolfSpSummonWolves {
 		if (aliveCount >= maxWolves) {
 			// 已达上限，给予惩罚CD，播放失败音效
 			PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_SECONDARY_CD, PENALTY_COOLDOWN_TICKS);
-			player.getServerWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), SoundCategory.PLAYERS, 0.8f, 0.5f);
+			player.serverLevel().playSound(null, player.getX(), player.getY(), player.getZ(),
+					SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.8f, 0.5f);
 			return false;
 		}
 
 		// 检查是否在死亡领域中
-		boolean domainActive = AnubisWolfSpDeathDomain.hasActiveDomain(player.getUuid());
+		boolean domainActive = AnubisWolfSpDeathDomain.hasActiveDomain(player.getUUID());
 
 		// 计算可召唤数量（饰品增加1只常规召唤）
 		int baseSummon = hasCrystal ? BASE_SUMMON_COUNT + 1 : BASE_SUMMON_COUNT;
@@ -169,12 +169,12 @@ public class AnubisWolfSpSummonWolves {
 
 		// 创建召唤数据并进入嚎叫阶段
 		SummonData data = new SummonData(canSummon, domainActive);
-		ACTIVE_SUMMONS.put(player.getUuid(), data);
+		ACTIVE_SUMMONS.put(player.getUUID(), data);
 
 		// 播放狼嚎叫声
-		ServerWorld world = player.getServerWorld();
+		ServerLevel world = player.serverLevel();
 		world.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_WOLF_HOWL, SoundCategory.PLAYERS, 1.5f, 0.6f);
+				SoundEvents.WOLF_HOWL, SoundSource.PLAYERS, 1.5f, 0.6f);
 
 		// 应用减速
 		applyHowlSlow(player);
@@ -187,13 +187,13 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 每tick更新
 	 */
-	public static void tick(ServerPlayerEntity player) {
+	public static void tick(ServerPlayer player) {
 		// 饰品伤害修饰符周期性更新（覆盖受击/攻击时由JSON触发召唤的冥狼）
-		if (FormUtils.isAnubisWolfSP(player) && player.getServerWorld().getTime() % 20 == 0) {
+		if (FormUtils.isAnubisWolfSP(player) && player.serverLevel().getGameTime() % 20 == 0) {
 			tickTrinketModifiers(player);
 		}
 
-		UUID uuid = player.getUuid();
+		UUID uuid = player.getUUID();
 		SummonData data = ACTIVE_SUMMONS.get(uuid);
 		if (data == null) return;
 
@@ -224,11 +224,11 @@ public class AnubisWolfSpSummonWolves {
 	 * 增强死亡领域自动召唤冥狼（跳过嚎叫阶段，直接生成）
 	 * 实际召唤数量 = min(requestCount, MAX_WOLVES - 已有数量)
 	 */
-	public static void autoSummonForEnhancedDomain(ServerPlayerEntity player, int requestCount) {
+	public static void autoSummonForEnhancedDomain(ServerPlayer player, int requestCount) {
 		// 增强领域：先消散现有冥狼和召唤流程，确保能召满6只
-		SummonData oldData = ACTIVE_SUMMONS.remove(player.getUuid());
+		SummonData oldData = ACTIVE_SUMMONS.remove(player.getUUID());
 		if (oldData != null) {
-			dissipateWolves(player, oldData, player.getServerWorld());
+			dissipateWolves(player, oldData, player.serverLevel());
 		}
 		// 消散IPlayerEntityMinion系统中残留的冥狼
 		dissipateAllMinions(player);
@@ -239,11 +239,11 @@ public class AnubisWolfSpSummonWolves {
 		data.phase = Phase.SUMMONING;
 		data.ticksElapsed = 0;
 
-		ACTIVE_SUMMONS.put(player.getUuid(), data);
+		ACTIVE_SUMMONS.put(player.getUUID(), data);
 	}
 
-	private static void tickHowling(ServerPlayerEntity player, SummonData data) {
-		ServerWorld world = player.getServerWorld();
+	private static void tickHowling(ServerPlayer player, SummonData data) {
+		ServerLevel world = player.serverLevel();
 
 		// 嚎叫期间粒子效果 - 灵魂粒子围绕
 		if (data.ticksElapsed % 3 == 0) {
@@ -265,11 +265,11 @@ public class AnubisWolfSpSummonWolves {
 
 			// 播放召唤音效
 			world.playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.PLAYERS, 0.5f, 1.5f);
+					SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 0.5f, 1.5f);
 		}
 	}
 
-	private static void tickSummoning(ServerPlayerEntity player, SummonData data) {
+	private static void tickSummoning(ServerPlayer player, SummonData data) {
 		// 每SUMMON_INTERVAL tick召唤一只
 		if (data.ticksElapsed % SUMMON_INTERVAL == 0 && data.wolvesSummoned < data.wolvesToSummon) {
 			spawnMinionWolf(player, data);
@@ -288,8 +288,8 @@ public class AnubisWolfSpSummonWolves {
 
 	// ==================== 阶段处理 ====================
 
-	private static void tickActive(ServerPlayerEntity player, SummonData data) {
-		ServerWorld world = player.getServerWorld();
+	private static void tickActive(ServerPlayer player, SummonData data) {
+		ServerLevel world = player.serverLevel();
 
 		// 每20tick检查一次冥狼的灵魂沙免疫
 		if (data.ticksElapsed % 20 == 0) {
@@ -300,18 +300,18 @@ public class AnubisWolfSpSummonWolves {
 		if (data.ticksElapsed >= WOLF_DURATION) {
 			// 消散所有本批次的狼
 			dissipateWolves(player, data, world);
-			ACTIVE_SUMMONS.remove(player.getUuid());
+			ACTIVE_SUMMONS.remove(player.getUUID());
 		}
 	}
 
-	private static void spawnMinionWolf(ServerPlayerEntity player, SummonData data) {
-		ServerWorld world = player.getServerWorld();
+	private static void spawnMinionWolf(ServerPlayer player, SummonData data) {
+		ServerLevel world = player.serverLevel();
 
 		// 使用MinionRegister寻找合适的生成位置（与原版胡狼召唤逻辑一致）
 		BlockPos spawnPos = MinionRegister.getNearbyEmptySpace(
-				world, player.getRandom(), player.getBlockPos(), 3, 1, 1, 4);
+				world, player.getRandom(), player.blockPosition(), 3, 1, 1, 4);
 		if (spawnPos == null) {
-			spawnPos = player.getBlockPos();
+			spawnPos = player.blockPosition();
 		}
 
 		// 使用MinionRegister.SpawnMinion生成（自动调用InitMinion注册到IPlayerEntityMinion系统）
@@ -326,45 +326,45 @@ public class AnubisWolfSpSummonWolves {
 		// 死亡领域联动增强
 		if (data.domainActive) {
 			// 额外生命值
-			EntityAttributeInstance healthAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+			AttributeInstance healthAttr = wolf.getAttribute(Attributes.MAX_HEALTH);
 			if (healthAttr != null) {
-				healthAttr.addPersistentModifier(new EntityAttributeModifier(
+				healthAttr.addPermanentModifier(new AttributeModifier(
 						DOMAIN_HEALTH_UUID,
-						DOMAIN_BONUS_HEALTH, EntityAttributeModifier.Operation.ADD_VALUE));
+						DOMAIN_BONUS_HEALTH, AttributeModifier.Operation.ADD_VALUE));
 				wolf.setHealth((float) healthAttr.getValue());
 			}
 			// 额外攻击力
-			EntityAttributeInstance attackAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+			AttributeInstance attackAttr = wolf.getAttribute(Attributes.ATTACK_DAMAGE);
 			if (attackAttr != null) {
-				attackAttr.addPersistentModifier(new EntityAttributeModifier(
+				attackAttr.addPermanentModifier(new AttributeModifier(
 						DOMAIN_ATTACK_UUID,
-						DOMAIN_BONUS_ATTACK, EntityAttributeModifier.Operation.ADD_VALUE));
+						DOMAIN_BONUS_ATTACK, AttributeModifier.Operation.ADD_VALUE));
 			}
 			// 速度I效果
-			wolf.addStatusEffect(new StatusEffectInstance(
-					StatusEffects.SPEED, WOLF_DURATION, 0, false, false, true));
+			wolf.addEffect(new MobEffectInstance(
+					MobEffects.MOVEMENT_SPEED, WOLF_DURATION, 0, false, false, true));
 		}
 
 		// 饰品效果：降低冥狼攻击力25%、血量35%
 		if (hasTrinketEquipped(player)) {
-			EntityAttributeInstance atkAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+			AttributeInstance atkAttr = wolf.getAttribute(Attributes.ATTACK_DAMAGE);
 			if (atkAttr != null && atkAttr.getModifier(TRINKET_DAMAGE_UUID) == null) {
-				atkAttr.addPersistentModifier(new EntityAttributeModifier(
+				atkAttr.addPermanentModifier(new AttributeModifier(
 						TRINKET_DAMAGE_UUID,
-						TRINKET_DAMAGE_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+						TRINKET_DAMAGE_REDUCTION, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
-			EntityAttributeInstance hpAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+			AttributeInstance hpAttr = wolf.getAttribute(Attributes.MAX_HEALTH);
 			if (hpAttr != null && hpAttr.getModifier(TRINKET_HEALTH_UUID) == null) {
-				hpAttr.addPersistentModifier(new EntityAttributeModifier(
+				hpAttr.addPermanentModifier(new AttributeModifier(
 						TRINKET_HEALTH_UUID,
-						TRINKET_HEALTH_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+						TRINKET_HEALTH_REDUCTION, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 				// 同步当前血量到新上限
 				wolf.setHealth(Math.min(wolf.getHealth(), (float) hpAttr.getValue()));
 			}
 		}
 
 		// 追踪此批次的狼UUID（用于定时消散）
-		data.summonedWolfUuids.add(wolf.getUuid());
+		data.summonedWolfUuids.add(wolf.getUUID());
 
 		// 生成粒子效果（增强领域召唤的狼不显示灵魂冒出粒子）
 		if (!data.enhancedDomain) {
@@ -376,19 +376,19 @@ public class AnubisWolfSpSummonWolves {
 
 		// 播放出现音效
 		world.playSound(null, wolf.getX(), wolf.getY(), wolf.getZ(),
-				SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.NEUTRAL, 1.0f, 0.7f);
+				SoundEvents.WOLF_GROWL, SoundSource.NEUTRAL, 1.0f, 0.7f);
 	}
 
-	private static void refreshWolfBuffs(ServerWorld world, SummonData data) {
+	private static void refreshWolfBuffs(ServerLevel world, SummonData data) {
 		for (UUID wolfUuid : data.summonedWolfUuids) {
 			Entity entity = world.getEntity(wolfUuid);
 			if (entity instanceof AnubisWolfMinionEntity wolf && wolf.isAlive()) {
 				// 灵魂沙免疫：在灵魂沙上时给予速度III抵消减速
-				BlockPos below = wolf.getBlockPos().down();
-				if (world.getBlockState(below).isOf(net.minecraft.block.Blocks.SOUL_SAND)
-						|| world.getBlockState(wolf.getBlockPos()).isOf(net.minecraft.block.Blocks.SOUL_SAND)) {
-					wolf.addStatusEffect(new StatusEffectInstance(
-							StatusEffects.SPEED, 25, 2, false, false, false));
+				BlockPos below = wolf.blockPosition().below();
+				if (world.getBlockState(below).is(net.minecraft.world.level.block.Blocks.SOUL_SAND)
+						|| world.getBlockState(wolf.blockPosition()).is(net.minecraft.world.level.block.Blocks.SOUL_SAND)) {
+					wolf.addEffect(new MobEffectInstance(
+							MobEffects.MOVEMENT_SPEED, 25, 2, false, false, false));
 				}
 			}
 		}
@@ -396,7 +396,7 @@ public class AnubisWolfSpSummonWolves {
 
 	// ==================== 狼召唤与管理 ====================
 
-	private static void dissipateWolves(ServerPlayerEntity player, SummonData data, ServerWorld world) {
+	private static void dissipateWolves(ServerPlayer player, SummonData data, ServerLevel world) {
 		for (UUID wolfUuid : data.summonedWolfUuids) {
 			Entity entity = world.getEntity(wolfUuid);
 			if (entity instanceof AnubisWolfMinionEntity wolf && wolf.isAlive()) {
@@ -407,7 +407,7 @@ public class AnubisWolfSpSummonWolves {
 						wolf.getX(), wolf.getY() + 0.3, wolf.getZ(), 8, 0.3, 0.4, 0.3, 0.02);
 				// 播放消散音效
 				world.playSound(null, wolf.getX(), wolf.getY(), wolf.getZ(),
-						SoundEvents.PARTICLE_SOUL_ESCAPE, SoundCategory.NEUTRAL, 0.8f, 0.8f);
+						SoundEvents.SOUL_ESCAPE, SoundSource.NEUTRAL, 0.8f, 0.8f);
 				// 从IPlayerEntityMinion系统移除并销毁
 				if (player instanceof IPlayerEntityMinion minionPlayer) {
 					minionPlayer.shape_shifter_curse$removeMinion(AnubisWolfMinionEntity.MinionID, wolfUuid);
@@ -420,9 +420,9 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 消散玩家所有存活的冥狼（通过IPlayerEntityMinion系统）
 	 */
-	private static void dissipateAllMinions(ServerPlayerEntity player) {
+	private static void dissipateAllMinions(ServerPlayer player) {
 		if (!(player instanceof IPlayerEntityMinion minionPlayer)) return;
-		ServerWorld world = player.getServerWorld();
+		ServerLevel world = player.serverLevel();
 		// 获取所有冥狼UUID副本后逐个消散
 		List<UUID> minionUuids = new ArrayList<>(minionPlayer.shape_shifter_curse$getMinionsByMinionID(AnubisWolfMinionEntity.MinionID));
 		for (UUID wolfUuid : minionUuids) {
@@ -436,7 +436,7 @@ public class AnubisWolfSpSummonWolves {
 		}
 	}
 
-	private static int getMinionCount(ServerPlayerEntity player) {
+	private static int getMinionCount(ServerPlayer player) {
 		if (player instanceof IPlayerEntityMinion minionPlayer) {
 			return minionPlayer.shape_shifter_curse$getMinionsCount(AnubisWolfMinionEntity.MinionID);
 		}
@@ -446,7 +446,7 @@ public class AnubisWolfSpSummonWolves {
 	/**
 	 * 检查玩家是否装备了阿努比斯权杖上的水晶
 	 */
-	public static boolean hasTrinketEquipped(ServerPlayerEntity player) {
+	public static boolean hasTrinketEquipped(ServerPlayer player) {
 		return TrinketsApi.getTrinketComponent(player)
 				.map(c -> c.isEquipped(SscAddon.ANUBIS_CRYSTAL))
 				.orElse(false);
@@ -454,18 +454,18 @@ public class AnubisWolfSpSummonWolves {
 
 	// ==================== 辅助方法 ====================
 
-	private static void applyHowlSlow(ServerPlayerEntity player) {
-		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+	private static void applyHowlSlow(ServerPlayer player) {
+		AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
 		if (speedAttr != null && speedAttr.getModifier(HOWL_SLOW_UUID) == null) {
-			speedAttr.addTemporaryModifier(new EntityAttributeModifier(
+			speedAttr.addTransientModifier(new AttributeModifier(
 					HOWL_SLOW_UUID,
 					HOWL_SLOW_FACTOR - 1.0, // -0.5 = 保留50%
-					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+					AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 
-	private static void removeHowlSlow(ServerPlayerEntity player) {
-		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+	private static void removeHowlSlow(ServerPlayer player) {
+		AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(HOWL_SLOW_UUID);
 		}
@@ -476,9 +476,9 @@ public class AnubisWolfSpSummonWolves {
 	 * 遍历玩家所有冥狼，根据饰品装备状态添加/移除-25%攻击力和-35%血量修饰符
 	 * 主要覆盖受击/攻击时由JSON power召唤的冥狼（它们不经过spawnMinionWolf）
 	 */
-	private static void tickTrinketModifiers(ServerPlayerEntity player) {
+	private static void tickTrinketModifiers(ServerPlayer player) {
 		if (!(player instanceof IPlayerEntityMinion minionPlayer)) return;
-		ServerWorld world = player.getServerWorld();
+		ServerLevel world = player.serverLevel();
 		boolean hasCrystal = hasTrinketEquipped(player);
 
 		List<UUID> wolfUuids = minionPlayer.shape_shifter_curse$getMinionsByMinionID(AnubisWolfMinionEntity.MinionID);
@@ -487,26 +487,26 @@ public class AnubisWolfSpSummonWolves {
 			if (!(entity instanceof AnubisWolfMinionEntity wolf) || !wolf.isAlive()) continue;
 
 			// 攻击力修饰符
-			EntityAttributeInstance attackAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+			AttributeInstance attackAttr = wolf.getAttribute(Attributes.ATTACK_DAMAGE);
 			if (attackAttr != null) {
-				EntityAttributeModifier dmgMod = attackAttr.getModifier(TRINKET_DAMAGE_UUID);
+				AttributeModifier dmgMod = attackAttr.getModifier(TRINKET_DAMAGE_UUID);
 				if (hasCrystal && dmgMod == null) {
-					attackAttr.addPersistentModifier(new EntityAttributeModifier(
+					attackAttr.addPermanentModifier(new AttributeModifier(
 							TRINKET_DAMAGE_UUID,
-							TRINKET_DAMAGE_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+							TRINKET_DAMAGE_REDUCTION, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 				} else if (!hasCrystal && dmgMod != null) {
 					attackAttr.removeModifier(TRINKET_DAMAGE_UUID);
 				}
 			}
 
 			// 血量修饰符
-			EntityAttributeInstance healthAttr = wolf.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+			AttributeInstance healthAttr = wolf.getAttribute(Attributes.MAX_HEALTH);
 			if (healthAttr != null) {
-				EntityAttributeModifier hpMod = healthAttr.getModifier(TRINKET_HEALTH_UUID);
+				AttributeModifier hpMod = healthAttr.getModifier(TRINKET_HEALTH_UUID);
 				if (hasCrystal && hpMod == null) {
-					healthAttr.addPersistentModifier(new EntityAttributeModifier(
+					healthAttr.addPermanentModifier(new AttributeModifier(
 							TRINKET_HEALTH_UUID,
-							TRINKET_HEALTH_REDUCTION, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+							TRINKET_HEALTH_REDUCTION, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 					wolf.setHealth(Math.min(wolf.getHealth(), (float) healthAttr.getValue()));
 				} else if (!hasCrystal && hpMod != null) {
 					healthAttr.removeModifier(TRINKET_HEALTH_UUID);

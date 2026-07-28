@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.PlayerEntityRenderer;
-import net.minecraft.client.render.entity.model.PlayerEntityModel;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.player.PlayerModelPart;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.world.entity.player.PlayerModelPart;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -14,13 +14,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(PlayerEntityRenderer.class)
+@Mixin(PlayerRenderer.class)
 public class SscPlayerEntityRendererMixin {
 
 	// Inject before super.render() to ensure setModelPose has run, but modify visibility before Main Model renders.
-	@Inject(method = "render(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
-			at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/LivingEntityRenderer;render(Lnet/minecraft/entity/LivingEntity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V"))
-	public void render(AbstractClientPlayerEntity player, float f, float g, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, CallbackInfo ci) {
+	@Inject(method = "render(Lnet/minecraft/client/player/AbstractClientPlayer;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V"))
+	public void render(AbstractClientPlayer player, float f, float g, PoseStack matrixStack, MultiBufferSource vertexConsumerProvider, int i, CallbackInfo ci) {
 		PlayerFormComponent component = RegPlayerFormComponent.PLAYER_FORM.get(player);
 		if (component != null) {
 			IForm currentForm = component.nowForm;
@@ -29,8 +29,8 @@ public class SscPlayerEntityRendererMixin {
 				boolean isSpecial = currentForm.getFormFlag().contains("special_form");
 				String path = currentForm.getFormID().getPath();
 
-				PlayerEntityRenderer renderer = (PlayerEntityRenderer) (Object) this;
-				PlayerEntityModel<AbstractClientPlayerEntity> model = renderer.getModel();
+				PlayerRenderer renderer = (PlayerRenderer) (Object) this;
+				PlayerModel<AbstractClientPlayer> model = renderer.getModel();
 
 				// 优先判断特定形态的渲染需求
 
@@ -46,11 +46,11 @@ public class SscPlayerEntityRendererMixin {
 
 					model.head.visible = true;
 					// 同步原版 Issues 394 修复：尊重玩家原版皮肤定制开关
-					model.hat.visible = player.isPartVisible(PlayerModelPart.HAT);
+					model.hat.visible = player.isModelPartShown(PlayerModelPart.HAT);
 					model.rightArm.visible = true;
 					model.leftArm.visible = true;
-					model.rightSleeve.visible = player.isPartVisible(PlayerModelPart.RIGHT_SLEEVE);
-					model.leftSleeve.visible = player.isPartVisible(PlayerModelPart.LEFT_SLEEVE);
+					model.rightSleeve.visible = player.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE);
+					model.leftSleeve.visible = player.isModelPartShown(PlayerModelPart.LEFT_SLEEVE);
 				}
 				// 2. 其他完全变身 (Phase 3 或 Phase SP) - 排除 Allay
 				else if ((phase == 3 || isSpecial) && !path.contains("allay")) {

@@ -3,11 +3,11 @@ package net.jackcooper.shapeShifterCurseAddon.event;
 import io.github.apace100.apoli.component.PowerHolderComponent;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.onixary.shapeShifterCurseFabric.additional_power.VirtualTotemPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPJukebox;
@@ -43,8 +43,8 @@ public final class SscAddonPlayerEvents {
 
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
 			if (!alive) {
-				newPlayer.getItemCooldownManager().remove(SscAddon.LIFESAVING_CAT_TAIL);
-				newPlayer.getItemCooldownManager().remove(SscAddon.PHANTOM_BELL);
+				newPlayer.getCooldowns().removeCooldown(SscAddon.LIFESAVING_CAT_TAIL);
+				newPlayer.getCooldowns().removeCooldown(SscAddon.PHANTOM_BELL);
 
 				// SP阿努比斯之狼：死亡后重置亡灵不死被动冷却
 				if (FormUtils.isAnubisWolfSP(newPlayer)) {
@@ -68,52 +68,52 @@ public final class SscAddonPlayerEvents {
 				try { net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand.resyncToPlayer(player); } catch (Throwable ignored) {}
 			});
 			String welcomeTag = "ssc_addon_welcomed";
-			if (!player.getCommandTags().contains(welcomeTag)) {
-				player.addCommandTag(welcomeTag);
-				final java.util.UUID playerUuid = player.getUuid();
+			if (!player.getTags().contains(welcomeTag)) {
+				player.addTag(welcomeTag);
+				final java.util.UUID playerUuid = player.getUUID();
 				java.util.concurrent.CompletableFuture.delayedExecutor(3, java.util.concurrent.TimeUnit.SECONDS)
 						.execute(() -> {
 							// 3 秒延迟到达时服务端可能已关闭/重启 —— 防御性检查，避免 IllegalStateException
 							if (!server.isRunning()) return;
 							server.execute(() -> {
-							var p = server.getPlayerManager().getPlayer(playerUuid);
+							var p = server.getPlayerList().getPlayer(playerUuid);
 							if (p == null) return;
 							String url = "https://github.com/MangZai-120/shape-shifter-curse-addon/issues";
 							String wikiUrl = "https://www.mcmod.cn/class/24327.html";
 							// 根据玩家客户端语言选择显示文本
 							String lang = SscAddon.PLAYER_LANGUAGES.getOrDefault(playerUuid, "en_us");
 							boolean isChinese = lang.toLowerCase(java.util.Locale.ROOT).startsWith("zh");
-							MutableText githubLink = Text.literal(url)
+							MutableComponent githubLink = Component.literal(url)
 									.setStyle(Style.EMPTY
-											.withColor(Formatting.AQUA)
-											.withUnderline(true)
+											.withColor(ChatFormatting.AQUA)
+											.withUnderlined(true)
 											.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url)));
-							MutableText wikiLink = Text.literal(wikiUrl)
+							MutableComponent wikiLink = Component.literal(wikiUrl)
 									.setStyle(Style.EMPTY
-											.withColor(Formatting.AQUA)
-											.withUnderline(true)
+											.withColor(ChatFormatting.AQUA)
+											.withUnderlined(true)
 											.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, wikiUrl)));
 							if (isChinese) {
 								// 第一行：欢迎+百科链接+bug说明+GitHub链接+崩溃说明
-								p.sendMessage(Text.empty()
-										.append(Text.literal("欢迎游玩幻形者诅咒扩展，游玩教程在MC百科上：").formatted(Formatting.GOLD))
+								p.sendSystemMessage(Component.empty()
+										.append(Component.literal("欢迎游玩幻形者诅咒扩展，游玩教程在MC百科上：").withStyle(ChatFormatting.GOLD))
 										.append(wikiLink)
-										.append(Text.literal("。由于作者水平有限，模组难免会有bug，如有bug请将日志发到GitHub上：").formatted(Formatting.GOLD))
+										.append(Component.literal("。由于作者水平有限，模组难免会有bug，如有bug请将日志发到GitHub上：").withStyle(ChatFormatting.GOLD))
 										.append(githubLink)
-										.append(Text.literal("；若后续更新版本导致崩溃请将崩溃日志以及必要信息文件发到模组的GitHub上，谢谢！").formatted(Formatting.GOLD)));
+										.append(Component.literal("；若后续更新版本导致崩溃请将崩溃日志以及必要信息文件发到模组的GitHub上，谢谢！").withStyle(ChatFormatting.GOLD)));
 								// 第二行：请不要只发送照片（蓄意空格）
-								p.sendMessage(Text.literal("请 不 要 只 发 送 照 片 过 来 谢 谢！").formatted(Formatting.RED));
+								p.sendSystemMessage(Component.literal("请 不 要 只 发 送 照 片 过 来 谢 谢！").withStyle(ChatFormatting.RED));
 								// 第三行：ps提示
-								p.sendMessage(Text.literal("ps：此对话只显示这一次").formatted(Formatting.GRAY));
+								p.sendSystemMessage(Component.literal("ps：此对话只显示这一次").withStyle(ChatFormatting.GRAY));
 							} else {
-								p.sendMessage(Text.empty()
-										.append(Text.literal("Welcome to Shape Shifter's Curse Addon! Tutorial is available on MCMOD Wiki: ").formatted(Formatting.GOLD))
+								p.sendSystemMessage(Component.empty()
+										.append(Component.literal("Welcome to Shape Shifter's Curse Addon! Tutorial is available on MCMOD Wiki: ").withStyle(ChatFormatting.GOLD))
 										.append(wikiLink)
-										.append(Text.literal(". Due to the author's limited expertise, the mod may have bugs. If you encounter any, please submit your logs on GitHub: ").formatted(Formatting.GOLD))
+										.append(Component.literal(". Due to the author's limited expertise, the mod may have bugs. If you encounter any, please submit your logs on GitHub: ").withStyle(ChatFormatting.GOLD))
 										.append(githubLink)
-										.append(Text.literal("; If a future update causes a crash, please submit the crash log and necessary info files to the mod's GitHub, thank you!").formatted(Formatting.GOLD)));
-								p.sendMessage(Text.literal("Please do NOT only send screenshots, thank you!").formatted(Formatting.RED));
-								p.sendMessage(Text.literal("PS: This message will only be shown once.").formatted(Formatting.GRAY));
+										.append(Component.literal("; If a future update causes a crash, please submit the crash log and necessary info files to the mod's GitHub, thank you!").withStyle(ChatFormatting.GOLD)));
+								p.sendSystemMessage(Component.literal("Please do NOT only send screenshots, thank you!").withStyle(ChatFormatting.RED));
+								p.sendSystemMessage(Component.literal("PS: This message will only be shown once.").withStyle(ChatFormatting.GRAY));
 							}
 							});
 						});
@@ -127,7 +127,7 @@ public final class SscAddonPlayerEvents {
 		// 方案：监听实体「开始追踪」事件——任一玩家开始追踪另一名玩家时，对被追踪玩家重发其形态组件，
 		// 让新观察者(以及跨维度/远距离重新进入视野的玩家)及时拿到正确形态。
 		net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents.START_TRACKING.register((trackedEntity, player) -> {
-			if (trackedEntity instanceof net.minecraft.server.network.ServerPlayerEntity tracked) {
+			if (trackedEntity instanceof net.minecraft.server.level.ServerPlayer tracked) {
 				try {
 					net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.sync(tracked);
 				} catch (Throwable ignored) {
@@ -138,23 +138,23 @@ public final class SscAddonPlayerEvents {
 
 		// 进化美西螈「投掷水矛」蓄力期：服务端禁用右键放置方块 / 使用方块与物品（蓄力时不能做其它交互）
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			if (!world.isClient && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUuid())) {
-				return net.minecraft.util.ActionResult.FAIL;
+			if (!world.isClientSide && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUUID())) {
+				return net.minecraft.world.InteractionResult.FAIL;
 			}
-			return net.minecraft.util.ActionResult.PASS;
+			return net.minecraft.world.InteractionResult.PASS;
 		});
 		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (!world.isClient && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUuid())) {
-				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
+			if (!world.isClientSide && net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.isCharging(player.getUUID())) {
+				return net.minecraft.world.InteractionResultHolder.fail(player.getItemInHand(hand));
 			}
-			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+			return net.minecraft.world.InteractionResultHolder.pass(player.getItemInHand(hand));
 		});
 
 
 		// 玩家断线时清理所有静态状态Map，防止内存泄漏和重连后状态错乱
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 
-			java.util.UUID uuid = handler.player.getUuid();
+			java.util.UUID uuid = handler.player.getUUID();
 			System.out.println("[SSC_ADDON] DISCONNECT event fired for player: " + handler.player.getName().getString());
 			SnowFoxSpMeleeAbility.clearPlayer(uuid);
 			SnowFoxSpTeleportAttack.clearPlayer(uuid);

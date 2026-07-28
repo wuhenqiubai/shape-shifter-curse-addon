@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -65,49 +65,49 @@ public final class GoldenSandstormRegen {
 	// ==================== 战斗状态 ====================
 
 	/** 标记玩家进入战斗状态（仅对金沙岚生效，其他形态会被 tick 自然忽略） */
-	public static void markCombat(ServerPlayerEntity player) {
+	public static void markCombat(ServerPlayer player) {
 		if (player == null) return;
-		LAST_COMBAT_TICK.put(player.getUuid(), player.getWorld().getTime());
+		LAST_COMBAT_TICK.put(player.getUUID(), player.level().getGameTime());
 	}
 
 	/** 检查玩家是否处于战斗状态 */
-	public static boolean isInCombat(ServerPlayerEntity player) {
+	public static boolean isInCombat(ServerPlayer player) {
 		// 同步果蝠交战判定（造成/受到伤害 10s 内、或来源仍在 10 格内）；
 		// 同时保留金沙岚自身的 markCombat 标记（覆盖冥狼为主人标记、凋零源等果蝠事件不涵盖的特殊来源）。
 		if (net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticCombatTracker.isInCombat(player)) {
 			return true;
 		}
-		Long last = LAST_COMBAT_TICK.get(player.getUuid());
+		Long last = LAST_COMBAT_TICK.get(player.getUUID());
 		if (last == null) return false;
-		return player.getWorld().getTime() - last <= COMBAT_DURATION;
+		return player.level().getGameTime() - last <= COMBAT_DURATION;
 	}
 
 	// ==================== 凋零来源追踪 ====================
 
 	/** 注册凋零来源（金沙岚玩家给受害者施加凋零时调用） */
-	public static void registerWitherSource(LivingEntity victim, ServerPlayerEntity player, int witherDurationTicks) {
+	public static void registerWitherSource(LivingEntity victim, ServerPlayer player, int witherDurationTicks) {
 		if (victim == null || player == null) return;
-		long expire = victim.getWorld().getTime() + (long) witherDurationTicks + WITHER_SOURCE_GRACE;
-		WITHER_SOURCES.computeIfAbsent(victim.getUuid(), k -> new ConcurrentHashMap<>())
-				.put(player.getUuid(), expire);
+		long expire = victim.level().getGameTime() + (long) witherDurationTicks + WITHER_SOURCE_GRACE;
+		WITHER_SOURCES.computeIfAbsent(victim.getUUID(), k -> new ConcurrentHashMap<>())
+				.put(player.getUUID(), expire);
 	}
 
 	/** 凋零 tick 对受害者造成伤害时调用：为所有注册的金沙岚玩家回血 */
 	public static void onWitherTickDamage(LivingEntity victim) {
 		if (victim == null) return;
-		Map<UUID, Long> sources = WITHER_SOURCES.get(victim.getUuid());
+		Map<UUID, Long> sources = WITHER_SOURCES.get(victim.getUUID());
 		if (sources == null || sources.isEmpty()) return;
-		if (!(victim.getWorld() instanceof ServerWorld serverWorld)) return;
-		long now = serverWorld.getTime();
+		if (!(victim.level() instanceof ServerLevel serverWorld)) return;
+		long now = serverWorld.getGameTime();
 		// 清理过期记录
 		sources.entrySet().removeIf(e -> e.getValue() < now);
 		if (sources.isEmpty()) {
-			WITHER_SOURCES.remove(victim.getUuid());
+			WITHER_SOURCES.remove(victim.getUUID());
 			return;
 		}
 		for (UUID playerUuid : sources.keySet()) {
-			PlayerEntity p = serverWorld.getPlayerByUuid(playerUuid);
-			if (!(p instanceof ServerPlayerEntity sp)) continue;
+			Player p = serverWorld.getPlayerByUUID(playerUuid);
+			if (!(p instanceof ServerPlayer sp)) continue;
 			if (!FormUtils.isForm(sp, FormIdentifiers.GOLDEN_SANDSTORM_SP)) continue;
 			sp.heal(WITHER_TICK_HEAL);
 			markCombat(sp);
@@ -117,24 +117,24 @@ public final class GoldenSandstormRegen {
 	// ==================== 被动回血 tick ====================
 
 	/** 每 tick 处理金沙岚的被动回血 */
-	public static void tick(ServerPlayerEntity player) {
+	public static void tick(ServerPlayer player) {
 		if (player == null) return;
 		if (!FormUtils.isForm(player, FormIdentifiers.GOLDEN_SANDSTORM_SP)) return;
 		// 满血时仅刷新计时器，避免一进战斗就立即结算累积时间
-		long now = player.getWorld().getTime();
+		long now = player.level().getGameTime();
 		if (player.getHealth() >= player.getMaxHealth()) {
-			LAST_PASSIVE_TICK.put(player.getUuid(), now);
+			LAST_PASSIVE_TICK.put(player.getUUID(), now);
 			return;
 		}
-		Long last = LAST_PASSIVE_TICK.get(player.getUuid());
+		Long last = LAST_PASSIVE_TICK.get(player.getUUID());
 		if (last == null) {
-			LAST_PASSIVE_TICK.put(player.getUuid(), now);
+			LAST_PASSIVE_TICK.put(player.getUUID(), now);
 			return;
 		}
 		int interval = isInCombat(player) ? PASSIVE_INTERVAL_IC : PASSIVE_INTERVAL_OOC;
 		if (now - last >= interval) {
 			player.heal(PASSIVE_HEAL);
-			LAST_PASSIVE_TICK.put(player.getUuid(), now);
+			LAST_PASSIVE_TICK.put(player.getUUID(), now);
 		}
 	}
 
@@ -146,20 +146,20 @@ public final class GoldenSandstormRegen {
 	}
 
 	private static void onEntityDeath(LivingEntity entity, DamageSource source) {
-		if (entity == null || entity.getWorld().isClient()) return;
+		if (entity == null || entity.level().isClientSide()) return;
 		// 1. 玩家直接击杀
-		if (source.getAttacker() instanceof ServerPlayerEntity killer
+		if (source.getEntity() instanceof ServerPlayer killer
 				&& FormUtils.isForm(killer, FormIdentifiers.GOLDEN_SANDSTORM_SP)) {
 			killer.heal(KILL_HEAL);
 			markCombat(killer);
 		}
 		// 2. 冥狼击杀
-		else if (source.getAttacker() instanceof AnubisWolfMinionEntity wolf
-				&& entity.getWorld() instanceof ServerWorld serverWorld) {
+		else if (source.getEntity() instanceof AnubisWolfMinionEntity wolf
+				&& entity.level() instanceof ServerLevel serverWorld) {
 			UUID ownerUuid = wolf.getMinionOwnerUUID();
 			if (ownerUuid != null) {
-				PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
-				if (owner instanceof ServerPlayerEntity ownerPlayer
+				Player owner = serverWorld.getPlayerByUUID(ownerUuid);
+				if (owner instanceof ServerPlayer ownerPlayer
 						&& FormUtils.isForm(ownerPlayer, FormIdentifiers.GOLDEN_SANDSTORM_SP)) {
 					ownerPlayer.heal(MINION_KILL_HEAL);
 					markCombat(ownerPlayer);
@@ -167,7 +167,7 @@ public final class GoldenSandstormRegen {
 			}
 		}
 		// 受害者死亡，清理对应凋零源记录
-		WITHER_SOURCES.remove(entity.getUuid());
+		WITHER_SOURCES.remove(entity.getUUID());
 	}
 
 	// ==================== 状态清理 ====================

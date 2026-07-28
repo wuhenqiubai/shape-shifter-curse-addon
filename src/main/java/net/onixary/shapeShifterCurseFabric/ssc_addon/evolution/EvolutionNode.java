@@ -3,13 +3,12 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.item.Item;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 
 /**
  * SSCA 进化树的单个节点（能力）定义。纯数据，服务端与客户端共用。
@@ -82,9 +81,9 @@ public class EvolutionNode {
                 : "evolution.my_addon." + routeId + ".node." + id + ".desc";
         Item icon = Items.BARRIER;
         if (o.has("icon")) {
-            Identifier iconId = Identifier.tryParse(o.get("icon").getAsString());
-            if (iconId != null && Registries.ITEM.containsId(iconId)) {
-                icon = Registries.ITEM.get(iconId);
+            ResourceLocation iconId = ResourceLocation.tryParse(o.get("icon").getAsString());
+            if (iconId != null && BuiltInRegistries.ITEM.containsKey(iconId)) {
+                icon = BuiltInRegistries.ITEM.get(iconId);
             }
         }
         int cost = o.has("cost") ? o.get("cost").getAsInt() : 1;

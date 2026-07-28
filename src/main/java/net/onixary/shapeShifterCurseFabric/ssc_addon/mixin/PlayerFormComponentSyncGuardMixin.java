@@ -3,6 +3,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -36,10 +37,13 @@ import java.util.List;
 public class PlayerFormComponentSyncGuardMixin {
 
     /** 本能效果集合膨胀阈值；正常游玩仅几个，超过视为异常 */
+    @Unique
     private static final int INSTINCT_EFFECTS_THRESHOLD = 64;
     /** 形态历史膨胀阈值；正常每次切换 clear 重建仅 2-3 个，超过视为异常 */
+    @Unique
     private static final int FORM_HISTORY_THRESHOLD = 16;
     /** formHistory 裁剪后保留的最大长度（保留回退能力） */
+    @Unique
     private static final int FORM_HISTORY_KEEP = 3;
 
     /**
@@ -89,7 +93,3 @@ public class PlayerFormComponentSyncGuardMixin {
         ci.cancel();
     }
 }
-
-
-
-

@@ -4,15 +4,14 @@ import io.github.apace100.apoli.data.ApoliDataTypes;
 import io.github.apace100.apoli.power.factory.action.ActionFactory;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.entity.Entity;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Pair;
-import net.minecraft.util.math.Vec3d;
-
 import java.util.function.Predicate;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Tuple;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 旋转圆环粒子 action（附属专用）。
@@ -28,18 +27,18 @@ public class SpawnRotatingCircleAction {
 
     public static void action(SerializableData.Instance data, Entity entity) {
         // 仅在服务器世界生成粒子
-        if (!(entity.getWorld() instanceof ServerWorld serverWorld)) {
+        if (!(entity.level() instanceof ServerLevel serverWorld)) {
             return;
         }
 
-        ParticleEffect particleEffect = data.get("particle");
-        Predicate<Pair<Entity, Entity>> biEntityCondition = data.get("bientity_condition");
+        ParticleOptions particleEffect = data.get("particle");
+        Predicate<Tuple<Entity, Entity>> biEntityCondition = data.get("bientity_condition");
 
         boolean force = data.getBoolean("force");
         float speed = data.getFloat("speed");
         int count = Math.max(0, data.getInt("count"));
 
-        Vec3d spread = data.<Vec3d>get("spread");
+        Vec3 spread = data.<Vec3>get("spread");
         double offsetX = data.getDouble("offset_x");
         double offsetY = data.getDouble("offset_y");
         double offsetZ = data.getDouble("offset_z");
@@ -50,11 +49,11 @@ public class SpawnRotatingCircleAction {
         boolean randomAngle = data.getBoolean("random_angle");
 
         // 旋转相位：随实体存在 tick 数推进；age 由服务端统一推进，多人环境一致
-        double rotationPhase = entity.age * rotationSpeed;
+        double rotationPhase = entity.tickCount * rotationSpeed;
 
-        Vec3d basePos = entity.getPos().add(offsetX, offsetY, offsetZ);
+        Vec3 basePos = entity.position().add(offsetX, offsetY, offsetZ);
         // 扩散向量按实体尺寸缩放（与主模组 spawn_particles_in_circle 保持一致）
-        Vec3d delta = spread.multiply(entity.getWidth(), entity.getEyeHeight(entity.getPose()), entity.getWidth());
+        Vec3 delta = spread.multiply(entity.getBbWidth(), entity.getEyeHeight(entity.getPose()), entity.getBbWidth());
 
         for (int i = 0; i < sampleCount; i++) {
             // random_angle=true 时每个采样点在圆环上随机取角（不再固定点位）；否则均匀采样 + 旋转相位
@@ -63,21 +62,21 @@ public class SpawnRotatingCircleAction {
                     : 2 * Math.PI * i / sampleCount + rotationPhase;
             double xOffset = radius * Math.cos(angle);
             double zOffset = radius * Math.sin(angle);
-            Vec3d particlePos = basePos.add(xOffset, 0, zOffset);
+            Vec3 particlePos = basePos.add(xOffset, 0, zOffset);
 
-            for (ServerPlayerEntity player : serverWorld.getPlayers()) {
-                if (biEntityCondition == null || biEntityCondition.test(new Pair<>(entity, player))) {
-                    serverWorld.spawnParticles(
+            for (ServerPlayer player : serverWorld.players()) {
+                if (biEntityCondition == null || biEntityCondition.test(new Tuple<>(entity, player))) {
+                    serverWorld.sendParticles(
                             player,
                             particleEffect,
                             force,
-                            particlePos.getX(),
-                            particlePos.getY(),
-                            particlePos.getZ(),
+                            particlePos.x(),
+                            particlePos.y(),
+                            particlePos.z(),
                             count,
-                            delta.getX(),
-                            delta.getY(),
-                            delta.getZ(),
+                            delta.x(),
+                            delta.y(),
+                            delta.z(),
                             speed
                     );
                 }
@@ -87,14 +86,14 @@ public class SpawnRotatingCircleAction {
 
     public static ActionFactory<Entity> getFactory() {
         return new ActionFactory<>(
-                Identifier.of("my_addon", "spawn_rotating_circle"),
+                ResourceLocation.fromNamespaceAndPath("my_addon", "spawn_rotating_circle"),
                 new SerializableData()
                         .add("particle", SerializableDataTypes.PARTICLE_EFFECT_OR_TYPE)
                         .add("bientity_condition", ApoliDataTypes.BIENTITY_CONDITION, null)
                         .add("count", SerializableDataTypes.INT, 1)
                         .add("speed", SerializableDataTypes.FLOAT, 0.0F)
                         .add("force", SerializableDataTypes.BOOLEAN, false)
-                        .add("spread", SerializableDataTypes.VECTOR, new Vec3d(0.5, 0.5, 0.5))
+                        .add("spread", SerializableDataTypes.VECTOR, new Vec3(0.5, 0.5, 0.5))
                         .add("offset_x", SerializableDataTypes.DOUBLE, 0.0D)
                         .add("offset_y", SerializableDataTypes.DOUBLE, 0.5D)
                         .add("offset_z", SerializableDataTypes.DOUBLE, 0.0D)

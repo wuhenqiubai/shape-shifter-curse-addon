@@ -5,8 +5,8 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 
 /**
  * 寄生果蝠专属「生命恢复」buff。
@@ -14,13 +14,13 @@ import net.minecraft.entity.effect.StatusEffectCategory;
  * 本效果不周期回血（canApplyUpdateEffect 恒 false），仅提供状态栏图标与名字显示，
  * 因此即使带持续时间也「只回一次」。图标/名字复用原版生命恢复。
  */
-public class BatRegenEffect extends StatusEffect {
+public class BatRegenEffect extends MobEffect {
     public BatRegenEffect() {
-        super(StatusEffectCategory.BENEFICIAL, 0xCD5CAB);
+        super(MobEffectCategory.BENEFICIAL, 0xCD5CAB);
     }
 
     @Override
-    public boolean canApplyUpdateEffect(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return false;
     }
 }

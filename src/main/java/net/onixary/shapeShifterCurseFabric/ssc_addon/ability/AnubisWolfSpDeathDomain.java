@@ -1,24 +1,72 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.block.*;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.Team;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.state.property.Properties;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.block.AnvilBlock;
+import net.minecraft.world.level.block.BasePressurePlateBlock;
+import net.minecraft.world.level.block.BaseRailBlock;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.BeehiveBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.CartographyTableBlock;
+import net.minecraft.world.level.block.ChainBlock;
+import net.minecraft.world.level.block.CommandBlock;
+import net.minecraft.world.level.block.ComposterBlock;
+import net.minecraft.world.level.block.CraftingTableBlock;
+import net.minecraft.world.level.block.DiodeBlock;
+import net.minecraft.world.level.block.DirtPathBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.FletchingTableBlock;
+import net.minecraft.world.level.block.GrindstoneBlock;
+import net.minecraft.world.level.block.IronBarsBlock;
+import net.minecraft.world.level.block.JigsawBlock;
+import net.minecraft.world.level.block.LecternBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.LightningRodBlock;
+import net.minecraft.world.level.block.LoomBlock;
+import net.minecraft.world.level.block.NoteBlock;
+import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.PoweredBlock;
+import net.minecraft.world.level.block.RedStoneWireBlock;
+import net.minecraft.world.level.block.RedstoneTorchBlock;
+import net.minecraft.world.level.block.RespawnAnchorBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SmithingTableBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.StonecutterBlock;
+import net.minecraft.world.level.block.StructureBlock;
+import net.minecraft.world.level.block.TargetBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.TripWireBlock;
+import net.minecraft.world.level.block.TripWireHookBlock;
+import net.minecraft.world.level.block.WallBlock;
+import net.minecraft.world.level.block.piston.MovingPistonBlock;
+import net.minecraft.world.level.block.piston.PistonBaseBlock;
+import net.minecraft.world.level.block.piston.PistonHeadBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -104,11 +152,11 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 血量减少修饰符UUID
 	 */
-	private static final Identifier HEALTH_MODIFIER_UUID = Identifier.of("a7b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d");
+	private static final ResourceLocation HEALTH_MODIFIER_UUID = ResourceLocation.parse("a7b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d");
 	/**
 	 * 充能减速修饰符UUID
 	 */
-	private static final Identifier CHARGE_SLOW_UUID = Identifier.of("b8c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e");
+	private static final ResourceLocation CHARGE_SLOW_UUID = ResourceLocation.parse("b8c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e");
 	// ==================== 状态追踪 ====================
 	private static final ConcurrentHashMap<UUID, DomainData> ACTIVE_DOMAINS = new ConcurrentHashMap<>();
 	private static final ConcurrentHashMap<UUID, Long> COOLDOWN_PLAYERS = new ConcurrentHashMap<>();
@@ -119,23 +167,23 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 玩家按下技能键触发
 	 */
-	public static boolean execute(ServerPlayerEntity player) {
+	public static boolean execute(ServerPlayer player) {
 		// CD检查（使用服务端tick，保证多人一致性）
-		long currentTick = player.getWorld().getTime();
-		Long cdEndTick = COOLDOWN_PLAYERS.get(player.getUuid());
+		long currentTick = player.level().getGameTime();
+		Long cdEndTick = COOLDOWN_PLAYERS.get(player.getUUID());
 		if (cdEndTick != null && currentTick < cdEndTick) {
 			return false;
 		}
 
 		// 重复释放检查
-		if (ACTIVE_DOMAINS.containsKey(player.getUuid())) {
+		if (ACTIVE_DOMAINS.containsKey(player.getUUID())) {
 			return false;
 		}
 
 		// 直接开始蓄力，不做前置检查
 		// 创建领域数据
-		BlockPos center = player.getBlockPos();
-		ServerWorld serverWorld = (ServerWorld) player.getWorld();
+		BlockPos center = player.blockPosition();
+		ServerLevel serverWorld = (ServerLevel) player.level();
 		DomainData data = new DomainData(serverWorld, center, (int) player.getY());
 
 // 检查灵魂能量是否满：满则进入增强模式并消耗能量
@@ -145,19 +193,19 @@ public class AnubisWolfSpDeathDomain {
 			LOGGER.info("[DeathDomain] ENHANCED mode activated for player={}", player.getName().getString());
 		}
 
-		ACTIVE_DOMAINS.put(player.getUuid(), data);
+		ACTIVE_DOMAINS.put(player.getUUID(), data);
 
 		LOGGER.info("[DeathDomain] execute: player={}, center={}, world={}, ACTIVE_DOMAINS size={}",
-				player.getName().getString(), center, serverWorld.getRegistryKey().getValue(), ACTIVE_DOMAINS.size());
+				player.getName().getString(), center, serverWorld.dimension().location(), ACTIVE_DOMAINS.size());
 
 		// 应用充能减速效果
 		applyChargeSlow(player);
 
 		// 充能开始音效：灵魂沙谷吸引 + 幽灵低吟
-		player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.BLOCK_SOUL_SAND_PLACE, SoundCategory.PLAYERS, 1.5f, 0.5f);
-		player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_WITHER_AMBIENT, SoundCategory.PLAYERS, 1.0f, 0.6f);
+		player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+				SoundEvents.SOUL_SAND_PLACE, SoundSource.PLAYERS, 1.5f, 0.5f);
+		player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+				SoundEvents.WITHER_AMBIENT, SoundSource.PLAYERS, 1.0f, 0.6f);
 
 		return true;
 	}
@@ -165,11 +213,11 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 每tick更新，由SscAddon的tick处理器调用
 	 */
-	public static void tick(ServerPlayerEntity player) {
-		DomainData data = ACTIVE_DOMAINS.get(player.getUuid());
+	public static void tick(ServerPlayer player) {
+		DomainData data = ACTIVE_DOMAINS.get(player.getUUID());
 		if (data == null) return;
 
-		if (!(player.getWorld() instanceof ServerWorld serverWorld)) return;
+		if (!(player.level() instanceof ServerLevel serverWorld)) return;
 
 		data.ticksElapsed++;
 
@@ -193,8 +241,8 @@ public class AnubisWolfSpDeathDomain {
 	 * world.setBlockState()不是线程安全的。
 	 * 方块还原由 tickCleanup()（服务器线程）或 forceRestoreAll()（SERVER_STOPPING）处理。
 	 */
-	public static void clearPlayer(ServerPlayerEntity player) {
-		UUID uuid = player.getUuid();
+	public static void clearPlayer(ServerPlayer player) {
+		UUID uuid = player.getUUID();
 		LOGGER.info("[DeathDomain] clearPlayer called: player={}, uuid={}, ACTIVE_DOMAINS size={}, containsKey={}",
 				player.getName().getString(), uuid, ACTIVE_DOMAINS.size(), ACTIVE_DOMAINS.containsKey(uuid));
 		DomainData data = ACTIVE_DOMAINS.get(uuid);
@@ -234,7 +282,7 @@ public class AnubisWolfSpDeathDomain {
 			if (data.phase == Phase.CLEANUP && data.world != null) {
 				int totalBlocks = data.changedBlocksByDistance.values().stream().mapToInt(Map::size).sum();
 				LOGGER.info("[DeathDomain] tickCleanup: restoring uuid={}, totalBlocks={}, world={}",
-						entry.getKey(), totalBlocks, data.world.getRegistryKey().getValue());
+						entry.getKey(), totalBlocks, data.world.dimension().location());
 				restoreAllBlocks(data.world, data);
 				cleanupDebuffs(data.world, data);
 				it.remove();
@@ -246,8 +294,8 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 检查玩家是否在充能中（用于外部减速检查等）
 	 */
-	public static boolean isCharging(ServerPlayerEntity player) {
-		DomainData data = ACTIVE_DOMAINS.get(player.getUuid());
+	public static boolean isCharging(ServerPlayer player) {
+		DomainData data = ACTIVE_DOMAINS.get(player.getUUID());
 		return data != null && data.phase == Phase.CHARGING;
 	}
 
@@ -295,14 +343,14 @@ public class AnubisWolfSpDeathDomain {
 				totalBlocks += m.size();
 			}
 			LOGGER.info("[DeathDomain] forceRestoreAll: uuid={}, phase={}, world={}, totalBlocks={}",
-					entry.getKey(), data.phase, data.world != null ? data.world.getRegistryKey().getValue() : "NULL", totalBlocks);
+					entry.getKey(), data.phase, data.world != null ? data.world.dimension().location() : "NULL", totalBlocks);
 			if (data.world != null) {
 				restoreAllBlocks(data.world, data);
 				cleanupDebuffs(data.world, data);
 				// 修复：移除在线玩家的 CHARGE_SLOW 修饰符，避免 reload 后 70% 减速永久挂着
 				if (data.phase == Phase.CHARGING) {
-					net.minecraft.entity.player.PlayerEntity playerEntity = data.world.getPlayerByUuid(entry.getKey());
-					if (playerEntity instanceof ServerPlayerEntity sp) {
+					net.minecraft.world.entity.player.Player playerEntity = data.world.getPlayerByUUID(entry.getKey());
+					if (playerEntity instanceof ServerPlayer sp) {
 						removeChargeSlow(sp);
 					}
 				}
@@ -317,14 +365,14 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 检查玩家脚下4格范围内是否有可转化为灵魂沙的方块，或已经是灵魂沙/灵魂土
 	 */
-	private static boolean hasConvertibleBlocksBelow(ServerPlayerEntity player) {
-		BlockPos feetPos = player.getBlockPos();
+	private static boolean hasConvertibleBlocksBelow(ServerPlayer player) {
+		BlockPos feetPos = player.blockPosition();
 		for (int dx = -4; dx <= 4; dx++) {
 			for (int dz = -4; dz <= 4; dz++) {
 				if (dx * dx + dz * dz > 16) continue; // 圆形范围
 				for (int dy = -4; dy <= 0; dy++) {
-					BlockPos pos = feetPos.add(dx, dy, dz);
-					BlockState state = player.getWorld().getBlockState(pos);
+					BlockPos pos = feetPos.offset(dx, dy, dz);
+					BlockState state = player.level().getBlockState(pos);
 					Block block = state.getBlock();
 					if (shouldConvert(state) || block == Blocks.SOUL_SAND || block == Blocks.SOUL_SOIL) {
 						return true;
@@ -338,7 +386,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 充能阶段：普通2秒/增强1秒，期间减速70%
 	 */
-	private static void tickCharging(ServerPlayerEntity player, ServerWorld world, DomainData data) {
+	private static void tickCharging(ServerPlayer player, ServerLevel world, DomainData data) {
 		int chargeTicks = data.enhanced ? ENHANCED_CHARGE_TICKS : CHARGE_TICKS;
 
 		// 充能粒子效果：灵魂粒子围绕玩家旋转上升
@@ -358,8 +406,8 @@ public class AnubisWolfSpDeathDomain {
 
 		// 心跳音效（每10tick一次）
 		if (data.ticksElapsed % 10 == 0) {
-			player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.ENTITY_WITHER_HURT, SoundCategory.PLAYERS, 0.8f, 0.5f + data.ticksElapsed * 0.01f);
+			player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+					SoundEvents.WITHER_HURT, SoundSource.PLAYERS, 0.8f, 0.5f + data.ticksElapsed * 0.01f);
 		}
 
 		if (data.ticksElapsed >= chargeTicks) {
@@ -369,30 +417,30 @@ public class AnubisWolfSpDeathDomain {
 			// 检查脚下是否有可转化方块
 			if (!hasConvertibleBlocksBelow(player)) {
 				// 释放失败：播放失败音效，进入惩罚性CD
-				player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.BLOCK_SOUL_SAND_BREAK, SoundCategory.PLAYERS, 1.0f, 1.5f);
-				COOLDOWN_PLAYERS.put(player.getUuid(), player.getWorld().getTime() + PENALTY_COOLDOWN_TICKS);
+				player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+						SoundEvents.SOUL_SAND_BREAK, SoundSource.PLAYERS, 1.0f, 1.5f);
+				COOLDOWN_PLAYERS.put(player.getUUID(), player.level().getGameTime() + PENALTY_COOLDOWN_TICKS);
 				PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_PRIMARY_CD, PENALTY_COOLDOWN_TICKS);
-				ACTIVE_DOMAINS.remove(player.getUuid());
+				ACTIVE_DOMAINS.remove(player.getUUID());
 				return;
 			}
 
 			// 释放成功：设置正常CD，进入延展阶段
-			COOLDOWN_PLAYERS.put(player.getUuid(), player.getWorld().getTime() + COOLDOWN_TICKS);
+			COOLDOWN_PLAYERS.put(player.getUUID(), player.level().getGameTime() + COOLDOWN_TICKS);
 			PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_PRIMARY_CD, COOLDOWN_TICKS);
 
 			// 更新领域中心为充能完成时的位置
-			data.center = player.getBlockPos();
+			data.center = player.blockPosition();
 			data.centerY = (int) player.getY();
 			data.phase = Phase.EXPANDING;
 			data.ticksElapsed = 0;
 			data.currentRadius = 0;
 
 			// 释放音效：低沉爆发 + 灵魂回声
-			player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.ENTITY_WITHER_SHOOT, SoundCategory.PLAYERS, 0.7f, 0.4f);
-			player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.ENTITY_WITHER_DEATH, SoundCategory.PLAYERS, 0.5f, 0.5f);
+			player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+					SoundEvents.WITHER_SHOOT, SoundSource.PLAYERS, 0.7f, 0.4f);
+			player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+					SoundEvents.WITHER_DEATH, SoundSource.PLAYERS, 0.5f, 0.5f);
 
 			// 增强模式：自动召唤冥狼（饰品增加2只），并立即让召唤技能也进入CD
 			if (data.enhanced) {
@@ -404,8 +452,8 @@ public class AnubisWolfSpDeathDomain {
 				PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_SECONDARY_CD,
 						AnubisWolfSpSummonWolves.getCooldownTicks());
 				// 增强模式额外音效
-				player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.PLAYERS, 0.8f, 0.8f);
+				player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+						SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 0.8f, 0.8f);
 			}
 		}
 	}
@@ -415,7 +463,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 延展阶段：以5格/秒速度从中心向外扩散灵魂沙
 	 */
-	private static void tickExpanding(ServerPlayerEntity player, ServerWorld world, DomainData data) {
+	private static void tickExpanding(ServerPlayer player, ServerLevel world, DomainData data) {
 		// 首次进入延展阶段时创建发光 team（把 SP阿努比斯加入）
 		ensureGlowTeam(world, player, data);
 		int maxRadius = data.enhanced ? ENHANCED_DOMAIN_RADIUS : DOMAIN_RADIUS;
@@ -439,8 +487,8 @@ public class AnubisWolfSpDeathDomain {
 
 		// 延展音效（每5tick一次沙砾滑动声）
 		if (data.ticksElapsed % 5 == 0) {
-			player.getWorld().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
-					SoundEvents.BLOCK_SOUL_SAND_STEP, SoundCategory.BLOCKS, 0.6f, 0.7f);
+			player.level().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
+					SoundEvents.SOUL_SAND_STEP, SoundSource.BLOCKS, 0.6f, 0.7f);
 		}
 
 		if (data.currentRadius >= maxRadius) {
@@ -448,8 +496,8 @@ public class AnubisWolfSpDeathDomain {
 			data.ticksElapsed = 0;
 
 			// 完全展开音效
-			player.getWorld().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
-					SoundEvents.ENTITY_WITHER_AMBIENT, SoundCategory.PLAYERS, 0.5f, 0.3f);
+			player.level().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
+					SoundEvents.WITHER_AMBIENT, SoundSource.PLAYERS, 0.5f, 0.3f);
 		}
 
 		data.ticksElapsed++;
@@ -458,7 +506,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 维持阶段：普通15秒/增强20秒
 	 */
-	private static void tickSustaining(ServerPlayerEntity player, ServerWorld world, DomainData data) {
+	private static void tickSustaining(ServerPlayer player, ServerLevel world, DomainData data) {
 		int duration = data.enhanced ? ENHANCED_DOMAIN_DURATION : DOMAIN_DURATION;
 		int maxRadius = data.enhanced ? ENHANCED_DOMAIN_RADIUS : DOMAIN_RADIUS;
 
@@ -474,8 +522,8 @@ public class AnubisWolfSpDeathDomain {
 
 		// 幽灵低语音效（每60tick / 3秒一次）
 		if (data.ticksElapsed % 60 == 0) {
-			player.getWorld().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
-					SoundEvents.BLOCK_SOUL_SAND_BREAK, SoundCategory.AMBIENT, 1.0f, 0.5f);
+			player.level().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
+					SoundEvents.SOUL_SAND_BREAK, SoundSource.AMBIENT, 1.0f, 0.5f);
 		}
 
 		if (data.ticksElapsed >= duration) {
@@ -485,8 +533,8 @@ public class AnubisWolfSpDeathDomain {
 			data.currentRadius = maxRadius;
 
 			// 回退开始音效
-			player.getWorld().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
-					SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.PLAYERS, 0.4f, 0.5f);
+			player.level().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
+					SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 0.4f, 0.5f);
 		}
 
 		data.ticksElapsed++;
@@ -495,7 +543,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 回退阶段：从最远处开始以5格/秒速度向内还原方块
 	 */
-	private static void tickRetracting(ServerPlayerEntity player, ServerWorld world, DomainData data) {
+	private static void tickRetracting(ServerPlayer player, ServerLevel world, DomainData data) {
 		double prevRadius = data.currentRadius;
 		data.currentRadius -= EXPAND_SPEED;
 
@@ -510,25 +558,25 @@ public class AnubisWolfSpDeathDomain {
 
 		// 修正施法者位置：仅在被还原方块（非灵魂沙）埋住时传送
 		// 灵魂沙的下陷是原版行为，不做干预
-		BlockPos casterFeet = player.getBlockPos();
+		BlockPos casterFeet = player.blockPosition();
 		BlockState casterFeetState = world.getBlockState(casterFeet);
-		if (casterFeetState.isSolidBlock(world, casterFeet) && !casterFeetState.isOf(Blocks.SOUL_SAND)) {
-			player.requestTeleport(player.getX(), casterFeet.getY() + 1.0, player.getZ());
+		if (casterFeetState.isRedstoneConductor(world, casterFeet) && !casterFeetState.is(Blocks.SOUL_SAND)) {
+			player.teleportTo(player.getX(), casterFeet.getY() + 1.0, player.getZ());
 		}
 
 		// 修正其它生物位置，防止还原方块后陷入地面
-		Box ringBox = new Box(
+		AABB ringBox = new AABB(
 				data.center.getX() - prevR - 1, data.centerY - DOMAIN_HEIGHT, data.center.getZ() - prevR - 1,
 				data.center.getX() + prevR + 2, data.centerY + DOMAIN_HEIGHT + 2, data.center.getZ() + prevR + 2
 		);
-		for (LivingEntity entity : world.getEntitiesByClass(LivingEntity.class, ringBox, e -> e != player && e.isAlive())) {
-			BlockPos entityFeetPos = entity.getBlockPos();
+		for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class, ringBox, e -> e != player && e.isAlive())) {
+			BlockPos entityFeetPos = entity.blockPosition();
 			BlockState entityFeetState = world.getBlockState(entityFeetPos);
-			if (entityFeetState.isSolidBlock(world, entityFeetPos) && !entityFeetState.isOf(Blocks.SOUL_SAND)) {
-				if (entity instanceof ServerPlayerEntity sp) {
-					sp.requestTeleport(sp.getX(), entityFeetPos.getY() + 1.0, sp.getZ());
+			if (entityFeetState.isRedstoneConductor(world, entityFeetPos) && !entityFeetState.is(Blocks.SOUL_SAND)) {
+				if (entity instanceof ServerPlayer sp) {
+					sp.teleportTo(sp.getX(), entityFeetPos.getY() + 1.0, sp.getZ());
 				} else {
-					entity.setPosition(entity.getX(), entityFeetPos.getY() + 1.0, entity.getZ());
+					entity.setPos(entity.getX(), entityFeetPos.getY() + 1.0, entity.getZ());
 				}
 			}
 		}
@@ -538,8 +586,8 @@ public class AnubisWolfSpDeathDomain {
 
 		// 回退音效
 		if (data.ticksElapsed % 5 == 0) {
-			player.getWorld().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
-					SoundEvents.BLOCK_SOUL_SAND_BREAK, SoundCategory.BLOCKS, 0.4f, 0.9f);
+			player.level().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
+					SoundEvents.SOUL_SAND_BREAK, SoundSource.BLOCKS, 0.4f, 0.9f);
 		}
 
 		// 回退阶段也要更新发光：随着领域缩小，移除离开领域的生物的发光
@@ -549,16 +597,16 @@ public class AnubisWolfSpDeathDomain {
 			// 回退完成，还原所有剩余方块（包括距离0的中心点）
 			restoreAllBlocks(world, data);
 			// 还原完成后修正施法者位置，防止被埋在还原的方块内
-			BlockPos finalFeet = player.getBlockPos();
-			if (world.getBlockState(finalFeet).isSolidBlock(world, finalFeet)) {
-				player.requestTeleport(player.getX(), finalFeet.getY() + 1.0, player.getZ());
+			BlockPos finalFeet = player.blockPosition();
+			if (world.getBlockState(finalFeet).isRedstoneConductor(world, finalFeet)) {
+				player.teleportTo(player.getX(), finalFeet.getY() + 1.0, player.getZ());
 			}
 			cleanupDebuffs(world, data);
-			ACTIVE_DOMAINS.remove(player.getUuid());
+			ACTIVE_DOMAINS.remove(player.getUUID());
 
 			// 结束音效
-			player.getWorld().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
-					SoundEvents.ENTITY_WITHER_BREAK_BLOCK, SoundCategory.PLAYERS, 0.6f, 1.2f);
+			player.level().playSound(null, data.center.getX() + 0.5, data.centerY, data.center.getZ() + 0.5,
+					SoundEvents.WITHER_BREAK_BLOCK, SoundSource.PLAYERS, 0.6f, 1.2f);
 		}
 
 		data.ticksElapsed++;
@@ -567,7 +615,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 将指定环形区域内的方块转为灵魂沙
 	 */
-	private static void convertBlocksInRing(ServerWorld world, DomainData data, int innerR, int outerR) {
+	private static void convertBlocksInRing(ServerLevel world, DomainData data, int innerR, int outerR) {
 		BlockPos center = data.center;
 		int halfHeight = DOMAIN_HEIGHT;
 
@@ -580,7 +628,7 @@ public class AnubisWolfSpDeathDomain {
 				if (dist < innerR || dist > outerR || dist > DOMAIN_RADIUS) continue;
 
 				for (int dy = -halfHeight; dy <= halfHeight; dy++) {
-					BlockPos pos = center.add(dx, dy, dz);
+					BlockPos pos = center.offset(dx, dy, dz);
 					BlockState state = world.getBlockState(pos);
 
 					if (shouldConvert(state)) {
@@ -588,13 +636,13 @@ public class AnubisWolfSpDeathDomain {
 						data.changedBlocksByDistance
 								.computeIfAbsent(dist, k -> new LinkedHashMap<>())
 								.putIfAbsent(pos, state);
-						world.setBlockState(pos, Blocks.SOUL_SAND.getDefaultState(), Block.NOTIFY_ALL);
+						world.setBlock(pos, Blocks.SOUL_SAND.defaultBlockState(), Block.UPDATE_ALL);
 					} else if (shouldRemoveTemporarily(state)) {
 						// 非完整方块暂时消除
 						data.changedBlocksByDistance
 								.computeIfAbsent(dist, k -> new LinkedHashMap<>())
 								.putIfAbsent(pos, state);
-						world.setBlockState(pos, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
+						world.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 					}
 				}
 			}
@@ -606,7 +654,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 还原指定环形区域内的方块
 	 */
-	private static void restoreBlocksInRing(ServerWorld world, DomainData data, int innerR, int outerR) {
+	private static void restoreBlocksInRing(ServerLevel world, DomainData data, int innerR, int outerR) {
 		// 从最外层到最内层还原
 		for (int dist = outerR; dist > innerR; dist--) {
 			Map<BlockPos, BlockState> blocks = data.changedBlocksByDistance.get(dist);
@@ -615,7 +663,7 @@ public class AnubisWolfSpDeathDomain {
 			for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
 				// 如果方块已被挖掉（不再是灵魂沙/空气），跳过还原
 				if (isStillConverted(world, entry.getKey(), entry.getValue())) {
-					world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL);
+					world.setBlock(entry.getKey(), entry.getValue(), Block.UPDATE_ALL);
 				}
 			}
 			data.changedBlocksByDistance.remove(dist);
@@ -625,13 +673,13 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 强制还原所有方块
 	 */
-	private static void restoreAllBlocks(ServerWorld world, DomainData data) {
+	private static void restoreAllBlocks(ServerLevel world, DomainData data) {
 		int restored = 0;
 		int skipped = 0;
 		for (Map<BlockPos, BlockState> blocks : data.changedBlocksByDistance.values()) {
 			for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
 				if (isStillConverted(world, entry.getKey(), entry.getValue())) {
-					world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL);
+					world.setBlock(entry.getKey(), entry.getValue(), Block.UPDATE_ALL);
 					restored++;
 				} else {
 					skipped++;
@@ -639,7 +687,7 @@ public class AnubisWolfSpDeathDomain {
 			}
 		}
 		LOGGER.info("[DeathDomain] restoreAllBlocks: restored={}, skipped={}, world={}",
-				restored, skipped, world.getRegistryKey().getValue());
+				restored, skipped, world.dimension().location());
 		data.changedBlocksByDistance.clear();
 	}
 
@@ -648,7 +696,7 @@ public class AnubisWolfSpDeathDomain {
 	 * 转化为灵魂沙的方块→当前应该是灵魂沙；暂时消除的方块→当前应该是空气。
 	 * 如果被玩家挖掉或其他方式改变了，则返回false，不再还原。
 	 */
-	private static boolean isStillConverted(ServerWorld world, BlockPos pos, BlockState originalState) {
+	private static boolean isStillConverted(ServerLevel world, BlockPos pos, BlockState originalState) {
 		Block currentBlock = world.getBlockState(pos).getBlock();
 		if (isFullBlock(originalState)) {
 			// 原本是完整方块→被转化为灵魂沙，现在应当仍是灵魂沙
@@ -669,7 +717,7 @@ public class AnubisWolfSpDeathDomain {
 		if (state.isAir() || !state.getFluidState().isEmpty()) return false;
 
 		// 基岩、刷怪笼等不可破坏方块不转化
-		if (state.getHardness(null, null) < 0) return false;
+		if (state.getDestroySpeed(null, null) < 0) return false;
 
 		// 灵魂沙本身不转化
 		if (block == Blocks.SOUL_SAND || block == Blocks.SOUL_SOIL) return false;
@@ -695,7 +743,7 @@ public class AnubisWolfSpDeathDomain {
 		Block block = state.getBlock();
 
 		if (state.isAir() || !state.getFluidState().isEmpty()) return false;
-		if (state.getHardness(null, null) < 0) return false;
+		if (state.getDestroySpeed(null, null) < 0) return false;
 		if (block == Blocks.SOUL_SAND || block == Blocks.SOUL_SOIL) return false;
 		if (isFunctionalBlock(block)) return false;
 
@@ -716,7 +764,7 @@ public class AnubisWolfSpDeathDomain {
 	 * 判断是否为有功能的方块（有容器、交互功能）
 	 */
 	private static boolean isFunctionalBlock(Block block) {
-		return block instanceof BlockEntityProvider ||  // 箱子、漏斗、熔炉、酿造台等所有有方块实体的
+		return block instanceof EntityBlock ||  // 箱子、漏斗、熔炉、酿造台等所有有方块实体的
 				block instanceof CraftingTableBlock ||   // 工作台
 				block instanceof AnvilBlock ||           // 铁砧
 				block instanceof GrindstoneBlock ||      // 砂轮
@@ -727,7 +775,7 @@ public class AnubisWolfSpDeathDomain {
 				block instanceof FletchingTableBlock ||  // 制箭台
 				block instanceof BedBlock ||             // 床
 				block instanceof DoorBlock ||            // 门
-				block instanceof TrapdoorBlock ||        // 活板门
+				block instanceof TrapDoorBlock ||        // 活板门
 				block instanceof FenceGateBlock ||       // 栅栏门
 				block instanceof LecternBlock ||         // 讲台
 				block instanceof ComposterBlock ||       // 堆肥桶
@@ -742,19 +790,19 @@ public class AnubisWolfSpDeathDomain {
 	 * 判断是否为红石相关方块（不应转化或消除）
 	 */
 	private static boolean isRedstoneComponent(Block block) {
-		return block instanceof PistonBlock ||              // 活塞/粘性活塞
+		return block instanceof PistonBaseBlock ||              // 活塞/粘性活塞
 				block instanceof PistonHeadBlock ||          // 活塞头
-				block instanceof PistonExtensionBlock ||     // 移动中的活塞
-				block instanceof RedstoneBlock ||            // 红石块
-				block instanceof RedstoneWireBlock ||        // 红石粉
+				block instanceof MovingPistonBlock ||     // 移动中的活塞
+				block instanceof PoweredBlock ||            // 红石块
+				block instanceof RedStoneWireBlock ||        // 红石粉
 				block instanceof RedstoneTorchBlock ||       // 红石火把（站立+墙上）
-				block instanceof AbstractRedstoneGateBlock ||// 中继器/比较器
+				block instanceof DiodeBlock ||// 中继器/比较器
 				block instanceof ObserverBlock ||            // 侦测器
 				block instanceof LeverBlock ||               // 拉杆
 				block instanceof ButtonBlock ||              // 按钮
-				block instanceof AbstractPressurePlateBlock ||// 压力板
-				block instanceof TripwireBlock ||            // 绊线
-				block instanceof TripwireHookBlock ||        // 绊线钩
+				block instanceof BasePressurePlateBlock ||// 压力板
+				block instanceof TripWireBlock ||            // 绊线
+				block instanceof TripWireHookBlock ||        // 绊线钩
 				block instanceof TargetBlock ||              // 标靶
 				block instanceof LightningRodBlock ||        // 避雷针
 				block instanceof NoteBlock;                  // 音符盒
@@ -765,12 +813,12 @@ public class AnubisWolfSpDeathDomain {
 	 */
 	private static boolean isDirectionalOrConnectedBlock(Block block) {
 		return block instanceof SlabBlock ||            // 半砖
-				block instanceof StairsBlock ||          // 楼梯
+				block instanceof StairBlock ||          // 楼梯
 				block instanceof FenceBlock ||           // 栅栏
 				block instanceof WallBlock ||            // 墙
 				block instanceof ChainBlock ||           // 锁链
-				block instanceof PaneBlock ||            // 玻璃板、铁栏杆
-				block instanceof AbstractRailBlock;       // 铁轨
+				block instanceof IronBarsBlock ||            // 玻璃板、铁栏杆
+				block instanceof BaseRailBlock;       // 铁轨
 	}
 
 	/**
@@ -778,10 +826,10 @@ public class AnubisWolfSpDeathDomain {
 	 */
 	private static boolean isFullBlock(BlockState state) {
 		try {
-			return state.isFullCube(null, BlockPos.ORIGIN);
+			return state.isCollisionShapeFullBlock(null, BlockPos.ZERO);
 		} catch (Exception e) {
 			// 某些方块在null world下可能报错，用形状检查兜底
-			return state.isOpaque();
+			return state.canOcclude();
 		}
 	}
 
@@ -791,23 +839,23 @@ public class AnubisWolfSpDeathDomain {
 	 */
 	private static boolean isNonFullButSolidBlock(BlockState state) {
 		Block block = state.getBlock();
-		return block instanceof FarmlandBlock ||     // 农田 (15/16高)
+		return block instanceof FarmBlock ||     // 农田 (15/16高)
 				block instanceof DirtPathBlock ||    // 草径 (15/16高)
-				block instanceof SlabBlock && state.get(Properties.SLAB_TYPE) == net.minecraft.block.enums.SlabType.DOUBLE || // 双台阶
-				block instanceof SnowBlock && state.get(Properties.LAYERS) == 8; // 8层雪
+				block instanceof SlabBlock && state.getValue(BlockStateProperties.SLAB_TYPE) == net.minecraft.world.level.block.state.properties.SlabType.DOUBLE || // 双台阶
+				block instanceof SnowLayerBlock && state.getValue(BlockStateProperties.LAYERS) == 8; // 8层雪
 	}
 
 	/**
 	 * 对领域范围内踩在灵魂沙上方3格内的生物施加debuff，离开时自动移除。
 	 * 同时对领域范围内所有非白名单生物施加仅SP阿努比斯可见的发光高亮。
 	 */
-	private static void tickAreaDebuffs(ServerPlayerEntity player, ServerWorld world, DomainData data) {
-		Box box = new Box(
+	private static void tickAreaDebuffs(ServerPlayer player, ServerLevel world, DomainData data) {
+		AABB box = new AABB(
 				data.center.getX() - data.currentRadius, data.centerY - DOMAIN_HEIGHT, data.center.getZ() - data.currentRadius,
 				data.center.getX() + data.currentRadius + 1, data.centerY + DOMAIN_HEIGHT + 1, data.center.getZ() + data.currentRadius + 1
 		);
 
-		List<LivingEntity> entities = world.getEntitiesByClass(LivingEntity.class, box, e -> e != player && e.isAlive());
+		List<LivingEntity> entities = world.getEntitiesOfClass(LivingEntity.class, box, e -> e != player && e.isAlive());
 
 		Set<UUID> currentlyAffected = new HashSet<>();
 		Set<UUID> currentlyGlown = new HashSet<>();
@@ -822,9 +870,9 @@ public class AnubisWolfSpDeathDomain {
 			if (WhitelistUtils.isProtected(player, entity)) continue;
 
 			// === 发光高亮（领域内所有非白名单生物） ===
-			currentlyGlown.add(entity.getUuid());
-			if (!data.glownEntities.contains(entity.getUuid())) {
-				data.glownEntities.add(entity.getUuid());
+			currentlyGlown.add(entity.getUUID());
+			if (!data.glownEntities.contains(entity.getUUID())) {
+				data.glownEntities.add(entity.getUUID());
 				applyGlowing(world, entity, data);
 			}
 
@@ -832,27 +880,27 @@ public class AnubisWolfSpDeathDomain {
 			// 检查是否踩在灵魂沙上方3格以内
 			if (!isAboveSoulSand(world, entity, 3)) continue;
 
-			currentlyAffected.add(entity.getUuid());
+			currentlyAffected.add(entity.getUUID());
 
 			// 对受debuff个体施加鬼魂粒子效果
 			ParticleUtils.spawnParticles(world, ParticleTypes.SOUL,
-					entity.getX(), entity.getY() + entity.getHeight() * 0.5, entity.getZ(),
+					entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
 					2, 0.2, 0.3, 0.2, 0.02);
 
 			// 施加/刷新短时debuff
-			entity.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 40, 0, false, true, true));
+			entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 40, 0, false, true, true));
 			// 凋零仅在实体没有该效果且未达到伤害上限时施加；每次42tick周期造成1HP，上限10HP
 			// 增强模式使用凋零II（amplifier=1）
 			int witherAmplifier = data.enhanced ? ENHANCED_WITHER_AMPLIFIER : 0;
-			int witherCount = data.witherHitCount.getOrDefault(entity.getUuid(), 0);
-			if (witherCount < 10 && !entity.hasStatusEffect(StatusEffects.WITHER)) {
-				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, 42, witherAmplifier, false, true, true));
-				data.witherHitCount.put(entity.getUuid(), witherCount + 1);
+			int witherCount = data.witherHitCount.getOrDefault(entity.getUUID(), 0);
+			if (witherCount < 10 && !entity.hasEffect(MobEffects.WITHER)) {
+				entity.addEffect(new MobEffectInstance(MobEffects.WITHER, 42, witherAmplifier, false, true, true));
+				data.witherHitCount.put(entity.getUUID(), witherCount + 1);
 			}
 
 			// 首次进入领域灵魂沙区域时施加血量削减
-			if (!data.debuffedEntities.contains(entity.getUuid())) {
-				data.debuffedEntities.add(entity.getUuid());
+			if (!data.debuffedEntities.contains(entity.getUUID())) {
+				data.debuffedEntities.add(entity.getUUID());
 				applyHealthReduction(entity);
 			}
 		}
@@ -862,8 +910,8 @@ public class AnubisWolfSpDeathDomain {
 		while (glowIt.hasNext()) {
 			UUID uuid = glowIt.next();
 			if (!currentlyGlown.contains(uuid)) {
-				for (LivingEntity entity : world.getEntitiesByClass(LivingEntity.class,
-						box.expand(32), e -> e.getUuid().equals(uuid))) {
+				for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class,
+						box.inflate(32), e -> e.getUUID().equals(uuid))) {
 					removeGlowing(world, entity, data);
 				}
 				glowIt.remove();
@@ -876,8 +924,8 @@ public class AnubisWolfSpDeathDomain {
 			UUID uuid = it.next();
 			if (!currentlyAffected.contains(uuid)) {
 				// 在更大范围内查找该实体并移除血量修饰符
-				for (LivingEntity entity : world.getEntitiesByClass(LivingEntity.class,
-						box.expand(32), e -> e.getUuid().equals(uuid))) {
+				for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class,
+						box.inflate(32), e -> e.getUUID().equals(uuid))) {
 					removeHealthReduction(entity);
 				}
 				it.remove();
@@ -892,80 +940,80 @@ public class AnubisWolfSpDeathDomain {
 	 * team 的 nametagVisibility=NEVER/collisionRule=NEVER，
 	 * 这样发光轮廓仅对 team 成员（即 SP阿努比斯）可见。
 	 */
-	private static void ensureGlowTeam(ServerWorld world, ServerPlayerEntity player, DomainData data) {
+	private static void ensureGlowTeam(ServerLevel world, ServerPlayer player, DomainData data) {
 		if (data.teamName != null) return;
 		Scoreboard sb = world.getScoreboard();
-		String name = "ssc_dd_" + player.getUuid().toString().substring(0, 8);
+		String name = "ssc_dd_" + player.getUUID().toString().substring(0, 8);
 		// 避免名称超长（team名称上限16字符）
 		if (name.length() > 16) name = name.substring(0, 16);
 		data.teamName = name;
-		Team team = sb.getTeam(name);
+		PlayerTeam team = sb.getPlayerTeam(name);
 		if (team == null) {
-			team = sb.addTeam(name);
-			team.setColor(Formatting.DARK_PURPLE);
+			team = sb.addPlayerTeam(name);
+			team.setColor(ChatFormatting.DARK_PURPLE);
 		}
 		// 把 SP阿努比斯加入 team
-		sb.addScoreHolderToTeam(String.valueOf(player.getDisplayName()), team);
+		sb.addPlayerToTeam(String.valueOf(player.getDisplayName()), team);
 	}
 
 	/**
 	 * 给实体施加发光：加入 team 并设置 setGlowing(true)。
 	 * 同 team 的 SP阿努比斯能看到发光轮廓。
 	 */
-	private static void applyGlowing(ServerWorld world, LivingEntity entity, DomainData data) {
+	private static void applyGlowing(ServerLevel world, LivingEntity entity, DomainData data) {
 		// 确保 team 已创建（延迟创建，第一次施加发光时触发）
 		if (data.teamName == null) {
 			// team 需要在有玩家上下文时创建，这里跳过——team 应在 tickExpanding 首次调用前创建
 			return;
 		}
 		Scoreboard sb = world.getScoreboard();
-		Team team = sb.getTeam(data.teamName);
-		Team currentTeam = sb.getTeam(String.valueOf(entity.getDisplayName()));
+		PlayerTeam team = sb.getPlayerTeam(data.teamName);
+		PlayerTeam currentTeam = sb.getPlayerTeam(String.valueOf(entity.getDisplayName()));
 		if (team != null && (currentTeam == null || !currentTeam.equals(team))) {
-			sb.addScoreHolderToTeam(String.valueOf(entity.getDisplayName()), team);
+			sb.addPlayerToTeam(String.valueOf(entity.getDisplayName()), team);
 		}
-		entity.setGlowing(true);
+		entity.setGlowingTag(true);
 	}
 
 	/**
 	 * 移除实体发光：从 team 移除并设置 setGlowing(false)。
 	 */
-	private static void removeGlowing(ServerWorld world, LivingEntity entity, DomainData data) {
+	private static void removeGlowing(ServerLevel world, LivingEntity entity, DomainData data) {
 		if (data.teamName == null) return;
 		Scoreboard sb = world.getScoreboard();
-		Team team = sb.getTeam(data.teamName);
-		Team currentTeam = sb.getTeam(String.valueOf(entity.getDisplayName()));
+		PlayerTeam team = sb.getPlayerTeam(data.teamName);
+		PlayerTeam currentTeam = sb.getPlayerTeam(String.valueOf(entity.getDisplayName()));
 		if (team != null && currentTeam != null && currentTeam.equals(team)) {
-			sb.removeScoreHolderFromTeam(String.valueOf(entity.getDisplayName()), team);
+			sb.removePlayerFromTeam(String.valueOf(entity.getDisplayName()), team);
 		}
-		entity.setGlowing(false);
+		entity.setGlowingTag(false);
 	}
 
 	/**
 	 * 回退阶段更新发光：移除离开当前领域范围的生物的发光。
 	 * 与 tickAreaDebuffs 中的发光逻辑对称，但不施加新的发光。
 	 */
-	private static void tickGlowUpdate(ServerPlayerEntity player, ServerWorld world, DomainData data) {
-		Box box = new Box(
+	private static void tickGlowUpdate(ServerPlayer player, ServerLevel world, DomainData data) {
+		AABB box = new AABB(
 				data.center.getX() - data.currentRadius, data.centerY - DOMAIN_HEIGHT, data.center.getZ() - data.currentRadius,
 				data.center.getX() + data.currentRadius + 1, data.centerY + DOMAIN_HEIGHT + 1, data.center.getZ() + data.currentRadius + 1
 		);
 		// 收集当前仍在领域范围内的实体UUID
 		Set<UUID> stillInDomain = new HashSet<>();
-		for (LivingEntity entity : world.getEntitiesByClass(LivingEntity.class, box, e -> e != player && e.isAlive())) {
+		for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class, box, e -> e != player && e.isAlive())) {
 			double dx = entity.getX() - data.center.getX() - 0.5;
 			double dz = entity.getZ() - data.center.getZ() - 0.5;
 			if (dx * dx + dz * dz > data.currentRadius * data.currentRadius) continue;
 			if (WhitelistUtils.isProtected(player, entity)) continue;
-			stillInDomain.add(entity.getUuid());
+			stillInDomain.add(entity.getUUID());
 		}
 		// 对离开领域的生物移除发光
 		Iterator<UUID> glowIt = data.glownEntities.iterator();
 		while (glowIt.hasNext()) {
 			UUID uuid = glowIt.next();
 			if (!stillInDomain.contains(uuid)) {
-				for (LivingEntity entity : world.getEntitiesByClass(LivingEntity.class,
-						box.expand(32), e -> e.getUuid().equals(uuid))) {
+				for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class,
+						box.inflate(32), e -> e.getUUID().equals(uuid))) {
 					removeGlowing(world, entity, data);
 				}
 				glowIt.remove();
@@ -977,24 +1025,24 @@ public class AnubisWolfSpDeathDomain {
 	 * 清理所有发光状态（领域结束时）。
 	 * 用 glownEntities 中的UUID查找实体并清除发光，确保不遗漏。
 	 */
-	private static void cleanupGlowing(ServerWorld world, DomainData data) {
+	private static void cleanupGlowing(ServerLevel world, DomainData data) {
 		// 用 glownEntities 中的UUID直接查找实体并清除发光
 		for (UUID uuid : data.glownEntities) {
-			net.minecraft.entity.Entity e = world.getEntity(uuid);
+			net.minecraft.world.entity.Entity e = world.getEntity(uuid);
 			if (e instanceof LivingEntity le) {
-				le.setGlowing(false);
+				le.setGlowingTag(false);
 			}
 		}
 		data.glownEntities.clear();
 		// 删除 team：遍历 team 成员列表移除，然后删除 team
 		if (data.teamName != null) {
 			Scoreboard sb = world.getScoreboard();
-			Team team = sb.getTeam(data.teamName);
+			PlayerTeam team = sb.getPlayerTeam(data.teamName);
 			if (team != null) {
-				for (String memberName : new HashSet<>(team.getPlayerList())) {
-					sb.removeScoreHolderFromTeam(memberName, team);
+				for (String memberName : new HashSet<>(team.getPlayers())) {
+					sb.removePlayerFromTeam(memberName, team);
 				}
-				sb.removeTeam(team);
+				sb.removePlayerTeam(team);
 			}
 			data.teamName = null;
 		}
@@ -1003,25 +1051,25 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 检查实体是否站在灵魂沙上方指定格数以内
 	 */
-	private static boolean isAboveSoulSand(ServerWorld world, LivingEntity entity, int maxDistance) {
+	private static boolean isAboveSoulSand(ServerLevel world, LivingEntity entity, int maxDistance) {
 		// 使用实体实际坐标计算脚下方块，兼容非整数Y坐标
-		BlockPos feetPos = entity.getBlockPos();
+		BlockPos feetPos = entity.blockPosition();
 		// 额外检查实体脚下一格（灵魂沙碰撞箱为14/16高，实体可能站在其上方同一格内）
-		BlockPos belowFeet = BlockPos.ofFloored(entity.getX(), entity.getY() - 0.01, entity.getZ());
+		BlockPos belowFeet = BlockPos.containing(entity.getX(), entity.getY() - 0.01, entity.getZ());
 		for (int dy = 0; dy <= maxDistance; dy++) {
 			// 同时从feetPos和belowFeet向下检查
 			for (BlockPos base : new BlockPos[]{feetPos, belowFeet}) {
-				BlockPos checkPos = base.down(dy);
+				BlockPos checkPos = base.below(dy);
 				BlockState state = world.getBlockState(checkPos);
-				if (state.isOf(Blocks.SOUL_SAND) || state.isOf(Blocks.SOUL_SOIL)) {
+				if (state.is(Blocks.SOUL_SAND) || state.is(Blocks.SOUL_SOIL)) {
 					return true;
 				}
 			}
 			// 脚下有非灵魂沙实心方块则停止向下检查
 			if (dy > 0) {
-				BlockState belowState = world.getBlockState(feetPos.down(dy));
-				if (!belowState.isAir() && belowState.isSolidBlock(world, feetPos.down(dy))
-						&& !belowState.isOf(Blocks.SOUL_SAND) && !belowState.isOf(Blocks.SOUL_SOIL)) {
+				BlockState belowState = world.getBlockState(feetPos.below(dy));
+				if (!belowState.isAir() && belowState.isRedstoneConductor(world, feetPos.below(dy))
+						&& !belowState.is(Blocks.SOUL_SAND) && !belowState.is(Blocks.SOUL_SOIL)) {
 					return false;
 				}
 			}
@@ -1035,7 +1083,7 @@ public class AnubisWolfSpDeathDomain {
 	 * 对生物施加15%血量上限削减
 	 */
 	private static void applyHealthReduction(LivingEntity entity) {
-		EntityAttributeInstance healthAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+		AttributeInstance healthAttr = entity.getAttribute(Attributes.MAX_HEALTH);
 		if (healthAttr == null) return;
 
 		// 移除旧的修饰符（防止叠加）
@@ -1044,12 +1092,12 @@ public class AnubisWolfSpDeathDomain {
 		double maxHealth = healthAttr.getBaseValue();
 		double reduction = -maxHealth * HEALTH_REDUCTION;
 
-		EntityAttributeModifier modifier = new EntityAttributeModifier(
+		AttributeModifier modifier = new AttributeModifier(
 				HEALTH_MODIFIER_UUID,
 				reduction,
-				EntityAttributeModifier.Operation.ADD_VALUE
+				AttributeModifier.Operation.ADD_VALUE
 		);
-		healthAttr.addPersistentModifier(modifier);
+		healthAttr.addPermanentModifier(modifier);
 
 		// 如果当前血量超过新的上限，降至上限
 		double newMax = entity.getMaxHealth();
@@ -1062,7 +1110,7 @@ public class AnubisWolfSpDeathDomain {
 	 * 移除生物的血量上限削减
 	 */
 	private static void removeHealthReduction(LivingEntity entity) {
-		EntityAttributeInstance healthAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+		AttributeInstance healthAttr = entity.getAttribute(Attributes.MAX_HEALTH);
 		if (healthAttr != null) {
 			healthAttr.removeModifier(HEALTH_MODIFIER_UUID);
 		}
@@ -1071,37 +1119,37 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 清理所有debuff（领域结束后）
 	 */
-	private static void cleanupDebuffs(ServerWorld world, DomainData data) {
+	private static void cleanupDebuffs(ServerLevel world, DomainData data) {
 		// 清理发光状态
 		cleanupGlowing(world, data);
 		for (UUID entityUuid : data.debuffedEntities) {
 			// 尝试找到实体并移除血量修饰符
-			for (LivingEntity entity : world.getEntitiesByClass(LivingEntity.class,
-					new Box(data.center.getX() - DOMAIN_RADIUS - 32, data.centerY - DOMAIN_HEIGHT - 32,
+			for (LivingEntity entity : world.getEntitiesOfClass(LivingEntity.class,
+					new AABB(data.center.getX() - DOMAIN_RADIUS - 32, data.centerY - DOMAIN_HEIGHT - 32,
 							data.center.getZ() - DOMAIN_RADIUS - 32,
 							data.center.getX() + DOMAIN_RADIUS + 32, data.centerY + DOMAIN_HEIGHT + 32,
 							data.center.getZ() + DOMAIN_RADIUS + 32),
-					e -> e.getUuid().equals(entityUuid))) {
+					e -> e.getUUID().equals(entityUuid))) {
 				removeHealthReduction(entity);
 			}
 		}
 		data.debuffedEntities.clear();
 	}
 
-	private static void applyChargeSlow(ServerPlayerEntity player) {
-		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+	private static void applyChargeSlow(ServerPlayer player) {
+		AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
 		if (speedAttr == null) return;
 		speedAttr.removeModifier(CHARGE_SLOW_UUID);
-		EntityAttributeModifier modifier = new EntityAttributeModifier(
+		AttributeModifier modifier = new AttributeModifier(
 				CHARGE_SLOW_UUID,
 				CHARGE_SLOW_FACTOR - 1.0, // -0.7 = 减速70%
-				EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+				AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 		);
-		speedAttr.addTemporaryModifier(modifier);
+		speedAttr.addTransientModifier(modifier);
 	}
 
-	private static void removeChargeSlow(ServerPlayerEntity player) {
-		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+	private static void removeChargeSlow(ServerPlayer player) {
+		AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(CHARGE_SLOW_UUID);
 		}
@@ -1112,7 +1160,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 在领域边缘生成灵魂粒子
 	 */
-	private static void spawnEdgeParticles(ServerWorld world, DomainData data) {
+	private static void spawnEdgeParticles(ServerLevel world, DomainData data) {
 		double r = data.currentRadius;
 		if (r < 1) return;
 		// 蓝火粒子（减少）
@@ -1138,7 +1186,7 @@ public class AnubisWolfSpDeathDomain {
 	/**
 	 * 领域维持时的环境粒子
 	 */
-	private static void spawnAmbientParticles(ServerWorld world, DomainData data) {
+	private static void spawnAmbientParticles(ServerLevel world, DomainData data) {
 		Random random = new Random();
 		for (int i = 0; i < 8; i++) {
 			double angle = random.nextDouble() * Math.PI * 2;
@@ -1169,7 +1217,7 @@ public class AnubisWolfSpDeathDomain {
 		double currentRadius;       // 当前延展/回退的半径
 		BlockPos center;            // 领域中心
 		int centerY;                // 施法者Y坐标
-		ServerWorld world;          // 领域所在世界（用于断线/关服还原）
+		ServerLevel world;          // 领域所在世界（用于断线/关服还原）
 		// 按距离分层存储被改变的方块: 距离 -> (位置 -> 原始方块状态)
 		TreeMap<Integer, Map<BlockPos, BlockState>> changedBlocksByDistance = new TreeMap<>();
 		// 被削减血量的生物UUID集合
@@ -1183,7 +1231,7 @@ public class AnubisWolfSpDeathDomain {
 		// 发光team名称（null=尚未创建）
 		String teamName;
 
-		DomainData(ServerWorld world, BlockPos center, int centerY) {
+		DomainData(ServerLevel world, BlockPos center, int centerY) {
 			this.phase = Phase.CHARGING;
 			this.ticksElapsed = 0;
 			this.currentRadius = 0;

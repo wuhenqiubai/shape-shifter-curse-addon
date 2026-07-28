@@ -3,10 +3,10 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import net.minecraft.entity.player.ItemCooldownManager;
-import net.minecraft.item.Item;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.network.ServerPlayerInteractionManager;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerPlayerGameMode;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemCooldowns;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.PotionBagItem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * 注意：必须注册到 mixins.json 的 <b>common</b>（"mixins"）列表，使其在专用服务器与单人
  * 集成服务器上都生效，保证主客机一致（本类虽在 client 子包，仅为目录组织，与运行环境无关）。
  */
-@Mixin(ServerPlayerInteractionManager.class)
+@Mixin(ServerPlayerGameMode.class)
 public class PotionBagCooldownBypassMixin {
 
     /**
@@ -34,13 +34,13 @@ public class PotionBagCooldownBypassMixin {
      * 接收者 (manager, item) 之后用 {@code Operation} 承接原调用，{@code @Local} 取目标方法的服务端玩家参数读取潜行状态。
      */
     @WrapOperation(
-            method = "interactItem",
+            method = "useItem",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/entity/player/ItemCooldownManager;isCoolingDown(Lnet/minecraft/item/Item;)Z")
+                    target = "Lnet/minecraft/world/item/ItemCooldowns;isOnCooldown(Lnet/minecraft/world/item/Item;)Z")
     )
-    private boolean ssc_addon$bypassCooldownForSneaking(ItemCooldownManager manager, Item item,
-            Operation<Boolean> original, @Local(argsOnly = true) ServerPlayerEntity player) {
-        if (item instanceof PotionBagItem && player.isSneaking()) {
+    private boolean ssc_addon$bypassCooldownForSneaking(ItemCooldowns manager, Item item,
+            Operation<Boolean> original, @Local(argsOnly = true) ServerPlayer player) {
+        if (item instanceof PotionBagItem && player.isShiftKeyDown()) {
             // 潜行开包：绕过冷却检查，让服务端 use() 正常触发
             return false;
         }

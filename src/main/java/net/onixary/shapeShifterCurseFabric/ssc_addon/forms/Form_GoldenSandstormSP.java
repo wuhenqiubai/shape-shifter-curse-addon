@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AbstractAnimStateController;
 import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_SnowFox3;
 
@@ -9,7 +9,7 @@ import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_SnowFox3;
  * 围绕凋零效果展开的攻击型形态
  */
 public class Form_GoldenSandstormSP extends AbstractFeralForm {
-	public Form_GoldenSandstormSP(Identifier formID) {
+	public Form_GoldenSandstormSP(ResourceLocation formID) {
 		super(formID);
 	}
 

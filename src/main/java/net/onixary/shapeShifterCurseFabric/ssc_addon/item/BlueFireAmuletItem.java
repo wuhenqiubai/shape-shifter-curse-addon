@@ -2,17 +2,17 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
 import java.util.List;
 
 public class BlueFireAmuletItem extends TrinketItem {
-	public BlueFireAmuletItem(Settings settings) {
+	public BlueFireAmuletItem(Properties settings) {
 		super(settings);
 	}
 
@@ -22,9 +22,9 @@ public class BlueFireAmuletItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-		tooltip.add(Text.translatable("item.ssc_addon.blue_fire_amulet.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
-		tooltip.add(Text.translatable("item.ssc_addon.blue_fire_amulet.tooltip_2").formatted(Formatting.GRAY));
-		super.appendTooltip(stack, context, tooltip, type);
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+		tooltip.add(Component.translatable("item.ssc_addon.blue_fire_amulet.tooltip_1").withStyle(ChatFormatting.LIGHT_PURPLE));
+		tooltip.add(Component.translatable("item.ssc_addon.blue_fire_amulet.tooltip_2").withStyle(ChatFormatting.GRAY));
+		super.appendHoverText(stack, context, tooltip, type);
 	}
 }

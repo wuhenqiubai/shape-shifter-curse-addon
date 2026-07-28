@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import net.minecraft.client.gui.hud.InGameHud;
+import net.minecraft.client.gui.Gui;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.ClawClientState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,13 +19,13 @@ import org.spongepowered.asm.mixin.injection.At;
  * 故 INVOKE owner 必须是 ClientPlayerEntity 而非 PlayerEntity（否则扫不到目标、崩溃）。
  * {@code require = 0}：即便被其它 mod 抢注或字节码差异导致未匹配，也只是准星条不显示、不崩溃（优雅降级）。
  */
-@Mixin(InGameHud.class)
+@Mixin(Gui.class)
 public class ClawCrosshairMixin {
 
     @ModifyExpressionValue(
             method = "renderCrosshair",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/client/network/ClientPlayerEntity;getAttackCooldownProgress(F)F"),
+                    target = "Lnet/minecraft/client/player/LocalPlayer;getAttackStrengthScale(F)F"),
             require = 0)
     private float ssc_addon$clawCrosshairProgress(float original) {
         if (ClawClientState.isActive()) {

@@ -3,12 +3,12 @@ package net.jackcooper.shapeShifterCurseAddon.event;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
-import net.minecraft.entity.SpawnGroup;
-import net.minecraft.entity.SpawnLocationTypes;
-import net.minecraft.entity.SpawnRestriction;
-import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.entity.mob.WitchEntity;
-import net.minecraft.world.Heightmap;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.SpawnPlacementTypes;
+import net.minecraft.world.entity.SpawnPlacements;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
 
@@ -26,21 +26,21 @@ public final class WitchFamiliarSpawnHandler {
 
 	public static void register() {
 		// 野外自然生成（末影人权重10的一半=5）
-		SpawnRestriction.register(WITCH_FAMILIAR_ENTITY, SpawnLocationTypes.ON_GROUND,
-				Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, HostileEntity::canSpawnInDark);
+		SpawnPlacements.register(WITCH_FAMILIAR_ENTITY, SpawnPlacementTypes.ON_GROUND,
+				Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Monster::checkMonsterSpawnRules);
 		BiomeModifications.addSpawn(
 				BiomeSelectors.foundInOverworld(),
-				SpawnGroup.MONSTER,
+				MobCategory.MONSTER,
 				WITCH_FAMILIAR_ENTITY,
 				5,    // 末影人权重10的一半
 				1, 1  // 最小/最大成组数量
 		);
 
 		ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
-			if (!(entity instanceof WitchEntity witch)) return;
+			if (!(entity instanceof Witch witch)) return;
 			// 每只女巫只检查一次
-			if (witch.getCommandTags().contains("ssc_familiar_checked")) return;
-			witch.addCommandTag("ssc_familiar_checked");
+			if (witch.getTags().contains("ssc_familiar_checked")) return;
+			witch.addTag("ssc_familiar_checked");
 
 			// 仅袭击中生成的女巫才会伴生使魔
 			if (!witch.hasActiveRaid()) return;
@@ -52,18 +52,18 @@ public final class WitchFamiliarSpawnHandler {
 				if (familiar == null) continue;
 
 				// 设置主人为该女巫
-				familiar.setOwnerUuid(witch.getUuid());
+				familiar.setOwnerUuid(witch.getUUID());
 
 				double offsetX = (witch.getRandom().nextDouble() - 0.5) * 3.0;
 				double offsetZ = (witch.getRandom().nextDouble() - 0.5) * 3.0;
-				familiar.refreshPositionAndAngles(
+				familiar.moveTo(
 						witch.getX() + offsetX,
 						witch.getY(),
 						witch.getZ() + offsetZ,
 						witch.getRandom().nextFloat() * 360f,
 						0f
 				);
-				world.spawnEntity(familiar);
+				world.addFreshEntity(familiar);
 			}
 		});
 	}

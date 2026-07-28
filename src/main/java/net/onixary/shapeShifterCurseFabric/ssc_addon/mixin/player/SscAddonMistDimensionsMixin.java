@@ -1,13 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import net.minecraft.entity.EntityDimensions;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.world.World;
+import com.mojang.authlib.GameProfile;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,61 +19,49 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 使其可穿过约 1/4 格（0.25）大小的缝隙——无论竖缝还是横向矮洞均可钻入。
  * 两端均需生效（服务端用于碰撞、客户端用于渲染/相机），故置于通用 mixins 数组。
  */
-@Mixin(LivingEntity.class)
+@Mixin(Player.class)
 public abstract class SscAddonMistDimensionsMixin {
 
-//	TODO: 防崩第一步
-//	@Unique
-//	private static final float MIST_WIDTH = 0.2f;
-//
-//	@Unique
-//	private static final float MIST_HEIGHT = 0.1f;
-//
-//	@Unique
-//	private static final float MIST_EYE_HEIGHT = 0.08f;
-//
-//	@Unique
-//	private boolean sscAddon$constructed = false;
-//
-//	@Unique
-//	private boolean sscAddon$mistDimensionsApplied = false;
-//
-//	@Inject(method = "<init>", at = @At("RETURN"))
-//	private void sscAddon$markConstructed(EntityType entityType, World world, CallbackInfo ci) {
-//		this.sscAddon$constructed = true;
-//	}
+	@Unique
+	private static final float MIST_WIDTH = 0.2f;
 
-//  TODO: 这个叕崩了，也注释了
-//	@Unique
-//	private boolean sscAddon$isMistFormActive() {
-//		return this.sscAddon$constructed && ((PlayerEntity) (Object) this).hasStatusEffect(SscAddon.MIST_FORM_ENTRY);
-//	}
-//
-//	@Inject(method = "tick", at = @At("HEAD"))
-//	private void sscAddon$refreshMistDimensions(CallbackInfo ci) {
-//		boolean mistFormActive = this.sscAddon$isMistFormActive();
-//		if (mistFormActive != this.sscAddon$mistDimensionsApplied) {
-//			this.sscAddon$mistDimensionsApplied = mistFormActive;
-//			((PlayerEntity) (Object) this).calculateDimensions();
-//		}
-//	}
+	@Unique
+	private static final float MIST_HEIGHT = 0.1f;
 
-//  TODO: 这玩意会导致区块生成卡进度，也注释了
-//	@ModifyExpressionValue(method = "getDimensions", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityDimensions;scaled(F)Lnet/minecraft/entity/EntityDimensions;"))
-//	private EntityDimensions sscAddon$modifyMistDimensions(EntityDimensions original) {
-//		if (this.sscAddon$isMistFormActive()) {
-//			// 高度压到 0.1，确保可以穿过 0.25 格高的缝隙
-//			return EntityDimensions.changing(MIST_WIDTH, MIST_HEIGHT);
-//		}
-//		return original;
-//	}
+	@Unique
+	private static final float MIST_EYE_HEIGHT = 0.08f;
 
-// 	TODO: 没了，没找到替代所以先不找了
-//	@ModifyReturnValue(method = "getEyeHeight", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;getEyeHeight(Lnet/minecraft/entity/EntityPose;)F"))
-//	private float sscAddon$mistEyeHeight(float original) {
-//		if (this.sscAddon$isMistFormActive()) {
-//			return MIST_EYE_HEIGHT;
-//		}
-//		return original;
-//	}
+	@Unique
+	private boolean sscAddon$constructed = false;
+
+	@Unique
+	private boolean sscAddon$mistDimensionsApplied = false;
+
+	@Inject(method = "<init>", at = @At("RETURN"))
+	private void sscAddon$markConstructed(Level level, BlockPos blockPos, float f, GameProfile gameProfile, CallbackInfo ci) {
+		this.sscAddon$constructed = true;
+	}
+
+	@Unique
+	private boolean sscAddon$isMistFormActive() {
+		return this.sscAddon$constructed && ((Player) (Object) this).hasEffect(SscAddon.MIST_FORM_ENTRY);
+	}
+
+	@Inject(method = "tick", at = @At("HEAD"))
+	private void sscAddon$refreshMistDimensions(CallbackInfo ci) {
+		boolean mistFormActive = this.sscAddon$isMistFormActive();
+		if (mistFormActive != this.sscAddon$mistDimensionsApplied) {
+			this.sscAddon$mistDimensionsApplied = mistFormActive;
+			((Player) (Object) this).refreshDimensions();
+		}
+	}
+
+	@ModifyExpressionValue(method = "canPlayerFitWithinBlocksAndEntitiesWhen", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getDimensions(Lnet/minecraft/world/entity/Pose;)Lnet/minecraft/world/entity/EntityDimensions;"))
+	private EntityDimensions sscAddon$mistDimensions(EntityDimensions original, Pose pose) {
+		if (this.sscAddon$isMistFormActive()) {
+			EntityDimensions mistSize = EntityDimensions.scalable(MIST_WIDTH, MIST_HEIGHT);
+			return mistSize.withEyeHeight(MIST_EYE_HEIGHT);
+		}
+		return original;
+	}
 }

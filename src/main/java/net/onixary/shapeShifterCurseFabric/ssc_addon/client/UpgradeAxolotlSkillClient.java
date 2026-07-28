@@ -5,11 +5,11 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -31,17 +31,17 @@ public final class UpgradeAxolotlSkillClient {
 		ClientTickEvents.END_CLIENT_TICK.register(UpgradeAxolotlSkillClient::onClientTick);
 	}
 
-	private static void onClientTick(MinecraftClient client) {
-		ClientPlayerEntity player = client.player;
-		if (player == null || client.world == null || !FormUtils.isUpgradeAxolotl(player)) {
+	private static void onClientTick(Minecraft client) {
+		LocalPlayer player = client.player;
+		if (player == null || client.level == null || !FormUtils.isUpgradeAxolotl(player)) {
 			wasPrimaryPressed = false;
 			wasSecondaryPressed = false;
 			return;
 		}
-		KeyBinding primary = SscAddonKeybindings.getPrimaryKey();
-		KeyBinding secondary = SscAddonKeybindings.getSecondaryKey();
-		boolean p = primary != null && primary.isPressed();
-		boolean s = secondary != null && secondary.isPressed();
+		KeyMapping primary = SscAddonKeybindings.getPrimaryKey();
+		KeyMapping secondary = SscAddonKeybindings.getSecondaryKey();
+		boolean p = primary != null && primary.isDown();
+		boolean s = secondary != null && secondary.isDown();
 		if (p && !wasPrimaryPressed) {
 			send(SscAddonNetworking.PACKET_UPGRADE_AXOLOTL_SPEAR);
 		}
@@ -52,8 +52,8 @@ public final class UpgradeAxolotlSkillClient {
 		wasSecondaryPressed = s;
 	}
 
-	private static void send(Identifier packet) {
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+	private static void send(ResourceLocation packet) {
+		FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
 		ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), buf));
 	}
 }

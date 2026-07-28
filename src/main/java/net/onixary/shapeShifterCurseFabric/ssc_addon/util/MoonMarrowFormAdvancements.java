@@ -1,10 +1,10 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
-import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * 月髓环（SpUpgradeItem）成功变形后，按目标形态发放对应的子成就。
@@ -26,7 +26,7 @@ import java.util.Map;
  */
 public final class MoonMarrowFormAdvancements {
 
-	private static final Map<Identifier, Identifier> MAP = new HashMap<>();
+	private static final Map<ResourceLocation, ResourceLocation> MAP = new HashMap<>();
 
 	static {
 		// 按需为每个可由月髓环变身的形态注册对应成就，例如：
@@ -44,15 +44,15 @@ public final class MoonMarrowFormAdvancements {
 	 * @param advPath  成就在 ssc_addon/ 下的文件名（不含 .json）
 	 */
 	public static void register(String formPath, String advPath) {
-		MAP.put(Identifier.of("my_addon", formPath),
-				Identifier.of("ssc_addon", advPath));
+		MAP.put(ResourceLocation.fromNamespaceAndPath("my_addon", formPath),
+				ResourceLocation.fromNamespaceAndPath("ssc_addon", advPath));
 	}
 
 	/**
 	 * 根据目标形态 ID 查询对应子成就 Identifier，未注册时返回 null。
 	 */
 	@Nullable
-	public static Identifier get(Identifier formId) {
+	public static ResourceLocation get(ResourceLocation formId) {
 		return MAP.get(formId);
 	}
 }

@@ -3,16 +3,15 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.util.Mth;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.model.WitchFamiliarModel;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.layer.WitchFamiliarEyesLayer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
-
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -53,7 +52,7 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 	private float cachedPartialTick;
 	private float cachedAge;
 
-	public WitchFamiliarRenderer(EntityRendererFactory.Context ctx) {
+	public WitchFamiliarRenderer(EntityRendererProvider.Context ctx) {
 		super(ctx, new WitchFamiliarModel());
 		this.shadowRadius = 0.2f;
 		// 蜘蛛式发光眼睛渲染层
@@ -62,7 +61,7 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 
 	@Override
 	public void render(WitchFamiliarEntity entity, float entityYaw, float partialTick,
-	                   MatrixStack poseStack, VertexConsumerProvider bufferSource, int packedLight) {
+	                   PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
 		// 清理已移除实体的尾巴状态（防止内存泄漏）
 		if (entity.isRemoved()) {
 			TAIL_STATES.remove(entity.getId());
@@ -71,22 +70,22 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 
 		// 缓存运动参数（与LivingEntityRenderer.render一致）
 		cachedPartialTick = partialTick;
-		cachedLimbDistance = entity.limbAnimator.getSpeed(partialTick);
-		cachedLimbAngle = entity.limbAnimator.getPos(partialTick);
+		cachedLimbDistance = entity.walkAnimation.speed(partialTick);
+		cachedLimbAngle = entity.walkAnimation.position(partialTick);
 		if (cachedLimbDistance > 1.0f) cachedLimbDistance = 1.0f;
 
-		float headYaw = MathHelper.lerpAngleDegrees(partialTick, entity.prevHeadYaw, entity.headYaw);
-		float bodyYaw = MathHelper.lerpAngleDegrees(partialTick, entity.prevBodyYaw, entity.bodyYaw);
+		float headYaw = Mth.rotLerp(partialTick, entity.yHeadRotO, entity.yHeadRot);
+		float bodyYaw = Mth.rotLerp(partialTick, entity.yBodyRotO, entity.yBodyRot);
 		cachedHeadYaw = headYaw - bodyYaw;
-		cachedHeadPitch = MathHelper.lerp(partialTick, entity.prevPitch, entity.getPitch());
-		cachedAge = entity.age + partialTick;
+		cachedHeadPitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
+		cachedAge = entity.tickCount + partialTick;
 
 		// 插值并平滑尾巴拖拽量（在ProcessModel之前，与SSC render()一致）
 		float[] state = TAIL_STATES.computeIfAbsent(entity.getId(), k -> new float[6]);
-		float targetDrag = MathHelper.lerp(partialTick, state[1], state[0]);
-		state[4] = MathHelper.lerp(0.04f, state[4], targetDrag);
-		float targetVerticalDrag = MathHelper.lerp(partialTick, state[3], state[2]);
-		state[5] = MathHelper.lerp(0.04f, state[5], targetVerticalDrag);
+		float targetDrag = Mth.lerp(partialTick, state[1], state[0]);
+		state[4] = Mth.lerp(0.04f, state[4], targetDrag);
+		float targetVerticalDrag = Mth.lerp(partialTick, state[3], state[2]);
+		state[5] = Mth.lerp(0.04f, state[5], targetVerticalDrag);
 
 		super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
 
@@ -95,16 +94,16 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 	}
 
 	@Override
-	protected void applyRotations(WitchFamiliarEntity animatable, MatrixStack poseStack,
+	protected void applyRotations(WitchFamiliarEntity animatable, PoseStack poseStack,
 	                              float ageInTicks, float rotationYaw, float partialTick) {
 		super.applyRotations(animatable, poseStack, ageInTicks, rotationYaw, partialTick);
 		// 基岩版模型面朝+Z，追加Ry(180°)修正朝向
-		poseStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f));
+		poseStack.mulPose(Axis.YP.rotationDegrees(180f));
 	}
 
 	@Override
-	public void preRender(MatrixStack poseStack, WitchFamiliarEntity animatable, BakedGeoModel model,
-	                      VertexConsumerProvider bufferSource, VertexConsumer buffer,
+	public void preRender(PoseStack poseStack, WitchFamiliarEntity animatable, BakedGeoModel model,
+	                      MultiBufferSource bufferSource, VertexConsumer buffer,
 	                      boolean isReRender, float partialTick, int packedLight,
 	                      int packedOverlay, int colour) {
 		// reRender（发光眼睛层等overlay）会再次调用preRender(isReRender=true)，
@@ -149,25 +148,25 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 		// ===== 2. 头部旋转 =====
 		// torso Rx(+90°)后，头部局部的rotY在世界空间变成了绕Z轴（侧向滚转）
 		// 正确做法：yaw放在rotZ实现世界空间的左右看，pitch仍在rotX
-		float headPitchRad = cachedHeadPitch * MathHelper.RADIANS_PER_DEGREE * 0.5f;
-		float headYawRad = cachedHeadYaw * MathHelper.RADIANS_PER_DEGREE * 0.5f;
+		float headPitchRad = cachedHeadPitch * Mth.DEG_TO_RAD * 0.5f;
+		float headYawRad = cachedHeadYaw * Mth.DEG_TO_RAD * 0.5f;
 		setRotation("bipedHead", headPitchRad - HALF_PI, 0, headYawRad);
 
 		// ===== 3. 手臂摆动（从torso继承水平姿态后，再前旋90°使前肢朝下） =====
-		float rightArmPitch = -HALF_PI + MathHelper.cos(cachedLimbAngle * 0.6662f + (float) Math.PI)
+		float rightArmPitch = -HALF_PI + Mth.cos(cachedLimbAngle * 0.6662f + (float) Math.PI)
 				* 2.0f * cachedLimbDistance * 0.5f;
-		float leftArmPitch = -HALF_PI + MathHelper.cos(cachedLimbAngle * 0.6662f)
+		float leftArmPitch = -HALF_PI + Mth.cos(cachedLimbAngle * 0.6662f)
 				* 2.0f * cachedLimbDistance * 0.5f;
 
 		// ===== 4. 攻击挥动（等效 BipedEntityModel animateArms） =====
-		float handSwing = entity.getHandSwingProgress(cachedPartialTick);
+		float handSwing = entity.getAttackAnim(cachedPartialTick);
 		float bodyRotY = 0;
 		if (handSwing > 0) {
 			// 躯干扭转（vanilla: body.yaw = sin(sqrt(f) * 2π) * 0.2）
-			bodyRotY = MathHelper.sin(MathHelper.sqrt(handSwing) * (float) (Math.PI * 2)) * 0.2f;
+			bodyRotY = Mth.sin(Mth.sqrt(handSwing) * (float) (Math.PI * 2)) * 0.2f;
 
 			// 右手臂挥击（简化版vanilla攻击动画）
-			rightArmPitch -= MathHelper.sin(MathHelper.sqrt(handSwing) * (float) Math.PI) * 1.2f;
+			rightArmPitch -= Mth.sin(Mth.sqrt(handSwing) * (float) Math.PI) * 1.2f;
 		}
 		// bipedBody只处理攻击扭转（前倾已由torso继承）
 		setRotation("bipedBody", 0, bodyRotY, 0);
@@ -176,9 +175,9 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 		setRotation("bipedLeftArm", leftArmPitch, 0, 0);
 
 		// ===== 5. 腿部摆动（等效 BipedEntityModel.setAngles 腿部公式） =====
-		float rightLegPitch = MathHelper.cos(cachedLimbAngle * 0.6662f)
+		float rightLegPitch = Mth.cos(cachedLimbAngle * 0.6662f)
 				* 1.4f * cachedLimbDistance;
-		float leftLegPitch = MathHelper.cos(cachedLimbAngle * 0.6662f + (float) Math.PI)
+		float leftLegPitch = Mth.cos(cachedLimbAngle * 0.6662f + (float) Math.PI)
 				* 1.4f * cachedLimbDistance;
 
 		setRotation("bipedRightLeg", rightLegPitch, 0, 0);
@@ -210,12 +209,12 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 			if (firstBone.isEmpty()) continue;
 
 			GeoBone tail = firstBone.get();
-			float tailSway = SWAY_SCALE * MathHelper.cos(age * SWAY_RATE
+			float tailSway = SWAY_SCALE * Mth.cos(age * SWAY_RATE
 					+ ((float) Math.PI / 3.0f) * 0.75f);
-			float tailBalance = MathHelper.cos(limbAngle * 0.6662f) * 0.325f * limbDistance;
+			float tailBalance = Mth.cos(limbAngle * 0.6662f) * 0.325f * limbDistance;
 
 			// 非Feral模式：rotY水平摆动（与SSC一致）
-			tail.setRotY(-MathHelper.lerp(limbDistance, tailSway, tailBalance)
+			tail.setRotY(-Mth.lerp(limbDistance, tailSway, tailBalance)
 					- tailDragAmount * 0.75f);
 			tail.setRotX(-tailDragAmountVertical * 0.75f);
 
@@ -226,8 +225,8 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 				if (nextBone.isEmpty()) continue;
 
 				GeoBone bone = nextBone.get();
-				bone.setRotY(-MathHelper.lerp(limbDistance,
-						SWAY_SCALE * MathHelper.cos(age * SWAY_RATE
+				bone.setRotY(-Mth.lerp(limbDistance,
+						SWAY_SCALE * Mth.cos(age * SWAY_RATE
 								- ((float) Math.PI / 3.0f) * offset),
 						0.0f) - tailDragAmount * 0.75f);
 				bone.setRotX(-tailDragAmountVertical * 0.75f * (offset + 0.75f));
@@ -247,12 +246,12 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 			if (firstBone.isEmpty()) continue;
 
 			GeoBone ear = firstBone.get();
-			float tailSway = SWAY_SCALE * MathHelper.cos(age * SWAY_RATE
+			float tailSway = SWAY_SCALE * Mth.cos(age * SWAY_RATE
 					+ ((float) Math.PI / 3.0f) * 0.75f);
-			float tailBalance = MathHelper.cos(headAngle * 0.6662f) * 0.325f * 0.1f;
+			float tailBalance = Mth.cos(headAngle * 0.6662f) * 0.325f * 0.1f;
 
 			// 与SSC setRotationForHeadTailBones一致：limbDistance固定为0.1f
-			ear.setRotY(-MathHelper.lerp(0.1f, tailSway, tailBalance)
+			ear.setRotY(-Mth.lerp(0.1f, tailSway, tailBalance)
 					- tailDragAmount * 0.75f);
 			ear.setRotX(-tailDragAmountVertical * 0.75f);
 
@@ -262,8 +261,8 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 				if (nextBone.isEmpty()) continue;
 
 				GeoBone bone = nextBone.get();
-				bone.setRotY(-MathHelper.lerp(0.1f,
-						SWAY_SCALE * MathHelper.cos(age * SWAY_RATE
+				bone.setRotY(-Mth.lerp(0.1f,
+						SWAY_SCALE * Mth.cos(age * SWAY_RATE
 								- ((float) Math.PI / 3.0f) * offset),
 						0.0f) - tailDragAmount * 0.75f);
 				bone.setRotX(-tailDragAmountVertical * 0.75f * (offset + 0.75f));
@@ -281,16 +280,16 @@ public class WitchFamiliarRenderer extends GeoEntityRenderer<WitchFamiliarEntity
 		// 水平拖拽：身体偏航变化驱动，0.75倍衰减
 		state[1] = state[0]; // tailDragAmountO = tailDragAmount
 		state[0] *= 0.75f;
-		state[0] -= (float) (Math.toRadians(entity.bodyYaw - entity.prevBodyYaw) * 0.55f);
-		state[0] = MathHelper.clamp(state[0], -1.6f, 1.6f);
+		state[0] -= (float) (Math.toRadians(entity.yBodyRot - entity.yBodyRotO) * 0.55f);
+		state[0] = Mth.clamp(state[0], -1.6f, 1.6f);
 
 		// 垂直拖拽：实体垂直速度驱动，0.8倍衰减
-		float verticalSpeed = (float) entity.getVelocity().y;
-		float targetVerticalDrag = MathHelper.clamp(verticalSpeed * 1.5f, -1.6f, 1.6f);
+		float verticalSpeed = (float) entity.getDeltaMovement().y;
+		float targetVerticalDrag = Mth.clamp(verticalSpeed * 1.5f, -1.6f, 1.6f);
 		state[3] = state[2]; // tailDragAmountVerticalO = tailDragAmountVertical
 		state[2] *= 0.8f;
 		state[2] += targetVerticalDrag * 0.15f;
-		state[2] = MathHelper.clamp(state[2], -1.6f, 1.6f);
+		state[2] = Mth.clamp(state[2], -1.6f, 1.6f);
 	}
 
 	// ==================== 骨骼工具方法（等效SSC OriginFurModel.resetBone/setRotationForBone） ====================

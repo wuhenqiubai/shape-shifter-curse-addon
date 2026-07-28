@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_Bat3;
 
 /**
@@ -10,7 +10,7 @@ import net.onixary.shapeShifterCurseFabric.player_form.forms.Form_Bat3;
  * 进化途径：玩家处于 shape-shifter-curse:bat_3 时，于诅咒之月夜晚使用月髓环进化获得。
  */
 public class Form_BatDesmodus extends Form_Bat3 {
-	public Form_BatDesmodus(Identifier formID) {
+	public Form_BatDesmodus(ResourceLocation formID) {
 		super(formID);
 	}
 }

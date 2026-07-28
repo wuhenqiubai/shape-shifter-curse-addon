@@ -3,17 +3,17 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.loot.LootPool;
-import net.minecraft.loot.condition.RandomChanceLootCondition;
-import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -31,7 +31,7 @@ public class WitheredSandRingItem extends TrinketItem {
 	/** 服务端装备状态追踪：玩家UUID -> 最后一次tick的游戏时间 */
 	private static final ConcurrentHashMap<UUID, Long> EQUIPPED_PLAYERS = new ConcurrentHashMap<>();
 
-	public WitheredSandRingItem(Settings settings) {
+	public WitheredSandRingItem(Properties settings) {
 		super(settings);
 	}
 
@@ -40,12 +40,12 @@ public class WitheredSandRingItem extends TrinketItem {
 	 */
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (key.getValue().equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
-				LootPool.Builder poolBuilder = LootPool.builder()
-						.rolls(ConstantLootNumberProvider.create(1.0F))
-						.conditionally(RandomChanceLootCondition.builder(0.15F))
-						.with(ItemEntry.builder(SscAddon.WITHERED_SAND_RING));
-				tableBuilder.pool(poolBuilder);
+			if (key.location().equals(ResourceLocation.fromNamespaceAndPath("minecraft", "chests/desert_pyramid"))) {
+				LootPool.Builder poolBuilder = LootPool.lootPool()
+						.setRolls(ConstantValue.exactly(1.0F))
+						.when(LootItemRandomChanceCondition.randomChance(0.15F))
+						.add(LootItem.lootTableItem(SscAddon.WITHERED_SAND_RING));
+				tableBuilder.withPool(poolBuilder);
 			}
 		});
 	}
@@ -57,33 +57,33 @@ public class WitheredSandRingItem extends TrinketItem {
 
 	@Override
 	public void tick(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		if (entity instanceof ServerPlayerEntity player) {
-			EQUIPPED_PLAYERS.put(player.getUuid(), entity.getWorld().getTime());
+		if (entity instanceof ServerPlayer player) {
+			EQUIPPED_PLAYERS.put(player.getUUID(), entity.level().getGameTime());
 		}
 	}
 
 	@Override
 	public void onEquip(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		if (entity instanceof ServerPlayerEntity player) {
-			EQUIPPED_PLAYERS.put(player.getUuid(), entity.getWorld().getTime());
+		if (entity instanceof ServerPlayer player) {
+			EQUIPPED_PLAYERS.put(player.getUUID(), entity.level().getGameTime());
 		}
 	}
 
 	@Override
 	public void onUnequip(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		if (entity instanceof ServerPlayerEntity) {
-			EQUIPPED_PLAYERS.remove(entity.getUuid());
+		if (entity instanceof ServerPlayer) {
+			EQUIPPED_PLAYERS.remove(entity.getUUID());
 		}
 	}
 
 	/**
 	 * 检查玩家是否装备了枯沙指环（基于tick回调追踪，比isEquipped API更可靠）
 	 */
-	public static boolean isEquippedBy(ServerPlayerEntity player) {
-		Long lastTick = EQUIPPED_PLAYERS.get(player.getUuid());
+	public static boolean isEquippedBy(ServerPlayer player) {
+		Long lastTick = EQUIPPED_PLAYERS.get(player.getUUID());
 		if (lastTick == null) return false;
 		// 超过3tick未更新视为已卸下（容错）
-		return Math.abs(player.getWorld().getTime() - lastTick) <= 3;
+		return Math.abs(player.level().getGameTime() - lastTick) <= 3;
 	}
 
 	/** 清理玩家数据（退出/切换形态时调用） */
@@ -92,9 +92,9 @@ public class WitheredSandRingItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-		tooltip.add(Text.translatable("item.ssc_addon.withered_sand_ring.tooltip_1").formatted(Formatting.GOLD));
-		tooltip.add(Text.translatable("item.ssc_addon.withered_sand_ring.tooltip_2").formatted(Formatting.GRAY));
-		super.appendTooltip(stack, context, tooltip, type);
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+		tooltip.add(Component.translatable("item.ssc_addon.withered_sand_ring.tooltip_1").withStyle(ChatFormatting.GOLD));
+		tooltip.add(Component.translatable("item.ssc_addon.withered_sand_ring.tooltip_2").withStyle(ChatFormatting.GRAY));
+		super.appendHoverText(stack, context, tooltip, type);
 	}
 }

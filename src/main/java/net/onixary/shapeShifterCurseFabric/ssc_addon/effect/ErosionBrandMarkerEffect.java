@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 
 /**
  * 侵蚀烙印标记效果 - 无实际机制效果
@@ -12,14 +12,14 @@ import net.minecraft.entity.effect.StatusEffectCategory;
  * - erosion_brand_marker_3: 3层(红色)
  * 绿色冷却状态不显示图标。
  */
-public class ErosionBrandMarkerEffect extends StatusEffect {
+public class ErosionBrandMarkerEffect extends MobEffect {
 
 	public ErosionBrandMarkerEffect(int color) {
-		super(StatusEffectCategory.NEUTRAL, color);
+		super(MobEffectCategory.NEUTRAL, color);
 	}
 
 	@Override
-	public boolean canApplyUpdateEffect(int duration, int amplifier) {
+	public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
 		return false; // 无任何tick效果
 	}
 }

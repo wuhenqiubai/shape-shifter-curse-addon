@@ -1,18 +1,18 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.passive.TameableEntity;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Box;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SkillBlocker;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.phys.AABB;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
@@ -32,8 +32,8 @@ import java.util.UUID;
 public class AllaySPGroupHeal {
 
 	public static final String WHITELIST_TAG_PREFIX = "ssc_allay_wl:";
-	private static final Identifier HEAL_EXECUTE_ID = Identifier.of("my_addon", "form_allay_sp_group_heal_heal_execute");
-	private static final Identifier SOLO_DAMAGE_TIMER_ID = FormIdentifiers.ALLAY_GROUP_HEAL_SOLO_DAMAGE_TIMER;
+	private static final ResourceLocation HEAL_EXECUTE_ID = ResourceLocation.fromNamespaceAndPath("my_addon", "form_allay_sp_group_heal_heal_execute");
+	private static final ResourceLocation SOLO_DAMAGE_TIMER_ID = FormIdentifiers.ALLAY_GROUP_HEAL_SOLO_DAMAGE_TIMER;
 	private static final double HEAL_RADIUS = 20.0;
 	private static final float HEAL_AMOUNT = 20.0f;
 	private static final int RESISTANCE_TICKS = 200;
@@ -48,7 +48,7 @@ public class AllaySPGroupHeal {
 	/**
 	 * 每tick检查是否需要执行治疗
 	 */
-	public static void tick(ServerPlayerEntity player) {
+	public static void tick(ServerPlayer player) {
 		if (SkillBlocker.isSkillBlocked(player, "allay", "group_heal")) {
 			return;
 		}
@@ -66,8 +66,8 @@ public class AllaySPGroupHeal {
 	 * 执行白名单过滤的群体治疗
 	 * 白名单为空时治疗所有活体（原版行为）；有白名单时只治疗白名单内的玩家及其召唤物
 	 */
-	private static void executeWhitelistHeal(ServerPlayerEntity allayPlayer) {
-		ServerWorld world = (ServerWorld) allayPlayer.getWorld();
+	private static void executeWhitelistHeal(ServerPlayer allayPlayer) {
+		ServerLevel world = (ServerLevel) allayPlayer.level();
 		boolean soloHeal = !hasOtherHealablePlayer(allayPlayer, world);
 
 		// 治疗自身
@@ -75,48 +75,48 @@ public class AllaySPGroupHeal {
 			applySoloBlessing(allayPlayer);
 		} else {
 			allayPlayer.heal(HEAL_AMOUNT);
-			allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, STANDARD_ABSORPTION_TICKS, 1, false, true, true));
-			allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
+			allayPlayer.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, STANDARD_ABSORPTION_TICKS, 1, false, true, true));
+			allayPlayer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
 		}
 		spawnHealParticles(world, allayPlayer);
 		// 只有SP悦灵自己能听见
-		allayPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
+		allayPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
 
 		// 获取范围内所有活体
-		Box box = allayPlayer.getBoundingBox().expand(HEAL_RADIUS);
-		List<LivingEntity> entities = world.getEntitiesByClass(LivingEntity.class, box,
-				e -> e != allayPlayer && e.isAlive() && e.squaredDistanceTo(allayPlayer) <= HEAL_RADIUS * HEAL_RADIUS);
+		AABB box = allayPlayer.getBoundingBox().inflate(HEAL_RADIUS);
+		List<LivingEntity> entities = world.getEntitiesOfClass(LivingEntity.class, box,
+				e -> e != allayPlayer && e.isAlive() && e.distanceToSqr(allayPlayer) <= HEAL_RADIUS * HEAL_RADIUS);
 
 		for (LivingEntity entity : entities) {
 			// 统一走 WhitelistUtils.isBuffTarget，同时遵从服务端 whitelistEnabled 总开关
 			if (WhitelistUtils.isBuffTarget(allayPlayer, entity)) {
 				entity.heal(HEAL_AMOUNT);
-				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
+				entity.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
 				spawnHealParticles(world, entity);
 				// 播放声音：治疗者听见私有声音，其他人听见空间声音
-				allayPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
+				allayPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
 				world.playSound(allayPlayer, entity.getX(), entity.getY(), entity.getZ(),
-						SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.0f);
+						SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.5f, 1.0f);
 			}
 		}
 	}
 
-	private static boolean hasOtherHealablePlayer(ServerPlayerEntity allayPlayer, ServerWorld world) {
-		Box box = allayPlayer.getBoundingBox().expand(HEAL_RADIUS);
-		List<ServerPlayerEntity> players = world.getEntitiesByClass(ServerPlayerEntity.class, box,
+	private static boolean hasOtherHealablePlayer(ServerPlayer allayPlayer, ServerLevel world) {
+		AABB box = allayPlayer.getBoundingBox().inflate(HEAL_RADIUS);
+		List<ServerPlayer> players = world.getEntitiesOfClass(ServerPlayer.class, box,
 				player -> player != allayPlayer
 						&& player.isAlive()
 						&& !player.isSpectator()
-						&& player.squaredDistanceTo(allayPlayer) <= HEAL_RADIUS * HEAL_RADIUS
+						&& player.distanceToSqr(allayPlayer) <= HEAL_RADIUS * HEAL_RADIUS
 						&& WhitelistUtils.isBuffTarget(allayPlayer, player));
 		return !players.isEmpty();
 	}
 
-	private static void applySoloBlessing(ServerPlayerEntity allayPlayer) {
+	private static void applySoloBlessing(ServerPlayer allayPlayer) {
 		allayPlayer.setHealth(allayPlayer.getMaxHealth());
-		allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, SOLO_BLESSING_TICKS, 1, false, true, true));
-		allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, SOLO_BLESSING_TICKS, 1, false, true, true));
-		allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, SOLO_ABSORPTION_TICKS, 2, false, true, true));
+		allayPlayer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, SOLO_BLESSING_TICKS, 1, false, true, true));
+		allayPlayer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, SOLO_BLESSING_TICKS, 1, false, true, true));
+		allayPlayer.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, SOLO_ABSORPTION_TICKS, 2, false, true, true));
 		setResourceValue(allayPlayer, SOLO_DAMAGE_TIMER_ID, SOLO_BLESSING_TICKS);
 	}
 
@@ -125,13 +125,13 @@ public class AllaySPGroupHeal {
 	 */
 	public static boolean shouldHeal(LivingEntity entity, Set<String> allayTags) {
 		// 如果是玩家，检查白名单
-		if (entity instanceof ServerPlayerEntity targetPlayer) {
-			return isInWhitelist(allayTags, targetPlayer.getUuid());
+		if (entity instanceof ServerPlayer targetPlayer) {
+			return isInWhitelist(allayTags, targetPlayer.getUUID());
 		}
 
 		// 如果是可驯服的实体（狼、猫等），检查主人是否在白名单
-		if (entity instanceof TameableEntity tameable) {
-			UUID ownerUuid = tameable.getOwnerUuid();
+		if (entity instanceof TamableAnimal tameable) {
+			UUID ownerUuid = tameable.getOwnerUUID();
 			if (ownerUuid != null) {
 				return isInWhitelist(allayTags, ownerUuid);
 			}
@@ -139,7 +139,7 @@ public class AllaySPGroupHeal {
 		}
 
 		// 检查 ssc_owner: command tag（通过 mark_owner 命令标记的实体）
-		for (String tag : entity.getCommandTags()) {
+		for (String tag : entity.getTags()) {
 			if (tag.startsWith("ssc_owner:")) {
 				try {
 					UUID ownerUuid = UUID.fromString(tag.substring("ssc_owner:".length()));
@@ -151,37 +151,37 @@ public class AllaySPGroupHeal {
 		}
 
 		// 最后检查实体本身的UUID是否直接在白名单中
-		return isInWhitelist(allayTags, entity.getUuid());
+		return isInWhitelist(allayTags, entity.getUUID());
 	}
 
 	/**
 	 * 将目标实体的所有者（如果是宠物）或实体本身（如果是普通生物/玩家）加入白名单
 	 */
-	public static void addToWhitelist(ServerPlayerEntity allayPlayer, LivingEntity target) {
-		if (target instanceof net.minecraft.entity.player.PlayerEntity) {
+	public static void addToWhitelist(ServerPlayer allayPlayer, LivingEntity target) {
+		if (target instanceof net.minecraft.world.entity.player.Player) {
 			// 玩家：只写 player 前缀
-			allayPlayer.getCommandTags().add(WHITELIST_TAG_PREFIX + target.getUuid().toString());
+			allayPlayer.getTags().add(WHITELIST_TAG_PREFIX + target.getUUID().toString());
 		} else {
 			// 任何非玩家生物（含宠物）：双写 player 前缀（兼容 isInWhitelist 判定）+ mob 前缀（GUI 用，带物种信息）
 			// 注意：白名单玩家的所有宠物已通过"主人 UUID 在 player 白名单"路径默认受保护，
 			// 这里写宠物自身 UUID 仅在该宠物被显式标记时生效，不影响主人的其它宠物。
-			String uuidStr = target.getUuid().toString();
-			allayPlayer.getCommandTags().add(WHITELIST_TAG_PREFIX + uuidStr);
-			net.minecraft.util.Identifier typeId = net.minecraft.registry.Registries.ENTITY_TYPE.getId(target.getType());
+			String uuidStr = target.getUUID().toString();
+			allayPlayer.getTags().add(WHITELIST_TAG_PREFIX + uuidStr);
+			net.minecraft.resources.ResourceLocation typeId = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(target.getType());
 			String mobTag = net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils.WHITELIST_MOB_TAG_PREFIX
 					+ uuidStr + ":" + typeId.getNamespace() + ":" + typeId.getPath();
-			allayPlayer.getCommandTags().add(mobTag);
+			allayPlayer.getTags().add(mobTag);
 		}
 	}
 
 	/**
 	 * 将目标实体的所有者（如果是宠物）或实体本身（如果是普通生物/玩家）从白名单移除
 	 */
-	public static void removeFromWhitelist(ServerPlayerEntity allayPlayer, LivingEntity target) {
+	public static void removeFromWhitelist(ServerPlayer allayPlayer, LivingEntity target) {
 		// 始终按 target 自身 UUID 移除（与 addToWhitelist 对称）
-		allayPlayer.getCommandTags().remove(WHITELIST_TAG_PREFIX + target.getUuid().toString());
+		allayPlayer.getTags().remove(WHITELIST_TAG_PREFIX + target.getUUID().toString());
 		// 同时清除生物白名单上的 mob 前缀 tag（包含剩余的 :ns:path 变体）
-		net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils.removeMobFromWhitelist(allayPlayer, target.getUuid());
+		net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils.removeMobFromWhitelist(allayPlayer, target.getUUID());
 	}
 
 	/**
@@ -195,7 +195,7 @@ public class AllaySPGroupHeal {
 	 * 便捷方法：检查一个实体是否在玩家的白名单中（供唱片机等外部系统使用）
 	 * 白名单为空时返回true（允许所有玩家和友好生物）
 	 */
-	public static boolean isInWhitelist(ServerPlayerEntity allayPlayer, LivingEntity entity) {
+	public static boolean isInWhitelist(ServerPlayer allayPlayer, LivingEntity entity) {
 		// 统一走 WhitelistUtils.isBuffTarget，遵从 whitelistEnabled 总开关
 		return WhitelistUtils.isBuffTarget(allayPlayer, entity);
 	}
@@ -203,9 +203,9 @@ public class AllaySPGroupHeal {
 	/**
 	 * 在实体位置生成爱心粒子
 	 */
-	private static void spawnHealParticles(ServerWorld world, LivingEntity entity) {
+	private static void spawnHealParticles(ServerLevel world, LivingEntity entity) {
 		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, ParticleTypes.HEART,
-				entity.getX(), entity.getY() + entity.getHeight() + 0.5, entity.getZ(),
+				entity.getX(), entity.getY() + entity.getBbHeight() + 0.5, entity.getZ(),
 				5, 0.3, 0.3, 0.3, 0.01);
 	}
 
@@ -215,17 +215,17 @@ public class AllaySPGroupHeal {
 	/**
 	 * 从白名单按UUID移除
 	 */
-	public static boolean removeFromWhitelistByUuid(ServerPlayerEntity allayPlayer, UUID targetUuid) {
+	public static boolean removeFromWhitelistByUuid(ServerPlayer allayPlayer, UUID targetUuid) {
 		String tag = WHITELIST_TAG_PREFIX + targetUuid.toString();
-		return allayPlayer.getCommandTags().remove(tag);
+		return allayPlayer.getTags().remove(tag);
 	}
 
 	/**
 	 * 获取白名单中的所有UUID
 	 */
-	public static java.util.List<UUID> getWhitelistUuids(ServerPlayerEntity allayPlayer) {
+	public static java.util.List<UUID> getWhitelistUuids(ServerPlayer allayPlayer) {
 		java.util.List<UUID> uuids = new java.util.ArrayList<>();
-		for (String tag : allayPlayer.getCommandTags()) {
+		for (String tag : allayPlayer.getTags()) {
 			if (tag.startsWith(WHITELIST_TAG_PREFIX)) {
 				try {
 					uuids.add(UUID.fromString(tag.substring(WHITELIST_TAG_PREFIX.length())));
@@ -239,11 +239,11 @@ public class AllaySPGroupHeal {
 
 		// ===== Apoli资源读写工具 =====
 
-	private static int getResourceValue(ServerPlayerEntity player, Identifier resourceId) {
+	private static int getResourceValue(ServerPlayer player, ResourceLocation resourceId) {
 		return PowerUtils.getResourceValue(player, resourceId);
 	}
 
-	private static void setResourceValue(ServerPlayerEntity player, Identifier resourceId, int value) {
+	private static void setResourceValue(ServerPlayer player, ResourceLocation resourceId, int value) {
 		PowerUtils.setResourceValueAndSync(player, resourceId, value);
 	}
 
@@ -251,7 +251,7 @@ public class AllaySPGroupHeal {
 	 * 设置资源值但不同步到客户端，避免重置飘浮等power的内部计时器
 	 * 仅用于不需要客户端感知的内部触发器（如 heal_execute）
 	 */
-	private static void setResourceValueNoSync(ServerPlayerEntity player, Identifier resourceId, int value) {
+	private static void setResourceValueNoSync(ServerPlayer player, ResourceLocation resourceId, int value) {
 		PowerUtils.setResourceValue(player, resourceId, value);
 	}
 }

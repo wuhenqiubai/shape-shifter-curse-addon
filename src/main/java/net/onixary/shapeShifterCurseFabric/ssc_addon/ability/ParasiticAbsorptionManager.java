@@ -6,10 +6,10 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 
 import java.util.Iterator;
@@ -44,9 +44,9 @@ public final class ParasiticAbsorptionManager {
         // 而内存 DATA 在断连后丢失，若不清会导致重连后黄心永久残留）。
         // DISCONNECT 在 Netty IO 线程触发，setAbsorptionAmount 改实体属性需调度回主线程。
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            net.minecraft.server.network.ServerPlayerEntity player = handler.player;
+            net.minecraft.server.level.ServerPlayer player = handler.player;
             if (player == null) return;
-            java.util.UUID uuid = player.getUuid();
+            java.util.UUID uuid = player.getUUID();
             AbsorptionData d = DATA.remove(uuid);
             if (d == null) return;
             float granted = d.granted;
@@ -65,21 +65,21 @@ public final class ParasiticAbsorptionManager {
 
     /** 带持续时长系数的触发（腐殖之戒传 0.7 使黄心持续 -30%）。 */
     public static void addAbsorption(LivingEntity entity, int amplifier, float durationFactor) {
-        if (!(entity.getWorld() instanceof ServerWorld world)) return;
-        long now = world.getTime();
+        if (!(entity.level() instanceof ServerLevel world)) return;
+        long now = world.getGameTime();
         int duration = Math.max(20, Math.round(MAX_DURATION * durationFactor));
         float add = (amplifier + 1) * 2.0f;
         entity.setAbsorptionAmount(entity.getAbsorptionAmount() + add);
-        AbsorptionData d = DATA.computeIfAbsent(entity.getUuid(), k -> new AbsorptionData());
+        AbsorptionData d = DATA.computeIfAbsent(entity.getUUID(), k -> new AbsorptionData());
         d.granted += add;
         d.endTick = now + duration;
         // 纯显示图标（到期由本管理器清 absorption）
-        entity.addStatusEffect(new StatusEffectInstance(SscAddon.BAT_ABSORPTION_ENTRY, duration, amplifier, false, true, true));
+        entity.addEffect(new MobEffectInstance(SscAddon.BAT_ABSORPTION_ENTRY, duration, amplifier, false, true, true));
     }
 
-    private static void onWorldTick(ServerWorld world) {
+    private static void onWorldTick(ServerLevel world) {
         if (DATA.isEmpty()) return;
-        long now = world.getTime();
+        long now = world.getGameTime();
         Iterator<Map.Entry<UUID, AbsorptionData>> it = DATA.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<UUID, AbsorptionData> e = it.next();

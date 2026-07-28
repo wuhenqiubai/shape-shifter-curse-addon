@@ -5,14 +5,24 @@ import io.github.apace100.apoli.power.PowerType;
 import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.block.*;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BambooStalkBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CaveVinesBlock;
+import net.minecraft.world.level.block.CaveVinesPlantBlock;
+import net.minecraft.world.level.block.CocoaBlock;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.StemBlock;
+import net.minecraft.world.level.block.SugarCaneBlock;
+import net.minecraft.world.level.block.SweetBerryBushBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FruitBatPlantGrowthPower extends Power {
 
     // <维度Key, <packedBlockPos, 上次判定时的 server tick>>
-    private static final Map<RegistryKey<World>, Map<Long, Long>> RECENT_PROCESSED = new ConcurrentHashMap<>();
+    private static final Map<ResourceKey<Level>, Map<Long, Long>> RECENT_PROCESSED = new ConcurrentHashMap<>();
 
     private final int tickInterval;
     private final int radius;
@@ -37,7 +47,7 @@ public class FruitBatPlantGrowthPower extends Power {
 
     public static PowerFactory<Power> createFactory() {
         return new PowerFactory<>(
-                Identifier.of("my_addon", "fruit_bat_plant_growth"),
+                ResourceLocation.fromNamespaceAndPath("my_addon", "fruit_bat_plant_growth"),
                 new SerializableData()
                         .add("tick_interval", SerializableDataTypes.INT, 20)
                         .add("radius", SerializableDataTypes.INT, 5)
@@ -51,22 +61,22 @@ public class FruitBatPlantGrowthPower extends Power {
 
     @Override
     public void tick() {
-        World world = entity.getWorld();
-        if (world.isClient()) return;
-        if (!(world instanceof ServerWorld serverWorld)) return;
-        if (entity.age % tickInterval != 0) return;
+        Level world = entity.level();
+        if (world.isClientSide()) return;
+        if (!(world instanceof ServerLevel serverWorld)) return;
+        if (entity.tickCount % tickInterval != 0) return;
 
-        long now = serverWorld.getTime();
+        long now = serverWorld.getGameTime();
         Map<Long, Long> dimMap = RECENT_PROCESSED.computeIfAbsent(
-                serverWorld.getRegistryKey(), k -> new ConcurrentHashMap<>());
+                serverWorld.dimension(), k -> new ConcurrentHashMap<>());
 
         // 顺手清理过老条目（5 倍周期之外）防止长期累积内存
         long expire = now - (long) tickInterval * 5L;
         dimMap.entrySet().removeIf(e -> e.getValue() < expire);
 
-        BlockPos center = entity.getBlockPos();
+        BlockPos center = entity.blockPosition();
         int r = radius;
-        BlockPos.Mutable cursor = new BlockPos.Mutable();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int dx = -r; dx <= r; dx++) {
             for (int dy = -r; dy <= r; dy++) {
                 for (int dz = -r; dz <= r; dz++) {
@@ -83,7 +93,7 @@ public class FruitBatPlantGrowthPower extends Power {
                     dimMap.put(packed, now);
 
                     if (serverWorld.random.nextFloat() >= chance) continue;
-                    BlockPos immutable = cursor.toImmutable();
+                    BlockPos immutable = cursor.immutable();
                     state.randomTick(serverWorld, immutable, serverWorld.random);
                 }
             }
@@ -97,11 +107,11 @@ public class FruitBatPlantGrowthPower extends Power {
                 || b instanceof StemBlock        // 西瓜/南瓜茎
                 || b instanceof CocoaBlock       // 可可豆
                 || b instanceof SugarCaneBlock   // 甘蔗
-                || b instanceof BambooBlock      // 竹子
+                || b instanceof BambooStalkBlock      // 竹子
                 || b instanceof NetherWartBlock  // 地狱疣
                 || b instanceof SaplingBlock     // 树苗
                 || b instanceof SweetBerryBushBlock // 甜浆果丛
-                || b instanceof CaveVinesBodyBlock  // 洞穴藤蔓主体
-                || b instanceof CaveVinesHeadBlock; // 洞穴藤蔓头（光浆果生长）
+                || b instanceof CaveVinesPlantBlock  // 洞穴藤蔓主体
+                || b instanceof CaveVinesBlock; // 洞穴藤蔓头（光浆果生长）
     }
 }

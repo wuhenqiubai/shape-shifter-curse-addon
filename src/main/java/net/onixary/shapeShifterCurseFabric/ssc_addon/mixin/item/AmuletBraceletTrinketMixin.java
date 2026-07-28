@@ -1,15 +1,16 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.item;
 
 import dev.emi.trinkets.api.SlotReference;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.onixary.shapeShifterCurseFabric.items.trinkets.AmuletBraceletTrinket;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 
 /**
  * 守御脚环（amulet_bracelet）契灵形态适配：
@@ -25,14 +26,15 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(AmuletBraceletTrinket.class)
 public abstract class AmuletBraceletTrinketMixin {
 
+	@Unique
 	public void tick(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		if (!(entity instanceof PlayerEntity player)) return;
-		if (player.getWorld().isClient) return;
+		if (!(entity instanceof Player player)) return;
+		if (player.level().isClientSide) return;
 		if (!FormUtils.isForm(entity, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) return;
 
-		player.sendMessage(
-				Text.translatable("item.shape-shifter-curse.amulet_bracelet.cant_equip_mancianima")
-						.formatted(Formatting.RED),
+		player.displayClientMessage(
+				Component.translatable("item.shape-shifter-curse.amulet_bracelet.cant_equip_mancianima")
+						.withStyle(ChatFormatting.RED),
 				true
 		);
 	}

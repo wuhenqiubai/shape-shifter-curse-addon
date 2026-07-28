@@ -5,10 +5,10 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.item;
 
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.slot.Slot;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,11 +28,11 @@ public abstract class WitherPotionStackMixin {
 
 	@Shadow
 	@Final
-	public Inventory inventory;
+	public Container container;
 
-	@Inject(method = "getMaxItemCount(Lnet/minecraft/item/ItemStack;)I", at = @At("RETURN"), cancellable = true)
+	@Inject(method = "getMaxStackSize(Lnet/minecraft/world/item/ItemStack;)I", at = @At("RETURN"), cancellable = true)
 	private void ssc_addon$witherPotionFormStack(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
-		if (!(this.inventory instanceof PlayerInventory playerInventory)) {
+		if (!(this.container instanceof Inventory playerInventory)) {
 			return;
 		}
 		if (!(stack.getItem() instanceof WitherPotionItem)) {

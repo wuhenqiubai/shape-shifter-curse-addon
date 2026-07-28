@@ -1,18 +1,18 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
 import dev.emi.trinkets.api.TrinketsApi;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 
-public class BlueFireRingEffect extends StatusEffect {
+public class BlueFireRingEffect extends MobEffect {
 
 	// 冻结水面的概率（6%，每次火环攻击间隔触发）
 	private static final float FREEZE_CHANCE = 0.06f;
@@ -23,26 +23,26 @@ public class BlueFireRingEffect extends StatusEffect {
 	private static final int ATTACK_INTERVAL = 16;
 
 	public BlueFireRingEffect() {
-		super(StatusEffectCategory.BENEFICIAL, 0x3366FF);
+		super(MobEffectCategory.BENEFICIAL, 0x3366FF);
 	}
 
 	@Override
-	public boolean canApplyUpdateEffect(int duration, int amplifier) {
+	public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
 		// 与火环攻击间隔一致，每16tick触发一次
 		return duration % ATTACK_INTERVAL == 0;
 	}
 
 	@Override
-	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
-		World world = entity.getWorld();
-		if (world.isClient()) return false;
+	public boolean applyEffectTick(LivingEntity entity, int amplifier) {
+		Level world = entity.level();
+		if (world.isClientSide()) return false;
 
-		BlockPos center = entity.getBlockPos();
-		ServerWorld serverWorld = (ServerWorld) world;
+		BlockPos center = entity.blockPosition();
+		ServerLevel serverWorld = (ServerLevel) world;
 
 		// 冻水范围跟随火环伤害范围：佩戴蓝火护符时3.6格，否则6格（与JSON area_of_effect一致）
 		double freezeRadius = hasBlueFireAmulet(entity) ? FREEZE_RADIUS_AMULET : FREEZE_RADIUS_DEFAULT;
-		int radiusCeil = MathHelper.ceil(freezeRadius);
+		int radiusCeil = Mth.ceil(freezeRadius);
 		double radiusSq = freezeRadius * freezeRadius;
 
 		// 遍历周围方块，有概率将水源方块转为冰霜行者冰（范围与火环攻击范围一致）
@@ -53,18 +53,18 @@ public class BlueFireRingEffect extends StatusEffect {
 
 				// 检查脚下及脚下一格位置的水
 				for (int yOff = -1; yOff <= 0; yOff++) {
-					BlockPos pos = center.add(x, yOff, z);
+					BlockPos pos = center.offset(x, yOff, z);
 
-					if (world.getBlockState(pos).isOf(Blocks.WATER)
-							&& world.getFluidState(pos).isStill()
-							&& world.getBlockState(pos.up()).isAir()) {
+					if (world.getBlockState(pos).is(Blocks.WATER)
+							&& world.getFluidState(pos).isSource()
+							&& world.getBlockState(pos.above()).isAir()) {
 
 						if (world.getRandom().nextFloat() < FREEZE_CHANCE) {
-							world.setBlockState(pos, Blocks.FROSTED_ICE.getDefaultState());
+							world.setBlockAndUpdate(pos, Blocks.FROSTED_ICE.defaultBlockState());
 							// 调度冰块融化（60-120tick后开始）
-							serverWorld.scheduleBlockTick(
+							serverWorld.scheduleTick(
 									pos, Blocks.FROSTED_ICE,
-									MathHelper.nextInt(world.getRandom(), 60, 120));
+									Mth.nextInt(world.getRandom(), 60, 120));
 						}
 					}
 				}
@@ -75,7 +75,7 @@ public class BlueFireRingEffect extends StatusEffect {
 
 	/** 检测玩家是否佩戴蓝火护符（与 ssc_addon:has_blue_fire_amulet 条件判断一致）。 */
 	private static boolean hasBlueFireAmulet(LivingEntity entity) {
-		if (!(entity instanceof PlayerEntity player)) return false;
+		if (!(entity instanceof Player player)) return false;
 		return TrinketsApi.getTrinketComponent(player)
 				.map(component -> component.isEquipped(SscAddon.BLUE_FIRE_AMULET))
 				.orElse(false);

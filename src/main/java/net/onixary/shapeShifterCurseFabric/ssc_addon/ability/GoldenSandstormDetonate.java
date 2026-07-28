@@ -1,10 +1,10 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -32,12 +32,12 @@ public class GoldenSandstormDetonate {
 	/**
 	 * 玩家按下次要技能键触发
 	 */
-	public static boolean execute(ServerPlayerEntity player) {
+	public static boolean execute(ServerPlayer player) {
 		// CD检查
 		int cd = PowerUtils.getResourceValue(player, FormIdentifiers.SP_SECONDARY_CD);
 		if (cd > 0) return false;
 
-		if (!(player.getWorld() instanceof ServerWorld serverWorld)) return false;
+		if (!(player.level() instanceof ServerLevel serverWorld)) return false;
 
 		// 调用 ErosionBrand 的引爆方法
 		int[] result = GoldenSandstormErosionBrand.detonateAll(player);
@@ -54,9 +54,9 @@ public class GoldenSandstormDetonate {
 
 		// 释放音效
 		serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_WITHER_BREAK_BLOCK, SoundCategory.PLAYERS, 1.0f, 1.0f);
+				SoundEvents.WITHER_BREAK_BLOCK, SoundSource.PLAYERS, 1.0f, 1.0f);
 		serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.BLOCK_SAND_BREAK, SoundCategory.PLAYERS, 1.5f, 0.8f);
+				SoundEvents.SAND_BREAK, SoundSource.PLAYERS, 1.5f, 0.8f);
 
 		// 自身周围粒子提示
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.SOUL_FIRE_FLAME,

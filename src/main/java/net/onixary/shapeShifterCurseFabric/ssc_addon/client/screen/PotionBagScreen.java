@@ -1,35 +1,35 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Inventory;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.screen.PotionBagScreenHandler;
 
-public class PotionBagScreen extends HandledScreen<PotionBagScreenHandler> {
-	private static final Identifier TEXTURE = Identifier.of("ssc_addon", "textures/gui/container/potion_bag.png");
+public class PotionBagScreen extends AbstractContainerScreen<PotionBagScreenHandler> {
+	private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("ssc_addon", "textures/gui/container/potion_bag.png");
 
-	public PotionBagScreen(PotionBagScreenHandler handler, PlayerInventory inventory, Text title) {
+	public PotionBagScreen(PotionBagScreenHandler handler, Inventory inventory, Component title) {
 		super(handler, inventory, title);
-		this.backgroundWidth = 176;
-		this.backgroundHeight = 132; // Assuming 1-row chest height approx
-		this.playerInventoryTitleY = this.backgroundHeight - 94;
+		this.imageWidth = 176;
+		this.imageHeight = 132; // Assuming 1-row chest height approx
+		this.inventoryLabelY = this.imageHeight - 94;
 	}
 
 	@Override
-	protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-		RenderSystem.setShader(GameRenderer::getPositionTexProgram);
+	protected void renderBg(GuiGraphics context, float delta, int mouseX, int mouseY) {
+		RenderSystem.setShader(GameRenderer::getPositionTexShader);
 		RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 		RenderSystem.setShaderTexture(0, TEXTURE);
-		int x = (this.width - this.backgroundWidth) / 2;
-		int y = (this.height - this.backgroundHeight) / 2;
+		int x = (this.width - this.imageWidth) / 2;
+		int y = (this.height - this.imageHeight) / 2;
 
 		// Explicitly specify texture size (textureWidth, textureHeight) as 256x256
 		// params: texture, x, y, u, v, width, height, textureWidth, textureHeight
-		context.drawTexture(TEXTURE, x, y, 0, 0, this.backgroundWidth, this.backgroundHeight, 256, 256);
+		context.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
 
 		// 高亮最左侧槽位（快捷投放栏）：金色边框，提示该槽位可在手持时直接右键快速使用
 		int slotX = x + 8;
@@ -42,9 +42,9 @@ public class PotionBagScreen extends HandledScreen<PotionBagScreenHandler> {
 	}
 
 	@Override
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
 		this.renderBackground(context, mouseX, mouseY,  delta);
 		super.render(context, mouseX, mouseY, delta);
-		this.drawMouseoverTooltip(context, mouseX, mouseY);
+		this.renderTooltip(context, mouseX, mouseY);
 	}
 }

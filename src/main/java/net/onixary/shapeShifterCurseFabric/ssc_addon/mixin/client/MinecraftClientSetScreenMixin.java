@@ -1,8 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
 import me.shedaniel.autoconfig.AutoConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker.AdvancedColorScreen;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 当 SSCA 颜色编辑开关 ON 时，拦截 setScreen(FormColorSelectMenu)，替换为 AdvancedColorScreen。
  * 用类名字符串判断避免对原版 SSC 的硬依赖。
  */
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public abstract class MinecraftClientSetScreenMixin {
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
@@ -30,8 +30,8 @@ public abstract class MinecraftClientSetScreenMixin {
         //   "FormColorSelectMenu is already in use, only one instance is allowed"
         // 因此先反射把这三个静态字段还原，再 cancel + 用我们自己的界面替换。
         cleanupSscColorMenuState(screen);
-        MinecraftClient mc = (MinecraftClient) (Object) this;
-        Screen parent = mc.currentScreen;
+        Minecraft mc = (Minecraft) (Object) this;
+        Screen parent = mc.screen;
         mc.setScreen(new AdvancedColorScreen(parent));
         ci.cancel();
     }

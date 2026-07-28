@@ -1,43 +1,43 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.entity.boss.ServerBossBar;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.entity.mob.EvokerEntity;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.mob.PathAwareEntity;
-import net.minecraft.entity.mob.PillagerEntity;
-import net.minecraft.entity.mob.RavagerEntity;
-import net.minecraft.entity.mob.VindicatorEntity;
-import net.minecraft.entity.mob.WitchEntity;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.util.Identifier;
-import net.minecraft.village.raid.Raid;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.poi.PointOfInterestStorage;
-import net.minecraft.world.poi.PointOfInterestTypes;
-import net.minecraft.entity.passive.IronGolemEntity;
-import net.minecraft.entity.passive.MerchantEntity;
-import net.minecraft.entity.passive.VillagerEntity;
-import net.minecraft.entity.passive.WanderingTraderEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.raid.RaiderEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.village.TradeOffer;
-import net.minecraft.village.TradeOfferList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.BossEvent;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.ai.village.poi.PoiTypes;
+import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.monster.Evoker;
+import net.minecraft.world.entity.monster.Pillager;
+import net.minecraft.world.entity.monster.Ravager;
+import net.minecraft.world.entity.monster.Vindicator;
+import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.npc.AbstractVillager;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.WanderingTrader;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.raid.Raid;
+import net.minecraft.world.entity.raid.Raider;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -75,11 +75,11 @@ public final class MancianimaPassive {
 	private enum RaiderPhase { ACTIVE, LINGER, MARCH }
 	private static class RaiderGroup {
 		final Set<UUID> raiderUuids = ConcurrentHashMap.newKeySet();
-		final net.minecraft.util.Identifier dimensionId;
+		final net.minecraft.resources.ResourceLocation dimensionId;
 		final BlockPos villageCenter;
 		RaiderPhase phase = RaiderPhase.ACTIVE;
 		long phaseEndTime = Long.MAX_VALUE;
-		RaiderGroup(net.minecraft.util.Identifier dim, BlockPos center) {
+		RaiderGroup(net.minecraft.resources.ResourceLocation dim, BlockPos center) {
 			this.dimensionId = dim;
 			this.villageCenter = center;
 		}
@@ -89,104 +89,104 @@ public final class MancianimaPassive {
 
 	// “被君临”还在生效的村民/商人 UUID + 上次刷新 tick
 	private static final Map<UUID, Long> FLEE_AFFECTED = new ConcurrentHashMap<>();
-	private static final Identifier MANCIANIMA_FEAR_SLOW_UUID = Identifier.of("7f3e2c4a-3b16-4ad2-9d4d-2bf1d8a5d111");
+	private static final ResourceLocation MANCIANIMA_FEAR_SLOW_UUID = ResourceLocation.parse("7f3e2c4a-3b16-4ad2-9d4d-2bf1d8a5d111");
 	private static final double FLEE_RADIUS = 12.0;
 	private static final int FLEE_LINGER_TICKS = 60; // 离开后 3s 才清除 debuff
 
 	private static final Random RNG = new Random();
 
-	public static void tick(ServerPlayerEntity player) {
+	public static void tick(ServerPlayer player) {
 		if (!FormUtils.isForm(player, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) return;
 		// 驱逃逻辑：每 10t 检一次，低开销
-		if (player.age % 10 == 0) tickFlee(player);
+		if (player.tickCount % 10 == 0) tickFlee(player);
 		// 袭击读条推进（每 tick）
 		tickAssaultPrepare(player);
 		// 袭击超出范围检查（每 20t）
-		if (player.age % 20 == 0) checkAssaultRange(player);
-		if (player.age % 60 != 0) return;
+		if (player.tickCount % 20 == 0) checkAssaultRange(player);
+		if (player.tickCount % 60 != 0) return;
 		// 1. mana 劫掠 bonus（每 3s）
 		int raiderCount = countNearbyRaiders(player, 10.0);
 		if (raiderCount > 0) {
 			ManaUtils.gainPlayerMana(player, Math.min(raiderCount, 5));
 		}
 		// 2. 过期卸载驱逃修饰符
-		cleanupExpiredFlee(player.getWorld().getTime());
+		cleanupExpiredFlee(player.level().getGameTime());
 	}
 
 	/** 敷鼎袭击触发入口：敷钟后调用。返回是否成功触发。 */
-	public static boolean tryTriggerAssaultByBell(ServerPlayerEntity player) {
+	public static boolean tryTriggerAssaultByBell(ServerPlayer player) {
 		if (!FormUtils.isForm(player, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) return false;
-		UUID pid = player.getUuid();
+		UUID pid = player.getUUID();
 		if (ASSAULTS.containsKey(pid)) return false; // 正在进行中
-		long now = player.getWorld().getTime();
+		long now = player.level().getGameTime();
 		net.minecraft.server.MinecraftServer server = player.getServer();
 		MancianimaAssaultState state = server == null ? null : MancianimaAssaultState.get(server);
 		Long last = state == null ? null : state.lastRoll.get(pid);
 		if (last != null && now - last < ASSAULT_ROLL_COOLDOWN) {
-			player.sendMessage(Text.translatable("ssc_addon.mancianima.assault.cooldown"), true);
+			player.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.cooldown"), true);
 			return false;
 		}
-		Box markBox = player.getBoundingBox().expand(64.0);
+		AABB markBox = player.getBoundingBox().inflate(64.0);
 		Set<UUID> villagerTargets = new HashSet<>();
-		List<MerchantEntity> merchants = player.getWorld().getEntitiesByClass(MerchantEntity.class, markBox,
+		List<AbstractVillager> merchants = player.level().getEntitiesOfClass(AbstractVillager.class, markBox,
 				e -> e.isAlive() && !e.isRemoved());
-		for (MerchantEntity m : merchants) villagerTargets.add(m.getUuid());
+		for (AbstractVillager m : merchants) villagerTargets.add(m.getUUID());
 		if (villagerTargets.isEmpty()) {
-			player.sendMessage(Text.translatable("ssc_addon.mancianima.assault.no_villagers"), true);
+			player.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.no_villagers"), true);
 			return false;
 		}
 		// 仅自定义袭击逻辑：不施加 BAD_OMEN 也不召来原版 raid，避免与原版袭击 bossbar 冲突
 		// 让附近铁傀儡主动追击契灵
-		for (IronGolemEntity g : player.getWorld().getEntitiesByClass(IronGolemEntity.class, markBox,
+		for (IronGolem g : player.level().getEntitiesOfClass(IronGolem.class, markBox,
 				e -> e.isAlive() && !e.isRemoved())) {
 			g.setTarget(player);
-			g.setAttacker(player);
+			g.setLastHurtByMob(player);
 		}
 		// 创建读条 bossbar（黄色，10s后切换为袭击 bossbar）
-		ServerBossBar prepareBar = new ServerBossBar(
-				Text.translatable("ssc_addon.mancianima.assault.preparing"),
-				BossBar.Color.YELLOW, BossBar.Style.PROGRESS);
-		prepareBar.setPercent(1.0f);
+		ServerBossEvent prepareBar = new ServerBossEvent(
+				Component.translatable("ssc_addon.mancianima.assault.preparing"),
+				BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.PROGRESS);
+		prepareBar.setProgress(1.0f);
 		prepareBar.addPlayer(player);
 		AssaultData data = new AssaultData(villagerTargets, prepareBar,
-				player.getWorld().getRegistryKey().getValue(), player.getPos(), now);
+				player.level().dimension().location(), player.position(), now);
 		data.prepareTicks = ASSAULT_PREPARE_TICKS;
 		ASSAULTS.put(pid, data);
 		// 注：冷却仅在 onAssaultTargetDeath 袭击成功完成后才记入，走远/下线/重启不扭冷却
-		player.sendMessage(Text.translatable("ssc_addon.mancianima.assault.preparing_msg", villagerTargets.size()), false);
-		if (player.getWorld() instanceof ServerWorld sw) {
+		player.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.preparing_msg", villagerTargets.size()), false);
+		if (player.level() instanceof ServerLevel sw) {
 			sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.EVENT_RAID_HORN.value(), player.getSoundCategory(), 1.0f, 0.9f);
+					SoundEvents.RAID_HORN.value(), player.getSoundSource(), 1.0f, 0.9f);
 		}
 		return true;
 	}
 
-	private static void tickFlee(ServerPlayerEntity player) {
-		Box box = player.getBoundingBox().expand(FLEE_RADIUS);
-		long now = player.getWorld().getTime();
-		List<MerchantEntity> merchants = player.getWorld().getEntitiesByClass(MerchantEntity.class, box,
+	private static void tickFlee(ServerPlayer player) {
+		AABB box = player.getBoundingBox().inflate(FLEE_RADIUS);
+		long now = player.level().getGameTime();
+		List<AbstractVillager> merchants = player.level().getEntitiesOfClass(AbstractVillager.class, box,
 				e -> e.isAlive() && !e.isRemoved()
-						&& (e instanceof VillagerEntity || e instanceof WanderingTraderEntity));
-		for (MerchantEntity m : merchants) {
+						&& (e instanceof Villager || e instanceof WanderingTrader));
+		for (AbstractVillager m : merchants) {
 			if (WhitelistUtils.isProtected(player, m)) continue;
 			// 纯逵梦向量退避
-			Vec3d away = m.getPos().subtract(player.getPos());
-			if (away.lengthSquared() < 1.0e-4) {
-				away = new Vec3d(RNG.nextDouble() - 0.5, 0, RNG.nextDouble() - 0.5);
+			Vec3 away = m.position().subtract(player.position());
+			if (away.lengthSqr() < 1.0e-4) {
+				away = new Vec3(RNG.nextDouble() - 0.5, 0, RNG.nextDouble() - 0.5);
 			}
-			away = away.normalize().multiply(8.0);
-			Vec3d target = m.getPos().add(away.x, 0, away.z);
-			if (m instanceof PathAwareEntity) {
-				m.getNavigation().startMovingTo(target.x, m.getY(), target.z, 1.0);
+			away = away.normalize().scale(8.0);
+			Vec3 target = m.position().add(away.x, 0, away.z);
+			if (m instanceof PathfinderMob) {
+				m.getNavigation().moveTo(target.x, m.getY(), target.z, 1.0);
 			}
 			// -25% 移速（乘法修饰，幂等衡）
-			EntityAttributeInstance attr = m.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+			AttributeInstance attr = m.getAttribute(Attributes.MOVEMENT_SPEED);
 			if (attr != null && attr.getModifier(MANCIANIMA_FEAR_SLOW_UUID) == null) {
-				attr.addPersistentModifier(new EntityAttributeModifier(MANCIANIMA_FEAR_SLOW_UUID,
+				attr.addPermanentModifier(new AttributeModifier(MANCIANIMA_FEAR_SLOW_UUID,
 						-0.25,
-						EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+						AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
-			FLEE_AFFECTED.put(m.getUuid(), now);
+			FLEE_AFFECTED.put(m.getUUID(), now);
 		}
 	}
 
@@ -207,14 +207,14 @@ public final class MancianimaPassive {
 	 * 	为避免额外 mixin，这里提供一个 static helper，由正在 tick 的商人自己调用。。。
 	 * 	简化：这里不主动卸载；改用 SscAddon 服务器 tick 中调用下面的方法。 */
 	public static void serverGlobalFleeCleanup(net.minecraft.server.MinecraftServer server) {
-		long now = server.getOverworld().getTime();
+		long now = server.overworld().getGameTime();
 		if (FLEE_AFFECTED.isEmpty()) return;
-		for (ServerWorld world : server.getWorlds()) {
+		for (ServerLevel world : server.getAllLevels()) {
 			for (UUID id : new ArrayList<>(FLEE_AFFECTED.keySet())) {
 				if (now - FLEE_AFFECTED.getOrDefault(id, 0L) <= FLEE_LINGER_TICKS) continue;
-				net.minecraft.entity.Entity ent = world.getEntity(id);
+				net.minecraft.world.entity.Entity ent = world.getEntity(id);
 				if (ent instanceof LivingEntity le) {
-					EntityAttributeInstance attr = le.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+					AttributeInstance attr = le.getAttribute(Attributes.MOVEMENT_SPEED);
 					if (attr != null && attr.getModifier(MANCIANIMA_FEAR_SLOW_UUID) != null) {
 						attr.removeModifier(MANCIANIMA_FEAR_SLOW_UUID);
 					}
@@ -224,25 +224,25 @@ public final class MancianimaPassive {
 		}
 	}
 
-	private static int countNearbyRaiders(PlayerEntity player, double radius) {
-		Box box = player.getBoundingBox().expand(radius);
-		return player.getWorld().getEntitiesByClass(RaiderEntity.class, box,
+	private static int countNearbyRaiders(Player player, double radius) {
+		AABB box = player.getBoundingBox().inflate(radius);
+		return player.level().getEntitiesOfClass(Raider.class, box,
 				e -> e.isAlive() && !e.isRemoved()).size();
 	}
 
 	private static class AssaultData {
 		final Set<UUID> targets;
 		final int initialCount;
-		ServerBossBar bossBar; // 读条阶段 = prepareBar；spawn 后切为 mainBar
-		final net.minecraft.util.Identifier dimensionId;
-		final Vec3d origin;
+		ServerBossEvent bossBar; // 读条阶段 = prepareBar；spawn 后切为 mainBar
+		final net.minecraft.resources.ResourceLocation dimensionId;
+		final Vec3 origin;
 		int prepareTicks; // > 0 表示读条中；到 0 时 spawn raider 并切换 bossbar
 		boolean raidersSpawned = false;
 		// —— 离开/暂停机制 ——
 		boolean paused = false; // true：玩家离开村庄，bossbar 灰色显示
 		long expireTime;         // 触发后 24000 ticks（一日）后自动失败
-		AssaultData(Set<UUID> targets, ServerBossBar bossBar,
-				net.minecraft.util.Identifier dimensionId, Vec3d origin, long startTime) {
+		AssaultData(Set<UUID> targets, ServerBossEvent bossBar,
+				net.minecraft.resources.ResourceLocation dimensionId, Vec3 origin, long startTime) {
 			this.targets = targets;
 			this.initialCount = targets.size();
 			this.bossBar = bossBar;
@@ -253,38 +253,38 @@ public final class MancianimaPassive {
 	}
 
 	/** 每 tick 推进读条；到 0 则 spawn 劫掠军并切换 为 主 bossbar。 */
-	private static void tickAssaultPrepare(ServerPlayerEntity player) {
-		AssaultData data = ASSAULTS.get(player.getUuid());
+	private static void tickAssaultPrepare(ServerPlayer player) {
+		AssaultData data = ASSAULTS.get(player.getUUID());
 		if (data == null || data.raidersSpawned) return;
 		data.prepareTicks--;
 		if (data.prepareTicks > 0) {
-			data.bossBar.setPercent(Math.max(0f, (float) data.prepareTicks / ASSAULT_PREPARE_TICKS));
+			data.bossBar.setProgress(Math.max(0f, (float) data.prepareTicks / ASSAULT_PREPARE_TICKS));
 			return;
 		}
 		// 读条完成：移除 prepareBar，创建 main bossbar，spawn raider
-		data.bossBar.clearPlayers();
+		data.bossBar.removeAllPlayers();
 		data.bossBar.setVisible(false);
-		ServerBossBar mainBar = new ServerBossBar(
-				Text.translatable("ssc_addon.mancianima.assault.bossbar", data.targets.size()),
-				BossBar.Color.RED, BossBar.Style.NOTCHED_10);
-		mainBar.setPercent(1.0f);
+		ServerBossEvent mainBar = new ServerBossEvent(
+				Component.translatable("ssc_addon.mancianima.assault.bossbar", data.targets.size()),
+				BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.NOTCHED_10);
+		mainBar.setProgress(1.0f);
 		mainBar.addPlayer(player);
 		data.bossBar = mainBar;
 		data.raidersSpawned = true;
 		spawnRaiders(player);
-		player.sendMessage(Text.translatable("ssc_addon.mancianima.assault.start", data.targets.size()), false);
-		if (player.getWorld() instanceof ServerWorld sw) {
+		player.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.start", data.targets.size()), false);
+		if (player.level() instanceof ServerLevel sw) {
 			sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.EVENT_RAID_HORN.value(), player.getSoundCategory(), 1.5f, 0.85f);
+					SoundEvents.RAID_HORN.value(), player.getSoundSource(), 1.5f, 0.85f);
 		}
 	}
 
 	/** 以玩家面向为方向，在附近村庄集会点外圈生成劫掠军；随机阵容，带一面不祥之旗。 */
-	private static void spawnRaiders(ServerPlayerEntity player) {
-		if (!(player.getWorld() instanceof ServerWorld world)) return;
+	private static void spawnRaiders(ServerPlayer player) {
+		if (!(player.level() instanceof ServerLevel world)) return;
 		BlockPos villageCenter = findVillageCenter(world, player);
 		BlockPos spawnPos = findRaiderSpawnPos(world, player, villageCenter);
-		RaiderGroup group = new RaiderGroup(world.getRegistryKey().getValue(), villageCenter);
+		RaiderGroup group = new RaiderGroup(world.dimension().location(), villageCenter);
 
 		// 随机阵容：4 Pillager + 2 Vindicator 为基础；30% 将 1 只 Vindicator 替换为 Evoker；30% +1 Witch；10% +1 Ravager
 		int pillagers = RAIDER_PILLAGER_COUNT;
@@ -298,83 +298,83 @@ public final class MancianimaPassive {
 
 		boolean leaderAssigned = false;
 		for (int i = 0; i < pillagers; i++) {
-			PillagerEntity p = EntityType.PILLAGER.create(world);
+			Pillager p = EntityType.PILLAGER.create(world);
 			if (p == null) continue;
-			BlockPos pp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
-			p.refreshPositionAndAngles(pp.getX() + 0.5, pp.getY(), pp.getZ() + 0.5, 0f, 0f);
-			p.initialize(world, world.getLocalDifficulty(pp), SpawnReason.EVENT, null);
-			p.setPersistent();
+			BlockPos pp = spawnPos.offset(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
+			p.moveTo(pp.getX() + 0.5, pp.getY(), pp.getZ() + 0.5, 0f, 0f);
+			p.finalizeSpawn(world, world.getCurrentDifficultyAt(pp), MobSpawnType.EVENT, null);
+			p.setPersistenceRequired();
 			configureRaiderPatrol(p, villageCenter);
 			if (!leaderAssigned) {
 				// 首位 Pillager 带上不祥之旗作为队长
 				p.setPatrolLeader(true);
-				p.equipStack(EquipmentSlot.HEAD, Raid.getOminousBanner(world.getRegistryManager().getWrapperOrThrow(RegistryKeys.BANNER_PATTERN)));
+				p.setItemSlot(EquipmentSlot.HEAD, Raid.getLeaderBannerInstance(world.registryAccess().lookupOrThrow(Registries.BANNER_PATTERN)));
 				leaderAssigned = true;
 			}
-			world.spawnEntity(p);
-			group.raiderUuids.add(p.getUuid());
+			world.addFreshEntity(p);
+			group.raiderUuids.add(p.getUUID());
 		}
 		for (int i = 0; i < vindicators; i++) {
-			VindicatorEntity v = EntityType.VINDICATOR.create(world);
+			Vindicator v = EntityType.VINDICATOR.create(world);
 			if (v == null) continue;
-			BlockPos vp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
-			v.refreshPositionAndAngles(vp.getX() + 0.5, vp.getY(), vp.getZ() + 0.5, 0f, 0f);
-			v.initialize(world, world.getLocalDifficulty(vp), SpawnReason.EVENT, null);
-			v.setPersistent();
+			BlockPos vp = spawnPos.offset(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
+			v.moveTo(vp.getX() + 0.5, vp.getY(), vp.getZ() + 0.5, 0f, 0f);
+			v.finalizeSpawn(world, world.getCurrentDifficultyAt(vp), MobSpawnType.EVENT, null);
+			v.setPersistenceRequired();
 			configureRaiderPatrol(v, villageCenter);
-			world.spawnEntity(v);
-			group.raiderUuids.add(v.getUuid());
+			world.addFreshEntity(v);
+			group.raiderUuids.add(v.getUUID());
 		}
 		for (int i = 0; i < evokers; i++) {
-			EvokerEntity e = EntityType.EVOKER.create(world);
+			Evoker e = EntityType.EVOKER.create(world);
 			if (e == null) continue;
-			BlockPos ep = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
-			e.refreshPositionAndAngles(ep.getX() + 0.5, ep.getY(), ep.getZ() + 0.5, 0f, 0f);
-			e.initialize(world, world.getLocalDifficulty(ep), SpawnReason.EVENT, null);
-			e.setPersistent();
+			BlockPos ep = spawnPos.offset(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
+			e.moveTo(ep.getX() + 0.5, ep.getY(), ep.getZ() + 0.5, 0f, 0f);
+			e.finalizeSpawn(world, world.getCurrentDifficultyAt(ep), MobSpawnType.EVENT, null);
+			e.setPersistenceRequired();
 			configureRaiderHome(e, villageCenter, 32);
-			world.spawnEntity(e);
-			group.raiderUuids.add(e.getUuid());
+			world.addFreshEntity(e);
+			group.raiderUuids.add(e.getUUID());
 		}
 		for (int i = 0; i < witches; i++) {
-			WitchEntity w = EntityType.WITCH.create(world);
+			Witch w = EntityType.WITCH.create(world);
 			if (w == null) continue;
-			BlockPos wp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
-			w.refreshPositionAndAngles(wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5, 0f, 0f);
-			w.initialize(world, world.getLocalDifficulty(wp), SpawnReason.EVENT, null);
-			w.setPersistent();
+			BlockPos wp = spawnPos.offset(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
+			w.moveTo(wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5, 0f, 0f);
+			w.finalizeSpawn(world, world.getCurrentDifficultyAt(wp), MobSpawnType.EVENT, null);
+			w.setPersistenceRequired();
 			configureRaiderHome(w, villageCenter, 32);
-			world.spawnEntity(w);
-			group.raiderUuids.add(w.getUuid());
+			world.addFreshEntity(w);
+			group.raiderUuids.add(w.getUUID());
 		}
 		for (int i = 0; i < ravagers; i++) {
-			RavagerEntity r = EntityType.RAVAGER.create(world);
+			Ravager r = EntityType.RAVAGER.create(world);
 			if (r == null) continue;
-			BlockPos rp = spawnPos.add(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
-			r.refreshPositionAndAngles(rp.getX() + 0.5, rp.getY(), rp.getZ() + 0.5, 0f, 0f);
-			r.initialize(world, world.getLocalDifficulty(rp), SpawnReason.EVENT, null);
-			r.setPersistent();
+			BlockPos rp = spawnPos.offset(RNG.nextInt(3) - 1, 0, RNG.nextInt(3) - 1);
+			r.moveTo(rp.getX() + 0.5, rp.getY(), rp.getZ() + 0.5, 0f, 0f);
+			r.finalizeSpawn(world, world.getCurrentDifficultyAt(rp), MobSpawnType.EVENT, null);
+			r.setPersistenceRequired();
 			configureRaiderHome(r, villageCenter, 32);
-			world.spawnEntity(r);
-			group.raiderUuids.add(r.getUuid());
+			world.addFreshEntity(r);
+			group.raiderUuids.add(r.getUUID());
 		}
 
-		RAIDER_GROUPS.put(player.getUuid(), group);
+		RAIDER_GROUPS.put(player.getUUID(), group);
 
 		// 提示附近铁傀儡追击玩家
-		Box markBox = player.getBoundingBox().expand(64.0);
-		for (IronGolemEntity g : world.getEntitiesByClass(IronGolemEntity.class, markBox,
+		AABB markBox = player.getBoundingBox().inflate(64.0);
+		for (IronGolem g : world.getEntitiesOfClass(IronGolem.class, markBox,
 				e -> e.isAlive() && !e.isRemoved())) {
 			g.setTarget(player);
-			g.setAttacker(player);
+			g.setLastHurtByMob(player);
 		}
 	}
 
 	/** 让 raider 在整个村庄范围内活动；PatrolEntity 设 patrolTarget 并激活巡逻 AI，
 	 *  让劫掠者真正朝村庄中心移动而非只在出生点徘徊。 */
-	private static void configureRaiderPatrol(net.minecraft.entity.mob.PatrolEntity r, BlockPos center) {
+	private static void configureRaiderPatrol(net.minecraft.world.entity.monster.PatrollingMonster r, BlockPos center) {
 		// 把活动范围放大到 64 格，覆盖整个村庄；PatrolEntity 内部 home 距离判定也据此
-		r.setPositionTarget(center, 64);
+		r.restrictTo(center, 64);
 		r.setPatrolTarget(center);
 		// 激活巡逻 AI（默认 patrolling=false，PatrolGoal 不会触发主动移动）
 		((net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.PatrolEntityAccessor) r)
@@ -382,54 +382,54 @@ public final class MancianimaPassive {
 	}
 
 	/** 非 PatrolEntity 的 raider（Witch / Evoker / Ravager）只需设 home。 */
-	private static void configureRaiderHome(MobEntity m, BlockPos center, int range) {
-		m.setPositionTarget(center, range);
+	private static void configureRaiderHome(Mob m, BlockPos center, int range) {
+		m.restrictTo(center, range);
 	}
 
-	private static BlockPos findVillageCenter(ServerWorld world, ServerPlayerEntity player) {
-		return world.getPointOfInterestStorage()
-				.getNearestPosition(
-						entry -> entry.matchesKey(PointOfInterestTypes.MEETING),
-						player.getBlockPos(), 64,
-						PointOfInterestStorage.OccupationStatus.ANY)
-				.orElse(player.getBlockPos());
+	private static BlockPos findVillageCenter(ServerLevel world, ServerPlayer player) {
+		return world.getPoiManager()
+				.findClosest(
+						entry -> entry.is(PoiTypes.MEETING),
+						player.blockPosition(), 64,
+						PoiManager.Occupancy.ANY)
+				.orElse(player.blockPosition());
 	}
 
 	/** 以“玩家面向”为方向在村庄中心前方 32 格位置作为入场点；这样劫掠军会从玩家移动方向进攻。 */
-	private static BlockPos findRaiderSpawnPos(ServerWorld world, ServerPlayerEntity player, BlockPos villageCenter) {
-		Vec3d facing = player.getRotationVec(1.0f);
+	private static BlockPos findRaiderSpawnPos(ServerLevel world, ServerPlayer player, BlockPos villageCenter) {
+		Vec3 facing = player.getViewVector(1.0f);
 		double flatLen = Math.hypot(facing.x, facing.z);
-		Vec3d dir;
+		Vec3 dir;
 		if (flatLen > 1e-3) {
-			dir = new Vec3d(facing.x / flatLen, 0, facing.z / flatLen);
+			dir = new Vec3(facing.x / flatLen, 0, facing.z / flatLen);
 		} else {
 			double ang = RNG.nextDouble() * Math.PI * 2;
-			dir = new Vec3d(Math.cos(ang), 0, Math.sin(ang));
+			dir = new Vec3(Math.cos(ang), 0, Math.sin(ang));
 		}
-		dir = dir.multiply(32);
-		BlockPos approxTarget = villageCenter.add((int) dir.x, 0, (int) dir.z);
+		dir = dir.scale(32);
+		BlockPos approxTarget = villageCenter.offset((int) dir.x, 0, (int) dir.z);
 		return findGroundAt(world, approxTarget);
 	}
 
-	private static BlockPos findGroundAt(ServerWorld world, BlockPos pos) {
+	private static BlockPos findGroundAt(ServerLevel world, BlockPos pos) {
 		int x = pos.getX(), z = pos.getZ();
-		int startY = Math.min(world.getTopY() - 2, pos.getY() + 16);
-		for (int y = startY; y > world.getBottomY() + 1; y--) {
+		int startY = Math.min(world.getMaxBuildHeight() - 2, pos.getY() + 16);
+		for (int y = startY; y > world.getMinBuildHeight() + 1; y--) {
 			BlockPos p = new BlockPos(x, y, z);
-			BlockPos below = p.down();
-			net.minecraft.block.BlockState belowState = world.getBlockState(below);
-			net.minecraft.block.BlockState atState = world.getBlockState(p);
-			net.minecraft.block.BlockState upState = world.getBlockState(p.up());
+			BlockPos below = p.below();
+			net.minecraft.world.level.block.state.BlockState belowState = world.getBlockState(below);
+			net.minecraft.world.level.block.state.BlockState atState = world.getBlockState(p);
+			net.minecraft.world.level.block.state.BlockState upState = world.getBlockState(p.above());
 			// 站立位与上方必须为空气（避免方块内部），且都不能是流体
 			if (!atState.isAir() || !upState.isAir()) continue;
 			if (!atState.getFluidState().isEmpty() || !upState.getFluidState().isEmpty()) continue;
 			// 脚下必须是固体且不是流体（排除水面/岩浆面）
-			if (!belowState.isSolidBlock(world, below)) continue;
+			if (!belowState.isRedstoneConductor(world, below)) continue;
 			if (!belowState.getFluidState().isEmpty()) continue;
 			return p;
 		}
 		// 兜底：原始位置上方 + 1 至少不在地下
-		return pos.up();
+		return pos.above();
 	}
 
 	/**
@@ -439,24 +439,24 @@ public final class MancianimaPassive {
 	 * - 当天内 (24000 ticks) 未回来 → 显示"袭击失败" 5 秒后清理，劫掠军 LINGER
 	 * 注意：暂停期间劫掠军仍在攻击村民，进度仍在前进，玩家回来时会看到当前实际剩余村民数。
 	 */
-	private static void checkAssaultRange(ServerPlayerEntity player) {
-		AssaultData data = ASSAULTS.get(player.getUuid());
+	private static void checkAssaultRange(ServerPlayer player) {
+		AssaultData data = ASSAULTS.get(player.getUUID());
 		if (data == null) return;
-		long now = player.getWorld().getTime();
-		boolean differentDim = !player.getWorld().getRegistryKey().getValue().equals(data.dimensionId);
-		boolean tooFar = player.getPos().squaredDistanceTo(data.origin) > ASSAULT_ABORT_DISTANCE_SQ;
+		long now = player.level().getGameTime();
+		boolean differentDim = !player.level().dimension().location().equals(data.dimensionId);
+		boolean tooFar = player.position().distanceToSqr(data.origin) > ASSAULT_ABORT_DISTANCE_SQ;
 		boolean outOfRange = differentDim || tooFar;
 
 		if (outOfRange) {
 			// 检查超时（一日内未回 → 袭击失败）
 			if (now > data.expireTime) {
-				data.bossBar.setColor(BossBar.Color.WHITE);
-				data.bossBar.setName(Text.translatable("ssc_addon.mancianima.assault.failed"));
-				data.bossBar.setPercent(0f);
-				data.bossBar.clearPlayers();
+				data.bossBar.setColor(BossEvent.BossBarColor.WHITE);
+				data.bossBar.setName(Component.translatable("ssc_addon.mancianima.assault.failed"));
+				data.bossBar.setProgress(0f);
+				data.bossBar.removeAllPlayers();
 				data.bossBar.setVisible(false);
-				ASSAULTS.remove(player.getUuid());
-				player.sendMessage(Text.translatable("ssc_addon.mancianima.assault.failed_msg"), false);
+				ASSAULTS.remove(player.getUUID());
+				player.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.failed_msg"), false);
 				// 劫掠军继续 LINGER → MARCH 撤离
 				startLingerForGroup(player);
 				return;
@@ -464,31 +464,31 @@ public final class MancianimaPassive {
 			// 进入暂停状态
 			if (!data.paused) {
 				data.paused = true;
-				data.bossBar.setColor(BossBar.Color.WHITE);
-				data.bossBar.setName(Text.translatable("ssc_addon.mancianima.assault.paused"));
+				data.bossBar.setColor(BossEvent.BossBarColor.WHITE);
+				data.bossBar.setName(Component.translatable("ssc_addon.mancianima.assault.paused"));
 			}
 		} else {
 			// 玩家回到范围 → 恢复
 			if (data.paused) {
 				data.paused = false;
 				if (data.raidersSpawned) {
-					data.bossBar.setColor(BossBar.Color.RED);
+					data.bossBar.setColor(BossEvent.BossBarColor.RED);
 					int remaining = data.targets.size();
-					data.bossBar.setName(Text.translatable("ssc_addon.mancianima.assault.bossbar", remaining));
-					data.bossBar.setPercent(data.initialCount > 0 ? (float) remaining / data.initialCount : 0f);
+					data.bossBar.setName(Component.translatable("ssc_addon.mancianima.assault.bossbar", remaining));
+					data.bossBar.setProgress(data.initialCount > 0 ? (float) remaining / data.initialCount : 0f);
 				} else {
-					data.bossBar.setColor(BossBar.Color.YELLOW);
-					data.bossBar.setName(Text.translatable("ssc_addon.mancianima.assault.preparing"));
+					data.bossBar.setColor(BossEvent.BossBarColor.YELLOW);
+					data.bossBar.setName(Component.translatable("ssc_addon.mancianima.assault.preparing"));
 				}
-				player.sendMessage(Text.translatable("ssc_addon.mancianima.assault.resumed"), false);
+				player.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.resumed"), false);
 			}
 		}
 	}
 
 	/** mob 死亡时调用：若属于某玩家的袭击目标 → 移除并检查是否完成。 */
 	public static void onAssaultTargetDeath(LivingEntity dead) {
-		if (dead.getWorld().isClient()) return;
-		UUID deadId = dead.getUuid();
+		if (dead.level().isClientSide()) return;
+		UUID deadId = dead.getUUID();
 		Iterator<Map.Entry<UUID, AssaultData>> it = ASSAULTS.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<UUID, AssaultData> e = it.next();
@@ -498,67 +498,67 @@ public final class MancianimaPassive {
 			if (!data.raidersSpawned) continue;
 			// 更新 bossbar
 			int remaining = data.targets.size();
-			data.bossBar.setName(Text.translatable("ssc_addon.mancianima.assault.bossbar", remaining));
-			data.bossBar.setPercent(data.initialCount > 0 ? (float) remaining / data.initialCount : 0f);
+			data.bossBar.setName(Component.translatable("ssc_addon.mancianima.assault.bossbar", remaining));
+			data.bossBar.setProgress(data.initialCount > 0 ? (float) remaining / data.initialCount : 0f);
 			if (remaining == 0) {
-				ServerPlayerEntity p = dead.getWorld().getServer() == null ? null
-						: dead.getWorld().getServer().getPlayerManager().getPlayer(e.getKey());
+				ServerPlayer p = dead.level().getServer() == null ? null
+						: dead.level().getServer().getPlayerList().getPlayer(e.getKey());
 				// 跨维度防御：若玩家不在 dead 所在的世界（比如已传送走），不在该世界给奖励/播音，
 				// 但仍要清除袭击状态，避免数据残留
-				if (p != null && p.getWorld() == dead.getWorld()) {
+				if (p != null && p.level() == dead.level()) {
 					// 袭击成功完成：在此记录当天冷却（持久化）
 					net.minecraft.server.MinecraftServer srv = p.getServer();
 					if (srv != null) {
 						MancianimaAssaultState state = MancianimaAssaultState.get(srv);
-						state.lastRoll.put(p.getUuid(), p.getWorld().getTime());
-						state.markDirty();
+						state.lastRoll.put(p.getUUID(), p.level().getGameTime());
+						state.setDirty();
 					}
 					// 奖励以实体掉落物形式出现在玩家 2 格半径内（不直接进背包）
 					dropAssaultRewards(p);
-					p.sendMessage(Text.translatable("ssc_addon.mancianima.assault.complete"), false);
-					if (p.getWorld() instanceof ServerWorld sw) {
+					p.displayClientMessage(Component.translatable("ssc_addon.mancianima.assault.complete"), false);
+					if (p.level() instanceof ServerLevel sw) {
 						sw.playSound(null, p.getX(), p.getY(), p.getZ(),
-								SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, p.getSoundCategory(), 1.0f, 1.0f);
+								SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, p.getSoundSource(), 1.0f, 1.0f);
 					}
 				}
-				data.bossBar.clearPlayers();
+				data.bossBar.removeAllPlayers();
 				data.bossBar.setVisible(false);
 				it.remove();
 				// 袭击成功后劫掠军进入 LINGER。key 为玩家 UUID。
-				if (e.getKey() != null) startLingerForGroupByPlayerId(e.getKey(), dead.getWorld() instanceof ServerWorld sw0 ? sw0 : null);
+				if (e.getKey() != null) startLingerForGroupByPlayerId(e.getKey(), dead.level() instanceof ServerLevel sw0 ? sw0 : null);
 			}
 		}
 	}
 
 	/** 在玩家周围 2 格半径内以实体项掉落奖励。 */
-	private static void dropAssaultRewards(ServerPlayerEntity p) {
+	private static void dropAssaultRewards(ServerPlayer p) {
 		dropAroundPlayer(p, new ItemStack(Items.EMERALD_BLOCK, 2));
 		dropAroundPlayer(p, new ItemStack(Items.TOTEM_OF_UNDYING, 1));
 	}
 
-	private static void dropAroundPlayer(ServerPlayerEntity p, ItemStack stack) {
+	private static void dropAroundPlayer(ServerPlayer p, ItemStack stack) {
 		double ang = RNG.nextDouble() * Math.PI * 2;
 		double r = RNG.nextDouble() * 2.0;
 		double x = p.getX() + Math.cos(ang) * r;
 		double z = p.getZ() + Math.sin(ang) * r;
 		double y = p.getY() + 0.5;
-		net.minecraft.entity.ItemEntity ie = new net.minecraft.entity.ItemEntity(p.getWorld(), x, y, z, stack);
-		ie.setVelocity((RNG.nextDouble() - 0.5) * 0.1, 0.2, (RNG.nextDouble() - 0.5) * 0.1);
-		ie.setPickupDelay(10);
-		p.getWorld().spawnEntity(ie);
+		net.minecraft.world.entity.item.ItemEntity ie = new net.minecraft.world.entity.item.ItemEntity(p.level(), x, y, z, stack);
+		ie.setDeltaMovement((RNG.nextDouble() - 0.5) * 0.1, 0.2, (RNG.nextDouble() - 0.5) * 0.1);
+		ie.setPickUpDelay(10);
+		p.level().addFreshEntity(ie);
 	}
 
 	/** 将玩家名下的 RaiderGroup 转为 LINGER 阶段。 */
-	private static void startLingerForGroup(ServerPlayerEntity player) {
-		startLingerForGroupByPlayerId(player.getUuid(),
-				player.getWorld() instanceof ServerWorld sw ? sw : null);
+	private static void startLingerForGroup(ServerPlayer player) {
+		startLingerForGroupByPlayerId(player.getUUID(),
+				player.level() instanceof ServerLevel sw ? sw : null);
 	}
 
-	private static void startLingerForGroupByPlayerId(UUID playerId, ServerWorld worldHint) {
+	private static void startLingerForGroupByPlayerId(UUID playerId, ServerLevel worldHint) {
 		RaiderGroup group = RAIDER_GROUPS.get(playerId);
 		if (group == null || group.phase != RaiderPhase.ACTIVE) return;
 		group.phase = RaiderPhase.LINGER;
-		long now = worldHint != null ? worldHint.getTime() : 0L;
+		long now = worldHint != null ? worldHint.getGameTime() : 0L;
 		group.phaseEndTime = now + RAIDER_LINGER_MIN_TICKS
 				+ RNG.nextInt(RAIDER_LINGER_MAX_TICKS - RAIDER_LINGER_MIN_TICKS);
 	}
@@ -567,14 +567,14 @@ public final class MancianimaPassive {
 	public static void tickRaiderGroups(net.minecraft.server.MinecraftServer server) {
 		// 兜底：检查所有进行中袭击是否已超时（玩家下线情况下 checkAssaultRange 不会被调用）
 		if (!ASSAULTS.isEmpty()) {
-			ServerWorld ow = server.getOverworld();
-			long now = ow != null ? ow.getTime() : 0L;
+			ServerLevel ow = server.overworld();
+			long now = ow != null ? ow.getGameTime() : 0L;
 			Iterator<Map.Entry<UUID, AssaultData>> ait = ASSAULTS.entrySet().iterator();
 			while (ait.hasNext()) {
 				Map.Entry<UUID, AssaultData> e = ait.next();
 				AssaultData d = e.getValue();
 				if (now > d.expireTime) {
-					d.bossBar.clearPlayers();
+					d.bossBar.removeAllPlayers();
 					d.bossBar.setVisible(false);
 					ait.remove();
 					startLingerForGroupByPlayerId(e.getKey(), ow);
@@ -586,16 +586,16 @@ public final class MancianimaPassive {
 		while (it.hasNext()) {
 			Map.Entry<UUID, RaiderGroup> entry = it.next();
 			RaiderGroup group = entry.getValue();
-			ServerWorld world = server.getWorld(net.minecraft.registry.RegistryKey.of(
-					net.minecraft.registry.RegistryKeys.WORLD, group.dimensionId));
+			ServerLevel world = server.getLevel(net.minecraft.resources.ResourceKey.create(
+					net.minecraft.core.registries.Registries.DIMENSION, group.dimensionId));
 			if (world == null) { it.remove(); continue; }
 			// 收集仍存活的 raider 实体
-			List<MobEntity> alive = new ArrayList<>();
+			List<Mob> alive = new ArrayList<>();
 			Iterator<UUID> uit = group.raiderUuids.iterator();
 			while (uit.hasNext()) {
 				UUID uid = uit.next();
-				net.minecraft.entity.Entity ent = world.getEntity(uid);
-				if (ent instanceof MobEntity m && m.isAlive() && !m.isRemoved()) {
+				net.minecraft.world.entity.Entity ent = world.getEntity(uid);
+				if (ent instanceof Mob m && m.isAlive() && !m.isRemoved()) {
 					alive.add(m);
 				} else if (ent == null || ent.isRemoved()) {
 					// 实体可能在未加载区块；保留 UUID，等区块再次加载时再判
@@ -604,21 +604,21 @@ public final class MancianimaPassive {
 				}
 			}
 			if (group.raiderUuids.isEmpty()) { it.remove(); continue; }
-			long now = world.getTime();
+			long now = world.getGameTime();
 			switch (group.phase) {
 				case ACTIVE -> { /* 由 onAssaultTargetDeath / abort 主动转 LINGER */ }
 				case LINGER -> {
 					if (now >= group.phaseEndTime) {
 						// 进入 MARCH：选一个远离村庄方向 200 格的 patrol 目标
 						double ang = RNG.nextDouble() * Math.PI * 2;
-						BlockPos target = group.villageCenter.add(
+						BlockPos target = group.villageCenter.offset(
 								(int) (Math.cos(ang) * RAIDER_MARCH_DISTANCE), 0,
 								(int) (Math.sin(ang) * RAIDER_MARCH_DISTANCE));
 						group.phase = RaiderPhase.MARCH;
-						for (MobEntity m : alive) {
+						for (Mob m : alive) {
 							// 解除 home，让他们能离开村庄
-							m.setPositionTarget(BlockPos.ORIGIN, -1);
-							if (m instanceof net.minecraft.entity.mob.PatrolEntity pe) {
+							m.restrictTo(BlockPos.ZERO, -1);
+							if (m instanceof net.minecraft.world.entity.monster.PatrollingMonster pe) {
 								pe.setPatrolTarget(target);
 							}
 						}
@@ -627,9 +627,9 @@ public final class MancianimaPassive {
 				case MARCH -> {
 					// 检查整组 raider 是否都不在任何玩家 128 格以内 → 全员清理
 					boolean anyNearPlayer = false;
-					for (MobEntity m : alive) {
-						for (ServerPlayerEntity sp : world.getPlayers()) {
-							if (sp.squaredDistanceTo(m) <= RAIDER_MARCH_DESPAWN_DISTANCE_SQ) {
+					for (Mob m : alive) {
+						for (ServerPlayer sp : world.players()) {
+							if (sp.distanceToSqr(m) <= RAIDER_MARCH_DESPAWN_DISTANCE_SQ) {
 								anyNearPlayer = true;
 								break;
 							}
@@ -637,7 +637,7 @@ public final class MancianimaPassive {
 						if (anyNearPlayer) break;
 					}
 					if (!anyNearPlayer) {
-						for (MobEntity m : alive) m.discard();
+						for (Mob m : alive) m.discard();
 						it.remove();
 					}
 				}
@@ -646,44 +646,44 @@ public final class MancianimaPassive {
 	}
 
 	/** 村民/商人死亡时：契灵击杀 → 掉落部分可售卖物品 + 概率绿宝石。 */
-	public static void onMerchantKilledByMancianima(MerchantEntity merchant, ServerPlayerEntity killer) {
-		TradeOfferList offers = merchant.getOffers();
+	public static void onMerchantKilledByMancianima(AbstractVillager merchant, ServerPlayer killer) {
+		MerchantOffers offers = merchant.getOffers();
 		boolean droppedSomething = false;
 		if (offers != null && !offers.isEmpty()) {
 			int picks = Math.min(2, offers.size());
-			List<TradeOffer> shuffled = new ArrayList<>(offers);
+			List<MerchantOffer> shuffled = new ArrayList<>(offers);
 			Collections.shuffle(shuffled, RNG);
 			for (int i = 0; i < picks; i++) {
-				ItemStack sell = shuffled.get(i).getSellItem();
+				ItemStack sell = shuffled.get(i).getResult();
 				if (sell == null || sell.isEmpty()) continue;
 				ItemStack drop = sell.copy();
 				drop.setCount(Math.max(1, sell.getCount()));
-				merchant.dropStack(drop);
+				merchant.spawnAtLocation(drop);
 				droppedSomething = true;
 			}
 		}
 		// 无交易的村民（无职业/幼年）占多数：fallback 掉点 base 材料
 		if (!droppedSomething) {
-			merchant.dropStack(new ItemStack(Items.WHEAT, 1 + RNG.nextInt(3)));
-			merchant.dropStack(new ItemStack(Items.BREAD, 1 + RNG.nextInt(2)));
+			merchant.spawnAtLocation(new ItemStack(Items.WHEAT, 1 + RNG.nextInt(3)));
+			merchant.spawnAtLocation(new ItemStack(Items.BREAD, 1 + RNG.nextInt(2)));
 		}
 		// 30% 额外绿宝石（1-3）
 		if (RNG.nextDouble() < 0.30) {
-			merchant.dropStack(new ItemStack(Items.EMERALD, 1 + RNG.nextInt(3)));
+			merchant.spawnAtLocation(new ItemStack(Items.EMERALD, 1 + RNG.nextInt(3)));
 		}
 	}
 
 	/** 是否应当因为契灵在场而逃跑（村民/商人 FleeEntityGoal 的谓词）。 */
-	public static boolean shouldVillagerFlee(LivingEntity villager, PlayerEntity player) {
+	public static boolean shouldVillagerFlee(LivingEntity villager, Player player) {
 		if (!FormUtils.isForm(player, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) return false;
-		if (player instanceof ServerPlayerEntity sp && WhitelistUtils.isProtected(sp, villager)) return false;
+		if (player instanceof ServerPlayer sp && WhitelistUtils.isProtected(sp, villager)) return false;
 		return true;
 	}
 
 	public static void clearAll() {
 		for (AssaultData data : ASSAULTS.values()) {
 			if (data.bossBar != null) {
-				data.bossBar.clearPlayers();
+				data.bossBar.removeAllPlayers();
 				data.bossBar.setVisible(false);
 			}
 		}
@@ -703,7 +703,7 @@ public final class MancianimaPassive {
 	public static void onPlayerDisconnect(UUID uuid) {
 		AssaultData data = ASSAULTS.remove(uuid);
 		if (data != null && data.bossBar != null) {
-			data.bossBar.clearPlayers();
+			data.bossBar.removeAllPlayers();
 			data.bossBar.setVisible(false);
 		}
 		RAIDER_GROUPS.remove(uuid);

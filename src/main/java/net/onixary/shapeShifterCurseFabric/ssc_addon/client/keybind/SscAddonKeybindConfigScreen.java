@@ -1,12 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.keybind;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import me.shedaniel.autoconfig.AutoConfig;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
 import org.lwjgl.glfw.GLFW;
 
@@ -24,9 +24,9 @@ public class SscAddonKeybindConfigScreen extends Screen {
 	private final String formPath;
 	private SSCAddonClientConfig.FormKeybind entry;
 
-	private ButtonWidget enableBtn;
-	private ButtonWidget primaryBtn;
-	private ButtonWidget secondaryBtn;
+	private Button enableBtn;
+	private Button primaryBtn;
+	private Button secondaryBtn;
 
 	/** 0=未监听，1=正在绑定主键，2=正在绑定副键 */
 	private int listening = 0;
@@ -48,64 +48,64 @@ public class SscAddonKeybindConfigScreen extends Screen {
 		final int x = (width - w) / 2;
 		int y = 50;
 
-		enableBtn = ButtonWidget.builder(Text.empty(), b -> {
+		enableBtn = Button.builder(Component.empty(), b -> {
 			entry.enabled = !entry.enabled;
 			save();
 			updateLabels();
-		}).size(w, h).position(x, y).build();
-		addDrawableChild(enableBtn);
+		}).size(w, h).pos(x, y).build();
+		addRenderableWidget(enableBtn);
 		y += h + gap;
 
-		primaryBtn = ButtonWidget.builder(Text.empty(), b -> {
+		primaryBtn = Button.builder(Component.empty(), b -> {
 			listening = 1;
 			updateLabels();
-		}).size(w, h).position(x, y).build();
-		addDrawableChild(primaryBtn);
+		}).size(w, h).pos(x, y).build();
+		addRenderableWidget(primaryBtn);
 		y += h + gap;
 
-		secondaryBtn = ButtonWidget.builder(Text.empty(), b -> {
+		secondaryBtn = Button.builder(Component.empty(), b -> {
 			listening = 2;
 			updateLabels();
-		}).size(w, h).position(x, y).build();
-		addDrawableChild(secondaryBtn);
+		}).size(w, h).pos(x, y).build();
+		addRenderableWidget(secondaryBtn);
 		y += h + gap * 2;
 
-		addDrawableChild(ButtonWidget.builder(
-						Text.translatable("text.ssc_addon.config.close"),
-						b -> close())
-				.size(w, h).position(x, y).build());
+		addRenderableWidget(Button.builder(
+						Component.translatable("text.ssc_addon.config.close"),
+						b -> onClose())
+				.size(w, h).pos(x, y).build());
 
 		updateLabels();
 	}
 
 	private void updateLabels() {
-		enableBtn.setMessage(Text.translatable("text.ssc_addon.keybind.enabled")
+		enableBtn.setMessage(Component.translatable("text.ssc_addon.keybind.enabled")
 				.append(": ")
 				.append(entry.enabled
-						? Text.translatable("text.ssc_addon.keybind.on").formatted(Formatting.GREEN)
-						: Text.translatable("text.ssc_addon.keybind.off").formatted(Formatting.RED)));
+						? Component.translatable("text.ssc_addon.keybind.on").withStyle(ChatFormatting.GREEN)
+						: Component.translatable("text.ssc_addon.keybind.off").withStyle(ChatFormatting.RED)));
 
-		primaryBtn.setMessage(Text.translatable("text.ssc_addon.keybind.primary")
+		primaryBtn.setMessage(Component.translatable("text.ssc_addon.keybind.primary")
 				.append(": ")
 				.append(listening == 1
-						? Text.translatable("text.ssc_addon.keybind.listening").formatted(Formatting.YELLOW)
+						? Component.translatable("text.ssc_addon.keybind.listening").withStyle(ChatFormatting.YELLOW)
 						: keyName(entry.primaryKey)));
 
-		secondaryBtn.setMessage(Text.translatable("text.ssc_addon.keybind.secondary")
+		secondaryBtn.setMessage(Component.translatable("text.ssc_addon.keybind.secondary")
 				.append(": ")
 				.append(listening == 2
-						? Text.translatable("text.ssc_addon.keybind.listening").formatted(Formatting.YELLOW)
+						? Component.translatable("text.ssc_addon.keybind.listening").withStyle(ChatFormatting.YELLOW)
 						: keyName(entry.secondaryKey)));
 	}
 
-	private Text keyName(String translationKey) {
+	private Component keyName(String translationKey) {
 		if (translationKey == null || translationKey.isEmpty() || "key.keyboard.unknown".equals(translationKey)) {
-			return Text.translatable("text.ssc_addon.keybind.unbound").formatted(Formatting.DARK_GRAY);
+			return Component.translatable("text.ssc_addon.keybind.unbound").withStyle(ChatFormatting.DARK_GRAY);
 		}
 		try {
-			return InputUtil.fromTranslationKey(translationKey).getLocalizedText();
+			return InputConstants.getKey(translationKey).getDisplayName();
 		} catch (Throwable t) {
-			return Text.translatable("text.ssc_addon.keybind.unbound").formatted(Formatting.DARK_GRAY);
+			return Component.translatable("text.ssc_addon.keybind.unbound").withStyle(ChatFormatting.DARK_GRAY);
 		}
 	}
 
@@ -127,7 +127,7 @@ public class SscAddonKeybindConfigScreen extends Screen {
 			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
 				setKey(listening, "key.keyboard.unknown"); // ESC = 解绑
 			} else {
-				setKey(listening, InputUtil.fromKeyCode(keyCode, scanCode).getTranslationKey());
+				setKey(listening, InputConstants.getKey(keyCode, scanCode).getName());
 			}
 			listening = 0;
 			save();
@@ -140,7 +140,7 @@ public class SscAddonKeybindConfigScreen extends Screen {
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
 		if (listening != 0) {
-			setKey(listening, InputUtil.Type.MOUSE.createFromCode(button).getTranslationKey());
+			setKey(listening, InputConstants.Type.MOUSE.getOrCreate(button).getName());
 			listening = 0;
 			save();
 			updateLabels();
@@ -150,18 +150,18 @@ public class SscAddonKeybindConfigScreen extends Screen {
 	}
 
 	@Override
-	public void close() {
-		this.client.setScreen(parent);
+	public void onClose() {
+		this.minecraft.setScreen(parent);
 	}
 
 	@Override
-	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
 		this.renderBackground(context, mouseX, mouseY,  delta);
 		super.render(context, mouseX, mouseY, delta);
-		context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 22, 0xFFFFFF);
+		context.drawCenteredString(this.font, this.title, this.width / 2, 22, 0xFFFFFF);
 		// 副标题提示
-		context.drawCenteredTextWithShadow(this.textRenderer,
-				Text.translatable("text.ssc_addon.keybind.hint").formatted(Formatting.GRAY),
+		context.drawCenteredString(this.font,
+				Component.translatable("text.ssc_addon.keybind.hint").withStyle(ChatFormatting.GRAY),
 				this.width / 2, 34, 0xAAAAAA);
 	}
 }

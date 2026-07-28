@@ -5,9 +5,9 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.server.integrated.IntegratedServer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.server.IntegratedServer;
 
 /**
  * 客户端「当前存档/服务器」标识工具。
@@ -24,15 +24,15 @@ public final class ClientSaveUtils {
      * - 取不到：unknown
      */
     public static String getCurrentSaveId() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc == null) return "unknown";
-        IntegratedServer integrated = mc.getServer();
+        IntegratedServer integrated = mc.getSingleplayerServer();
         if (integrated != null) {
-            return "world:" + integrated.getSaveProperties().getLevelName();
+            return "world:" + integrated.getWorldData().getLevelName();
         }
-        ServerInfo info = mc.getCurrentServerEntry();
-        if (info != null && info.address != null) {
-            return "server:" + info.address;
+        ServerData info = mc.getCurrentServer();
+        if (info != null && info.ip != null) {
+            return "server:" + info.ip;
         }
         return "unknown";
     }

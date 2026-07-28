@@ -5,15 +5,14 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.MathHelper;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 
 /**
  * 颜色编辑器首次新手教程覆盖层。
@@ -43,7 +42,7 @@ public class ColorTutorialOverlay extends Screen {
     private final List<TutorialStep> steps = new ArrayList<>();
     private int index = 0;
 
-    private ButtonWidget skipButton;
+    private Button skipButton;
 
     /**
      * 教程是否激活中（全局）。背景界面（AdvancedColorScreen / PalettePresetsScreen）在 render 时
@@ -52,7 +51,7 @@ public class ColorTutorialOverlay extends Screen {
     public static boolean ACTIVE = false;
 
     public ColorTutorialOverlay(Screen background, Runnable onFinish, List<TutorialStep> steps) {
-        super(Text.translatable("text.ssc_addon.adv_color.tutorial.title"));
+        super(Component.translatable("text.ssc_addon.adv_color.tutorial.title"));
         this.background = background;
         this.onFinish = onFinish;
         this.steps.addAll(steps);
@@ -64,9 +63,9 @@ public class ColorTutorialOverlay extends Screen {
         // 不重新 init 背景界面：背景实例已初始化，重复 init 会触发其教程检测造成递归。
         // 仅保留「跳过」按钮（右上角）；步骤推进改为点击鼠标左键。
         int btnW = 70, btnH = 20;
-        skipButton = ButtonWidget.builder(Text.translatable("text.ssc_addon.adv_color.tutorial.skip"),
-                b -> finish()).size(btnW, btnH).position(this.width - btnW - 10, 10).build();
-        addDrawableChild(skipButton);
+        skipButton = Button.builder(Component.translatable("text.ssc_addon.adv_color.tutorial.skip"),
+                b -> finish()).size(btnW, btnH).pos(this.width - btnW - 10, 10).build();
+        addRenderableWidget(skipButton);
     }
 
     @Override
@@ -101,7 +100,7 @@ public class ColorTutorialOverlay extends Screen {
     private void finish() {
         ACTIVE = false;
         if (onFinish != null) onFinish.run();
-        if (this.client != null) this.client.setScreen(background);
+        if (this.minecraft != null) this.minecraft.setScreen(background);
     }
 
     @Override
@@ -111,17 +110,17 @@ public class ColorTutorialOverlay extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         // 先画背景界面（颜色编辑器）并立即 flush，使其完整光栅化到屏幕缓冲（含深度），不转发其交互
         if (background != null) {
             background.render(context, -1, -1, delta);
-            context.draw();
+            context.flush();
         }
 
         // 整个教程层抬升 z：靠 GUI 深度分层盖住背景的一切（含背景界面的文字，
         // 否则文字层在 flush 时总在 fill 层之后绘制，会穿透到半透明遮罩之上）。
-        context.getMatrices().push();
-        context.getMatrices().translate(0, 0, 300);
+        context.pose().pushPose();
+        context.pose().translate(0, 0, 300);
 
         TutorialStep step = index < steps.size() ? steps.get(index) : null;
         int[] rect = step != null ? step.targetRect().get() : null;
@@ -146,13 +145,13 @@ public class ColorTutorialOverlay extends Screen {
 
         // 文字说明框：根据高亮区域位置动态放在上方或下方，避免遮挡目标控件
         if (step != null) {
-            Text body = Text.translatable(step.textKey());
-            Text hint = (step.clickTargetAction() != null)
-                    ? Text.translatable("text.ssc_addon.adv_color.tutorial.click_target")
-                    : Text.translatable("text.ssc_addon.adv_color.tutorial.click_continue");
+            Component body = Component.translatable(step.textKey());
+            Component hint = (step.clickTargetAction() != null)
+                    ? Component.translatable("text.ssc_addon.adv_color.tutorial.click_target")
+                    : Component.translatable("text.ssc_addon.adv_color.tutorial.click_continue");
             int boxW = Math.min(340, this.width - 40);
             int boxX = (this.width - boxW) / 2;
-            List<net.minecraft.text.OrderedText> lines = this.textRenderer.wrapLines(body, boxW - 12);
+            List<net.minecraft.util.FormattedCharSequence> lines = this.font.split(body, boxW - 12);
             int textTop = 18;          // 顶部留给步骤计数
             int lineH = 10;
             int hintH = 12;            // 框内底部「点击继续」提示行
@@ -163,27 +162,27 @@ public class ColorTutorialOverlay extends Screen {
             // 不透明背景（先纯黑底彻底遮挡下层控件文字，再叠深蓝色）
             context.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xFF000000);
             context.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xFF101820);
-            context.drawHorizontalLine(boxX, boxX + boxW, boxY, 0xFF7CF77C);
-            context.drawHorizontalLine(boxX, boxX + boxW, boxY + boxH, 0xFF7CF77C);
-            context.drawVerticalLine(boxX, boxY, boxY + boxH, 0xFF7CF77C);
-            context.drawVerticalLine(boxX + boxW, boxY, boxY + boxH, 0xFF7CF77C);
+            context.hLine(boxX, boxX + boxW, boxY, 0xFF7CF77C);
+            context.hLine(boxX, boxX + boxW, boxY + boxH, 0xFF7CF77C);
+            context.vLine(boxX, boxY, boxY + boxH, 0xFF7CF77C);
+            context.vLine(boxX + boxW, boxY, boxY + boxH, 0xFF7CF77C);
             // 步骤计数
-            Text counter = Text.literal((index + 1) + " / " + steps.size());
-            context.drawTextWithShadow(this.textRenderer, counter, boxX + 6, boxY + 4, 0xFF7CF77C);
+            Component counter = Component.literal((index + 1) + " / " + steps.size());
+            context.drawString(this.font, counter, boxX + 6, boxY + 4, 0xFF7CF77C);
             // 正文逐行绘制
             int ty = boxY + textTop;
-            for (net.minecraft.text.OrderedText line : lines) {
-                context.drawTextWithShadow(this.textRenderer, line, boxX + 6, ty, 0xFFFFFFFF);
+            for (net.minecraft.util.FormattedCharSequence line : lines) {
+                context.drawString(this.font, line, boxX + 6, ty, 0xFFFFFFFF);
                 ty += lineH;
             }
             // 操作提示（框内底部）
-            context.drawTextWithShadow(this.textRenderer, hint, boxX + 6, boxY + boxH - hintH, 0xFF7CF77C);
+            context.drawString(this.font, hint, boxX + 6, boxY + boxH - hintH, 0xFF7CF77C);
 
             // 箭头：从文字框靠近目标的一侧出发，直接指向目标（不穿过文字框）
             if (rect != null) {
                 int cx = rect[0] + rect[2] / 2;
                 int cy = rect[1] + rect[3] / 2;
-                int sx = MathHelper.clamp(cx, boxX + 4, boxX + boxW - 4);
+                int sx = Mth.clamp(cx, boxX + 4, boxX + boxW - 4);
                 int sy = (cy < boxY) ? boxY : boxY + boxH;   // 目标在框上方→从框顶出发；下方→从框底出发
                 drawArrow(context, sx, sy, cx, cy);
             }
@@ -193,18 +192,18 @@ public class ColorTutorialOverlay extends Screen {
         super.render(context, mouseX, mouseY, delta);
 
         // flush 教程层并恢复矩阵
-        context.draw();
-        context.getMatrices().pop();
+        context.flush();
+        context.pose().popPose();
     }
 
     /** 画一条从 (x1,y1) 指向 (x2,y2) 的简易箭头（绿色）。 */
-    private void drawArrow(DrawContext context, int x1, int y1, int x2, int y2) {
+    private void drawArrow(GuiGraphics context, int x1, int y1, int x2, int y2) {
         int color = 0xFF7CF77C;
         int steps = 24;
         for (int i = 0; i <= steps; i++) {
             float t = i / (float) steps;
-            int px = Math.round(MathHelper.lerp(t, x1, x2));
-            int py = Math.round(MathHelper.lerp(t, y1, y2));
+            int px = Math.round(Mth.lerpInt(t, x1, x2));
+            int py = Math.round(Mth.lerpInt(t, y1, y2));
             context.fill(px - 1, py - 1, px + 1, py + 1, color);
         }
         // 箭头头部
@@ -212,7 +211,7 @@ public class ColorTutorialOverlay extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 

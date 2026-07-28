@@ -5,11 +5,11 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.component.type.FoodComponent;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SeedEnergyEatingHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,11 +23,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LivingEntity.class)
 public abstract class SeedEnergyEatFoodMixin {
 
-    @Inject(method = "eatFood", at = @At("RETURN"))
-    private void my_addon$onEatFoodReturn(World world, ItemStack stack, FoodComponent foodComponent, CallbackInfoReturnable<ItemStack> cir) {
-        if (world.isClient) return;
+    @Inject(method = "eat(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/food/FoodProperties;)Lnet/minecraft/world/item/ItemStack;", at = @At("RETURN"))
+    private void my_addon$onEatFoodReturn(Level world, ItemStack stack, FoodProperties foodComponent, CallbackInfoReturnable<ItemStack> cir) {
+        if (world.isClientSide) return;
         LivingEntity self = (LivingEntity) (Object) this;
-        if (!(self instanceof ServerPlayerEntity sp)) return;
+        if (!(self instanceof ServerPlayer sp)) return;
         if (stack.isEmpty()) return;
         if (!SeedEnergyEatingHandler.EDIBLE_SEEDS.contains(stack.getItem())) return;
         SeedEnergyEatingHandler.onSeedEaten(sp, stack);

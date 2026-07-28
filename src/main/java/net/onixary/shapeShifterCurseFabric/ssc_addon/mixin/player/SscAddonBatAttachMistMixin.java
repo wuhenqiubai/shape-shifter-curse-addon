@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
 import net.onixary.shapeShifterCurseFabric.additional_power.BatBlockAttachPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,9 +20,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class SscAddonBatAttachMistMixin {
 
     @Inject(method = "tryAttach", at = @At("HEAD"), cancellable = true)
-    private void sscAddon$disableAttachInMist(PlayerEntity player, BlockHitResult hitResult, CallbackInfoReturnable<Boolean> cir) {
+    private void sscAddon$disableAttachInMist(Player player, BlockHitResult hitResult, CallbackInfoReturnable<Boolean> cir) {
         // 血雾化形期间禁止右键贴墙攀爬
-        if (player.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)) {
+        if (player.hasEffect(SscAddon.MIST_FORM_ENTRY)) {
             cir.setReturnValue(false);
         }
     }

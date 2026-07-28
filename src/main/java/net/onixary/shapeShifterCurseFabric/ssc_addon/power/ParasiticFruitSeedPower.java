@@ -14,23 +14,23 @@ import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.apoli.util.HudRender;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.core.Holder;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
@@ -55,9 +55,9 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     private static final int DEFAULT_LIFE_TICKS = 240;
     private static final int ENERGY_COST = 1;
 
-    private static final DustParticleEffect FRIEND_DUST = new DustParticleEffect(new Vector3f(0.35f, 0.95f, 0.30f), 1.1f);
-    private static final DustParticleEffect ENEMY_DUST = new DustParticleEffect(new Vector3f(0.55f, 0.10f, 0.75f), 1.1f);
-    private static final DustParticleEffect SEED_DUST = new DustParticleEffect(new Vector3f(0.95f, 0.72f, 0.24f), 1.0f);
+    private static final DustParticleOptions FRIEND_DUST = new DustParticleOptions(new Vector3f(0.35f, 0.95f, 0.30f), 1.1f);
+    private static final DustParticleOptions ENEMY_DUST = new DustParticleOptions(new Vector3f(0.55f, 0.10f, 0.75f), 1.1f);
+    private static final DustParticleOptions SEED_DUST = new DustParticleOptions(new Vector3f(0.95f, 0.72f, 0.24f), 1.0f);
 
     private final int cooldownTicks;
     private long internalCooldownEndTime = 0L;
@@ -99,7 +99,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     public static PowerFactory<Power> createFactory() {
-        return new PowerFactory<>(Identifier.of("my_addon", "parasitic_fruit_seed"),
+        return new PowerFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "parasitic_fruit_seed"),
                 new SerializableData()
                         .add("cooldown", SerializableDataTypes.INT, 200)
                         .add("duration", SerializableDataTypes.INT, DEFAULT_LIFE_TICKS)
@@ -124,9 +124,9 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
 
     @Override
     public void onUse() {
-        if (!(entity instanceof ServerPlayerEntity caster)) return;
-        if (entity.getWorld().isClient) return;
-        if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
+        if (!(entity instanceof ServerPlayer caster)) return;
+        if (entity.level().isClientSide) return;
+        if (entity.hasEffect(SscAddon.PURIFIED_ENTRY)) return;
         if (!isInternalCooldownReady()) return;
 
         // 双生种荚：一次播种额外寄生最近的第二目标，但能量消耗翻倍、冷却 +1 秒
@@ -153,30 +153,30 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     /** 发射一颗灵果种子投掷物（抛物线，速度同孢子炸弹）。 */
-    private void launchSeedProjectile(ServerPlayerEntity caster, boolean twinPod) {
+    private void launchSeedProjectile(ServerPlayer caster, boolean twinPod) {
         net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile seed =
-                new net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile(caster.getWorld(), caster);
-        seed.setItem(net.minecraft.item.Items.WHEAT_SEEDS.getDefaultStack());
+                new net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ParasiticSeedProjectile(caster.level(), caster);
+        seed.setItem(net.minecraft.world.item.Items.WHEAT_SEEDS.getDefaultInstance());
         seed.setOwner(caster);
         seed.setTwinPod(twinPod);
-        seed.setPos(caster.getX(), caster.getEyeY() - 0.1, caster.getZ());
-        seed.setVelocity(caster, caster.getPitch(), caster.getYaw(), 0.0f, 1.4f, 0.4f);
-        Vec3d ownerVel = caster.getVelocity();
-        seed.setVelocity(seed.getVelocity().add(ownerVel.x, caster.isOnGround() ? 0.0 : ownerVel.y, ownerVel.z));
-        caster.getWorld().spawnEntity(seed);
-        caster.getWorld().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
-                SoundEvents.ENTITY_SNOWBALL_THROW, SoundCategory.PLAYERS, 0.6f, 1.5f);
+        seed.setPosRaw(caster.getX(), caster.getEyeY() - 0.1, caster.getZ());
+        seed.shootFromRotation(caster, caster.getXRot(), caster.getYRot(), 0.0f, 1.4f, 0.4f);
+        Vec3 ownerVel = caster.getDeltaMovement();
+        seed.setDeltaMovement(seed.getDeltaMovement().add(ownerVel.x, caster.onGround() ? 0.0 : ownerVel.y, ownerVel.z));
+        caster.level().addFreshEntity(seed);
+        caster.level().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
+                SoundEvents.SNOWBALL_THROW, SoundSource.PLAYERS, 0.6f, 1.5f);
     }
 
 
     @Override
     public void tick() {
         super.tick();
-        if (!(entity instanceof ServerPlayerEntity caster)) return;
-        if (entity.getWorld().isClient) return;
+        if (!(entity instanceof ServerPlayer caster)) return;
+        if (entity.level().isClientSide) return;
         if (seeds.isEmpty()) return;
 
-        long now = entity.getWorld().getTime();
+        long now = entity.level().getGameTime();
         Iterator<Map.Entry<UUID, SeedData>> iterator = seeds.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<UUID, SeedData> entry = iterator.next();
@@ -184,7 +184,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
             LivingEntity host = findLiving(caster.getServer(), entry.getKey());
             // 跨维度宿主视为脱离作用范围，主动失效
             if (host == null || !host.isAlive() || now >= seed.endTick
-                    || host.getWorld() != caster.getWorld()) {
+                    || host.level() != caster.level()) {
                 if (host != null) {
                     net.onixary.shapeShifterCurseFabric.ssc_addon.util.GlowMarker.unmark(host);
                 }
@@ -211,7 +211,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     public void onLost() {
         super.onLost();
         // 清理本机制留下的 outline 高光
-        if (entity instanceof ServerPlayerEntity caster) {
+        if (entity instanceof ServerPlayer caster) {
             for (UUID uuid : seeds.keySet()) {
                 LivingEntity host = findLiving(caster.getServer(), uuid);
                 if (host != null) {
@@ -227,14 +227,14 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     private boolean isInternalCooldownReady() {
-        return entity.getWorld().getTime() >= internalCooldownEndTime;
+        return entity.level().getGameTime() >= internalCooldownEndTime;
     }
 
     private void applyCooldown(int ticks) {
-        internalCooldownEndTime = entity.getWorld().getTime() + ticks;
+        internalCooldownEndTime = entity.level().getGameTime() + ticks;
         // 同步给父类冷却体系，避免与 Apoli 自身的 isActive() 状态脱节
         this.use();
-        if (entity instanceof ServerPlayerEntity caster) {
+        if (entity instanceof ServerPlayer caster) {
             PowerUtils.setResourceValueAndSync(caster, FormIdentifiers.SP_PRIMARY_CD, ticks);
         }
     }
@@ -243,17 +243,17 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
      * 在宿主身上种下灵果种子（投掷物命中 / 种子圈拾取统一入口）。
      * public 供 ParasiticSeedProjectile 等外部回调。
      */
-    public void plantSeed(ServerPlayerEntity caster, LivingEntity host) {
+    public void plantSeed(ServerPlayer caster, LivingEntity host) {
         // 种子寿命（=叮声/buff 总持续）：未交战 15s(300t) / 交战 5s(100t)
         plantSeed(caster, host,
                 net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticCombatTracker.isInCombat(host) ? 100 : 300);
     }
 
     /** 带自定义基础时长的种植（种子圈拾取传固定时长）。 */
-    public void plantSeed(ServerPlayerEntity caster, LivingEntity host, int baseLife) {
-        long now = caster.getWorld().getTime();
+    public void plantSeed(ServerPlayer caster, LivingEntity host, int baseLife) {
+        long now = caster.level().getGameTime();
         int adjustedLife = baseLife;
-        SeedData seed = seeds.get(host.getUuid());
+        SeedData seed = seeds.get(host.getUUID());
         if (seed != null) {
             // 同一宿主：堆叠 1 层（封顶 MAX_SEEDS=3）；重复命中在剩余时长基础上叠加（无论敌友）
             seed.stack = Math.min(MAX_SEEDS, seed.stack + 1);
@@ -270,17 +270,17 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
                     iterator.remove();
                 }
             }
-            seeds.put(host.getUuid(), new SeedData(now + adjustedLife, now + ROOTING_TICKS));
+            seeds.put(host.getUUID(), new SeedData(now + adjustedLife, now + ROOTING_TICKS));
         }
 
-        if (host.getWorld() instanceof ServerWorld world) {
-            int finalStack = seeds.get(host.getUuid()).stack;
+        if (host.level() instanceof ServerLevel world) {
+            int finalStack = seeds.get(host.getUUID()).stack;
             ParticleUtils.spawnParticles(world, SEED_DUST,
-                    host.getX(), host.getY() + host.getHeight() * 0.65, host.getZ(),
+                    host.getX(), host.getY() + host.getBbHeight() * 0.65, host.getZ(),
                     18 + finalStack * 6, 0.25, 0.35, 0.25, 0.02);
             // 叮声仅施法者本人听见（不广播给其他玩家）
             net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.playSoundToPlayer(
-                    caster, SoundEvents.BLOCK_GRASS_PLACE, 0.9f, 1.5f);
+                    caster, SoundEvents.GRASS_PLACE, 0.9f, 1.5f);
         }
     }
 
@@ -288,7 +288,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
      * 静态回调入口：让 caster 当前持有的灵果寄生 power 在 host 身上种下种子。
      * 供投掷物命中、种子圈拾取等外部场景调用（多人安全：仅服务端、按持有者实例分发）。
      */
-    public static void plantSeedFrom(ServerPlayerEntity caster, LivingEntity host) {
+    public static void plantSeedFrom(ServerPlayer caster, LivingEntity host) {
         if (caster == null || host == null || !host.isAlive()) return;
         for (ParasiticFruitSeedPower power :
                 io.github.apace100.apoli.component.PowerHolderComponent.getPowers(caster, ParasiticFruitSeedPower.class)) {
@@ -300,7 +300,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
      * 双生种荷扩散：命中宿主后，向其 4 格内额外寄生最近 1 个目标；
      * 若附近无其它可寄生目标，则给命中宿主叠 2 层。非双生种荷时退化为普通单层寄生。
      */
-    public static void plantSeedSpread(ServerPlayerEntity caster, LivingEntity host, boolean twinPod) {
+    public static void plantSeedSpread(ServerPlayer caster, LivingEntity host, boolean twinPod) {
         if (caster == null || host == null || !host.isAlive()) return;
         if (!twinPod) {
             plantSeedFrom(caster, host);
@@ -318,13 +318,13 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     /** 在 primary 周围 4 格内查找最近的另一个可寄生生物（排除施法者与 primary 本身）。 */
-    private static LivingEntity findNearbyOther(ServerPlayerEntity caster, LivingEntity primary) {
-        net.minecraft.util.math.Box box = primary.getBoundingBox().expand(4.0D);
+    private static LivingEntity findNearbyOther(ServerPlayer caster, LivingEntity primary) {
+        net.minecraft.world.phys.AABB box = primary.getBoundingBox().inflate(4.0D);
         LivingEntity best = null;
         double bestDistSq = Double.MAX_VALUE;
-        for (LivingEntity e : caster.getWorld().getEntitiesByClass(LivingEntity.class, box,
+        for (LivingEntity e : caster.level().getEntitiesOfClass(LivingEntity.class, box,
                 living -> living.isAlive() && living != caster && living != primary)) {
-            double d = e.squaredDistanceTo(primary);
+            double d = e.distanceToSqr(primary);
             if (d < bestDistSq) {
                 bestDistSq = d;
                 best = e;
@@ -334,7 +334,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     /** 带自定义时长的静态回调（种子圈拾取用，时长 = 剩余）。 */
-    public static void plantSeedFrom(ServerPlayerEntity caster, LivingEntity host, int baseLife) {
+    public static void plantSeedFrom(ServerPlayer caster, LivingEntity host, int baseLife) {
         if (caster == null || host == null || !host.isAlive()) return;
         for (ParasiticFruitSeedPower power :
                 io.github.apace100.apoli.component.PowerHolderComponent.getPowers(caster, ParasiticFruitSeedPower.class)) {
@@ -342,7 +342,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         }
     }
 
-    private void cleanupExpiredSeeds(ServerPlayerEntity caster, long now) {
+    private void cleanupExpiredSeeds(ServerPlayer caster, long now) {
         Iterator<Map.Entry<UUID, SeedData>> iterator = seeds.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<UUID, SeedData> entry = iterator.next();
@@ -354,7 +354,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
 
-    private void bearFruit(ServerPlayerEntity caster, LivingEntity host, SeedData seed) {
+    private void bearFruit(ServerPlayer caster, LivingEntity host, SeedData seed) {
         boolean friend = WhitelistUtils.isBuffTarget(caster, host);
         // 腐殖之戒：装备时敌方削弱果时长 ×1.5、友方增益果时长 ×0.7；未装备 ×1.0。
         boolean humus = dev.emi.trinkets.api.TrinketsApi.getTrinketComponent(caster)
@@ -374,13 +374,13 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     private EnemyFruit selectEnemyFruit(LivingEntity host) {
-        if (host.isSprinting() || host.getVelocity().horizontalLengthSquared() > 0.08) {
+        if (host.isSprinting() || host.getDeltaMovement().horizontalDistanceSqr() > 0.08) {
             return EnemyFruit.VINE;
         }
-        if (host.handSwinging || (host instanceof MobEntity mob && mob.getTarget() != null)) {
+        if (host.swinging || (host instanceof Mob mob && mob.getTarget() != null)) {
             return EnemyFruit.BITTER;
         }
-        if (host.getHealth() / host.getMaxHealth() > 0.7f || host.getArmor() >= 10) {
+        if (host.getHealth() / host.getMaxHealth() > 0.7f || host.getArmorValue() >= 10) {
             return EnemyFruit.ROTTEN;
         }
         return EnemyFruit.SOUR;
@@ -399,7 +399,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         if (!inCombat) {
             if (hpRatio > 0.7f) {
                 // 未交战 + 高血：急迫 I
-                addEffect(target, StatusEffects.HASTE, buffDur, 0);
+                addEffect(target, MobEffects.DIG_SPEED, buffDur, 0);
             } else {
                 // 未交战 + 低血：回血 1 心
                 healWithFx(target, 1);
@@ -407,7 +407,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         } else {
             if (hpRatio > 0.8f) {
                 // 交战 + 高血：迅捷 II
-                addEffect(target, StatusEffects.SPEED, buffDur, 1);
+                addEffect(target, MobEffects.MOVEMENT_SPEED, buffDur, 1);
             } else if (hpRatio >= 0.5f) {
                 // 交战 + 中血：伤害吸收 I（自定义累加黄心，持续受腐殖之戒系数）+ 生命恢复（1 心）
                 net.onixary.shapeShifterCurseFabric.ssc_addon.ability.ParasiticAbsorptionManager.addAbsorption(target, 0, currentHumusFactor);
@@ -428,38 +428,38 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
     }
 
     private void applyEnemyFruit(LivingEntity target, EnemyFruit fruit, int divisor, int stack) {
-        int amp = MathHelper.clamp(stack - 1, 0, 2);
+        int amp = Mth.clamp(stack - 1, 0, 2);
         switch (fruit) {
             case VINE -> {
-                addEffect(target, StatusEffects.SLOWNESS, scaleDuration(60, divisor, 1.0f), amp);
-                if (!target.isOnGround()) {
-                    Vec3d velocity = target.getVelocity();
-                    target.setVelocity(velocity.x * 0.75, Math.min(velocity.y, -0.08), velocity.z * 0.75);
-                    target.velocityModified = true;
+                addEffect(target, MobEffects.MOVEMENT_SLOWDOWN, scaleDuration(60, divisor, 1.0f), amp);
+                if (!target.onGround()) {
+                    Vec3 velocity = target.getDeltaMovement();
+                    target.setDeltaMovement(velocity.x * 0.75, Math.min(velocity.y, -0.08), velocity.z * 0.75);
+                    target.hurtMarked = true;
                 }
             }
             case BITTER -> {
-                addEffect(target, StatusEffects.WEAKNESS, scaleDuration(80, divisor, 1.0f), amp);
-                addEffect(target, StatusEffects.GLOWING, scaleDuration(80, divisor, 1.0f), 0);
+                addEffect(target, MobEffects.WEAKNESS, scaleDuration(80, divisor, 1.0f), amp);
+                addEffect(target, MobEffects.GLOWING, scaleDuration(80, divisor, 1.0f), 0);
             }
             case ROTTEN -> {
-                if (target.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD)) {
-                    addEffect(target, StatusEffects.SLOWNESS, scaleDuration(70, divisor, 1.0f), amp);
-                    addEffect(target, StatusEffects.WEAKNESS, scaleDuration(70, divisor, 1.0f), amp);
+                if (target.getType().is(net.minecraft.tags.EntityTypeTags.UNDEAD)) {
+                    addEffect(target, MobEffects.MOVEMENT_SLOWDOWN, scaleDuration(70, divisor, 1.0f), amp);
+                    addEffect(target, MobEffects.WEAKNESS, scaleDuration(70, divisor, 1.0f), amp);
                 } else {
-                    addEffect(target, StatusEffects.POISON, scaleDuration(60, divisor, 1.0f), amp);
+                    addEffect(target, MobEffects.POISON, scaleDuration(60, divisor, 1.0f), amp);
                 }
             }
             case SOUR -> {
-                addEffect(target, StatusEffects.SLOWNESS, scaleDuration(40, divisor, 1.0f), amp);
-                addEffect(target, StatusEffects.GLOWING, scaleDuration(60, divisor, 1.0f), 0);
+                addEffect(target, MobEffects.MOVEMENT_SLOWDOWN, scaleDuration(40, divisor, 1.0f), amp);
+                addEffect(target, MobEffects.GLOWING, scaleDuration(60, divisor, 1.0f), 0);
             }
         }
     }
 
-    private void addEffect(LivingEntity target, RegistryEntry<StatusEffect> effect, int duration, int amplifier) {
+    private void addEffect(LivingEntity target, Holder<MobEffect> effect, int duration, int amplifier) {
         if (duration <= 0) return;
-        target.addStatusEffect(new StatusEffectInstance(effect, duration, amplifier, false, true, true));
+        target.addEffect(new MobEffectInstance(effect, duration, amplifier, false, true, true));
     }
 
     private int scaleDuration(int duration, int divisor, float multiplier) {
@@ -471,7 +471,7 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
 
     private LivingEntity findLiving(MinecraftServer server, UUID uuid) {
         if (server == null || uuid == null) return null;
-        for (ServerWorld world : server.getWorlds()) {
+        for (ServerLevel world : server.getAllLevels()) {
             Entity found = world.getEntity(uuid);
             if (found instanceof LivingEntity living) {
                 return living;
@@ -480,12 +480,12 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
         return null;
     }
 
-    private void spawnAttachedSeedParticles(ServerPlayerEntity caster, LivingEntity host, SeedData seed, long now) {
-        if (!(host.getWorld() instanceof ServerWorld world)) return;
+    private void spawnAttachedSeedParticles(ServerPlayer caster, LivingEntity host, SeedData seed, long now) {
+        if (!(host.level() instanceof ServerLevel world)) return;
         boolean friend = WhitelistUtils.isBuffTarget(caster, host);
         // 满层 outline 高光：通过 scoreboard team 染色 + 短时长 GLOWING 状态实现客户端描边。
         // 优先级低于次要技能：被次要技能感染的目标让位（不画绿/红 outline）。
-        boolean infected = net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager.isInfected(host.getUuid());
+        boolean infected = net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager.isInfected(host.getUUID());
         if (seed.stack >= MAX_SEEDS && !infected) {
             if (friend) {
                 net.onixary.shapeShifterCurseFabric.ssc_addon.util.GlowMarker.markFriend(host);
@@ -496,30 +496,30 @@ public class ParasiticFruitSeedPower extends ActiveCooldownPower {
             net.onixary.shapeShifterCurseFabric.ssc_addon.util.GlowMarker.unmark(host);
         }
         if (now % 10 != 0) return;
-        ParticleEffect particle = friend ? FRIEND_DUST : ENEMY_DUST;
+        ParticleOptions particle = friend ? FRIEND_DUST : ENEMY_DUST;
         // 粒子量随堆叠层数增加，仅作为附着指示，不再用于"满层光环"
         int count = 2 * seed.stack;
         ParticleUtils.spawnParticles(world, particle,
-                host.getX(), host.getY() + host.getHeight() * 0.75, host.getZ(),
+                host.getX(), host.getY() + host.getBbHeight() * 0.75, host.getZ(),
                 count, 0.18, 0.25, 0.18, 0.0);
     }
 
-    private void spawnFruitParticles(LivingEntity host, ParticleEffect particle, int stack) {
-        if (!(host.getWorld() instanceof ServerWorld world)) return;
-        double y = host.getY() + host.getHeight() * 0.75;
+    private void spawnFruitParticles(LivingEntity host, ParticleOptions particle, int stack) {
+        if (!(host.level() instanceof ServerLevel world)) return;
+        double y = host.getY() + host.getBbHeight() * 0.75;
         int extra = stack * 4;
         ParticleUtils.spawnParticles(world, particle, host.getX(), y, host.getZ(),
                 16 + extra, 0.35, 0.45, 0.35, 0.02);
         ParticleUtils.spawnParticles(world, SEED_DUST, host.getX(), y, host.getZ(),
                 8 + extra / 2, 0.25, 0.35, 0.25, 0.01);
         world.playSound(null, host.getX(), host.getY(), host.getZ(),
-                SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.35f, 1.8f);
+                SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.35f, 1.8f);
     }
 
-    private void playFailFeedback(ServerPlayerEntity caster) {
-        ServerWorld world = caster.getServerWorld();
+    private void playFailFeedback(ServerPlayer caster) {
+        ServerLevel world = caster.serverLevel();
         world.playSound(null, caster.getX(), caster.getY(), caster.getZ(),
-                SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.4f, 1.7f);
+                SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.4f, 1.7f);
     }
 
     private enum EnemyFruit {

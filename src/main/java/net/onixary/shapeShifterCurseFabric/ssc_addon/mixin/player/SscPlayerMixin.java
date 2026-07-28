@@ -2,13 +2,13 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.raid.RaiderEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundEvents;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.raid.Raider;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAggroTracker;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import java.util.UUID;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(PlayerEntity.class)
+@Mixin(Player.class)
 public abstract class SscPlayerMixin {
 
 	/**
@@ -35,10 +35,10 @@ public abstract class SscPlayerMixin {
 	 * 仅对「处于剧情真睡的服务端玩家」生效（{@code instanceof ServerPlayerEntity} 短路，客户端实体不读状态、
 	 * 无跨线程访问）；睡满后由 {@code MoonScarStoryManager.tickStorySleep} 移除标记后主动叫醒。
 	 */
-	@Inject(method = "wakeUp()V", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "stopSleeping()V", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$keepMoonScarStorySleeping(CallbackInfo ci) {
-		if ((Object) this instanceof ServerPlayerEntity sp) {
-			UUID uuid = sp.getUuid();
+		if ((Object) this instanceof ServerPlayer sp) {
+			UUID uuid = sp.getUUID();
 			if (net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager.isStorySleeping(uuid)
 					|| net.onixary.shapeShifterCurseFabric.ssc_addon.story.TideSpiritStoryManager.isStorySleeping(uuid)) {
 				ci.cancel();
@@ -48,7 +48,7 @@ public abstract class SscPlayerMixin {
 
 	@ModifyVariable(method = "attack", at = @At(value = "STORE", ordinal = 0), ordinal = 2)
 	private boolean forceCrit(boolean isCritical) {
-		if (((PlayerEntity) (Object) this).hasStatusEffect(SscAddon.GUARANTEED_CRIT_ENTRY)) {
+		if (((Player) (Object) this).hasEffect(SscAddon.GUARANTEED_CRIT_ENTRY)) {
 			return true;
 		}
 		return isCritical;
@@ -61,30 +61,30 @@ public abstract class SscPlayerMixin {
 	 * - 持武器：总伤害 -20%（暴击通过 base*0.8*1.5 = base*1.2 自动 -20%）
 	 * - 主动攻击 mob → 激怒该 mob（之后 mob 才能将契灵设为目标）
 	 */
-	@WrapOperation(method = "attack", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;damage(Lnet/minecraft/entity/damage/DamageSource;F)Z"))
+	@WrapOperation(method = "attack", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;hurt(Lnet/minecraft/world/damagesource/DamageSource;F)Z"))
 	private boolean ssc_addon$mancianimaAttackScale(Entity target, DamageSource source, float amount, Operation<Boolean> original) {
-		PlayerEntity self = (PlayerEntity) (Object) this;
+		Player self = (Player) (Object) this;
 		if (!FormUtils.isForm(self, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) {
 			return original.call(target, source, amount);
 		}
 		// 无法攻击劫掠阵营生物
-		if (target instanceof RaiderEntity) {
-			if (!self.getWorld().isClient()) {
-				self.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 0.8f);
+		if (target instanceof Raider) {
+			if (!self.level().isClientSide()) {
+				self.playSound(SoundEvents.FIRE_EXTINGUISH, 0.5f, 0.8f);
 			}
 			return false;
 		}
-		boolean bareHand = self.getMainHandStack().isEmpty();
+		boolean bareHand = self.getMainHandItem().isEmpty();
 		boolean result;
 		if (bareHand) {
-			DamageSource bypassSrc = self.getDamageSources().indirectMagic(self, self);
+			DamageSource bypassSrc = self.damageSources().indirectMagic(self, self);
 			result = original.call(target, bypassSrc, 2.0F);
 		} else {
 			result = original.call(target, source, amount * 0.8F);
 		}
 		// 激怒被攻击的 mob（仅在伤害命中时记录；坚守者/铁傀儡 本就主动攻击，仍记录无副作用）
-		if (result && target instanceof MobEntity mob && !self.getWorld().isClient()) {
-			MancianimaAggroTracker.provoke(mob.getUuid(), self.getUuid());
+		if (result && target instanceof Mob mob && !self.level().isClientSide()) {
+			MancianimaAggroTracker.provoke(mob.getUUID(), self.getUUID());
 		}
 		return result;
 	}

@@ -1,7 +1,7 @@
 package net.jackcooper.shapeShifterCurseAddon.event;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.onixary.shapeShifterCurseFabric.event.SSCEvent;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -31,8 +31,8 @@ public final class AddonFormAdvancementHandler {
         SSCEvent.TRANSFORM_MANAGER_SET_FORM.register(AddonFormAdvancementHandler::onSetForm);
     }
 
-    private static IForm onSetForm(PlayerEntity player, IForm oldForm, IForm newForm, IForm finalForm) {
-        if (player instanceof ServerPlayerEntity serverPlayer
+    private static IForm onSetForm(Player player, IForm oldForm, IForm newForm, IForm finalForm) {
+        if (player instanceof ServerPlayer serverPlayer
                 && finalForm != null
                 && ADDON_NAMESPACE.equals(finalForm.getFormID().getNamespace())) {
             SscAddon.ON_TRANSFORM_ADDON_FORM.trigger(serverPlayer, finalForm.getFormID());

@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.effect;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpTeleportAttack;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.FrostFreezeEffect;
@@ -22,13 +22,13 @@ public abstract class FrostFreezeDamageMixin {
 	/**
 	 * Modify the damage amount based on various conditions
 	 */
-	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "hurt", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private float modifyDamageForFrostEffects(float amount, DamageSource source) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		float modifiedAmount = amount;
 
 		// 1. Check if player is using Teleport Attack (reduce damage by 65%)
-		if (self instanceof ServerPlayerEntity serverPlayer) {
+		if (self instanceof ServerPlayer serverPlayer) {
 			float reduction = SnowFoxSpTeleportAttack.getDamageReduction(serverPlayer);
 			if (reduction > 0) {
 				modifiedAmount = modifiedAmount * (1.0f - reduction);
@@ -36,7 +36,7 @@ public abstract class FrostFreezeDamageMixin {
 		}
 
 		// 2. Check if entity has Frost Freeze effect (increase damage by 35%)
-		StatusEffectInstance frostFreezeEffect = self.getStatusEffect(SscAddon.FROST_FREEZE_ENTRY);
+		MobEffectInstance frostFreezeEffect = self.getEffect(SscAddon.FROST_FREEZE_ENTRY);
 		if (frostFreezeEffect != null && FrostFreezeEffect.isPhysicalOrMagicDamage(source)) {
 			modifiedAmount = modifiedAmount * 1.35f;
 		}

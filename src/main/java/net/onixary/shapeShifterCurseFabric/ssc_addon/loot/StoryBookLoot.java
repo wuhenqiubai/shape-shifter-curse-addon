@@ -5,16 +5,16 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.item.Items;
-import net.minecraft.loot.LootPool;
-import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.ConfigChangeListener;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.ConfigChangeManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonConfig;
@@ -136,16 +136,16 @@ public class StoryBookLoot implements ConfigChangeListener {
 	/**
 	 * 通过数字章节获取书籍（向后兼容）
 	 */
-	public static net.minecraft.item.ItemStack getStoryBook(int chapter) {
+	public static net.minecraft.world.item.ItemStack getStoryBook(int chapter) {
 		return getStoryBookById(String.valueOf(chapter), null);
 	}
 
 	/**
 	 * 获取所有书籍的ItemStack列表
 	 */
-	public static List<net.minecraft.item.ItemStack> getAllStoryBooks() {
+	public static List<net.minecraft.world.item.ItemStack> getAllStoryBooks() {
 		loadBooks();
-		List<net.minecraft.item.ItemStack> stacks = new ArrayList<>();
+		List<net.minecraft.world.item.ItemStack> stacks = new ArrayList<>();
 		for (BookData book : loadedBooks) {
 			stacks.add(createBookStack(book.id, book.title, book.author, book.content));
 		}
@@ -155,7 +155,7 @@ public class StoryBookLoot implements ConfigChangeListener {
 	/**
 	 * 通过数字章节和语言获取书籍（向后兼容）
 	 */
-	public static net.minecraft.item.ItemStack getStoryBook(int chapter, String language) {
+	public static net.minecraft.world.item.ItemStack getStoryBook(int chapter, String language) {
 		return getStoryBookById(String.valueOf(chapter), language);
 	}
 
@@ -166,7 +166,7 @@ public class StoryBookLoot implements ConfigChangeListener {
 	 * @param language 语言（null使用配置，"en_us"或"zh_cn"指定）
 	 * @return 书籍ItemStack，如果未找到返回EMPTY
 	 */
-	public static net.minecraft.item.ItemStack getStoryBookById(String bookId, String language) {
+	public static net.minecraft.world.item.ItemStack getStoryBookById(String bookId, String language) {
 		List<BookData> sourceBooks;
 
 		if (language != null && !language.isEmpty()) {
@@ -183,7 +183,7 @@ public class StoryBookLoot implements ConfigChangeListener {
 			}
 		}
 
-		return net.minecraft.item.ItemStack.EMPTY;
+		return net.minecraft.world.item.ItemStack.EMPTY;
 	}
 
 	/**
@@ -209,14 +209,14 @@ public class StoryBookLoot implements ConfigChangeListener {
 		return null;
 	}
 
-	private static net.minecraft.item.ItemStack createBookStack(String id, String title, String author, String content) {
-		net.minecraft.item.ItemStack stack = new net.minecraft.item.ItemStack(Items.WRITTEN_BOOK);
-		stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(createBookNbt(id, title, author, content)));
+	private static net.minecraft.world.item.ItemStack createBookStack(String id, String title, String author, String content) {
+		net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(Items.WRITTEN_BOOK);
+		stack.set(DataComponents.CUSTOM_DATA, CustomData.of(createBookNbt(id, title, author, content)));
 		return stack;
 	}
 
-	private static NbtCompound createBookNbt(String id, String title, String author, String content) {
-		NbtCompound nbt = new NbtCompound();
+	private static CompoundTag createBookNbt(String id, String title, String author, String content) {
+		CompoundTag nbt = new CompoundTag();
 		// Truncate title to 32 chars max (Vanilla limit)
 		String safeTitle = title;
 		if (safeTitle.length() > 32) {
@@ -228,14 +228,14 @@ public class StoryBookLoot implements ConfigChangeListener {
 		// 写入语言无关的唯一书籍标识（不受标题32字符截断影响），供成就(inventory_changed)精确匹配章节
 		nbt.putString("ssc_book_id", id);
 
-		NbtList pages = new NbtList();
+		ListTag pages = new ListTag();
 		// Split content into pages
 		List<String> contentList = splitIntoPages(content);
 		for (String pageText : contentList) {
 			// Use Gson to create a safe JSON object string for the page
 			JsonObject pageJson = new JsonObject();
 			pageJson.addProperty("text", pageText);
-			pages.add(NbtString.of(pageJson.toString()));
+			pages.add(StringTag.valueOf(pageJson.toString()));
 		}
 		nbt.put("pages", pages);
 		return nbt;
@@ -244,23 +244,23 @@ public class StoryBookLoot implements ConfigChangeListener {
 	public static void init() {
 		ConfigChangeManager.register(new StoryBookLoot());
 		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (isTargetChest(key.getValue())) {
+			if (isTargetChest(key.location())) {
 				loadConfig();
 				loadBooks();
-				LootPool.Builder poolBuilder = LootPool.builder()
-						.rolls(ConstantLootNumberProvider.create(1.0f))
-						.conditionally(net.minecraft.loot.condition.RandomChanceLootCondition.builder(chance));
+				LootPool.Builder poolBuilder = LootPool.lootPool()
+						.setRolls(ConstantValue.exactly(1.0f))
+						.when(net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition.randomChance(chance));
 
 				for (BookData book : loadedBooks) {
 					addBookToPool(poolBuilder, book.id, book.title, book.author, book.content);
 				}
 
-				tableBuilder.pool(poolBuilder);
+				tableBuilder.withPool(poolBuilder);
 			}
 		});
 	}
 
-	private static boolean isTargetChest(Identifier id) {
+	private static boolean isTargetChest(ResourceLocation id) {
 		String path = id.getPath();
 		return path.startsWith("chests/village") ||
 				path.equals("chests/abandoned_mineshaft") ||
@@ -276,9 +276,9 @@ public class StoryBookLoot implements ConfigChangeListener {
 	// 1.20.1 vanilla 中 SetNbtLootFunction.builder(NbtCompound) 是唯一可用重载，仍标记 @Deprecated 但无替代
 	@SuppressWarnings("deprecation")
 	private static void addBookToPool(LootPool.Builder pool, String id, String title, String author, String content) {
-		pool.with(ItemEntry.builder(Items.WRITTEN_BOOK)
-				.apply(net.minecraft.loot.function.SetComponentsLootFunction.builder(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.of(createBookNbt(id, title, author, content))))
-				.weight(1)); // Equal weight for each book
+		pool.add(LootItem.lootTableItem(Items.WRITTEN_BOOK)
+				.apply(net.minecraft.world.level.storage.loot.functions.SetComponentsFunction.setComponent(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(createBookNbt(id, title, author, content))))
+				.setWeight(1)); // Equal weight for each book
 	}
 
 	/**

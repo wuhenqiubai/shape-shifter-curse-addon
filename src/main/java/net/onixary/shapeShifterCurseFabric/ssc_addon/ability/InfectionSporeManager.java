@@ -6,20 +6,20 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.network.packet.s2c.play.ParticleS2CPacket;
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.registry.RegistryKey;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import org.joml.Vector3f;
@@ -73,14 +73,14 @@ public final class InfectionSporeManager {
     }
 
     /** 施加感染。命中已感染目标时直接重置时长（保留 caster）。 */
-    public static void infect(ServerPlayerEntity caster, LivingEntity target, int durationTicks) {
-        if (!(target.getWorld() instanceof ServerWorld serverWorld)) return;
+    public static void infect(ServerPlayer caster, LivingEntity target, int durationTicks) {
+        if (!(target.level() instanceof ServerLevel serverWorld)) return;
         if (target == caster) return;
         // 施加专属「中毒」buff（图标 + 周期扣血，效果同中毒；扣血由 buff 负责，本管理器不再直接伤害）
-        target.addStatusEffect(new StatusEffectInstance(
+        target.addEffect(new MobEffectInstance(
                 SscAddon.BAT_POISON_ENTRY, Math.max(20, durationTicks), 0, false, true, true));
-        UUID targetUuid = target.getUuid();
-        long now = serverWorld.getTime();
+        UUID targetUuid = target.getUUID();
+        long now = serverWorld.getGameTime();
         long newEnd = now + Math.max(20, durationTicks);
         InfectionData existing = ENTRIES.get(targetUuid);
         if (existing != null) {
@@ -89,8 +89,8 @@ public final class InfectionSporeManager {
             return;
         }
         InfectionData data = new InfectionData(
-                caster.getUuid(),
-                serverWorld.getRegistryKey(),
+                caster.getUUID(),
+                serverWorld.dimension(),
                 newEnd
         );
         ENTRIES.put(targetUuid, data);
@@ -102,10 +102,10 @@ public final class InfectionSporeManager {
     }
 
     /** 对友方目标施加治疗孢子。命中已在治疗中的目标时直接重置时长（保留 nextHealTick 节拍）。 */
-    public static void applyFriendHeal(ServerPlayerEntity caster, LivingEntity target, int durationTicks) {
-        if (!(target.getWorld() instanceof ServerWorld serverWorld)) return;
-        UUID targetUuid = target.getUuid();
-        long now = serverWorld.getTime();
+    public static void applyFriendHeal(ServerPlayer caster, LivingEntity target, int durationTicks) {
+        if (!(target.level() instanceof ServerLevel serverWorld)) return;
+        UUID targetUuid = target.getUUID();
+        long now = serverWorld.getGameTime();
         long newEnd = now + Math.max(20, durationTicks);
         HealData existing = HEAL_ENTRIES.get(targetUuid);
         if (existing != null) {
@@ -113,7 +113,7 @@ public final class InfectionSporeManager {
             return;
         }
         HealData data = new HealData(
-                serverWorld.getRegistryKey(),
+                serverWorld.dimension(),
                 newEnd,
                 now + HEAL_INTERVAL
         );
@@ -124,7 +124,7 @@ public final class InfectionSporeManager {
         return ENTRIES.size();
     }
 
-    private static void onWorldTick(ServerWorld world) {
+    private static void onWorldTick(ServerLevel world) {
         if (!HEAL_ENTRIES.isEmpty()) {
             tickHeals(world);
         }
@@ -132,7 +132,7 @@ public final class InfectionSporeManager {
             tickClouds(world);
         }
         if (ENTRIES.isEmpty()) return;
-        long now = world.getTime();
+        long now = world.getGameTime();
         MinecraftServer server = world.getServer();
 
         Iterator<Map.Entry<UUID, InfectionData>> it = ENTRIES.entrySet().iterator();
@@ -140,7 +140,7 @@ public final class InfectionSporeManager {
             Map.Entry<UUID, InfectionData> e = it.next();
             InfectionData data = e.getValue();
             // 仅处理与本世界匹配的条目，跨维度由 world tick 各自维护
-            if (!data.worldKey.equals(world.getRegistryKey())) continue;
+            if (!data.worldKey.equals(world.dimension())) continue;
 
             Entity entity = world.getEntity(e.getKey());
             if (!(entity instanceof LivingEntity target) || !target.isAlive()) {
@@ -164,15 +164,15 @@ public final class InfectionSporeManager {
 
     /** 在 1.5 格内寻找未感染目标，使用源施加者的白名单进行过滤。 */
     private static void spreadFrom(MinecraftServer server, LivingEntity host, InfectionData data, long now) {
-        ServerPlayerEntity caster = server.getPlayerManager().getPlayer(data.casterUuid);
+        ServerPlayer caster = server.getPlayerList().getPlayer(data.casterUuid);
         if (caster == null) return; // 施加者掉线则不传染（保留现有感染计时）
 
-        ServerWorld world = (ServerWorld) host.getWorld();
-        Box box = host.getBoundingBox().expand(INFECT_SPREAD_RADIUS);
+        ServerLevel world = (ServerLevel) host.level();
+        AABB box = host.getBoundingBox().inflate(INFECT_SPREAD_RADIUS);
         double sqRadius = INFECT_SPREAD_RADIUS * INFECT_SPREAD_RADIUS;
-        List<LivingEntity> candidates = world.getEntitiesByClass(LivingEntity.class, box,
-                e -> e != host && e.isAlive() && host.squaredDistanceTo(e) <= sqRadius
-                        && !ENTRIES.containsKey(e.getUuid()));
+        List<LivingEntity> candidates = world.getEntitiesOfClass(LivingEntity.class, box,
+                e -> e != host && e.isAlive() && host.distanceToSqr(e) <= sqRadius
+                        && !ENTRIES.containsKey(e.getUUID()));
 
         if (candidates.isEmpty()) return;
         int remaining = (int) Math.max(20, data.endTick - now);
@@ -181,36 +181,36 @@ public final class InfectionSporeManager {
             // 时间继承自当前宿主
             InfectionData child = new InfectionData(
                     data.casterUuid,
-                    world.getRegistryKey(),
+                    world.dimension(),
                     now + remaining
             );
-            ENTRIES.put(candidate.getUuid(), child);
-            candidate.addStatusEffect(new StatusEffectInstance(
+            ENTRIES.put(candidate.getUUID(), child);
+            candidate.addEffect(new MobEffectInstance(
                     SscAddon.BAT_POISON_ENTRY, Math.max(20, remaining), 0, false, true, true));
         }
     }
 
     /** 服务端构造 ParticleS2CPacket 并按观察者身份分发，实现"自己看少一些"。 */
-    private static void emitInfectionParticles(ServerWorld world, LivingEntity target, long now) {
+    private static void emitInfectionParticles(ServerLevel world, LivingEntity target, long now) {
         boolean othersTick = now % PARTICLE_INTERVAL_OTHERS == 0;
         boolean selfTick = now % PARTICLE_INTERVAL_SELF == 0;
         if (!othersTick && !selfTick) return;
 
-        Vec3d pos = target.getPos();
+        Vec3 pos = target.position();
         // 在目标周围发出绿色感染粒子（HAPPY_VILLAGER 默认绿色）
-        ParticleS2CPacket pkt = new ParticleS2CPacket(
+        ClientboundLevelParticlesPacket pkt = new ClientboundLevelParticlesPacket(
                 ParticleTypes.HAPPY_VILLAGER,
                 false,
-                pos.x, pos.y + target.getHeight() * 0.6, pos.z,
+                pos.x, pos.y + target.getBbHeight() * 0.6, pos.z,
                 0.4f, 0.5f, 0.4f, 0.0f, 2);
 
-        UUID targetUuid = target.getUuid();
-        for (ServerPlayerEntity viewer : world.getPlayers()) {
+        UUID targetUuid = target.getUUID();
+        for (ServerPlayer viewer : world.players()) {
             // 距离剔除（与原版广播半径一致 32 格）
-            if (viewer.squaredDistanceTo(target) > 32 * 32) continue;
-            boolean isSelf = viewer.getUuid().equals(targetUuid);
+            if (viewer.distanceToSqr(target) > 32 * 32) continue;
+            boolean isSelf = viewer.getUUID().equals(targetUuid);
             if (isSelf ? selfTick : othersTick) {
-                viewer.networkHandler.sendPacket(pkt);
+                viewer.connection.send(pkt);
             }
         }
     }
@@ -218,29 +218,29 @@ public final class InfectionSporeManager {
     /** 用于 mixin：在攻击者被感染时减少其伤害。 */
     public static float reduceDamageIfInfected(LivingEntity attacker, float amount) {
         if (attacker == null) return amount;
-        if (!ENTRIES.containsKey(attacker.getUuid())) return amount;
+        if (!ENTRIES.containsKey(attacker.getUUID())) return amount;
         return amount * (1.0f - DAMAGE_REDUCTION);
     }
 
     private static final class InfectionData {
         final UUID casterUuid;
-        final RegistryKey<World> worldKey;
+        final ResourceKey<Level> worldKey;
         long endTick;
 
-        InfectionData(UUID casterUuid, RegistryKey<World> worldKey, long endTick) {
+        InfectionData(UUID casterUuid, ResourceKey<Level> worldKey, long endTick) {
             this.casterUuid = casterUuid;
             this.worldKey = worldKey;
             this.endTick = endTick;
         }
     }
 
-    private static void tickHeals(ServerWorld world) {
-        long now = world.getTime();
+    private static void tickHeals(ServerLevel world) {
+        long now = world.getGameTime();
         Iterator<Map.Entry<UUID, HealData>> it = HEAL_ENTRIES.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<UUID, HealData> e = it.next();
             HealData data = e.getValue();
-            if (!data.worldKey.equals(world.getRegistryKey())) continue;
+            if (!data.worldKey.equals(world.dimension())) continue;
             Entity entity = world.getEntity(e.getKey());
             if (!(entity instanceof LivingEntity target) || !target.isAlive()) {
                 it.remove();
@@ -254,19 +254,19 @@ public final class InfectionSporeManager {
                 data.nextHealTick = now + HEAL_INTERVAL;
                 target.heal(TICK_HEAL);
                 // 视觉反馈：心心粒子
-                world.spawnParticles(ParticleTypes.HEART,
-                        target.getX(), target.getY() + target.getHeight() * 0.8, target.getZ(),
+                world.sendParticles(ParticleTypes.HEART,
+                        target.getX(), target.getY() + target.getBbHeight() * 0.8, target.getZ(),
                         2, 0.3, 0.2, 0.3, 0.0);
             }
         }
     }
 
     private static final class HealData {
-        final RegistryKey<World> worldKey;
+        final ResourceKey<Level> worldKey;
         long endTick;
         long nextHealTick;
 
-        HealData(RegistryKey<World> worldKey, long endTick, long nextHealTick) {
+        HealData(ResourceKey<Level> worldKey, long endTick, long nextHealTick) {
             this.worldKey = worldKey;
             this.endTick = endTick;
             this.nextHealTick = nextHealTick;
@@ -283,7 +283,7 @@ public final class InfectionSporeManager {
     /** 净化驱散毒雾云的判定半径（格）：被净化个体此范围内的云会被驱散 */
     public static final double CLOUD_PURIFY_REACH = 8.0;
     /** 墨绿色中毒粒子（与感染孢子弹视觉一致） */
-    private static final DustParticleEffect CLOUD_POISON_DUST = new DustParticleEffect(new Vector3f(0.30f, 0.50f, 0.10f), 1.2f);
+    private static final DustParticleOptions CLOUD_POISON_DUST = new DustParticleOptions(new Vector3f(0.30f, 0.50f, 0.10f), 1.2f);
     /** 活跃的毒雾云列表（服务端权威） */
     private static final List<CloudData> CLOUDS = new CopyOnWriteArrayList<>();
 
@@ -296,11 +296,11 @@ public final class InfectionSporeManager {
      * @param radius        云半径（格）
      * @param durationTicks 云存活时长（tick），同时也是进入者可获得的最大感染时长
      */
-    public static void spawnCloud(ServerPlayerEntity caster, ServerWorld world, Vec3d center, double radius, int durationTicks) {
-        long now = world.getTime();
+    public static void spawnCloud(ServerPlayer caster, ServerLevel world, Vec3 center, double radius, int durationTicks) {
+        long now = world.getGameTime();
         // 毒雾不可叠加：若落点附近（两云半径之和内）已有同维度毒雾，则仅刷新其寿命，不新增
         for (CloudData c : CLOUDS) {
-            if (!c.worldKey.equals(world.getRegistryKey())) continue;
+            if (!c.worldKey.equals(world.dimension())) continue;
             double merge = radius + c.radius;
             if (c.squaredDistanceTo(center.x, center.y, center.z) <= merge * merge) {
                 c.endTick = Math.max(c.endTick, now + Math.max(20, durationTicks));
@@ -308,8 +308,8 @@ public final class InfectionSporeManager {
             }
         }
         CLOUDS.add(new CloudData(
-                caster.getUuid(),
-                world.getRegistryKey(),
+                caster.getUUID(),
+                world.dimension(),
                 center.x, center.y, center.z,
                 radius,
                 now + Math.max(20, durationTicks),
@@ -323,18 +323,18 @@ public final class InfectionSporeManager {
     }
 
     /** 驱散给定位置 reach 范围内、同维度的所有毒雾云（供悦灵净化调用）。 */
-    public static void dissipateCloudsNear(ServerWorld world, Vec3d pos, double reach) {
+    public static void dissipateCloudsNear(ServerLevel world, Vec3 pos, double reach) {
         if (CLOUDS.isEmpty()) return;
-        RegistryKey<World> key = world.getRegistryKey();
+        ResourceKey<Level> key = world.dimension();
         double sq = reach * reach;
         CLOUDS.removeIf(c -> c.worldKey.equals(key) && c.squaredDistanceTo(pos.x, pos.y, pos.z) <= sq);
     }
 
-    private static void tickClouds(ServerWorld world) {
-        long now = world.getTime();
+    private static void tickClouds(ServerLevel world) {
+        long now = world.getGameTime();
         MinecraftServer server = world.getServer();
         for (CloudData cloud : CLOUDS) {
-            if (!cloud.worldKey.equals(world.getRegistryKey())) continue;
+            if (!cloud.worldKey.equals(world.dimension())) continue;
             if (now >= cloud.endTick) {
                 CLOUDS.remove(cloud);
                 continue;
@@ -346,47 +346,47 @@ public final class InfectionSporeManager {
             // 2) 周期扫描：范围内每 1.5s 直接施加效果（站着才生效，离开即停）
             if (now >= cloud.nextScanTick) {
                 cloud.nextScanTick = now + CLOUD_SCAN_INTERVAL;
-                ServerPlayerEntity caster = server.getPlayerManager().getPlayer(cloud.casterUuid);
+                ServerPlayer caster = server.getPlayerList().getPlayer(cloud.casterUuid);
                 if (caster == null) continue; // 施放者掉线则仅留粒子，不生效（需其白名单判定）
-                Box box = new Box(
+                AABB box = new AABB(
                         cloud.x - cloud.radius, cloud.y - cloud.radius, cloud.z - cloud.radius,
                         cloud.x + cloud.radius, cloud.y + cloud.radius, cloud.z + cloud.radius);
                 double sqRadius = cloud.radius * cloud.radius;
-                List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box,
+                List<LivingEntity> targets = world.getEntitiesOfClass(LivingEntity.class, box,
                         e -> e.isAlive() && e != caster
                                 && cloud.squaredDistanceTo(e.getX(), e.getY(), e.getZ()) <= sqRadius);
                 for (LivingEntity target : targets) {
                     if (WhitelistUtils.isProtected(caster, target)) {
                         // 友军：回 1 血 + 加速 I（短时，仅范围内维持）
                         target.heal(TICK_HEAL);
-                        target.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 40, 0, false, true, true));
-                        world.spawnParticles(ParticleTypes.HEART,
-                                target.getX(), target.getY() + target.getHeight() * 0.8, target.getZ(),
+                        target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 40, 0, false, true, true));
+                        world.sendParticles(ParticleTypes.HEART,
+                                target.getX(), target.getY() + target.getBbHeight() * 0.8, target.getZ(),
                                 1, 0.3, 0.2, 0.3, 0.0);
                     } else {
                         // 敌人：掉 1 血 + 减速 I（短时，仅范围内维持）
-                        target.damage(target.getDamageSources().magic(), TICK_DAMAGE);
-                        target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 40, 0, false, true, true));
+                        target.hurt(target.damageSources().magic(), TICK_DAMAGE);
+                        target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 40, 0, false, true, true));
                     }
                 }
             }
         }
     }
 
-    private static void emitCloudParticles(ServerWorld world, CloudData cloud) {
+    private static void emitCloudParticles(ServerLevel world, CloudData cloud) {
         // 主体毒雾：贴地铺开的墨绿色中毒粒子
-        world.spawnParticles(CLOUD_POISON_DUST,
+        world.sendParticles(CLOUD_POISON_DUST,
                 cloud.x, cloud.y + 0.5, cloud.z,
                 8, cloud.radius * 0.6, 0.45, cloud.radius * 0.6, 0.0);
         // 低频飘散的孢子，增强"雾"的体积感
-        world.spawnParticles(ParticleTypes.SPORE_BLOSSOM_AIR,
+        world.sendParticles(ParticleTypes.SPORE_BLOSSOM_AIR,
                 cloud.x, cloud.y + 0.3, cloud.z,
                 2, cloud.radius * 0.5, 0.3, cloud.radius * 0.5, 0.0);
     }
 
     private static final class CloudData {
         final UUID casterUuid;
-        final RegistryKey<World> worldKey;
+        final ResourceKey<Level> worldKey;
         final double x;
         final double y;
         final double z;
@@ -394,7 +394,7 @@ public final class InfectionSporeManager {
         long endTick;
         long nextScanTick;
 
-        CloudData(UUID casterUuid, RegistryKey<World> worldKey, double x, double y, double z,
+        CloudData(UUID casterUuid, ResourceKey<Level> worldKey, double x, double y, double z,
                   double radius, long endTick, long nextScanTick) {
             this.casterUuid = casterUuid;
             this.worldKey = worldKey;

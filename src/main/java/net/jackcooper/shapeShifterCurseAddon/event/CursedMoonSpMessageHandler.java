@@ -1,9 +1,9 @@
 package net.jackcooper.shapeShifterCurseAddon.event;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.config.CommonConfig;
 import net.onixary.shapeShifterCurseFabric.event.SSCEvent;
@@ -31,9 +31,9 @@ public final class CursedMoonSpMessageHandler {
         SSCEvent.CURSED_MOON_BEGIN.register(CursedMoonSpMessageHandler::onCursedMoonBegin);
     }
 
-    private static void onCursedMoonBegin(PlayerEntity player) {
+    private static void onCursedMoonBegin(Player player) {
         // 判定放服务端（事件本身仅服务端触发，这里再次保险）
-        if (!(player instanceof ServerPlayerEntity)) {
+        if (!(player instanceof ServerPlayer)) {
             return;
         }
         PlayerFormComponent formComp = RegPlayerFormComponent.PLAYER_FORM.get(player);
@@ -52,7 +52,7 @@ public final class CursedMoonSpMessageHandler {
             if (commonConfig != null && !commonConfig.enableCursedMoonTransform) {
                 return;
             }
-            player.sendMessage(Text.translatable("message.ssc_addon.cursed_moon_sp_special").formatted(Formatting.YELLOW), false);
+            player.displayClientMessage(Component.translatable("message.ssc_addon.cursed_moon_sp_special").withStyle(ChatFormatting.YELLOW), false);
         }
     }
 }

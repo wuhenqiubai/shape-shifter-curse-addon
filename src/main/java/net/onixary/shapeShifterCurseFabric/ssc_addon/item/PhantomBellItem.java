@@ -4,11 +4,11 @@ import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
 import java.util.List;
@@ -17,7 +17,7 @@ public class PhantomBellItem extends TrinketItem {
 
 	public static final int MAX_COOLDOWN = 1200;
 
-	public PhantomBellItem(Settings settings) {
+	public PhantomBellItem(Properties settings) {
 		super(settings);
 	}
 
@@ -64,24 +64,24 @@ public class PhantomBellItem extends TrinketItem {
 	/**
 	 * 根据CD进度获取Formatting颜色
 	 */
-	private Formatting getFormattingForProgress(float progress) {
+	private ChatFormatting getFormattingForProgress(float progress) {
 		if (progress < 0.33f) {
-			return Formatting.RED;
+			return ChatFormatting.RED;
 		} else if (progress < 0.66f) {
-			return Formatting.GOLD;
+			return ChatFormatting.GOLD;
 		} else {
-			return Formatting.GREEN;
+			return ChatFormatting.GREEN;
 		}
 	}
 
 	@Override
-	public boolean isItemBarVisible(ItemStack stack) {
+	public boolean isBarVisible(ItemStack stack) {
 		// 只有在冷却中才显示进度条
 		return isOnCooldown();
 	}
 
 	@Override
-	public int getItemBarStep(ItemStack stack) {
+	public int getBarWidth(ItemStack stack) {
 		// 返回0-13的值，表示进度条的长度
 		// 冷却剩余越少，进度条越长
 		int remaining = getCooldownRemaining();
@@ -90,30 +90,30 @@ public class PhantomBellItem extends TrinketItem {
 	}
 
 	@Override
-	public int getItemBarColor(ItemStack stack) {
+	public int getBarColor(ItemStack stack) {
 		int remaining = getCooldownRemaining();
 		float progress = 1.0f - ((float) remaining / MAX_COOLDOWN);
 		return getColorForProgress(progress);
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
 		// 移除了"装备在项链栏生效"的提示
-		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.desc.1").formatted(Formatting.BLUE));
-		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.desc.2").formatted(Formatting.BLUE));
+		tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.desc.1").withStyle(ChatFormatting.BLUE));
+		tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.desc.2").withStyle(ChatFormatting.BLUE));
 
 		// 显示CD状态
 		if (isOnCooldown()) {
 			int remainingTicks = getCooldownRemaining();
 			int remainingSeconds = remainingTicks / 20;
 			float progress = 1.0f - ((float) remainingTicks / MAX_COOLDOWN);
-			Formatting color = getFormattingForProgress(progress);
-			tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.cooldown", remainingSeconds).formatted(color));
+			ChatFormatting color = getFormattingForProgress(progress);
+			tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.cooldown", remainingSeconds).withStyle(color));
 		} else {
-			tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.ready").formatted(Formatting.GREEN));
+			tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.ready").withStyle(ChatFormatting.GREEN));
 		}
 
-		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, context, tooltip, type);
+		tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.tooltip.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
+		super.appendHoverText(stack, context, tooltip, type);
 	}
 }

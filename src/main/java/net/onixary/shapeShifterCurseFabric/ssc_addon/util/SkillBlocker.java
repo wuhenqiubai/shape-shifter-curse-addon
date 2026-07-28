@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonConfig;
 
 public class SkillBlocker {
@@ -8,9 +8,9 @@ public class SkillBlocker {
     
     private SkillBlocker() {} // Utility class
     
-    public static boolean isSkillBlocked(ServerPlayerEntity player, String form, String skill) {
+    public static boolean isSkillBlocked(ServerPlayer player, String form, String skill) {
         String tag = SKILL_BLOCKED_PREFIX + form + ":" + skill;
-        if (player.getCommandTags().contains(tag)) {
+        if (player.getTags().contains(tag)) {
             return true;
         }
         
@@ -18,13 +18,13 @@ public class SkillBlocker {
         return SSCAddonConfig.server().disabledSkills.contains(skillId);
     }
     
-    public static void blockSkill(ServerPlayerEntity player, String form, String skill) {
+    public static void blockSkill(ServerPlayer player, String form, String skill) {
         String tag = SKILL_BLOCKED_PREFIX + form + ":" + skill;
-        player.addCommandTag(tag);
+        player.addTag(tag);
     }
     
-    public static void unblockSkill(ServerPlayerEntity player, String form, String skill) {
+    public static void unblockSkill(ServerPlayer player, String form, String skill) {
         String tag = SKILL_BLOCKED_PREFIX + form + ":" + skill;
-        player.getCommandTags().remove(tag);
+        player.getTags().remove(tag);
     }
 }

@@ -7,11 +7,11 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -19,7 +19,7 @@ import java.util.List;
 
 /** 朔望专属项链：强化九命复活（回血更多、无敌更久、复活瞬间震退并减速周围敌人）。效果在 NineLivesManager 生效。 */
 public class NovaReviveNecklaceItem extends TrinketItem {
-    public NovaReviveNecklaceItem(Settings settings) {
+    public NovaReviveNecklaceItem(Properties settings) {
         super(settings);
     }
 
@@ -29,9 +29,9 @@ public class NovaReviveNecklaceItem extends TrinketItem {
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-        tooltip.add(Text.translatable("item.ssc_addon.nova_revive_necklace.desc").formatted(Formatting.LIGHT_PURPLE));
-        tooltip.add(Text.translatable("item.ssc_addon.nova_revive_necklace.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-        super.appendTooltip(stack, context, tooltip, type);
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+        tooltip.add(Component.translatable("item.ssc_addon.nova_revive_necklace.desc").withStyle(ChatFormatting.LIGHT_PURPLE));
+        tooltip.add(Component.translatable("item.ssc_addon.nova_revive_necklace.tooltip.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
+        super.appendHoverText(stack, context, tooltip, type);
     }
 }

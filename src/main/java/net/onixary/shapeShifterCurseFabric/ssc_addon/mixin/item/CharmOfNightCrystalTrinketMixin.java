@@ -1,16 +1,17 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.item;
 
 import dev.emi.trinkets.api.SlotReference;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.onixary.shapeShifterCurseFabric.items.trinkets.CharmOfNightCrystalTrinket;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 
 /**
  * 黑夜水晶吊坠（charm_of_night_crystal）寄生果蝠适配：
@@ -23,30 +24,32 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(CharmOfNightCrystalTrinket.class)
 public abstract class CharmOfNightCrystalTrinketMixin {
 
+	@Unique
 	public boolean canEquip(ItemStack stack, SlotReference slot, LivingEntity entity) {
 		// 寄生果蝠禁止装备；其它形态保持主包默认（可装备）
 		return !FormUtils.isBatParasiticFruit(entity);
 	}
 
+	@Unique
 	public void tick(ItemStack stack, SlotReference slot, LivingEntity entity) {
 		// 玩家在其它形态戴上吊坠后变成寄生果蝠时，自动卸下并归还
-		if (!(entity instanceof PlayerEntity player)) return;
-		if (player.getWorld().isClient) return;
+		if (!(entity instanceof Player player)) return;
+		if (player.level().isClientSide) return;
 		if (!FormUtils.isBatParasiticFruit(player)) return;
 		MinecraftServer server = player.getServer();
 		if (server == null) return;
 		// 延迟到下一 tick 执行，避免在 trinkets 遍历已装备饰品时修改饰品栏
 		server.execute(() -> {
 			if (!FormUtils.isBatParasiticFruit(player)) return;
-			ItemStack current = slot.inventory().getStack(slot.index());
+			ItemStack current = slot.inventory().getItem(slot.index());
 			if (current.isEmpty() || current.getItem() != (Item) (Object) this) return;
-			slot.inventory().setStack(slot.index(), ItemStack.EMPTY);
-			if (!player.getInventory().insertStack(current)) {
-				player.dropItem(current, false);
+			slot.inventory().setItem(slot.index(), ItemStack.EMPTY);
+			if (!player.getInventory().add(current)) {
+				player.drop(current, false);
 			}
-			player.sendMessage(
-					Text.translatable("msg.my_addon.charm_night_crystal_cant_equip_parasitic_fruit")
-							.formatted(Formatting.RED),
+			player.displayClientMessage(
+					Component.translatable("msg.my_addon.charm_night_crystal_cant_equip_parasitic_fruit")
+							.withStyle(ChatFormatting.RED),
 					true
 			);
 		});

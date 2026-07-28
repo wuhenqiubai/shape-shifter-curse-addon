@@ -5,21 +5,21 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 
 /**
  * 寄生果蝠主技能专属「伤害吸收」buff（纯显示）。
  * 黄心的累加 / 持续 / 到期清除由 {@code ParasiticAbsorptionManager} 管理，本效果仅提供状态栏图标与名字。
  * 图标 / 名字复用原版伤害吸收。
  */
-public class BatAbsorptionEffect extends StatusEffect {
+public class BatAbsorptionEffect extends MobEffect {
     public BatAbsorptionEffect() {
-        super(StatusEffectCategory.BENEFICIAL, 0x2552A5);
+        super(MobEffectCategory.BENEFICIAL, 0x2552A5);
     }
 
     @Override
-    public boolean canApplyUpdateEffect(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return false;
     }
 }

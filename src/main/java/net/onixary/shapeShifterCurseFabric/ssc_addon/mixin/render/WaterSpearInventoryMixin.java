@@ -1,8 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.render;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.RenderContextTracker;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,11 +18,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 这里在 drawItem 入口设 ThreadLocal 标记，held predicate 读标记——GUI 上下文时强制返回 0（不触发 3D）。
  * 手持渲染（HeldItemFeatureRenderer）不走 DrawContext.drawItem，标记保持 false，正常走 3D。
  */
-@Mixin(DrawContext.class)
+@Mixin(GuiGraphics.class)
 public class WaterSpearInventoryMixin {
 
 	@Inject(
-			method = "drawItem(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/item/ItemStack;III)V",
+			method = "renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;III)V",
 			at = @At("HEAD")
 	)
 	private void ssc_addon$markGuiContext(LivingEntity entity, ItemStack stack, int x, int y, int seed, CallbackInfo ci) {
@@ -30,7 +30,7 @@ public class WaterSpearInventoryMixin {
 	}
 
 	@Inject(
-			method = "drawItem(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/item/ItemStack;III)V",
+			method = "renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;III)V",
 			at = @At("RETURN")
 	)
 	private void ssc_addon$clearGuiContext(LivingEntity entity, ItemStack stack, int x, int y, int seed, CallbackInfo ci) {

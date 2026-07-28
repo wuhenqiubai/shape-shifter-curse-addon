@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 
+import net.minecraft.resources.ResourceLocation;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.entity.EntityComponentFactoryRegistry;
 import org.ladysnake.cca.api.v3.entity.EntityComponentInitializer;
 import org.ladysnake.cca.api.v3.entity.RespawnCopyStrategy;
-import net.minecraft.util.Identifier;
 
 /**
  * SSCA 进化加点系统 - 进化数据组件的 CCA 注册入口。
@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
  */
 public class RegEvolutionComponent implements EntityComponentInitializer {
     public static final ComponentKey<EvolutionComponent> EVOLUTION =
-            ComponentRegistry.getOrCreate(Identifier.of("ssc_addon", "evolution"), EvolutionComponent.class);
+            ComponentRegistry.getOrCreate(ResourceLocation.fromNamespaceAndPath("ssc_addon", "evolution"), EvolutionComponent.class);
 
     @Override
     public void registerEntityComponentFactories(EntityComponentFactoryRegistry registry) {

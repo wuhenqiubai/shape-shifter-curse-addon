@@ -1,12 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ai.goal.ActiveTargetGoal;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.passive.IronGolemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.world.World;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.IronGolemOfferFlowerToAllayGoal;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -16,40 +16,40 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(IronGolemEntity.class)
-public abstract class IronGolemAllayFlowerMixin extends MobEntity {
-	protected IronGolemAllayFlowerMixin(EntityType<? extends MobEntity> entityType, World world) {
+@Mixin(IronGolem.class)
+public abstract class IronGolemAllayFlowerMixin extends Mob {
+	protected IronGolemAllayFlowerMixin(EntityType<? extends Mob> entityType, Level world) {
 		super(entityType, world);
 	}
 
-	@Inject(method = "initGoals", at = @At("TAIL"))
+	@Inject(method = "registerGoals", at = @At("TAIL"))
 	private void ssc_addon$addAllayFlowerGoal(CallbackInfo ci) {
-		this.goalSelector.add(6, new IronGolemOfferFlowerToAllayGoal((IronGolemEntity) (Object) this));
+		this.goalSelector.addGoal(6, new IronGolemOfferFlowerToAllayGoal((IronGolem) (Object) this));
 		// 契灵：铁傀儡主动攻击契灵玩家
-		this.targetSelector.add(2, new ActiveTargetGoal<>(
-				(IronGolemEntity) (Object) this,
-				PlayerEntity.class,
+		this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(
+				(IronGolem) (Object) this,
+				Player.class,
 				10,
 				true,
 				false,
-				p -> p instanceof PlayerEntity pe && FormUtils.isForm(pe, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)
+				p -> p instanceof Player pe && FormUtils.isForm(pe, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)
 		));
 	}
 
-	@Inject(method = "damage", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$convertAllayAttackToHealing(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-		if (!(source.getAttacker() instanceof PlayerEntity player) || !FormUtils.isAllaySP(player)) return;
+		if (!(source.getEntity() instanceof Player player) || !FormUtils.isAllaySP(player)) return;
 
-		IronGolemEntity golem = (IronGolemEntity) (Object) this;
+		IronGolem golem = (IronGolem) (Object) this;
 		if (amount > 0.0F && golem.getHealth() < golem.getMaxHealth()) {
 			golem.heal(amount);
 		}
 		if (golem.getTarget() == player) {
 			golem.setTarget(null);
 		}
-		if (player.getUuid().equals(golem.getAngryAt())) {
-			golem.setAngryAt(null);
-			golem.setAngerTime(0);
+		if (player.getUUID().equals(golem.getPersistentAngerTarget())) {
+			golem.setPersistentAngerTarget(null);
+			golem.setRemainingPersistentAngerTime(0);
 		}
 		cir.setReturnValue(false);
 	}

@@ -1,51 +1,51 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.render.item.ItemRenderer;
-import net.minecraft.client.render.model.json.ModelTransformationMode;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.WaterSpearEntity;
 
 @Environment(EnvType.CLIENT)
 public class WaterSpearEntityRenderer extends EntityRenderer<WaterSpearEntity> {
 	private final ItemRenderer itemRenderer;
 
-	public WaterSpearEntityRenderer(EntityRendererFactory.Context context) {
+	public WaterSpearEntityRenderer(EntityRendererProvider.Context context) {
 		super(context);
 		this.itemRenderer = context.getItemRenderer();
 	}
 
 	@Override
-	public void render(WaterSpearEntity entity, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
-		matrices.push();
+	public void render(WaterSpearEntity entity, float yaw, float tickDelta, PoseStack matrices, MultiBufferSource vertexConsumers, int light) {
+		matrices.pushPose();
 		// Fixed rotation: -90.0F to match vanilla direction
-		matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(MathHelper.lerp(tickDelta, entity.prevYaw, entity.getYaw()) - 90.0F));
-		matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(MathHelper.lerp(tickDelta, entity.prevPitch, entity.getPitch()) - 90.0F));
+		matrices.mulPose(Axis.YP.rotationDegrees(Mth.lerp(tickDelta, entity.yRotO, entity.getYRot()) - 90.0F));
+		matrices.mulPose(Axis.ZP.rotationDegrees(Mth.lerp(tickDelta, entity.xRotO, entity.getXRot()) - 90.0F));
 
-		ItemStack stack = entity.getWeaponStack();
+		ItemStack stack = entity.getWeaponItem();
 		if (stack != null && !stack.isEmpty()) {
 			// Use a copy of the stack to avoid modifying the actual item NBT (which would persist when picked up)
 			ItemStack renderStack = stack.copy();
-			renderStack.set(DataComponentTypes.CUSTOM_MODEL_DATA, new net.minecraft.component.type.CustomModelDataComponent(1));
-			this.itemRenderer.renderItem(renderStack, ModelTransformationMode.GROUND, light, OverlayTexture.DEFAULT_UV, matrices, vertexConsumers, entity.getWorld(), entity.getId());
+			renderStack.set(DataComponents.CUSTOM_MODEL_DATA, new net.minecraft.world.item.component.CustomModelData(1));
+			this.itemRenderer.renderStatic(renderStack, ItemDisplayContext.GROUND, light, OverlayTexture.NO_OVERLAY, matrices, vertexConsumers, entity.level(), entity.getId());
 		}
 
-		matrices.pop();
+		matrices.popPose();
 		super.render(entity, yaw, tickDelta, matrices, vertexConsumers, light);
 	}
 
 	@Override
-	public Identifier getTexture(WaterSpearEntity entity) {
-		return Identifier.of("textures/atlas/blocks.png");
+	public ResourceLocation getTextureLocation(WaterSpearEntity entity) {
+		return ResourceLocation.parse("textures/atlas/blocks.png");
 	}
 }

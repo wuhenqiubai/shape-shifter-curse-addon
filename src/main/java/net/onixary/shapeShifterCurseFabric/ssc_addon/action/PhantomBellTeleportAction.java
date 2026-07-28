@@ -2,21 +2,21 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.action;
 
 import io.github.apace100.apoli.power.factory.action.ActionFactory;
 import io.github.apace100.calio.data.SerializableData;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.FallingBlock;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class PhantomBellTeleportAction {
 
@@ -32,7 +32,7 @@ public class PhantomBellTeleportAction {
 
 	public static ActionFactory<Entity> getFactory() {
 		return new ActionFactory<>(
-				Identifier.of("ssc_addon", "phantom_bell_teleport"),
+				ResourceLocation.fromNamespaceAndPath("ssc_addon", "phantom_bell_teleport"),
 				new SerializableData(),
 				(data, entity) -> {
 					log.debug("[PhantomBell] Action triggered!");
@@ -44,21 +44,21 @@ public class PhantomBellTeleportAction {
 
 					log.debug("[PhantomBell] Player: {}", player.getName().getString());
 
-					World world = player.getWorld();
-					BlockPos startBlockPos = player.getBlockPos();
+					Level world = player.level();
+					BlockPos startBlockPos = player.blockPosition();
 
 					// 1. 获取20格内的敌对生物和其它玩家
-					List<LivingEntity> threats = world.getEntitiesByClass(
+					List<LivingEntity> threats = world.getEntitiesOfClass(
 							LivingEntity.class,
-							player.getBoundingBox().expand(DETECTION_RADIUS),
+							player.getBoundingBox().inflate(DETECTION_RADIUS),
 							e -> {
 								if (e == player) return false; // 排除自己
 								// 敌对生物
-								if (e instanceof HostileEntity) return true;
+								if (e instanceof Monster) return true;
 								// 正在攻击玩家的生物
-								if (e.getAttacking() == player) return true;
+								if (e.getLastHurtMob() == player) return true;
 								// 其它玩家
-								return e instanceof PlayerEntity;
+								return e instanceof Player;
 							}
 					);
 
@@ -71,7 +71,7 @@ public class PhantomBellTeleportAction {
 								// 限制为球形范围
 								if (x * x + y * y + z * z > TP_RADIUS * TP_RADIUS) continue;
 
-								BlockPos pos = startBlockPos.add(x, y, z);
+								BlockPos pos = startBlockPos.offset(x, y, z);
 
 								// 检查基本有效性
 								if (isValidSpot(world, pos)) {
@@ -98,7 +98,7 @@ public class PhantomBellTeleportAction {
 
 					// 4. 执行传送
 					if (bestPos != null) {
-						player.teleport(bestPos.getX() + 0.5, bestPos.getY(), bestPos.getZ() + 0.5, false);
+						player.randomTeleport(bestPos.getX() + 0.5, bestPos.getY(), bestPos.getZ() + 0.5, false);
 					}
 				}
 		);
@@ -107,7 +107,7 @@ public class PhantomBellTeleportAction {
 	/**
 	 * 计算候选点的评分
 	 */
-	private static double calculateScore(World world, BlockPos pos, BlockPos startPos, List<LivingEntity> threats) {
+	private static double calculateScore(Level world, BlockPos pos, BlockPos startPos, List<LivingEntity> threats) {
 		double score = 0.0;
 
 		// ===== 最高优先级：离威胁（怪物和玩家）越远越好 =====
@@ -116,7 +116,7 @@ public class PhantomBellTeleportAction {
 			minDistanceToThreat = DETECTION_RADIUS;
 		} else {
 			for (LivingEntity threat : threats) {
-				double dist = Math.sqrt(threat.squaredDistanceTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5));
+				double dist = Math.sqrt(threat.distanceToSqr(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5));
 				if (dist < minDistanceToThreat) {
 					minDistanceToThreat = dist;
 				}
@@ -126,7 +126,7 @@ public class PhantomBellTeleportAction {
 		score += minDistanceToThreat * 200.0;
 
 		// ===== 次高优先级：距离原点越远越好 =====
-		double distanceToStart = Math.sqrt(pos.getSquaredDistance(startPos));
+		double distanceToStart = Math.sqrt(pos.distSqr(startPos));
 		score += distanceToStart * 50.0;
 
 		// ===== 高度差惩罚（越小越好） =====
@@ -147,19 +147,19 @@ public class PhantomBellTeleportAction {
 	/**
 	 * 检查候选点是否有效（简化版）
 	 */
-	private static boolean isValidSpot(World world, BlockPos pos) {
-		BlockState floorState = world.getBlockState(pos.down());
+	private static boolean isValidSpot(Level world, BlockPos pos) {
+		BlockState floorState = world.getBlockState(pos.below());
 
 		// 1. 脚下必须是实体方块
-		if (!floorState.isSolidBlock(world, pos.down())) return false;
+		if (!floorState.isRedstoneConductor(world, pos.below())) return false;
 
 		// 2. 身体位置必须是空气且无流体
 		BlockState stateBody = world.getBlockState(pos);
-		if (stateBody.isSolidBlock(world, pos) || !stateBody.getFluidState().isEmpty()) return false;
+		if (stateBody.isRedstoneConductor(world, pos) || !stateBody.getFluidState().isEmpty()) return false;
 
 		// 3. 头部位置必须是空气（防止窒息）
-		BlockState stateHead = world.getBlockState(pos.up());
-		if (stateHead.isSolidBlock(world, pos.up()) || !stateHead.getFluidState().isEmpty()) return false;
+		BlockState stateHead = world.getBlockState(pos.above());
+		if (stateHead.isRedstoneConductor(world, pos.above()) || !stateHead.getFluidState().isEmpty()) return false;
 
 		// 4. 可掉落方块检测（沙子、砂砾等）- 简化：只检查脚下
 		Block floorBlock = floorState.getBlock();
@@ -168,7 +168,7 @@ public class PhantomBellTeleportAction {
 			int fallingCount = 0;
 			for (int dx = -1; dx <= 1; dx++) {
 				for (int dz = -1; dz <= 1; dz++) {
-					if (world.getBlockState(pos.add(dx, -1, dz)).getBlock() instanceof FallingBlock) {
+					if (world.getBlockState(pos.offset(dx, -1, dz)).getBlock() instanceof FallingBlock) {
 						fallingCount++;
 					}
 				}
@@ -183,19 +183,19 @@ public class PhantomBellTeleportAction {
 	/**
 	 * 简化版悬崖检测（5x5范围）
 	 */
-	private static int calculateSimpleCliffScore(World world, BlockPos pos) {
+	private static int calculateSimpleCliffScore(Level world, BlockPos pos) {
 		int score = 0;
 
 		// 检查5x5范围内的地面稳固性
 		for (int dx = -2; dx <= 2; dx++) {
 			for (int dz = -2; dz <= 2; dz++) {
-				BlockPos floorPos = pos.add(dx, -1, dz);
-				if (world.getBlockState(floorPos).isSolidBlock(world, floorPos)) {
+				BlockPos floorPos = pos.offset(dx, -1, dz);
+				if (world.getBlockState(floorPos).isRedstoneConductor(world, floorPos)) {
 					score++;
 				} else {
 					// 检查下方是否有深渊
-					if (!world.getBlockState(floorPos.down()).isSolidBlock(world, floorPos.down()) &&
-							!world.getBlockState(floorPos.down(2)).isSolidBlock(world, floorPos.down(2))) {
+					if (!world.getBlockState(floorPos.below()).isRedstoneConductor(world, floorPos.below()) &&
+							!world.getBlockState(floorPos.below(2)).isRedstoneConductor(world, floorPos.below(2))) {
 						score -= 3; // 悬崖惩罚
 					}
 				}
@@ -208,13 +208,13 @@ public class PhantomBellTeleportAction {
 	/**
 	 * 简化版流体检测（5x5x3范围）
 	 */
-	private static int calculateSimpleFluidPenalty(World world, BlockPos pos) {
+	private static int calculateSimpleFluidPenalty(Level world, BlockPos pos) {
 		int penalty = 0;
 
 		for (int dx = -2; dx <= 2; dx++) {
 			for (int dy = -1; dy <= 1; dy++) {
 				for (int dz = -2; dz <= 2; dz++) {
-					BlockPos checkPos = pos.add(dx, dy, dz);
+					BlockPos checkPos = pos.offset(dx, dy, dz);
 					BlockState state = world.getBlockState(checkPos);
 
 					if (!state.getFluidState().isEmpty()) {

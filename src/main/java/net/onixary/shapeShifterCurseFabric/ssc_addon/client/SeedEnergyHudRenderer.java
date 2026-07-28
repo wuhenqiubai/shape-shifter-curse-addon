@@ -8,12 +8,12 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Pair;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Tuple;
+import net.minecraft.world.entity.player.Player;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ClientResourceCache;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ManaBarPos;
@@ -27,9 +27,9 @@ import net.onixary.shapeShifterCurseFabric.util.UIPositionUtils;
  */
 @Environment(EnvType.CLIENT)
 public final class SeedEnergyHudRenderer implements HudRenderCallback {
-    private static final MinecraftClient MC = MinecraftClient.getInstance();
-    private static final Identifier TEX_EMPTY = Identifier.of("my_addon", "textures/gui/bat_parasitic_fruit_seed_bar_empty.png");
-    private static final Identifier TEX_FULL = Identifier.of("my_addon", "textures/gui/bat_parasitic_fruit_seed_bar_full.png");
+    private static final Minecraft MC = Minecraft.getInstance();
+    private static final ResourceLocation TEX_EMPTY = ResourceLocation.fromNamespaceAndPath("my_addon", "textures/gui/bat_parasitic_fruit_seed_bar_empty.png");
+    private static final ResourceLocation TEX_FULL = ResourceLocation.fromNamespaceAndPath("my_addon", "textures/gui/bat_parasitic_fruit_seed_bar_full.png");
     /** 原图尺寸：86 像素宽 × 5 像素高，10 个圆点等距分布。 */
     private static final int TEX_WIDTH = 86;
     private static final int TEX_HEIGHT = 5;
@@ -39,9 +39,9 @@ public final class SeedEnergyHudRenderer implements HudRenderCallback {
     }
 
     @Override
-    public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
-        if (MC.options.hudHidden || MC.player == null) return;
-        PlayerEntity player = MC.player;
+    public void onHudRender(GuiGraphics context, DeltaTracker tickCounter) {
+        if (MC.options.hideGui || MC.player == null) return;
+        Player player = MC.player;
         // 必须真正拥有该 power 才渲染，避免对其他形态/未变形玩家误显示
         if (!ClientResourceCache.has(player, FormIdentifiers.BAT_PARASITIC_FRUIT_SEED_ENERGY)) return;
 
@@ -56,19 +56,19 @@ public final class SeedEnergyHudRenderer implements HudRenderCallback {
         int posType = mp[0];
         int offsetX = mp[1];
         int offsetY = mp[2];
-        Pair<Integer, Integer> pos = UIPositionUtils.getCorrectPosition(posType, offsetX, offsetY);
+        Tuple<Integer, Integer> pos = UIPositionUtils.getCorrectPosition(posType, offsetX, offsetY);
         // X 水平居中屏幕，Y 沿用魔力条配置（与九命条一致的中心对称）
-        int x = (MC.getWindow().getScaledWidth() - TEX_WIDTH) / 2;
-        int y = pos.getRight();
+        int x = (MC.getWindow().getGuiScaledWidth() - TEX_WIDTH) / 2;
+        int y = pos.getB();
 
         // 底层：空贴图
-        context.drawTexture(TEX_EMPTY, x, y, 0, 0, TEX_WIDTH, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
+        context.blit(TEX_EMPTY, x, y, 0, 0, TEX_WIDTH, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
         // 顶层：满贴图按 current/max 比例横向裁剪覆盖
         if (current > 0) {
             int filledWidth = (int) Math.ceil(TEX_WIDTH * percent);
             filledWidth = Math.max(0, Math.min(TEX_WIDTH, filledWidth));
             if (filledWidth > 0) {
-                context.drawTexture(TEX_FULL, x, y, 0, 0, filledWidth, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
+                context.blit(TEX_FULL, x, y, 0, 0, filledWidth, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
             }
         }
     }

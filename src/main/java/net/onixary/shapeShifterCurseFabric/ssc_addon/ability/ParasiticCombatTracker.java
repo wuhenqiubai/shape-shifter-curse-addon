@@ -6,12 +6,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,18 +45,18 @@ public final class ParasiticCombatTracker {
     public static void init() {
         // 用 ALLOW_DAMAGE（伤害结算前）记录交战时间戳，return true 不拦截伤害
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
-            if (entity.getWorld() instanceof ServerWorld) {
-                long now = entity.getWorld().getTime();
+            if (entity.level() instanceof ServerLevel) {
+                long now = entity.level().getGameTime();
                 // 受伤方是玩家 → 记录受伤时间与来源
-                if (entity instanceof ServerPlayerEntity victim) {
-                    CombatData d = DATA.computeIfAbsent(victim.getUuid(), k -> new CombatData());
+                if (entity instanceof ServerPlayer victim) {
+                    CombatData d = DATA.computeIfAbsent(victim.getUUID(), k -> new CombatData());
                     d.lastHurt = now;
-                    Entity attacker = source.getAttacker();
-                    d.lastHurtSource = attacker != null ? attacker.getUuid() : null;
+                    Entity attacker = source.getEntity();
+                    d.lastHurtSource = attacker != null ? attacker.getUUID() : null;
                 }
                 // 攻击方是玩家 → 记录造成伤害时间
-                if (source.getAttacker() instanceof ServerPlayerEntity dealer) {
-                    CombatData d = DATA.computeIfAbsent(dealer.getUuid(), k -> new CombatData());
+                if (source.getEntity() instanceof ServerPlayer dealer) {
+                    CombatData d = DATA.computeIfAbsent(dealer.getUUID(), k -> new CombatData());
                     d.lastDamageDealt = now;
                 }
             }
@@ -67,18 +66,18 @@ public final class ParasiticCombatTracker {
 
     /** 判定目标是否处于交战。非玩家用简单判定（受击中或有攻击目标）。 */
     public static boolean isInCombat(LivingEntity entity) {
-        if (!(entity instanceof ServerPlayerEntity player)) {
-            return entity.hurtTime > 0 || (entity instanceof MobEntity mob && mob.getTarget() != null);
+        if (!(entity instanceof ServerPlayer player)) {
+            return entity.hurtTime > 0 || (entity instanceof Mob mob && mob.getTarget() != null);
         }
-        CombatData d = DATA.get(player.getUuid());
+        CombatData d = DATA.get(player.getUUID());
         if (d == null) return false;
-        long now = player.getWorld().getTime();
+        long now = player.level().getGameTime();
         if (now - d.lastDamageDealt < COMBAT_TICKS) return true;
         if (now - d.lastHurt < COMBAT_TICKS) return true;
         // 10s 后：对其造成伤害的来源仍存活且在 10 格内 → 仍交战
-        if (d.lastHurtSource != null && player.getWorld() instanceof ServerWorld sw) {
+        if (d.lastHurtSource != null && player.level() instanceof ServerLevel sw) {
             Entity src = sw.getEntity(d.lastHurtSource);
-            if (src != null && src.isAlive() && src.squaredDistanceTo(player) <= SOURCE_RANGE_SQ) {
+            if (src != null && src.isAlive() && src.distanceToSqr(player) <= SOURCE_RANGE_SQ) {
                 return true;
             }
         }

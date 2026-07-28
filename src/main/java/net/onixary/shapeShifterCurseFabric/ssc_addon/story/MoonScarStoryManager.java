@@ -2,17 +2,16 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.story;
 
 import net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.advancement.Advancement;
-import net.minecraft.advancement.AdvancementEntry;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.cursed_moon.CursedMoon;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
@@ -38,7 +37,7 @@ import java.util.UUID;
  * 形态本身的存档/重生由主包形态系统保证（red 死亡重生仍为 red，变回 sp 后才是 sp）。
  */
 public final class MoonScarStoryManager {
-	public static final Identifier MOON_SCAR_POWER_ADV = Identifier.of("ssc_addon", "moon_scar_power");
+	public static final ResourceLocation MOON_SCAR_POWER_ADV = ResourceLocation.fromNamespaceAndPath("ssc_addon", "moon_scar_power");
 	/** 未提示玩家的成就检查降频：每 20 tick（约 1 秒）一次，已提示玩家直接跳过。 */
 	private static final int TIP_CHECK_INTERVAL = 20;
 	/** 真睡变身所需睡眠时长：100 tick（约 5 秒，= vanilla 睡眠阈值）。睡满后由本模组主动叫醒变 red。 */
@@ -62,7 +61,7 @@ public final class MoonScarStoryManager {
 	public static void register() {
 		// sp 使魔在诅咒之月夜晚上床 → 进入「剧情真睡」（真睡眠、仅顶住 SSC 禁睡、阻止跳夜，睡满约 5 秒后叫醒变 red）。
 		EntitySleepEvents.START_SLEEPING.register((entity, sleepingPos) -> {
-			if (entity instanceof ServerPlayerEntity player && !player.getWorld().isClient) {
+			if (entity instanceof ServerPlayer player && !player.level().isClientSide) {
 				tryBeginStorySleep(player);
 			}
 		});
@@ -73,35 +72,35 @@ public final class MoonScarStoryManager {
 				tickStorySleep(server);
 			}
 			// 低语提示：解锁成就且为 sp 使魔 → 发一次；降频每 20 tick 检查。
-			if (server.getTicks() % TIP_CHECK_INTERVAL == 0) {
+			if (server.getTickCount() % TIP_CHECK_INTERVAL == 0) {
 				MoonScarStoryState state = MoonScarStoryState.get(server);
-				for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+				for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 					tickTip(player, state);
 				}
 			}
 		});
 	}
 
-	private static void tickTip(ServerPlayerEntity player, MoonScarStoryState state) {
-		if (state.tippedPlayers.contains(player.getUuid())) return; // 已提示过，永不再查
+	private static void tickTip(ServerPlayer player, MoonScarStoryState state) {
+		if (state.tippedPlayers.contains(player.getUUID())) return; // 已提示过，永不再查
 		if (!FormUtils.isFamiliarFoxSP(player)) return;             // 必须处于 sp 使魔
 		if (!hasMoonScarPower(player)) return;                      // 必须已解锁月痕之力成就
-		player.sendMessage(
-				Text.translatable("message.ssc_addon.moon_scar.whisper").formatted(Formatting.GRAY, Formatting.ITALIC),
+		player.displayClientMessage(
+				Component.translatable("message.ssc_addon.moon_scar.whisper").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC),
 				false);
-		state.tippedPlayers.add(player.getUuid());
-		state.markDirty();
+		state.tippedPlayers.add(player.getUUID());
+		state.setDirty();
 	}
 
 	/** START_SLEEPING：sp 使魔解锁成就后、在诅咒之月夜晚上床 → 进入「剧情真睡」（不立即变身，让玩家真正睡一觉）。 */
-	private static void tryBeginStorySleep(ServerPlayerEntity player) {
-		World world = player.getWorld();
+	private static void tryBeginStorySleep(ServerPlayer player) {
+		Level world = player.level();
 		if (!FormUtils.isFamiliarFoxSP(player)) return;
 		if (!hasMoonScarPower(player)) return;
 		if (!(CursedMoon.isCursedMoonDay(world) && CursedMoon.isNight(world))) return;
 		// 加入真睡追踪：mixin 据此仅顶住 SSC 的诅咒之月强制唤醒（让玩家能真睡不被弹起）、并阻止跳夜。
 		// 玩家保持原版睡眠状态（原版睡眠本身锁住视角/移动、呈现睡姿与黑屏过渡），不需 STUN。
-		STORY_SLEEPING.putIfAbsent(player.getUuid(), 0);
+		STORY_SLEEPING.putIfAbsent(player.getUUID(), 0);
 	}
 
 	/** 每 tick 推进「剧情真睡」计时：睡满后叫醒变身；玩家中途下床/離线则取消演出。 */
@@ -109,7 +108,7 @@ public final class MoonScarStoryManager {
 		Iterator<Map.Entry<UUID, Integer>> it = STORY_SLEEPING.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<UUID, Integer> entry = it.next();
-			ServerPlayerEntity player = server.getPlayerManager().getPlayer(entry.getKey());
+			ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
 			if (player == null) {
 				it.remove(); // 玩家離线：清理，待下次重新尝试
 				continue;
@@ -132,10 +131,10 @@ public final class MoonScarStoryManager {
 	}
 
 	/** 「剧情真睡」睡满：主动把玩家从床上叫醒 → 瞬间无动画变 red → 记入剧情 red 并广播低语。 */
-	private static void finalizeStorySleep(MinecraftServer server, ServerPlayerEntity player) {
+	private static void finalizeStorySleep(MinecraftServer server, ServerPlayer player) {
 		if (player.isSleeping()) {
 			// 主动起床（此时标记已移除，唤醒不再被抑制）；演出期间已阻止 canResetTimeBySleeping，故不跳夜
-			player.wakeUp(true, true);
+			player.stopSleepInBed(true, true);
 		}
 		if (!FormUtils.isFamiliarFoxSP(player)) return; // 期间形态已变则不再转化
 		IForm redForm = RegPlayerForms.getPlayerForm(FormIdentifiers.FAMILIAR_FOX_RED);
@@ -143,14 +142,14 @@ public final class MoonScarStoryManager {
 		// 起床即变：setFormDirectly 瞬间换形态、不播放变身动画
 		TransformManager.immediatelyTransform(player, redForm);
 		MoonScarStoryState state = MoonScarStoryState.get(server);
-		state.storyRedPlayers.add(player.getUuid());
-		state.markDirty();
-		World world = player.getWorld();
-		player.sendMessage(
-				Text.translatable("message.ssc_addon.moon_scar.become_red").formatted(Formatting.DARK_RED, Formatting.ITALIC),
+		state.storyRedPlayers.add(player.getUUID());
+		state.setDirty();
+		Level world = player.level();
+		player.displayClientMessage(
+				Component.translatable("message.ssc_addon.moon_scar.become_red").withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC),
 				false);
 		world.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.PARTICLE_SOUL_ESCAPE, SoundCategory.PLAYERS, 1.0F, 0.6F);
+				SoundEvents.SOUL_ESCAPE, SoundSource.PLAYERS, 1.0F, 0.6F);
 	}
 
 	/**
@@ -158,19 +157,19 @@ public final class MoonScarStoryManager {
 	 *
 	 * @return true 表示已处理（调用方应直接返回、不再走常规升级逻辑、不消耗物品）。
 	 */
-	public static boolean tryFreeRevertFromStoryRed(PlayerEntity player) {
-		if (player.getWorld().isClient) return false;
-		if (!(player instanceof ServerPlayerEntity sp)) return false;
+	public static boolean tryFreeRevertFromStoryRed(Player player) {
+		if (player.level().isClientSide) return false;
+		if (!(player instanceof ServerPlayer sp)) return false;
 		MinecraftServer server = sp.getServer();
 		if (server == null) return false;
 
 		MoonScarStoryState state = MoonScarStoryState.get(server);
-		if (!state.storyRedPlayers.contains(sp.getUuid())) return false;
+		if (!state.storyRedPlayers.contains(sp.getUUID())) return false;
 
 		if (!FormUtils.isFamiliarFoxRed(sp)) {
 			// 标记与实际形态不一致（异常情况）：清理脏标记并放行常规逻辑，避免卡死
-			state.storyRedPlayers.remove(sp.getUuid());
-			state.markDirty();
+			state.storyRedPlayers.remove(sp.getUUID());
+			state.setDirty();
 			return false;
 		}
 
@@ -179,23 +178,23 @@ public final class MoonScarStoryManager {
 
 		// 月髓环免费变回 sp 使魔：带黑屏淡入淡出动画（原 handleDirectTransform(...,false)）
 		TransformManager.startTransform(sp, spForm, null);
-		state.storyRedPlayers.remove(sp.getUuid());
-		state.markDirty();
+		state.storyRedPlayers.remove(sp.getUUID());
+		state.setDirty();
 
-		World world = sp.getWorld();
-		sp.sendMessage(
-				Text.translatable("message.ssc_addon.moon_scar.revert_sp").formatted(Formatting.GRAY, Formatting.ITALIC),
+		Level world = sp.level();
+		sp.displayClientMessage(
+				Component.translatable("message.ssc_addon.moon_scar.revert_sp").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC),
 				false);
 		world.playSound(null, sp.getX(), sp.getY(), sp.getZ(),
-				SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
+				SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.0F);
 		return true;
 	}
 
-	private static boolean hasMoonScarPower(ServerPlayerEntity player) {
+	private static boolean hasMoonScarPower(ServerPlayer player) {
 		MinecraftServer server = player.getServer();
 		if (server == null) return false;
-		AdvancementEntry adv = server.getAdvancementLoader().get(MOON_SCAR_POWER_ADV);
+		AdvancementHolder adv = server.getAdvancements().get(MOON_SCAR_POWER_ADV);
 		if (adv == null) return false;
-		return player.getAdvancementTracker().getProgress(adv).isDone();
+		return player.getAdvancements().getOrStartProgress(adv).isDone();
 	}
 }

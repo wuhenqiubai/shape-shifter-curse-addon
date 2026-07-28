@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.model;
 
 import software.bernie.geckolib.model.GeoModel;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
 
 /**
@@ -10,19 +10,19 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
 public class WitchFamiliarModel extends GeoModel<WitchFamiliarEntity> {
 
 	@Override
-	public Identifier getModelResource(WitchFamiliarEntity entity) {
+	public ResourceLocation getModelResource(WitchFamiliarEntity entity) {
 		// 使用专属Geo模型（带正确骨骼层级的使魔模型）
-		return Identifier.of("ssc_addon", "geo/witch_familiar.geo.json");
+		return ResourceLocation.fromNamespaceAndPath("ssc_addon", "geo/witch_familiar.geo.json");
 	}
 
 	@Override
-	public Identifier getTextureResource(WitchFamiliarEntity entity) {
-		return Identifier.of("ssc_addon", "textures/entity/witch_familiar.png");
+	public ResourceLocation getTextureResource(WitchFamiliarEntity entity) {
+		return ResourceLocation.fromNamespaceAndPath("ssc_addon", "textures/entity/witch_familiar.png");
 	}
 
 	@Override
-	public Identifier getAnimationResource(WitchFamiliarEntity entity) {
+	public ResourceLocation getAnimationResource(WitchFamiliarEntity entity) {
 		// 使用附属包女巫使魔专属动画（基于原版使魔四足动作）
-		return Identifier.of("ssc_addon", "animations/witch_familiar.animation.json");
+		return ResourceLocation.fromNamespaceAndPath("ssc_addon", "animations/witch_familiar.animation.json");
 	}
 }

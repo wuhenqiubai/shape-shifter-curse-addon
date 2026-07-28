@@ -1,18 +1,17 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
 import java.util.List;
@@ -21,23 +20,23 @@ public class PortableMoisturizerItem extends Item {
 
 	public static final int MAX_CHARGE = 5400;
 
-	public PortableMoisturizerItem(Settings settings) {
+	public PortableMoisturizerItem(Properties settings) {
 		super(settings);
 	}
 
 	// Used by Recipe to set full charge
 	public static void setFullCharge(ItemStack stack) {
-		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+		CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> {
 			nbt.putInt("Charge", MAX_CHARGE);
 		});
 	}
 
 	@Override
-	public TypedActionResult<ItemStack> use(World world, PlayerEntity player, Hand hand) {
-		ItemStack stack = player.getStackInHand(hand);
+	public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
+		ItemStack stack = player.getItemInHand(hand);
 
 		if (stack == null) {
-			return TypedActionResult.fail(stack);
+			return InteractionResultHolder.fail(stack);
 		}
 
 		boolean isActive = isActive(stack);
@@ -47,23 +46,23 @@ public class PortableMoisturizerItem extends Item {
 		boolean isValidForm = FormUtils.isMoistureDependent(player);
 
 		if (newState && !isValidForm) {
-			player.sendMessage(Text.translatable("message.ssc_addon.moisturizer.off"), true);
+			player.displayClientMessage(Component.translatable("message.ssc_addon.moisturizer.off"), true);
 		} else {
-			player.sendMessage(Text.translatable(newState ?
+			player.displayClientMessage(Component.translatable(newState ?
 					"message.ssc_addon.moisturizer.on" :
 					"message.ssc_addon.moisturizer.off"), true);
 		}
 
-		return TypedActionResult.success(stack);
+		return InteractionResultHolder.success(stack);
 	}
 
 	@Override
-	public void inventoryTick(ItemStack stack, World world, Entity entity, int slot, boolean selected) {
-		if (world.isClient || !(entity instanceof PlayerEntity player)) return;
+	public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean selected) {
+		if (world.isClientSide || !(entity instanceof Player player)) return;
 		humidifyLogic(stack, world, player);
 	}
 
-	private void humidifyLogic(ItemStack stack, World world, PlayerEntity player) {
+	private void humidifyLogic(ItemStack stack, Level world, Player player) {
 		if (!FormUtils.isMoistureDependent(player)) {
 			if (isActive(stack)) {
 				setActive(stack, false);
@@ -75,30 +74,30 @@ public class PortableMoisturizerItem extends Item {
 			int currentCharge = getCharge(stack);
 
 			if (currentCharge > 0) {
-				if (world.getTime() % 20 == 0) {
+				if (world.getGameTime() % 20 == 0) {
 					setCharge(stack, currentCharge - 1);
 
-					int maxAir = player.getMaxAir();
-					int currentAir = player.getAir();
+					int maxAir = player.getMaxAirSupply();
+					int currentAir = player.getAirSupply();
 					int recoveryAmount = (int) Math.ceil(maxAir * 0.02);
 
 					if (currentAir < maxAir) {
-						player.setAir(Math.min(currentAir + recoveryAmount, maxAir));
+						player.setAirSupply(Math.min(currentAir + recoveryAmount, maxAir));
 					}
 				}
 			} else {
 				setActive(stack, false);
-				player.sendMessage(Text.translatable("message.ssc_addon.moisturizer.empty"), true);
+				player.displayClientMessage(Component.translatable("message.ssc_addon.moisturizer.empty"), true);
 			}
 		}
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
 		// Status
 		boolean active = isActive(stack);
-		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.status")
-				.append(Text.translatable(active ? "options.on" : "options.off").formatted(active ? Formatting.GREEN : Formatting.RED)));
+		tooltip.add(Component.translatable("tooltip.ssc_addon.moisturizer.status")
+				.append(Component.translatable(active ? "options.on" : "options.off").withStyle(active ? ChatFormatting.GREEN : ChatFormatting.RED)));
 
 		// Charge
 		int charge = getCharge(stack);
@@ -112,35 +111,35 @@ public class PortableMoisturizerItem extends Item {
 		int maxSeconds = maxTotalSeconds % 60;
 		String maxTimeString = String.format("%02d:%02d", maxMinutes, maxSeconds);
 
-		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.charge",
+		tooltip.add(Component.translatable("tooltip.ssc_addon.moisturizer.charge",
 				String.format("%02d:%02d", minutes, seconds),
-				maxTimeString).formatted(Formatting.AQUA));
+				maxTimeString).withStyle(ChatFormatting.AQUA));
 
 		// Instructions
-		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.usage").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.refill").formatted(Formatting.DARK_GRAY));
-		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.exclusive").formatted(Formatting.LIGHT_PURPLE));
+		tooltip.add(Component.translatable("tooltip.ssc_addon.moisturizer.usage").withStyle(ChatFormatting.GRAY));
+		tooltip.add(Component.translatable("tooltip.ssc_addon.moisturizer.refill").withStyle(ChatFormatting.DARK_GRAY));
+		tooltip.add(Component.translatable("tooltip.ssc_addon.moisturizer.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
 	}
 
 	@Override
-	public boolean hasGlint(ItemStack stack) {
+	public boolean isFoil(ItemStack stack) {
 		return isActive(stack);
 	}
 
 	// NBT Helpers
 	private boolean isActive(ItemStack stack) {
-		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getBoolean("Active");
+		return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe().getBoolean("Active");
 	}
 
 	private void setActive(ItemStack stack, boolean active) {
-		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putBoolean("Active", active));
+		CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> nbt.putBoolean("Active", active));
 	}
 
 	private int getCharge(ItemStack stack) {
-		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getInt("Charge");
+		return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe().getInt("Charge");
 	}
 
 	private void setCharge(ItemStack stack, int charge) {
-		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Charge", Math.max(0, Math.min(charge, MAX_CHARGE))));
+		CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> nbt.putInt("Charge", Math.max(0, Math.min(charge, MAX_CHARGE))));
 	}
 }

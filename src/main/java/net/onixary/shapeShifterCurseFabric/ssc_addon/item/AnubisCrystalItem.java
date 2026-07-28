@@ -3,16 +3,16 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.loot.LootPool;
-import net.minecraft.loot.condition.RandomChanceLootCondition;
-import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -24,7 +24,7 @@ import java.util.List;
  * 获取途径：沙漠神殿战利品箱，15%概率
  */
 public class AnubisCrystalItem extends TrinketItem {
-	public AnubisCrystalItem(Settings settings) {
+	public AnubisCrystalItem(Properties settings) {
 		super(settings);
 	}
 
@@ -33,12 +33,12 @@ public class AnubisCrystalItem extends TrinketItem {
 	 */
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (key.getValue().equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
-				LootPool.Builder poolBuilder = LootPool.builder()
-						.rolls(ConstantLootNumberProvider.create(1.0F))
-						.conditionally(RandomChanceLootCondition.builder(0.15F))
-						.with(ItemEntry.builder(SscAddon.ANUBIS_CRYSTAL));
-				tableBuilder.pool(poolBuilder);
+			if (key.location().equals(ResourceLocation.fromNamespaceAndPath("minecraft", "chests/desert_pyramid"))) {
+				LootPool.Builder poolBuilder = LootPool.lootPool()
+						.setRolls(ConstantValue.exactly(1.0F))
+						.when(LootItemRandomChanceCondition.randomChance(0.15F))
+						.add(LootItem.lootTableItem(SscAddon.ANUBIS_CRYSTAL));
+				tableBuilder.withPool(poolBuilder);
 			}
 		});
 	}
@@ -49,11 +49,11 @@ public class AnubisCrystalItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
-		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_2").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_3").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_4").formatted(Formatting.RED));
-		super.appendTooltip(stack, context, tooltip, type);
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_1").withStyle(ChatFormatting.LIGHT_PURPLE));
+		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_2").withStyle(ChatFormatting.GRAY));
+		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_3").withStyle(ChatFormatting.GRAY));
+		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_4").withStyle(ChatFormatting.RED));
+		super.appendHoverText(stack, context, tooltip, type);
 	}
 }

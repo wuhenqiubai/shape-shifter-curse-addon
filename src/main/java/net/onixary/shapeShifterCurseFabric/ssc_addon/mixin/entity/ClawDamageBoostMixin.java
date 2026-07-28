@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.damage.DamageTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,11 +25,11 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 @Mixin(LivingEntity.class)
 public class ClawDamageBoostMixin {
 
-    @ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    @ModifyVariable(method = "hurt", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private float ssc_addon$scaleWindSpiritMelee(float value, DamageSource source, float amount) {
         if (source != null
-                && source.getAttacker() instanceof ServerPlayerEntity p
-                && source.isOf(DamageTypes.PLAYER_ATTACK)
+                && source.getEntity() instanceof ServerPlayer p
+                && source.is(DamageTypes.PLAYER_ATTACK)
                 && FormUtils.isOcelotSP(p)
                 && !WindSpiritClawManager.isHoldingWeapon(p)) {
             float mult = WindSpiritClawManager.getNormalMeleeMultiplier(p);

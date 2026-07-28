@@ -2,11 +2,10 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 
 import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
-import net.minecraft.resource.Resource;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.JsonHelper;
-
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.GsonHelper;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -25,7 +24,7 @@ import java.util.Map;
  */
 public final class EvolutionRegistry implements SimpleSynchronousResourceReloadListener {
     public static final EvolutionRegistry INSTANCE = new EvolutionRegistry();
-    private static final Identifier ID = Identifier.of("ssc_addon", "ssca_evolution_routes");
+    private static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("ssc_addon", "ssca_evolution_routes");
     private static final String DIR = "ssca_evolution/routes";
 
     private Map<String, EvolutionRoute> routes = new LinkedHashMap<>();
@@ -35,25 +34,25 @@ public final class EvolutionRegistry implements SimpleSynchronousResourceReloadL
     }
 
     @Override
-    public Identifier getFabricId() {
+    public ResourceLocation getFabricId() {
         return ID;
     }
 
     @Override
-    public void reload(ResourceManager manager) {
+    public void onResourceManagerReload(ResourceManager manager) {
         Map<String, EvolutionRoute> loaded = new LinkedHashMap<>();
         Map<String, String> loadedRaw = new LinkedHashMap<>();
-        for (Map.Entry<Identifier, Resource> entry :
-                manager.findResources(DIR, path -> path.getPath().endsWith(".json")).entrySet()) {
-            Identifier fileId = entry.getKey();
+        for (Map.Entry<ResourceLocation, Resource> entry :
+                manager.listResources(DIR, path -> path.getPath().endsWith(".json")).entrySet()) {
+            ResourceLocation fileId = entry.getKey();
             String path = fileId.getPath();
             String fileName = path.substring(path.lastIndexOf('/') + 1, path.length() - ".json".length());
             if (fileName.startsWith("_")) {
                 continue; // 跳过下划线开头的占位 / 注释样例文件
             }
-            try (InputStream is = entry.getValue().getInputStream()) {
+            try (InputStream is = entry.getValue().open()) {
                 String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                JsonObject o = JsonHelper.deserialize(content);
+                JsonObject o = GsonHelper.parse(content);
                 loaded.put(fileName, EvolutionRoute.fromJson(fileName, o));
                 loadedRaw.put(fileName, content);
             } catch (Exception e) {
@@ -69,7 +68,7 @@ public final class EvolutionRegistry implements SimpleSynchronousResourceReloadL
         Map<String, EvolutionRoute> rebuilt = new LinkedHashMap<>();
         for (Map.Entry<String, String> e : raw.entrySet()) {
             try {
-                JsonObject o = JsonHelper.deserialize(e.getValue());
+                JsonObject o = GsonHelper.parse(e.getValue());
                 rebuilt.put(e.getKey(), EvolutionRoute.fromJson(e.getKey(), o));
             } catch (Exception ex) {
                 System.err.println("[ssc_addon] Failed to apply synced evolution route: " + e.getKey() + " - " + ex);
@@ -93,7 +92,7 @@ public final class EvolutionRegistry implements SimpleSynchronousResourceReloadL
     }
 
     /** 按 {@code start_form} 反查路线（判断「当前形态属于哪条进化路线」）。 */
-    public EvolutionRoute getRouteByStartForm(Identifier formId) {
+    public EvolutionRoute getRouteByStartForm(ResourceLocation formId) {
         if (formId == null) {
             return null;
         }

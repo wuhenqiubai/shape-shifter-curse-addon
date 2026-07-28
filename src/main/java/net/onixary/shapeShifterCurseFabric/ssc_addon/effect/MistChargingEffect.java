@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 
 /**
  * 幽雾化形 - 凝聚爆破蓄力标记效果。
@@ -9,8 +9,8 @@ import net.minecraft.entity.effect.StatusEffectCategory;
  * 由 MistFormAbilityPower 负责蓄力计时、聚集粒子与最终引爆。
  * 本身不附带任何属性修改，仅作纯粹的状态标记。
  */
-public class MistChargingEffect extends StatusEffect {
+public class MistChargingEffect extends MobEffect {
 	public MistChargingEffect() {
-		super(StatusEffectCategory.BENEFICIAL, 0xC81E1E); // 血红色
+		super(MobEffectCategory.BENEFICIAL, 0xC81E1E); // 血红色
 	}
 }

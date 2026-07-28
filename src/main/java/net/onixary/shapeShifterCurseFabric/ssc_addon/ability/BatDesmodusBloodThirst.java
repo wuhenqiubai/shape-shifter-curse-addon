@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -61,42 +61,42 @@ public final class BatDesmodusBloodThirst {
 
     // ==================== 通用 ====================
 
-    private static boolean isBat(ServerPlayerEntity player) {
+    private static boolean isBat(ServerPlayer player) {
         return player != null && FormUtils.isForm(player, FormIdentifiers.BAT_DESMODUS);
     }
 
     /** 是否装备渴血石榴石（gain ×1.5 / decay ×1.5 + 每秒被动流失 1） */
-    private static boolean hasBloodGarnet(ServerPlayerEntity player) {
+    private static boolean hasBloodGarnet(ServerPlayer player) {
         return dev.emi.trinkets.api.TrinketsApi.getTrinketComponent(player)
                 .map(c -> c.isEquipped(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.BLOOD_GARNET))
                 .orElse(false);
     }
 
     /** 是否装备嗜血指环（满血吸血反噬 1 真伤/秒；吸血加成在 mixin 内处理） */
-    public static boolean hasBloodlustRing(ServerPlayerEntity player) {
+    public static boolean hasBloodlustRing(ServerPlayer player) {
         return dev.emi.trinkets.api.TrinketsApi.getTrinketComponent(player)
                 .map(c -> c.isEquipped(net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.BLOODLUST_RING))
                 .orElse(false);
     }
 
     /** 读取血渴值（仅蝙蝠形态有效） */
-    private static int getBlood(ServerPlayerEntity player) {
+    private static int getBlood(ServerPlayer player) {
         return PowerUtils.getResourceValue(player, FormIdentifiers.BAT_BLOOD_RESOURCE);
     }
 
     /** 设置血渴值（自动夹取 0~MAX，并同步） */
-    private static void setBlood(ServerPlayerEntity player, int value) {
+    private static void setBlood(ServerPlayer player, int value) {
         int clamped = Math.max(0, Math.min(MAX_BLOOD, value));
         PowerUtils.setResourceValueAndSync(player, FormIdentifiers.BAT_BLOOD_RESOURCE, clamped);
     }
 
-    private static void changeBlood(ServerPlayerEntity player, int delta) {
+    private static void changeBlood(ServerPlayer player, int delta) {
         if (delta == 0) return;
         setBlood(player, getBlood(player) + delta);
     }
 
     /** 当前血渴值阶段：0=0-25, 1=25-50, 2=50-75, 3=75-100 */
-    public static int getStage(ServerPlayerEntity player) {
+    public static int getStage(ServerPlayer player) {
         if (!isBat(player)) return -1;
         int b = getBlood(player);
         if (b < 25) return 0;
@@ -107,7 +107,7 @@ public final class BatDesmodusBloodThirst {
 
     /** 客户端版本，便于 HUD 染色 */
     @net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
-    public static int getClientStage(net.minecraft.entity.player.PlayerEntity player) {
+    public static int getClientStage(net.minecraft.world.entity.player.Player player) {
         int[] vm = PowerUtils.getClientResourceValueAndMax(player, FormIdentifiers.BAT_BLOOD_RESOURCE);
         int b = vm[0];
         if (b < 25) return 0;
@@ -119,16 +119,16 @@ public final class BatDesmodusBloodThirst {
     // ==================== 战斗打点 ====================
 
     /** 标记玩家进入战斗（仅蝙蝠形态生效） */
-    public static void markCombat(ServerPlayerEntity player) {
+    public static void markCombat(ServerPlayer player) {
         if (!isBat(player)) return;
-        LAST_COMBAT_TICK.put(player.getUuid(), player.getWorld().getTime());
+        LAST_COMBAT_TICK.put(player.getUUID(), player.level().getGameTime());
     }
 
     /** 是否处于战斗中（最近一次打点 ≤ OUT_OF_COMBAT_DELAY） */
-    public static boolean isInCombat(ServerPlayerEntity player) {
-        Long last = LAST_COMBAT_TICK.get(player.getUuid());
+    public static boolean isInCombat(ServerPlayer player) {
+        Long last = LAST_COMBAT_TICK.get(player.getUUID());
         if (last == null) return false;
-        return player.getWorld().getTime() - last <= OUT_OF_COMBAT_DELAY;
+        return player.level().getGameTime() - last <= OUT_OF_COMBAT_DELAY;
     }
 
     // ==================== 命中事件 ====================
@@ -138,14 +138,14 @@ public final class BatDesmodusBloodThirst {
      * 仅当目标不在白名单内时累积 +8，并受 0.3s 内部冷却限制；
      * 无论是否命中白名单都标记战斗状态。
      */
-    public static void onAttackHit(ServerPlayerEntity player, LivingEntity target) {
+    public static void onAttackHit(ServerPlayer player, LivingEntity target) {
         if (!isBat(player) || target == null) return;
         markCombat(player);
         if (WhitelistUtils.isProtected(player, target)) return;
-        long now = player.getWorld().getTime();
-        Long last = LAST_ATTACK_HIT_TICK.get(player.getUuid());
+        long now = player.level().getGameTime();
+        Long last = LAST_ATTACK_HIT_TICK.get(player.getUUID());
         if (last != null && now - last < ATTACK_HIT_CD) return;
-        LAST_ATTACK_HIT_TICK.put(player.getUuid(), now);
+        LAST_ATTACK_HIT_TICK.put(player.getUUID(), now);
         // 渴血石榴石：累积 +50%
         int gain = hasBloodGarnet(player) ? Math.round(ATTACK_HIT_GAIN * 1.5f) : ATTACK_HIT_GAIN;
         changeBlood(player, gain);
@@ -155,7 +155,7 @@ public final class BatDesmodusBloodThirst {
      * 凝聚爆破命中事件：传入实际造成伤害的目标列表（已过滤白名单）。
      * 对前 3 个非白名单目标按 12/6/3 累积，超过部分忽略。
      */
-    public static void onSkillHit(ServerPlayerEntity player, List<LivingEntity> hitTargets) {
+    public static void onSkillHit(ServerPlayer player, List<LivingEntity> hitTargets) {
         if (!isBat(player) || hitTargets == null || hitTargets.isEmpty()) return;
         markCombat(player);
         int total = 0;
@@ -173,22 +173,22 @@ public final class BatDesmodusBloodThirst {
     // ==================== Tick ====================
 
     /** 每 tick 处理战斗回血与脱战衰减（仅蝙蝠形态生效） */
-    public static void tick(ServerPlayerEntity player) {
+    public static void tick(ServerPlayer player) {
         if (!isBat(player)) return;
-        long now = player.getWorld().getTime();
-        Long lastRegen = LAST_REGEN_TICK.get(player.getUuid());
+        long now = player.level().getGameTime();
+        Long lastRegen = LAST_REGEN_TICK.get(player.getUUID());
         if (lastRegen == null) {
-            LAST_REGEN_TICK.put(player.getUuid(), now);
+            LAST_REGEN_TICK.put(player.getUUID(), now);
             return;
         }
         if (now - lastRegen < 20L) return; // 每秒结算一次
 
-        Long lastCombat = LAST_COMBAT_TICK.get(player.getUuid());
+        Long lastCombat = LAST_COMBAT_TICK.get(player.getUUID());
         boolean inCombat = lastCombat != null && now - lastCombat <= OUT_OF_COMBAT_DELAY;
         boolean garnet = hasBloodGarnet(player);
         // 嗜血指环：自身满血时吸血被反噬——每秒对自己造成 1 点真伤（你血太满装不下更多血）。
         if (hasBloodlustRing(player) && player.getHealth() >= player.getMaxHealth()) {
-            player.damage(player.getDamageSources().magic(), 1.0f);
+            player.hurt(player.damageSources().magic(), 1.0f);
         }
         // 渴血石榴石：不论是否在战斗，血渴值每秒被动流失 1 点（永远在“渴”）。
         if (garnet) {
@@ -201,9 +201,9 @@ public final class BatDesmodusBloodThirst {
             if (b > 0) {
                 int decay = DECAY_PER_SEC;
                 // 头顶天空可见时按昼夜节奏调整（与 sun_weak/moon_buff power 的 time_of_day 判定一致）
-                net.minecraft.server.world.ServerWorld sw = player.getServerWorld();
-                if (sw.isSkyVisible(player.getBlockPos())) {
-                    long tod = sw.getTimeOfDay() % 24000L;
+                net.minecraft.server.level.ServerLevel sw = player.serverLevel();
+                if (sw.canSeeSky(player.blockPosition())) {
+                    long tod = sw.getDayTime() % 24000L;
                     boolean isNight = tod >= 13000L && tod <= 23000L;
                     if (isNight) {
                         decay = 2; // 月夜亢奋：衰减减半（4 -> 2）
@@ -216,7 +216,7 @@ public final class BatDesmodusBloodThirst {
                 if (decay > 0) setBlood(player, b - decay);
             }
         }
-        LAST_REGEN_TICK.put(player.getUuid(), now);
+        LAST_REGEN_TICK.put(player.getUUID(), now);
     }
 
     // ==================== 状态清理 ====================

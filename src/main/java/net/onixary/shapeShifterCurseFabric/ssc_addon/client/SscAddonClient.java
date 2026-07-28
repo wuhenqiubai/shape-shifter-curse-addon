@@ -9,15 +9,15 @@ import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.gui.screen.ingame.HandledScreens;
-import net.minecraft.client.item.ModelPredicateProviderRegistry;
-import net.minecraft.client.render.entity.EmptyEntityRenderer;
-import net.minecraft.client.render.entity.FlyingItemEntityRenderer;
-import net.minecraft.item.SpawnEggItem;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.entity.NoopRenderer;
+import net.minecraft.client.renderer.entity.ThrownItemRenderer;
+import net.minecraft.client.renderer.item.ItemProperties;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.SpawnEggItem;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -48,11 +48,11 @@ public class SscAddonClient implements ClientModInitializer {
 	// 跨存档颜色重同步：JOIN 时置为正值倒数，归零时触发一次 sendUpdateCustomSetting
 	private static int joinResyncDelay = 0;
 
-	private void addSplitTooltip(List<Text> lines, String key) {
-		if (I18n.hasTranslation(key)) {
-			String translated = I18n.translate(key);
+	private void addSplitTooltip(List<Component> lines, String key) {
+		if (I18n.exists(key)) {
+			String translated = I18n.get(key);
 			for (String line : translated.split("\n")) {
-				lines.add(Text.literal(line).formatted(Formatting.GRAY));
+				lines.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
 			}
 		}
 	}
@@ -99,16 +99,16 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// 进化美西螈「投掷水矛」蓄力期：客户端取消右键预测（放置方块 / 使用物品），避免鬼影
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			if (world.isClient && UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
-				return net.minecraft.util.ActionResult.FAIL;
+			if (world.isClientSide && UpgradeAxolotlSpearRenderState.isCharging(player.getUUID())) {
+				return net.minecraft.world.InteractionResult.FAIL;
 			}
-			return net.minecraft.util.ActionResult.PASS;
+			return net.minecraft.world.InteractionResult.PASS;
 		});
 		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (world.isClient && UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
-				return net.minecraft.util.TypedActionResult.fail(player.getStackInHand(hand));
+			if (world.isClientSide && UpgradeAxolotlSpearRenderState.isCharging(player.getUUID())) {
+				return net.minecraft.world.InteractionResultHolder.fail(player.getItemInHand(hand));
 			}
-			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
+			return net.minecraft.world.InteractionResultHolder.pass(player.getItemInHand(hand));
 		});
 
 		// 荧光幼灵「潮汐束缚」守卫者激光：服务端同步被拴目标 entityId，客户端逐帧画光束
@@ -121,9 +121,9 @@ public class SscAddonClient implements ClientModInitializer {
 					int[] ids = new int[count];
 					for (int i = 0; i < count; i++) ids[i] = bp.data().readVarInt();
 					ctx.client().execute(() -> {
-						if (ctx.client().world == null) return;
+						if (ctx.client().level == null) return;
 						net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.TidalTetherBeamRenderer
-								.update(orbId, ids, ctx.client().world.getTime() + 20);
+								.update(orbId, ids, ctx.client().level.getGameTime() + 20);
 					});
 				});
 		// 逐帧渲染潮汐束缚光束（守卫者激光样式）
@@ -138,7 +138,7 @@ public class SscAddonClient implements ClientModInitializer {
 		});
 		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(c -> {
 			if (joinResyncDelay <= 0) return;
-			if (c.player == null || c.world == null) return;
+			if (c.player == null || c.level == null) return;
 			if (--joinResyncDelay > 0) return;
 			try {
 				net.onixary.shapeShifterCurseFabric.networking.ModPacketsS2C.sendUpdateCustomSetting(true);
@@ -146,7 +146,7 @@ public class SscAddonClient implements ClientModInitializer {
 				// 不在此处手动发，新存档/服务器的 PlayerSkinComponent 颜色不会被同步。
 				net.onixary.shapeShifterCurseFabric.config.PlayerCustomConfig cfg =
 						net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric.playerCustomConfig;
-				net.minecraft.network.PacketByteBuf cbuf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+				net.minecraft.network.FriendlyByteBuf cbuf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 				// 主包 onUpdatePlayerCustomColor 首位读的是 extraData boolean，
 				// 漏写这一字节会导致服务端读越界、玩家被踢。
 				cbuf.writeBoolean(false);
@@ -158,7 +158,7 @@ public class SscAddonClient implements ClientModInitializer {
 				cbuf.writeBoolean(cfg.primaryGreyReverse);
 				cbuf.writeBoolean(cfg.accent1GreyReverse);
 				cbuf.writeBoolean(cfg.accent2GreyReverse);
-				ClientPlayNetworking.send(new BytePayload(BytePayload.id(Identifier.of(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
+				ClientPlayNetworking.send(new BytePayload(BytePayload.id(ResourceLocation.fromNamespaceAndPath(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
 				// 请求服务端把所有在场玩家的形态+皮肤同步过来（修复客机看其它玩家是默认白模型）。
 				ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_REQUEST_ALL_FORM_SYNC), PacketByteBufs.empty()));
 			} catch (Throwable t) {
@@ -176,8 +176,8 @@ public class SscAddonClient implements ClientModInitializer {
 					if (count < 0 || count > 1000) return;
 					java.util.Map<String, String> raw = new java.util.LinkedHashMap<>();
 					for (int i = 0; i < count; i++) {
-						String routeId = bp.data().readString(256);
-						String json = bp.data().readString(2000000);
+						String routeId = bp.data().readUtf(256);
+						String json = bp.data().readUtf(2000000);
 						raw.put(routeId, json);
 					}
 					ctx.client().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry.INSTANCE.applyClientSync(raw));
@@ -195,8 +195,8 @@ public class SscAddonClient implements ClientModInitializer {
 					java.util.List<boolean[]> boolData = new java.util.ArrayList<>(count); // [keepOrig, enableColor, pGrey, a1Grey, a2Grey, enableSound]
 					java.util.List<int[]> colorData = new java.util.ArrayList<>(count);    // [primary, accent1, accent2, eyeA, eyeB] (ABGR)
 					for (int i = 0; i < count; i++) {
-						uuids.add(bp.data().readUuid());
-						formIds.add(bp.data().readString());
+						uuids.add(bp.data().readUUID());
+						formIds.add(bp.data().readUtf());
 						boolean keepOrig = bp.data().readBoolean();
 						boolean enableColor = bp.data().readBoolean();
 						int primary = bp.data().readInt();
@@ -212,14 +212,14 @@ public class SscAddonClient implements ClientModInitializer {
 						colorData.add(new int[]{primary, accent1, accent2, eyeA, eyeB});
 					}
 					ctx.client().execute(() -> {
-						if (ctx.client().world == null) return;
+						if (ctx.client().level == null) return;
 						for (int i = 0; i < uuids.size(); i++) {
-							net.minecraft.entity.player.PlayerEntity p = ctx.client().world.getPlayerByUuid(uuids.get(i));
+							net.minecraft.world.entity.player.Player p = ctx.client().level.getPlayerByUUID(uuids.get(i));
 							if (p == null) continue;
 							// 形态
 							String fidStr = formIds.get(i);
 							if (!fidStr.isEmpty()) {
-								net.minecraft.util.Identifier fid = net.minecraft.util.Identifier.tryParse(fidStr);
+								net.minecraft.resources.ResourceLocation fid = net.minecraft.resources.ResourceLocation.tryParse(fidStr);
 								if (fid != null) {
 									net.onixary.shapeShifterCurseFabric.player_form.IForm form =
 											net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms.getPlayerForm(fid);
@@ -231,12 +231,12 @@ public class SscAddonClient implements ClientModInitializer {
 										// 关键：模型渲染读的是 origin 组件（PlayerOriginComponent）而非 nowForm。
 										// 用形态的 layer 信息在客机重建 origin，渲染才会显示形态模型（否则只同步了 scale/动画 = 白色人类模型）。
 										try {
-											net.minecraft.util.Pair<net.minecraft.util.Identifier, net.minecraft.util.Identifier> layerData = form.getFormLayer();
+											net.minecraft.util.Tuple<net.minecraft.resources.ResourceLocation, net.minecraft.resources.ResourceLocation> layerData = form.getFormLayer();
 											net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginLayer layer =
-													net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginLayers.getLayer(layerData.getLeft());
-											if (layer != null && layerData.getRight() != null) {
+													net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginLayers.getLayer(layerData.getA());
+											if (layer != null && layerData.getB() != null) {
 												net.onixary.shapeShifterCurseFabric.integration.origins.origin.Origin origin =
-														net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginRegistry.get(layerData.getRight());
+														net.onixary.shapeShifterCurseFabric.integration.origins.origin.OriginRegistry.get(layerData.getB());
 												if (origin != null) {
 													net.onixary.shapeShifterCurseFabric.integration.origins.component.OriginComponent oc =
 															(net.onixary.shapeShifterCurseFabric.integration.origins.component.OriginComponent)
@@ -278,8 +278,8 @@ public class SscAddonClient implements ClientModInitializer {
 			if (count < 0 || count > 10000) return;
 			java.util.Map<java.util.UUID, String> brands = new java.util.HashMap<>();
 			for (int i = 0; i < count; i++) {
-				java.util.UUID uuid = payload.data().readUuid();
-				String color = payload.data().readString();
+				java.util.UUID uuid = payload.data().readUUID();
+				String color = payload.data().readUtf();
 				brands.put(uuid, color);
 			}
 			ctx.client().execute(() -> ErosionBrandClientState.update(brands));
@@ -292,8 +292,8 @@ public class SscAddonClient implements ClientModInitializer {
 			if (count < 0 || count > 10000) return;
 			java.util.Map<java.util.UUID, String> marks = new java.util.HashMap<>();
 			for (int i = 0; i < count; i++) {
-				java.util.UUID uuid = payload.data().readUuid();
-				String color = payload.data().readString();
+				java.util.UUID uuid = payload.data().readUUID();
+				String color = payload.data().readUtf();
 				marks.put(uuid, color);
 			}
 			ctx.client().execute(() -> MancianimaMarkClientState.update(marks));
@@ -315,7 +315,7 @@ public class SscAddonClient implements ClientModInitializer {
 
         // 进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（主机 + 客机一致）
         ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
-            java.util.UUID id = payload.data().readUuid();
+            java.util.UUID id = payload.data().readUUID();
             boolean charging = payload.data().readBoolean();
 
             ctx.client().execute(() -> UpgradeAxolotlSpearRenderState.set(id, charging));
@@ -327,17 +327,17 @@ public class SscAddonClient implements ClientModInitializer {
 			int n = payload.data().readInt();
 			if (n < 0 || n > 10000) return;
 			java.util.Set<java.util.UUID> set = new java.util.HashSet<>();
-			for (int i = 0; i < n; i++) set.add(payload.data().readUuid());
+			for (int i = 0; i < n; i++) set.add(payload.data().readUUID());
 			int m = payload.data().readInt();
 			if (m < 0 || m > 10000) return;
 			java.util.List<net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen.MobEntry> mobs = new java.util.ArrayList<>();
 			for (int i = 0; i < m; i++) {
-				java.util.UUID u = payload.data().readUuid();
-				String typeId = payload.data().readString();
+				java.util.UUID u = payload.data().readUUID();
+				String typeId = payload.data().readUtf();
 				mobs.add(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen.MobEntry(u, typeId.isEmpty() ? null : typeId));
 			}
 			ctx.client().execute(() -> {
-				if (ctx.client().currentScreen instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen s) {
+				if (ctx.client().screen instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen s) {
 					s.updateState(set, customMode, mobs);
 				} else {
 					ctx.client().setScreen(new net.onixary.shapeShifterCurseFabric.ssc_addon.client.screen.WhitelistManageScreen(set, customMode, mobs));
@@ -354,15 +354,15 @@ public class SscAddonClient implements ClientModInitializer {
 		EntityRendererRegistry.register(SscAddon.WATER_SPEAR_ENTITY, WaterSpearEntityRenderer::new);
 
 		// 注册冰球渲染器（使用雪球材质）和冰风暴渲染器（粒子效果，空渲染器）
-		EntityRendererRegistry.register(SscAddon.FROST_BALL_ENTITY, FlyingItemEntityRenderer::new);
+		EntityRendererRegistry.register(SscAddon.FROST_BALL_ENTITY, ThrownItemRenderer::new);
 		// 进化美西螈「投掷水矛」直线水矛：3D 投掷态模型，沿飞行方向摆正
 		EntityRendererRegistry.register(SscAddon.THROWN_WATER_SPEAR_ENTITY, net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer.ThrownWaterSpearEntityRenderer::new);
-		EntityRendererRegistry.register(SscAddon.FROST_STORM_ENTITY, EmptyEntityRenderer::new);
-		EntityRendererRegistry.register(SscAddon.FOX_FIREBALL_ENTITY, ctx -> new net.minecraft.client.render.entity.FlyingItemEntityRenderer<>(ctx, 1F, true));
-		EntityRendererRegistry.register(SscAddon.FRIEND_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
-		EntityRendererRegistry.register(SscAddon.CLEAR_MARKER_ENTITY_TYPE, FlyingItemEntityRenderer::new);
-		EntityRendererRegistry.register(SscAddon.INFECTION_SPORE_BOMB_ENTITY, FlyingItemEntityRenderer::new);
-		EntityRendererRegistry.register(SscAddon.PARASITIC_SEED_ENTITY, FlyingItemEntityRenderer::new);
+		EntityRendererRegistry.register(SscAddon.FROST_STORM_ENTITY, NoopRenderer::new);
+		EntityRendererRegistry.register(SscAddon.FOX_FIREBALL_ENTITY, ctx -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(ctx, 1F, true));
+		EntityRendererRegistry.register(SscAddon.FRIEND_MARKER_ENTITY_TYPE, ThrownItemRenderer::new);
+		EntityRendererRegistry.register(SscAddon.CLEAR_MARKER_ENTITY_TYPE, ThrownItemRenderer::new);
+		EntityRendererRegistry.register(SscAddon.INFECTION_SPORE_BOMB_ENTITY, ThrownItemRenderer::new);
+		EntityRendererRegistry.register(SscAddon.PARASITIC_SEED_ENTITY, ThrownItemRenderer::new);
 		EntityRendererRegistry.register(SscAddon.WITCH_FAMILIAR_ENTITY, WitchFamiliarRenderer::new);
 		// 荧光幼灵：潮汐球用 FlyingItemEntityRenderer 渲染潮涌方块作发光核心（对齐 red 火球标准）；
 		// 法阵激光用自定义渲染器画发光法阵 + 穿墙光柱（自发光、粗彩带）
@@ -389,27 +389,27 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// Register predicate for 3D model when held (0.0 = inventory/ground, 1.0 = held)
 		// GUI/GROUND 渲染上下文时强制返回 0，避免 override 把物品栏图标也切到 3D
-		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, Identifier.of("ssc_addon", "held"), (stack, world, entity, seed) ->
+		ItemProperties.register(SscAddon.WATER_SPEAR, ResourceLocation.fromNamespaceAndPath("ssc_addon", "held"), (stack, world, entity, seed) ->
 				net.onixary.shapeShifterCurseFabric.ssc_addon.util.RenderContextTracker.isGuiContext() ? 0.0F :
-				(entity != null && (entity.getMainHandStack() == stack || entity.getOffHandStack() == stack) ? 1.0F : 0.0F)
+				(entity != null && (entity.getMainHandItem() == stack || entity.getOffhandItem() == stack) ? 1.0F : 0.0F)
 		);
 
 		// Also register "throwing" predicate for trident animation support if needed
-		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, Identifier.of("ssc_addon", "throwing"), (stack, world, entity, seed) ->
-				entity != null && entity.isUsingItem() && entity.getActiveItem() == stack ? 1.0F : 0.0F
+		ItemProperties.register(SscAddon.WATER_SPEAR, ResourceLocation.fromNamespaceAndPath("ssc_addon", "throwing"), (stack, world, entity, seed) ->
+				entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F
 		);
 
 		// 无限压缩能量药水：empty 谓词（1=空瓶充能中，切换为空瓶材质）。优先用世界时间戳判断，无世界时退回 NBT 标记
-		net.minecraft.client.item.ClampedModelPredicateProvider infiniteEnergyEmptyPredicate = (stack, world, entity, seed) -> {
-			net.minecraft.world.World w = world != null ? world : (entity != null ? entity.getWorld() : null);
+		net.minecraft.client.renderer.item.ClampedItemPropertyFunction infiniteEnergyEmptyPredicate = (stack, world, entity, seed) -> {
+			net.minecraft.world.level.Level w = world != null ? world : (entity != null ? entity.level() : null);
 			if (w != null) {
 				return net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.isRecharging(stack, w) ? 1.0F : 0.0F;
 			}
 			return net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem.isEmptyByNbt(stack) ? 1.0F : 0.0F;
 		};
-		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
-		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_SPLASH, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
-		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_LINGERING, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ItemProperties.register(SscAddon.INFINITE_ENERGY_POTION, ResourceLocation.fromNamespaceAndPath("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ItemProperties.register(SscAddon.INFINITE_ENERGY_POTION_SPLASH, ResourceLocation.fromNamespaceAndPath("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
+		ItemProperties.register(SscAddon.INFINITE_ENERGY_POTION_LINGERING, ResourceLocation.fromNamespaceAndPath("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
 
 		// SP技能键位现在由Apoli框架自动处理，无需手动轮询
 		// 如需添加新的非Apoli键位检测，可在此处注册
@@ -426,7 +426,7 @@ public class SscAddonClient implements ClientModInitializer {
 		// 契灵 - 主要技能：三段标记
 		MancianimaPrimaryClient.register();
 
-		HandledScreens.register(SscAddon.POTION_BAG_SCREEN_HANDLER, PotionBagScreen::new);
+		MenuScreens.register(SscAddon.POTION_BAG_SCREEN_HANDLER, PotionBagScreen::new);
 
 		// SSCA 美西螈装死 - 提前结束检测器
 		PlayDeadEndClient.register();

@@ -5,11 +5,11 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -31,10 +31,10 @@ public final class VortexChargeClient {
 		ClientTickEvents.END_CLIENT_TICK.register(VortexChargeClient::onClientTick);
 	}
 
-	private static void onClientTick(MinecraftClient client) {
-		ClientPlayerEntity player = client.player;
-		KeyBinding key = SscAddonKeybindings.getPrimaryKey();
-		if (player == null || client.world == null || key == null) {
+	private static void onClientTick(Minecraft client) {
+		LocalPlayer player = client.player;
+		KeyMapping key = SscAddonKeybindings.getPrimaryKey();
+		if (player == null || client.level == null || key == null) {
 			wasKeyPressed = false;
 			return;
 		}
@@ -42,7 +42,7 @@ public final class VortexChargeClient {
 			wasKeyPressed = false;
 			return;
 		}
-		boolean pressed = key.isPressed();
+		boolean pressed = key.isDown();
 		if (pressed && !wasKeyPressed) {
 			int vortexState = PowerUtils.getClientResourceValue(player, VortexChargeManager.VORTEX_STATE);
 			if (vortexState > 0) {
@@ -54,8 +54,8 @@ public final class VortexChargeClient {
 		wasKeyPressed = pressed;
 	}
 
-	private static void send(Identifier packet) {
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+	private static void send(ResourceLocation packet) {
+		FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
 		ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), buf));
 	}
 }

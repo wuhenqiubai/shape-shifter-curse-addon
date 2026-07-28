@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.render;
 
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
@@ -45,7 +45,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(targets = "net.onixary.shapeShifterCurseFabric.custom_ui.FormColorSelectMenu", priority = 1100)
 public abstract class FormColorSelectMenuMixin extends Screen {
 
-    protected FormColorSelectMenuMixin(Text title) {
+    protected FormColorSelectMenuMixin(Component title) {
         super(title);
     }
 
@@ -72,11 +72,11 @@ public abstract class FormColorSelectMenuMixin extends Screen {
         require = 0,
         remap = false
     )
-    private void sscAddon$normalizeShortHex(String color, CallbackInfoReturnable<Integer> cir) {
-        if (color == null || color.isEmpty()) {
+    private void sscAddon$normalizeShortHex(String Color, CallbackInfoReturnable<Integer> cir) {
+        if (Color == null || Color.isEmpty()) {
             return;
         }
-        String s = color.trim();
+        String s = Color.trim();
         if (!s.startsWith("#")) {
             return;
         }

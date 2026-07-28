@@ -1,14 +1,13 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 
-import net.minecraft.registry.RegistryWrapper;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
-
 import java.util.HashSet;
 import java.util.Set;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 
 /**
  * SSCA 进化加点系统 - 玩家进化数据组件（服务端权威，自动同步到客户端）。
@@ -155,14 +154,14 @@ public class EvolutionComponent implements AutoSyncedComponent {
     // ---------------- 持久化 / 同步 ----------------
 
     @Override
-    public void readFromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+    public void readFromNbt(CompoundTag nbt, HolderLookup.Provider registryLookup) {
         this.route = nbt.getString("route");
         this.branch = nbt.getString("branch");
         this.exp = nbt.getInt("exp");
         this.unlockAll = nbt.getBoolean("unlockAll");
         this.points = nbt.getInt("points");
         this.unlockedNodes.clear();
-        NbtList list = nbt.getList("unlocked", NbtElement.STRING_TYPE);
+        ListTag list = nbt.getList("unlocked", Tag.TAG_STRING);
         for (int i = 0; i < list.size(); i++) {
             this.unlockedNodes.add(list.getString(i));
         }
@@ -174,15 +173,15 @@ public class EvolutionComponent implements AutoSyncedComponent {
     }
 
     @Override
-    public void writeToNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+    public void writeToNbt(CompoundTag nbt, HolderLookup.Provider registryLookup) {
         nbt.putString("route", getRoute());
         nbt.putString("branch", getBranch());
         nbt.putInt("exp", this.exp);
         nbt.putBoolean("unlockAll", this.unlockAll);
         nbt.putInt("points", this.points);
-        NbtList list = new NbtList();
+        ListTag list = new ListTag();
         for (String node : this.unlockedNodes) {
-            list.add(NbtString.of(node));
+            list.add(StringTag.valueOf(node));
         }
         nbt.put("unlocked", list);
         int[] granted = new int[this.grantedLevels.size()];

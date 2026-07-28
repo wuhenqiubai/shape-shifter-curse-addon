@@ -1,11 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.world.entity.player.Player;
 import net.onixary.shapeShifterCurseFabric.render.form_render.DefaultModelAnimationSystem;
 import net.onixary.shapeShifterCurseFabric.render.form_render.FormModel;
 import net.onixary.shapeShifterCurseFabric.render.form_render.FormRenderer;
-import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -29,17 +30,21 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.client.UpgradeAxolotlSpearR
 public class UpgradeAxolotlSpearChargeArmMixin {
 
     // vanilla BipedEntityModel.setAngles 中 THROW_SPEAR 的右臂角度（弧度）
+    @Unique
     private static final float THROW_SPEAR_RIGHT_PITCH = -3.0F;
+    @Unique
     private static final float THROW_SPEAR_RIGHT_YAW = -0.875F;
     // 左臂改为「向前伸」（托住矛杆 / 指向前方），而非双手都举过肩
+    @Unique
     private static final float LEFT_ARM_FORWARD_PITCH = -1.4F;   // 手臂近乎水平指向前方
+    @Unique
     private static final float LEFT_ARM_FORWARD_YAW = -0.3F;     // 略内收
 
     @Inject(method = "processAnimation", at = @At("TAIL"), require = 0)
     private void ssc_addon$raiseSpearChargeArm(FormRenderer formRenderer, FormModel model,
-            PlayerEntityRenderer renderer, PlayerEntity player, float limbAngle, float limbDistance,
+            PlayerRenderer renderer, Player player, float limbAngle, float limbDistance,
             float tickDelta, float animationProgress, float headYaw, float headPitch, CallbackInfo ci) {
-        if (player == null || !UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
+        if (player == null || !UpgradeAxolotlSpearRenderState.isCharging(player.getUUID())) {
             return;
         }
         // 蓄力中：覆盖右臂（持矛手）骨骼旋转为三叉戟蓄力角度（举过肩）

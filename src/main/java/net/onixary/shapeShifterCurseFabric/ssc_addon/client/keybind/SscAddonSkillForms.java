@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.keybind;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.RegPlayerForms;
 
@@ -37,7 +37,7 @@ public final class SscAddonSkillForms {
 				if (form == null) {
 					continue;
 				}
-				Identifier id = form.getFormID();
+				ResourceLocation id = form.getFormID();
 				if (id != null && "my_addon".equals(id.getNamespace())) {
 					paths.add(id.getPath());
 				}
@@ -50,7 +50,7 @@ public final class SscAddonSkillForms {
 	}
 
 	/** 形态显示名（复用游戏内形态名 lang 键）。 */
-	public static Text displayName(String formPath) {
-		return Text.translatable("origin.my_addon.form_" + formPath + ".name");
+	public static Component displayName(String formPath) {
+		return Component.translatable("origin.my_addon.form_" + formPath + ".name");
 	}
 }

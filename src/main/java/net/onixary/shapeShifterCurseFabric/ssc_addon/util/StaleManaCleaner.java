@@ -2,9 +2,9 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Pair;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Tuple;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.additional_power.ManaTypePower;
 import net.onixary.shapeShifterCurseFabric.mana.ManaComponent;
@@ -58,7 +58,7 @@ public final class StaleManaCleaner {
             return;
         }
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ServerPlayerEntity player = handler.player;
+            ServerPlayer player = handler.player;
             // 延迟 2 tick 调度，确保 Apoli 已完成 power 反序列化与 onAdded 回放
             server.execute(() -> server.execute(() -> {
                 try {
@@ -72,7 +72,7 @@ public final class StaleManaCleaner {
         });
     }
 
-    private static void cleanup(ServerPlayerEntity player) {
+    private static void cleanup(ServerPlayer player) {
         ManaComponent mana = ManaUtils.getManaComponent(player);
         if (mana == null || mana.ManaTypeSourceMap.isEmpty()) {
             return;
@@ -81,11 +81,11 @@ public final class StaleManaCleaner {
         // 收集当前活跃的 (manaType, manaSource) 组合
         Set<String> activePairs = new HashSet<>();
         for (ManaTypePower power : PowerHolderComponent.getPowers(player, ManaTypePower.class)) {
-            Identifier mt;
-            Identifier ms;
+            ResourceLocation mt;
+            ResourceLocation ms;
             try {
-                mt = (Identifier) MANA_TYPE_FIELD.get(power);
-                ms = (Identifier) MANA_SOURCE_FIELD.get(power);
+                mt = (ResourceLocation) MANA_TYPE_FIELD.get(power);
+                ms = (ResourceLocation) MANA_SOURCE_FIELD.get(power);
             } catch (IllegalAccessException e) {
                 continue;
             }
@@ -95,13 +95,13 @@ public final class StaleManaCleaner {
         }
 
         // 收集孤儿条目（与 Map 解耦避免并发修改）
-        List<Pair<Identifier, Identifier>> orphans = new ArrayList<>();
+        List<Tuple<ResourceLocation, ResourceLocation>> orphans = new ArrayList<>();
         mana.ManaTypeSourceMap.forEach((typeId, sources) -> {
             if (sources == null) return;
-            for (Identifier source : sources) {
+            for (ResourceLocation source : sources) {
                 if (source == null) continue;
                 if (!activePairs.contains(typeId + "|" + source)) {
-                    orphans.add(new Pair<>(typeId, source));
+                    orphans.add(new Tuple<>(typeId, source));
                 }
             }
         });
@@ -110,8 +110,8 @@ public final class StaleManaCleaner {
             return;
         }
 
-        for (Pair<Identifier, Identifier> orphan : orphans) {
-            mana.loseManaTypeID(orphan.getLeft(), orphan.getRight());
+        for (Tuple<ResourceLocation, ResourceLocation> orphan : orphans) {
+            mana.loseManaTypeID(orphan.getA(), orphan.getB());
         }
         ShapeShifterCurseFabric.LOGGER.info(
                 "[ssc_addon] 已清理 {} 个孤儿 mana 条目 (玩家: {})",

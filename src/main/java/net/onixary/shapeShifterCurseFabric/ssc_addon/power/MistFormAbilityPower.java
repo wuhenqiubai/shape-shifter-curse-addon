@@ -9,20 +9,20 @@ import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.apoli.util.HudRender;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Box;
 import io.github.apace100.apoli.component.PowerHolderComponent;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.onixary.shapeShifterCurseFabric.additional_power.BatBlockAttachPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -57,7 +57,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	private boolean charging = false;      // 凝聚爆破蓄力中
 	private long chargeStartTime = 0L;     // 蓄力起始时间
 	// 血雾红色尘埃粒子（体现“血”雾）
-	private static final DustParticleEffect BLOOD_DUST = new DustParticleEffect(new org.joml.Vector3f(0.78f, 0.06f, 0.06f), 1.2f);
+	private static final DustParticleOptions BLOOD_DUST = new DustParticleOptions(new org.joml.Vector3f(0.78f, 0.06f, 0.06f), 1.2f);
 	// 雾血资源相关（0~100）
 	private static final int BLOOD_ENTER_COST = 0;     // 进入雾化起手消耗（无消耗）
 	@SuppressWarnings("unused") // 预留可调参数：后续若要恢复雾化期间的每秒持续消耗，把值改回正数并恢复 tick() 内对应分支
@@ -75,7 +75,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(Identifier.of("my_addon", "mist_form"),
+		return new PowerFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "mist_form"),
 				new SerializableData()
 						.add("cooldown", SerializableDataTypes.INT, 200)
 						.add("duration", SerializableDataTypes.INT, 90)
@@ -95,12 +95,12 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	}
 
 	private boolean isMist() {
-		return entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY);
+		return entity.hasEffect(SscAddon.MIST_FORM_ENTRY);
 	}
 
 	/** 读取当前雾血值（仅服务端有效） */
 	private int getBlood() {
-		if (entity instanceof ServerPlayerEntity serverPlayer) {
+		if (entity instanceof ServerPlayer serverPlayer) {
 			return PowerUtils.getResourceValue(serverPlayer, FormIdentifiers.BAT_BLOOD_RESOURCE);
 		}
 		return 0;
@@ -108,7 +108,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 	/** 设置雾血值并同步（自动夹取 0~100） */
 	private void setBlood(int value) {
-		if (entity instanceof ServerPlayerEntity serverPlayer) {
+		if (entity instanceof ServerPlayer serverPlayer) {
 			int v = Math.max(0, Math.min(100, value));
 			PowerUtils.setResourceValueAndSync(serverPlayer, FormIdentifiers.BAT_BLOOD_RESOURCE, v);
 		}
@@ -116,20 +116,20 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 	/** 雾化期间豁免 vanilla 服务器悬空踢人检测（悦灵同款：用无重力而非 allowFlying，避免误触原版创造飞行），退出时复位；创造/观察模式不改动。仅服务端生效 */
 	private void setFlightExempt(boolean exempt) {
-		if (!(entity instanceof ServerPlayerEntity sp)) return;
+		if (!(entity instanceof ServerPlayer sp)) return;
 		if (sp.isCreative() || sp.isSpectator()) return;
 		sp.setNoGravity(exempt);
 	}
 
 	/** 内部冷却是否就绪（服务端tick基准） */
 	public boolean isInternalCooldownReady() {
-		return entity.getWorld().getTime() >= internalCooldownEndTime;
+		return entity.level().getGameTime() >= internalCooldownEndTime;
 	}
 
 	/** 进入冷却并同步CD条资源 */
 	private void applyCooldown() {
-		internalCooldownEndTime = entity.getWorld().getTime() + cooldownTicks;
-		if (entity instanceof ServerPlayerEntity serverPlayer) {
+		internalCooldownEndTime = entity.level().getGameTime() + cooldownTicks;
+		if (entity instanceof ServerPlayer serverPlayer) {
 			PowerUtils.setResourceValueAndSync(serverPlayer, FormIdentifiers.SP_PRIMARY_CD, cooldownTicks);
 		}
 	}
@@ -137,24 +137,24 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	/** 进入雾化状态：标记效果 + 原版隐身（让形态模型消失）+ 起始粒子与音效 */
 	private void enterMist() {
 		// 进入雾化前解除蝙蝠的右键贴墙附着，避免附着锁定与化雾飞行相互冲突
-		if (entity instanceof PlayerEntity player) {
+		if (entity instanceof Player player) {
 			PowerHolderComponent.getPowers(player, BatBlockAttachPower.class).stream()
 					.filter(BatBlockAttachPower::isAttached).findFirst()
 					.ifPresent(p -> p.detach(player, false));
 		}
-		entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_FORM_ENTRY, effectDuration, 0, false, false, true));
+		entity.addEffect(new MobEffectInstance(SscAddon.MIST_FORM_ENTRY, effectDuration, 0, false, false, true));
 		// 原版隐身：FormRenderFeature 在 isInvisible() 时跳过形态模型渲染，从而实现“模型消失”
-		entity.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY, effectDuration, 0, false, false, false));
-		entity.calculateDimensions();
+		entity.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, effectDuration, 0, false, false, false));
+		entity.refreshDimensions();
 		wasMist = true;
-		mistStartTime = entity.getWorld().getTime();
-		lastBloodDrainTime = entity.getWorld().getTime();
+		mistStartTime = entity.level().getGameTime();
+		lastBloodDrainTime = entity.level().getGameTime();
 		// 进入雾化起手扣血
 		setBlood(getBlood() - BLOOD_ENTER_COST);
 
-		ServerWorld serverWorld = (ServerWorld) entity.getWorld();
+		ServerLevel serverWorld = (ServerLevel) entity.level();
 		double cx = entity.getX();
-		double cy = entity.getY() + entity.getHeight() * 0.5;
+		double cy = entity.getY() + entity.getBbHeight() * 0.5;
 		double cz = entity.getZ();
 		// 进入雾化：浓密雾团（CLOUD 主体 + 灰烟点缀），明显可见的化雾爆发
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CLOUD,
@@ -165,71 +165,71 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 		ParticleUtils.spawnParticles(serverWorld, BLOOD_DUST,
 				cx, cy, cz, 30, 0.5, 0.7, 0.5, 0.0);
 		serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-				SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0f, 0.8f);
+				SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 1.0f, 0.8f);
 		// 进入雾化：开启服务端飞行豁免，防 vanilla 服务器飞行检测踢人
 		setFlightExempt(true);
 	}
 
 	/** 退出雾化状态：清除雾化与隐身效果，可选播放收束粒子与音效 */
 	private void exitMist(boolean withEffect) {
-		if (entity.hasStatusEffect(SscAddon.MIST_FORM_ENTRY)) {
-			entity.removeStatusEffect(SscAddon.MIST_FORM_ENTRY);
+		if (entity.hasEffect(SscAddon.MIST_FORM_ENTRY)) {
+			entity.removeEffect(SscAddon.MIST_FORM_ENTRY);
 		}
-		if (entity.hasStatusEffect(StatusEffects.INVISIBILITY)) {
-			entity.removeStatusEffect(StatusEffects.INVISIBILITY);
+		if (entity.hasEffect(MobEffects.INVISIBILITY)) {
+			entity.removeEffect(MobEffects.INVISIBILITY);
 		}
-		entity.calculateDimensions();
+		entity.refreshDimensions();
 		wasMist = false;
 		// 退出雾化：复位飞行豁免
 		setFlightExempt(false);
 
-		if (withEffect && entity.getWorld() instanceof ServerWorld serverWorld) {
+		if (withEffect && entity.level() instanceof ServerLevel serverWorld) {
 			ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CAMPFIRE_COSY_SMOKE,
-					entity.getX(), entity.getY() + entity.getHeight() * 0.5, entity.getZ(),
+					entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
 					25, 0.4, 0.6, 0.4, 0.02);
 			serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-					SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.8f, 1.2f);
+					SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.8f, 1.2f);
 		}
 	}
 
 	/** 凝聚爆破：在原地引爆一团雾，对范围内非白名单生物造成伤害与击退 */
 	private void detonate() {
-		ServerWorld serverWorld = (ServerWorld) entity.getWorld();
-		DamageSource source = entity.getDamageSources().magic();
-		Box box = entity.getBoundingBox().expand(AOE_RADIUS);
+		ServerLevel serverWorld = (ServerLevel) entity.level();
+		DamageSource source = entity.damageSources().magic();
+		AABB box = entity.getBoundingBox().inflate(AOE_RADIUS);
 		double radiusSq = AOE_RADIUS * AOE_RADIUS;
-		List<LivingEntity> targets = serverWorld.getEntitiesByClass(LivingEntity.class, box,
+		List<LivingEntity> targets = serverWorld.getEntitiesOfClass(LivingEntity.class, box,
 				living -> living != entity && living.isAlive());
 		// 收集真正命中（非白名单）的目标，供血渴值「凝聚爆破命中 +12/6/3」结算
 		java.util.List<LivingEntity> hitTargets = new java.util.ArrayList<>();
 		for (LivingEntity target : targets) {
-			if (entity.squaredDistanceTo(target) > radiusSq) continue;
+			if (entity.distanceToSqr(target) > radiusSq) continue;
 			// 默认白名单：受保护个体（玩家及其宠物/召唤物）不受伤害与击退
-			if (entity instanceof ServerPlayerEntity serverPlayer && WhitelistUtils.isProtected(serverPlayer, target)) {
+			if (entity instanceof ServerPlayer serverPlayer && WhitelistUtils.isProtected(serverPlayer, target)) {
 				continue;
 			}
-			target.damage(source, AOE_DAMAGE);
+			target.hurt(source, AOE_DAMAGE);
 			// 从玩家位置向外击退
-			target.takeKnockback(AOE_KNOCKBACK, entity.getX() - target.getX(), entity.getZ() - target.getZ());
+			target.knockback(AOE_KNOCKBACK, entity.getX() - target.getX(), entity.getZ() - target.getZ());
 			hitTargets.add(target);
 		}
-		if (entity instanceof ServerPlayerEntity serverPlayer && !hitTargets.isEmpty()) {
+		if (entity instanceof ServerPlayer serverPlayer && !hitTargets.isEmpty()) {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst
 					.onSkillHit(serverPlayer, hitTargets);
 		}
 		// 爆破粒子与音效
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.EXPLOSION,
-				entity.getX(), entity.getY() + entity.getHeight() * 0.5, entity.getZ(),
+				entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
 				8, 1.0, 1.0, 1.0, 0.0);
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CAMPFIRE_COSY_SMOKE,
-				entity.getX(), entity.getY() + entity.getHeight() * 0.5, entity.getZ(),
+				entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
 				60, AOE_RADIUS * 0.5, 0.8, AOE_RADIUS * 0.5, 0.05);
 		// 血雾红色尘埃：集中起爆点 + 大速度 → 突然向外快速扩散
 		ParticleUtils.spawnParticles(serverWorld, BLOOD_DUST,
-				entity.getX(), entity.getY() + entity.getHeight() * 0.5, entity.getZ(),
+				entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
 				50, 0.1, 0.1, 0.1, 0.7);
 		serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-				SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.0f, 1.2f);
+				SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0f, 1.2f);
 	}
 
 	/** 进入凝聚爆破蓄力：减速50%（MIST_CHARGING 标记驱动）+ 防雾化提前消失（延长至爆破完成）+ 蓄力起手音效 */
@@ -238,24 +238,24 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 		chargeStartTime = now;
 		setBlood(getBlood() - BLOOD_BURST_COST);
 		// 蓄力标记：客户端据此将化雾飞行减速 50%
-		entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_CHARGING_ENTRY, CHARGE_DURATION + 5, 0, false, false, false));
+		entity.addEffect(new MobEffectInstance(SscAddon.MIST_CHARGING_ENTRY, CHARGE_DURATION + 5, 0, false, false, false));
 		// 防止蓄力期间雾化提前结束：剩余不足则延长 MIST_FORM/隐身至爆破完成
-		StatusEffectInstance mistInst = entity.getStatusEffect(SscAddon.MIST_FORM_ENTRY);
+		MobEffectInstance mistInst = entity.getEffect(SscAddon.MIST_FORM_ENTRY);
 		if (mistInst == null || mistInst.getDuration() < CHARGE_DURATION + 5) {
-			entity.addStatusEffect(new StatusEffectInstance(SscAddon.MIST_FORM_ENTRY, CHARGE_DURATION + 5, 0, false, false, true));
-			entity.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY, CHARGE_DURATION + 5, 0, false, false, false));
+			entity.addEffect(new MobEffectInstance(SscAddon.MIST_FORM_ENTRY, CHARGE_DURATION + 5, 0, false, false, true));
+			entity.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, CHARGE_DURATION + 5, 0, false, false, false));
 		}
-		if (entity.getWorld() instanceof ServerWorld sw) {
+		if (entity.level() instanceof ServerLevel sw) {
 			sw.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-					SoundEvents.BLOCK_BEACON_ACTIVATE, SoundCategory.PLAYERS, 0.8f, 1.6f);
+					SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.8f, 1.6f);
 		}
 	}
 
 	/** 蓄力期间的向内聚集粒子：外圈红色血雾以 count=0 定向粒子朝中心收束，半径随蓄力缩小 */
 	private void spawnChargeConvergence(long elapsed) {
-		if (!(entity.getWorld() instanceof ServerWorld sw)) return;
+		if (!(entity.level() instanceof ServerLevel sw)) return;
 		double px = entity.getX();
-		double py = entity.getY() + entity.getHeight() * 0.5;
+		double py = entity.getY() + entity.getBbHeight() * 0.5;
 		double pz = entity.getZ();
 		double progress = Math.min(1.0, elapsed / (double) CHARGE_DURATION);
 		double radius = 2.6 * (1.0 - progress) + 0.4; // 半径随蓄力缩小，营造向内聚集
@@ -264,7 +264,7 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 			double ang = 2 * Math.PI * i / n + elapsed * 0.35;
 			double ox = Math.cos(ang) * radius;
 			double oz = Math.sin(ang) * radius;
-			double oy = (entity.getRandom().nextDouble() - 0.5) * entity.getHeight();
+			double oy = (entity.getRandom().nextDouble() - 0.5) * entity.getBbHeight();
 			// count=0 定向粒子：初速度 = (offset)*speed，方向指向中心 → 向内聚集
 			ParticleUtils.spawnParticles(sw, BLOOD_DUST, px + ox, py + oy, pz + oz,
 					0, -ox, -oy, -oz, 0.3);
@@ -275,17 +275,17 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	public void tick() {
 		super.tick();
 
-		if (entity == null || entity.getWorld().isClient) return;
+		if (entity == null || entity.level().isClientSide) return;
 
 		// 被 sp悦灵净化：立即中断雾化（含蓄力）并进入冷却
-		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
+		if (entity.hasEffect(SscAddon.PURIFIED_ENTRY)) {
 			if (isMist()) {
 				exitMist(true);
 				applyCooldown();
 			}
 			charging = false;
-			if (entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) {
-				entity.removeStatusEffect(SscAddon.MIST_CHARGING_ENTRY);
+			if (entity.hasEffect(SscAddon.MIST_CHARGING_ENTRY)) {
+				entity.removeEffect(SscAddon.MIST_CHARGING_ENTRY);
 			}
 			wasMist = false;
 			return;
@@ -295,12 +295,12 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 		// 凝聚爆破蓄力进行中：持续向内聚集粒子，蓄满 1 秒后突然引爆向外扩散
 		if (charging) {
-			long elapsed = entity.getWorld().getTime() - chargeStartTime;
+			long elapsed = entity.level().getGameTime() - chargeStartTime;
 			spawnChargeConvergence(elapsed);
 			if (elapsed >= CHARGE_DURATION) {
 				charging = false;
-				if (entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) {
-					entity.removeStatusEffect(SscAddon.MIST_CHARGING_ENTRY);
+				if (entity.hasEffect(SscAddon.MIST_CHARGING_ENTRY)) {
+					entity.removeEffect(SscAddon.MIST_CHARGING_ENTRY);
 				}
 				detonate();
 				exitMist(false);
@@ -312,16 +312,16 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 		// 自然结束检测：上一tick仍在雾化、本tick效果到期消失 -> 进入冷却
 		if (wasMist && !mist) {
-			if (entity.hasStatusEffect(StatusEffects.INVISIBILITY)) {
-				entity.removeStatusEffect(StatusEffects.INVISIBILITY);
+			if (entity.hasEffect(MobEffects.INVISIBILITY)) {
+				entity.removeEffect(MobEffects.INVISIBILITY);
 			}
 			applyCooldown();
 			// 自然结束：复位飞行豁免
 			setFlightExempt(false);
-			entity.calculateDimensions();
-			if (entity.getWorld() instanceof ServerWorld serverWorld) {
+			entity.refreshDimensions();
+			if (entity.level() instanceof ServerLevel serverWorld) {
 				serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-						SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.8f, 1.2f);
+						SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.8f, 1.2f);
 			}
 			wasMist = false;
 			return;
@@ -329,24 +329,24 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 		// 雾化持续期间：每秒持续消耗雾血，耗尽则强制解除；并散发雾气粒子
 		if (mist) {
-			if (entity.getWorld().getTime() - lastBloodDrainTime >= 20) {
-				lastBloodDrainTime = entity.getWorld().getTime();
+			if (entity.level().getGameTime() - lastBloodDrainTime >= 20) {
+				lastBloodDrainTime = entity.level().getGameTime();
 				// 雾血每秒消耗已取消（BLOOD_PER_SECOND_COST=0）；若后续要恢复可以在这里重新加回「扣血 + 耀尽强退」逻辑
 				// 75-100 血渴值阶段：血雾光环每秒对周围 2 格内非白名单生物造成 2 点伤害，每命中一次回吸血蝙蝠 2 点生命
-				if (entity instanceof ServerPlayerEntity sp
+				if (entity instanceof ServerPlayer sp
 						&& net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.getStage(sp) == 3) {
-					Box aura = entity.getBoundingBox().expand(2.0, 2.0, 2.0);
+					AABB aura = entity.getBoundingBox().inflate(2.0, 2.0, 2.0);
 					double auraSq = 2.0 * 2.0;
-					DamageSource auraSrc = entity.getDamageSources().magic();
-					List<LivingEntity> auraTargets = ((ServerWorld) entity.getWorld()).getEntitiesByClass(
+					DamageSource auraSrc = entity.damageSources().magic();
+					List<LivingEntity> auraTargets = ((ServerLevel) entity.level()).getEntitiesOfClass(
 							LivingEntity.class, aura, t -> t != entity && t.isAlive());
 					for (LivingEntity t : auraTargets) {
-						if (entity.squaredDistanceTo(t) > auraSq) continue;
+						if (entity.distanceToSqr(t) > auraSq) continue;
 						if (WhitelistUtils.isProtected(sp, t)) continue;
 						net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.SUPPRESS_OUTGOING_BUFF.set(true);
 						boolean dealt;
 						try {
-							dealt = t.damage(auraSrc, 2.0f);
+							dealt = t.hurt(auraSrc, 2.0f);
 						} finally {
 							net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst.SUPPRESS_OUTGOING_BUFF.set(false);
 						}
@@ -357,14 +357,14 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 				}
 			}
 			// 持续雾化：每 tick 生成浓雾团包裹全身，明显可见
-			ServerWorld serverWorld = (ServerWorld) entity.getWorld();
+			ServerLevel serverWorld = (ServerLevel) entity.level();
 			double px = entity.getX();
-			double py = entity.getY() + entity.getHeight() * 0.5;
+			double py = entity.getY() + entity.getBbHeight() * 0.5;
 			double pz = entity.getZ();
 			ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CLOUD,
 					px, py, pz, 6, 0.4, 0.6, 0.4, 0.01);
 			ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CAMPFIRE_COSY_SMOKE,
-					px, py - entity.getHeight() * 0.05, pz, 3, 0.35, 0.5, 0.35, 0.01);
+					px, py - entity.getBbHeight() * 0.05, pz, 3, 0.35, 0.5, 0.35, 0.01);
 			// 红色血雾点缀：少量红色尘埃掺杂在雾中，体现“血”雾
 			ParticleUtils.spawnParticles(serverWorld, BLOOD_DUST,
 					px, py, pz, 2, 0.4, 0.6, 0.4, 0.0);
@@ -380,11 +380,11 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 
 	@Override
 	public void onUse() {
-		if (entity == null || entity.getWorld().isClient) return;
+		if (entity == null || entity.level().isClientSide) return;
 		// 净化期间禁止施放
-		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
+		if (entity.hasEffect(SscAddon.PURIFIED_ENTRY)) return;
 
-		long now = entity.getWorld().getTime();
+		long now = entity.level().getGameTime();
 		if (isMist()) {
 			// 凝聚爆破需化雾满 MIST_BURST_DELAY 后才可触发；蓄力中再按键无效
 			boolean burstReady = now - mistStartTime >= MIST_BURST_DELAY;
@@ -400,11 +400,11 @@ public class MistFormAbilityPower extends ActiveCooldownPower {
 	@Override
 	public void onLost() {
 		super.onLost();
-		if (entity == null || entity.getWorld().isClient) return;
+		if (entity == null || entity.level().isClientSide) return;
 		// 形态切换/能力移除时兜底：解除雾化、蓄力与飞行豁免，避免残留作弊飞行
 		charging = false;
-		if (entity.hasStatusEffect(SscAddon.MIST_CHARGING_ENTRY)) {
-			entity.removeStatusEffect(SscAddon.MIST_CHARGING_ENTRY);
+		if (entity.hasEffect(SscAddon.MIST_CHARGING_ENTRY)) {
+			entity.removeEffect(SscAddon.MIST_CHARGING_ENTRY);
 		}
 		if (isMist()) {
 			exitMist(false);

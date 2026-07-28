@@ -1,33 +1,32 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.recipe;
 
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.inventory.RecipeInputInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.SpecialCraftingRecipe;
-import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.recipe.input.CraftingRecipeInput;
-import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.world.World;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CustomRecipe;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.PortableMoisturizerItem;
+import org.jetbrains.annotations.NotNull;
 
-public class RefillMoisturizerRecipe extends SpecialCraftingRecipe {
+public class RefillMoisturizerRecipe extends CustomRecipe {
 
-	public RefillMoisturizerRecipe(CraftingRecipeCategory category) {
+	public RefillMoisturizerRecipe(CraftingBookCategory category) {
 		super(category);
 	}
 
 	@Override
-	public boolean matches(CraftingRecipeInput input, World world) {
+	public boolean matches(CraftingInput input, Level world) {
 		boolean hasMoisturizer = false;
 		boolean hasBucket = false;
 
-		for (int i = 0; i < input.getSize(); ++i) {
-			ItemStack stack = input.getStackInSlot(i);
+		for (int i = 0; i < input.size(); ++i) {
+			ItemStack stack = input.getItem(i);
 			if (!stack.isEmpty()) {
 				if (stack.getItem() == SscAddon.PORTABLE_MOISTURIZER && !hasMoisturizer) {
 					hasMoisturizer = true;
@@ -42,7 +41,7 @@ public class RefillMoisturizerRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
+	public @NotNull ItemStack assemble(CraftingInput input, HolderLookup.Provider lookup) {
 		ItemStack moisturizer = ItemStack.EMPTY;
 
 		// Find input moisturizer to copy NBT if needed (though we reset charge anyway)
@@ -50,8 +49,8 @@ public class RefillMoisturizerRecipe extends SpecialCraftingRecipe {
 		// Let's create a fresh one with max charge.
 
 		// Actually, we should probably output a copy of the input moisturizer but with full charge.
-		for (int i = 0; i < input.getSize(); ++i) {
-			ItemStack stack = input.getStackInSlot(i);
+		for (int i = 0; i < input.size(); ++i) {
+			ItemStack stack = input.getItem(i);
 			if (stack.getItem() == SscAddon.PORTABLE_MOISTURIZER) {
 				moisturizer = stack.copy();
 				break;
@@ -59,14 +58,14 @@ public class RefillMoisturizerRecipe extends SpecialCraftingRecipe {
 		}
 
 		if (!moisturizer.isEmpty()) {
-			boolean wasActive = moisturizer.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getBoolean("Active");
+			boolean wasActive = moisturizer.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe().getBoolean("Active");
 			moisturizer.setCount(1);
 
 			// Set Charge to Max (5400)
-			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, moisturizer, nbt -> nbt.putInt("Charge", PortableMoisturizerItem.MAX_CHARGE));
+			CustomData.update(DataComponents.CUSTOM_DATA, moisturizer, nbt -> nbt.putInt("Charge", PortableMoisturizerItem.MAX_CHARGE));
 
 			// Should we keep it active? Usually refilling allows it to continue working immediately.
-			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, moisturizer, nbt -> nbt.putBoolean("Active", wasActive));
+			CustomData.update(DataComponents.CUSTOM_DATA, moisturizer, nbt -> nbt.putBoolean("Active", wasActive));
 
 			return moisturizer;
 		}
@@ -75,7 +74,7 @@ public class RefillMoisturizerRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public boolean fits(int width, int height) {
+	public boolean canCraftInDimensions(int width, int height) {
 		return width * height >= 2;
 	}
 

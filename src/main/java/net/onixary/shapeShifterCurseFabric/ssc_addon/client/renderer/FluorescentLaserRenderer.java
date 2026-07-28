@@ -1,21 +1,22 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.Perspective;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
@@ -28,7 +29,7 @@ import org.joml.Matrix4f;
  */
 @Environment(EnvType.CLIENT)
 public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
-	private static final Identifier TEXTURE = Identifier.of("minecraft", "textures/misc/white.png");
+	private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png");
 
 	private static final float[] CYAN   = {0.35f, 0.90f, 1.00f, 0.85f};
 	private static final float[] BLUE   = {0.35f, 0.55f, 1.00f, 0.85f};
@@ -41,50 +42,50 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	// 与 LaserBeamEntity 一致（RELEASE_TICKS 仅作文档参考，渲染逻辑不直接读取故不在此声明）
 	private static final int FADE_TICKS = 30;
 
-	public FluorescentLaserRenderer(EntityRendererFactory.Context ctx) {
+	public FluorescentLaserRenderer(EntityRendererProvider.Context ctx) {
 		super(ctx);
 	}
 
 	@Override
-	public void render(LaserBeamEntity entity, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vcp, int light) {
-		Entity owner = entity.getWorld().getEntityById(entity.getTrackedOwnerId());
+	public void render(LaserBeamEntity entity, float yaw, float tickDelta, PoseStack matrices, MultiBufferSource vcp, int light) {
+		Entity owner = entity.level().getEntity(entity.getTrackedOwnerId());
 		if (owner == null) return;
 
-		float oyaw = MathHelper.lerp(tickDelta, owner.prevYaw, owner.getYaw());
-		float opitch = MathHelper.lerp(tickDelta, owner.prevPitch, owner.getPitch());
+		float oyaw = Mth.lerp(tickDelta, owner.yRotO, owner.getYRot());
+		float opitch = Mth.lerp(tickDelta, owner.xRotO, owner.getXRot());
 		double yawR = Math.toRadians(oyaw), pitchR = Math.toRadians(opitch);
 		double ax = -Math.sin(yawR) * Math.cos(pitchR);
 		double ay = -Math.sin(pitchR);
 		double az = Math.cos(yawR) * Math.cos(pitchR);
 		double d = LaserBeamEntity.arrayDist();
 
-		double ox = MathHelper.lerp(tickDelta, owner.prevX, owner.getX());
-		double oy = MathHelper.lerp(tickDelta, owner.prevY, owner.getY()) + owner.getStandingEyeHeight();
-		double oz = MathHelper.lerp(tickDelta, owner.prevZ, owner.getZ());
-		double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
-		double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
-		double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
+		double ox = Mth.lerp(tickDelta, owner.xo, owner.getX());
+		double oy = Mth.lerp(tickDelta, owner.yo, owner.getY()) + owner.getEyeHeight();
+		double oz = Mth.lerp(tickDelta, owner.zo, owner.getZ());
+		double ex = Mth.lerp(tickDelta, entity.xo, entity.getX());
+		double ey = Mth.lerp(tickDelta, entity.yo, entity.getY());
+		double ez = Mth.lerp(tickDelta, entity.zo, entity.getZ());
 
-		matrices.push();
+		matrices.pushPose();
 		// 平移到法阵位置（玩家眼部 + 准星 * arrayDist）
 		matrices.translate((ox - ex) + ax * d, (oy - ey) + ay * d, (oz - ez) + az * d);
 		// 朝向准星：旋转后本地 +Z = 准星方向
-		matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-oyaw));
-		matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(opitch));
+		matrices.mulPose(Axis.YP.rotationDegrees(-oyaw));
+		matrices.mulPose(Axis.XP.rotationDegrees(opitch));
 
 		int phaseId = entity.getPhaseId();
 		float pt = entity.getPhaseTick() + tickDelta;
 		float age = pt + phaseId * 200f;   // 连续自转时间
 
 		// 法阵/光柱用 lightning 渲染层（天然双面、发光、无视光照，任意角度可见）
-		VertexConsumer buf = vcp.getBuffer(RenderLayer.getLightning());
+		VertexConsumer buf = vcp.getBuffer(RenderType.lightning());
 
 		// === 法阵（XY 平面，法线 +Z=准星）===
-		drawArray(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), age);
+		drawArray(buf, matrices.last().pose(), matrices.last().normal(), age);
 
 		// === 蓄力期四条白线（客户端绘制，无粒子残留）===
 		if (phaseId == 0) {
-			drawChargeLines(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), pt, entity.beamLength());
+			drawChargeLines(buf, matrices.last().pose(), matrices.last().normal(), pt, entity.beamLength());
 			// 法阵核心发光粒子（END_ROD）：仅在非第一人称视角下生成
 			// 第一人称下法阵紧贴相机，中央粒子会遮挡视线；第三人称（含自己按 F5 切换）可见
 			spawnArrayCoreParticleIfThirdPerson(ox + ax * d, oy + ay * d, oz + az * d);
@@ -97,12 +98,12 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 				radius *= Math.max(0.0f, 1.0f - pt / FADE_TICKS);
 			}
 			if (radius > 0.02f) {
-				drawBeam(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(),
+				drawBeam(buf, matrices.last().pose(), matrices.last().normal(),
 						radius, (float) entity.beamLength());
 			}
 		}
 
-		matrices.pop();
+		matrices.popPose();
 		super.render(entity, yaw, tickDelta, matrices, vcp, light);
 	}
 
@@ -113,16 +114,16 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	 * 该粒子为纯客户端粒子，每个玩家各自按自己视角判定，互不影响。
 	 */
 	private void spawnArrayCoreParticleIfThirdPerson(double wx, double wy, double wz) {
-		MinecraftClient mc = MinecraftClient.getInstance();
-		if (mc.world == null) return;
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null) return;
 		// 仅第三人称（含反向第三人称）生成；第一人称跳过
-		if (mc.options.getPerspective() == Perspective.FIRST_PERSON) return;
+		if (mc.options.getCameraType() == CameraType.FIRST_PERSON) return;
 		// 每帧生成 1 个，参数与服务端原 spawnParticles(count=2,delta=0.1,speed=0.01) 大致相当
-		mc.world.addParticle(net.minecraft.particle.ParticleTypes.END_ROD,
+		mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.END_ROD,
 				wx, wy, wz,
-				(mc.world.random.nextDouble() - 0.5) * 0.02,
-				(mc.world.random.nextDouble() - 0.5) * 0.02,
-				(mc.world.random.nextDouble() - 0.5) * 0.02);
+				(mc.level.random.nextDouble() - 0.5) * 0.02,
+				(mc.level.random.nextDouble() - 0.5) * 0.02,
+				(mc.level.random.nextDouble() - 0.5) * 0.02);
 	}
 
 	// ==================== 蓄力四线（XY 平面四角 → +Z）====================
@@ -256,12 +257,12 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	}
 
 	private void v(VertexConsumer buf, Matrix4f pose, Matrix3f nrm, float x, float y, float z, float[] c) {
-		buf.vertex(pose, x, y, z).color(c[0], c[1], c[2], c[3]).texture(0.5f, 0.5f)
-				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(0f, 0f, 1f);
+		buf.addVertex(pose, x, y, z).setColor(c[0], c[1], c[2], c[3]).setUv(0.5f, 0.5f)
+				.setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(0f, 0f, 1f);
 	}
 
 	@Override
-	public Identifier getTexture(LaserBeamEntity entity) {
+	public @NotNull ResourceLocation getTextureLocation(LaserBeamEntity entity) {
 		return TEXTURE;
 	}
 }

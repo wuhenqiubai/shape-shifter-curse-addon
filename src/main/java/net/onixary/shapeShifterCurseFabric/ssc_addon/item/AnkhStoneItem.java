@@ -6,19 +6,19 @@ import dev.emi.trinkets.api.TrinketItem;
 import dev.emi.trinkets.api.TrinketsApi;
 import io.github.apace100.apoli.component.PowerHolderComponent;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.loot.LootPool;
-import net.minecraft.loot.condition.RandomChanceLootCondition;
-import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.provider.number.UniformLootNumberProvider;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
+import net.minecraft.world.level.storage.loot.providers.number.UniformGenerator;
 import net.onixary.shapeShifterCurseFabric.additional_power.VirtualTotemPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -32,7 +32,7 @@ import java.util.Optional;
  */
 public class AnkhStoneItem extends TrinketItem {
 
-	public AnkhStoneItem(Settings settings) {
+	public AnkhStoneItem(Properties settings) {
 		super(settings);
 	}
 
@@ -40,7 +40,7 @@ public class AnkhStoneItem extends TrinketItem {
 	 * 复活触发后的安卡纹石效果处理，由 AnkhStoneTotemMixin 调用
 	 */
 	public static void onRevival(LivingEntity entity) {
-		if (!(entity instanceof ServerPlayerEntity player)) return;
+		if (!(entity instanceof ServerPlayer player)) return;
 		if (!FormUtils.isAnubisWolfSP(player)) return;
 
 		// 检查是否装备了安卡纹石
@@ -50,8 +50,8 @@ public class AnkhStoneItem extends TrinketItem {
 		if (!component.isEquipped(SscAddon.ANKH_STONE)) return;
 
 		// 消除凋零和虚弱效果（保留火焰抗性）
-		player.removeStatusEffect(StatusEffects.WITHER);
-		player.removeStatusEffect(StatusEffects.WEAKNESS);
+		player.removeEffect(MobEffects.WITHER);
+		player.removeEffect(MobEffects.WEAKNESS);
 
 		// 减少 VirtualTotemPower 冷却 80%
 		List<VirtualTotemPower> powers = PowerHolderComponent.getPowers(player, VirtualTotemPower.class);
@@ -63,11 +63,11 @@ public class AnkhStoneItem extends TrinketItem {
 		}
 
 		// 消耗安卡纹石（只消耗第一个）
-		component.getEquipped(SscAddon.ANKH_STONE).stream().findFirst().ifPresent(pair -> pair.getRight().decrement(1));
+		component.getEquipped(SscAddon.ANKH_STONE).stream().findFirst().ifPresent(pair -> pair.getB().shrink(1));
 
 		// 播放物品碎裂音效
-		player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_ITEM_BREAK, player.getSoundCategory(), 1.0f, 1.0f);
+		player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+				SoundEvents.ITEM_BREAK, player.getSoundSource(), 1.0f, 1.0f);
 	}
 
 	/**
@@ -75,12 +75,12 @@ public class AnkhStoneItem extends TrinketItem {
 	 */
 	public static void registerLootTable() {
 		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (key.getValue().equals(Identifier.of("minecraft", "chests/desert_pyramid"))) {
-				LootPool.Builder poolBuilder = LootPool.builder()
-						.rolls(UniformLootNumberProvider.create(1.0f, 2.0f))
-						.conditionally(RandomChanceLootCondition.builder(0.15f))
-						.with(ItemEntry.builder(SscAddon.ANKH_STONE));
-				tableBuilder.pool(poolBuilder);
+			if (key.location().equals(ResourceLocation.fromNamespaceAndPath("minecraft", "chests/desert_pyramid"))) {
+				LootPool.Builder poolBuilder = LootPool.lootPool()
+						.setRolls(UniformGenerator.between(1.0f, 2.0f))
+						.when(LootItemRandomChanceCondition.randomChance(0.15f))
+						.add(LootItem.lootTableItem(SscAddon.ANKH_STONE));
+				tableBuilder.withPool(poolBuilder);
 			}
 		});
 	}
@@ -91,12 +91,12 @@ public class AnkhStoneItem extends TrinketItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
-		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_2").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_3").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_4").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.ankh_stone.tooltip_5").formatted(Formatting.RED));
-		super.appendTooltip(stack, context, tooltip, type);
+	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+		tooltip.add(Component.translatable("item.ssc_addon.ankh_stone.tooltip_1").withStyle(ChatFormatting.LIGHT_PURPLE));
+		tooltip.add(Component.translatable("item.ssc_addon.ankh_stone.tooltip_2").withStyle(ChatFormatting.GRAY));
+		tooltip.add(Component.translatable("item.ssc_addon.ankh_stone.tooltip_3").withStyle(ChatFormatting.GRAY));
+		tooltip.add(Component.translatable("item.ssc_addon.ankh_stone.tooltip_4").withStyle(ChatFormatting.GRAY));
+		tooltip.add(Component.translatable("item.ssc_addon.ankh_stone.tooltip_5").withStyle(ChatFormatting.RED));
+		super.appendHoverText(stack, context, tooltip, type);
 	}
 }

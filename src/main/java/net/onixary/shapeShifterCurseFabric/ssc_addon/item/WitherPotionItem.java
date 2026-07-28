@@ -1,21 +1,21 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.thrown.PotionEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.stat.Stats;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.util.UseAction;
-import net.minecraft.world.World;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.stats.Stats;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ThrownPotion;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -48,7 +48,7 @@ public class WitherPotionItem extends Item {
 
 	private final Type type;
 
-	public WitherPotionItem(Settings settings, Type type) {
+	public WitherPotionItem(Properties settings, Type type) {
 		super(settings);
 		this.type = type;
 	}
@@ -61,7 +61,7 @@ public class WitherPotionItem extends Item {
 	 * 按玩家形态返回凋零药水堆叠上限：使魔系 8 / SP阿努比斯 3 / 其它 1。
 	 * 供 Slot.getMaxItemCount / 创造中键复制 / 双击合并 等多处统一调用。
 	 */
-	public static int getStackLimitFor(PlayerEntity player) {
+	public static int getStackLimitFor(Player player) {
 		if (player == null) {
 			return 1;
 		}
@@ -76,71 +76,71 @@ public class WitherPotionItem extends Item {
 
 	/** 瓶身附魔光效。 */
 	@Override
-	public boolean hasGlint(ItemStack stack) {
+	public boolean isFoil(ItemStack stack) {
 		return true;
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
+	public int getUseDuration(ItemStack stack, LivingEntity user) {
 		return type == Type.DRINK ? DRINK_TIME : 0;
 	}
 
 	@Override
-	public UseAction getUseAction(ItemStack stack) {
-		return type == Type.DRINK ? UseAction.DRINK : UseAction.NONE;
+	public UseAnim getUseAnimation(ItemStack stack) {
+		return type == Type.DRINK ? UseAnim.DRINK : UseAnim.NONE;
 	}
 
 	@Override
-	public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
-		ItemStack stack = user.getStackInHand(hand);
+	public InteractionResultHolder<ItemStack> use(Level world, Player user, InteractionHand hand) {
+		ItemStack stack = user.getItemInHand(hand);
 		if (type == Type.DRINK) {
 			// 饮用型：起手读条，效果在 finishUsing 施加
-			user.setCurrentHand(hand);
-			return TypedActionResult.consume(stack);
+			user.startUsingItem(hand);
+			return InteractionResultHolder.consume(stack);
 		}
 		// 喷溅 / 滞留型：投掷原版药水弹射物（携带凋零效果），复用原版 AOE / 地面云
-		if (!world.isClient) {
+		if (!world.isClientSide) {
 			spawnThrownPotion(world, user);
 		}
 		world.playSound(null, user.getX(), user.getY(), user.getZ(),
-				SoundEvents.ENTITY_SPLASH_POTION_THROW, SoundCategory.PLAYERS,
+				SoundEvents.SPLASH_POTION_THROW, SoundSource.PLAYERS,
 				0.5F, 0.4F / (world.getRandom().nextFloat() * 0.4F + 0.8F));
-		if (!user.getAbilities().creativeMode) {
-			stack.decrement(1);
+		if (!user.getAbilities().instabuild) {
+			stack.shrink(1);
 		}
-		user.incrementStat(Stats.USED.getOrCreateStat(this));
-		return TypedActionResult.success(stack, world.isClient());
+		user.awardStat(Stats.ITEM_USED.get(this));
+		return InteractionResultHolder.sidedSuccess(stack, world.isClientSide());
 	}
 
 	@Override
-	public ItemStack finishUsing(ItemStack stack, World world, LivingEntity user) {
-		if (type != Type.DRINK || !(user instanceof PlayerEntity player)) {
-			return super.finishUsing(stack, world, user);
+	public ItemStack finishUsingItem(ItemStack stack, Level world, LivingEntity user) {
+		if (type != Type.DRINK || !(user instanceof Player player)) {
+			return super.finishUsingItem(stack, world, user);
 		}
-		if (!world.isClient) {
+		if (!world.isClientSide) {
 			// 固定凋零 II（amplifier 1），20 秒（400t）作用于饮用者自己
-			player.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER));
+			player.addEffect(new MobEffectInstance(MobEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER));
 			world.playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.ENTITY_WITCH_DRINK, SoundCategory.PLAYERS, 0.6f, 1.0f);
+					SoundEvents.WITCH_DRINK, SoundSource.PLAYERS, 0.6f, 1.0f);
 		}
-		if (!player.getAbilities().creativeMode) {
-			stack.decrement(1);
+		if (!player.getAbilities().instabuild) {
+			stack.shrink(1);
 		}
-		player.incrementStat(Stats.USED.getOrCreateStat(this));
+		player.awardStat(Stats.ITEM_USED.get(this));
 		return stack;
 	}
 
 	/** 生成携带凋零效果的原版投掷药水（喷溅 / 滞留），复用原版 AOE / 地面云机制。仅服务端调用。 */
-	private void spawnThrownPotion(World world, PlayerEntity user) {
+	private void spawnThrownPotion(Level world, Player user) {
 		ItemStack thrown = new ItemStack(type == Type.LINGERING ? Items.LINGERING_POTION : Items.SPLASH_POTION);
-		net.minecraft.component.type.PotionContentsComponent contents = new net.minecraft.component.type.PotionContentsComponent(
+		net.minecraft.world.item.alchemy.PotionContents contents = new net.minecraft.world.item.alchemy.PotionContents(
 				java.util.Optional.empty(),
 				java.util.Optional.of(POTION_COLOR),
-				List.of(new StatusEffectInstance(StatusEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER)));
-		thrown.set(DataComponentTypes.POTION_CONTENTS, contents);
-		PotionEntity entity = new PotionEntity(world, user);
+				List.of(new MobEffectInstance(MobEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER)));
+		thrown.set(DataComponents.POTION_CONTENTS, contents);
+		ThrownPotion entity = new ThrownPotion(world, user);
 		entity.setItem(thrown);
-		entity.setVelocity(user, user.getPitch(), user.getYaw(), -20.0F, 0.5F, 1.0F);
-		world.spawnEntity(entity);
+		entity.shootFromRotation(user, user.getXRot(), user.getYRot(), -20.0F, 0.5F, 1.0F);
+		world.addFreshEntity(entity);
 	}
 }
