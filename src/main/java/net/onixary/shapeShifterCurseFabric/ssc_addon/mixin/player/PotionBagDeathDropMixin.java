@@ -22,7 +22,11 @@ public abstract class PotionBagDeathDropMixin {
 	public abstract Inventory getInventory();
 
 	/**
-	 * Drop potion bag items on death if keepInventory is disabled
+	 * 死亡时掉落药水袋内物品（仅当 keepInventory 关闭时）
+	 * 1.20.1 yarn：PlayerEntity 覆写了 dropInventory()（method_16078, ()V），
+	 * 其内部在 keepInventory 关闭时执行 vanishCursedItems() + inventory.dropAll()。
+	 * 在 HEAD 注入：此时物品栏尚未 dropAll，可遍历找到药水袋并掉落其内物品。
+	 * 注意：dropEquipment 是 mojmap 名，yarn 名为 dropInventory，二者不可混用。
 	 */
 	@Inject(method = "dropEquipment", at = @At("HEAD"))
 	private void dropPotionBagItems(CallbackInfo ci) {
