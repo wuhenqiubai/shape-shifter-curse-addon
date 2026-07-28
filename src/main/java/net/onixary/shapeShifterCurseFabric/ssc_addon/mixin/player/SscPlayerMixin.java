@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 import java.util.UUID;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Player.class)
 public abstract class SscPlayerMixin {
@@ -88,4 +89,48 @@ public abstract class SscPlayerMixin {
 		}
 		return result;
 	}
-}
+	/**
+	 * 死亡时掉落药水袋内物品（仅当 keepInventory 关闭时）。（原 PotionBagDeathDropMixin 合并至此；行为不变。）
+	 * 1.20.1 yarn：PlayerEntity 覆写了 dropInventory()，在 keepInventory 关闭时执行 inventory.dropAll()；
+	 * 在 HEAD 注入：此时物品栏尚未 dropAll，可遍历找到药水袋并掉落其内物品。
+	 */
+	@Inject(method = "dropInventory()V", at = @At("HEAD"))
+	private void ssc_addon$dropPotionBagItems(CallbackInfo ci) {
+		Player player = (Player) (Object) this;
+		boolean keepInventory = player.getWorld().getGameRules().getBoolean(GameRules.KEEP_INVENTORY);
+		if (keepInventory) {
+			return;
+		}
+		ItemStack potionBag = ItemStack.EMPTY;
+		for (int i = 0; i < player.getInventory().size(); i++) {
+			ItemStack stack = player.getInventory().getStack(i);
+			if (stack.isOf(SscAddon.POTION_BAG)) {
+				potionBag = stack;
+				break;
+			}
+		}
+		if (!potionBag.isEmpty() && potionBag.hasNbt()) {
+			NbtCompound nbt = potionBag.getNbt();
+			if (nbt != null && nbt.contains("Items", 9)) {
+				NbtList list = nbt.getList("Items", 10);
+				for (int i = 0; i < list.size(); ++i) {
+					NbtCompound itemTag = list.getCompound(i);
+					ItemStack stack = ItemStack.fromNbt(itemTag);
+					if (!stack.isEmpty()) {
+						player.dropItem(stack, true, false);
+					}
+				}
+				nbt.remove("Items");
+			}
+		}
+	}
+
+	/**
+	 * 禁止用 Q 键或任何方式丢弃药水袋。（原 PreventPotionBagDropMixin 合并至此；行为不变。）
+	 */
+	@Inject(method = "dropItem(Lnet/minecraft/item/ItemStack;ZZ)Lnet/minecraft/entity/ItemEntity;", at = @At("HEAD"), cancellable = true)
+	private void ssc_addon$preventPotionBagDrop(ItemStack stack, boolean throwRandomly, boolean retainOwnership, CallbackInfoReturnable<?> cir) {
+		if (stack.isOf(SscAddon.POTION_BAG)) {
+			cir.setReturnValue(null);
+		}
+	}}
