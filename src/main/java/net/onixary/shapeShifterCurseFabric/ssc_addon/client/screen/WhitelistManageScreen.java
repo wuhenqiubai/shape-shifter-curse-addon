@@ -704,4 +704,9 @@ public class WhitelistManageScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+
+	@Override
+	public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta) {
+		// No blur — book texture serves as the background
+	}
 }

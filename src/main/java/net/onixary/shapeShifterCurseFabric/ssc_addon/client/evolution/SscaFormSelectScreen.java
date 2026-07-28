@@ -34,6 +34,11 @@ import java.util.List;
  */
 public class SscaFormSelectScreen extends Screen {
 
+    @Override
+    public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        // No blur — book texture serves as the background
+    }
+
     /** 一个可在开局选择的 SSCA 进化形态条目。 */
     private static final class StartForm {
         final ResourceLocation formId;

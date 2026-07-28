@@ -42,6 +42,12 @@ import java.util.List;
  * 连接线在节点边缘外停止，绝不伸入节点框内。点击节点可解锁（消耗点数）。</p>
  */
 public class EvolutionScreen extends Screen {
+
+    @Override
+    public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        // No blur — book texture serves as the background
+    }
+
     /** 进化树布局基础参数（逻辑像素，再乘 zoom）。 */
     private static final int COL_SPACING = 120, ROW_SPACING = 84, NODE_SIZE = 42;
     /** 顶部 / 底部信息条高度。 */

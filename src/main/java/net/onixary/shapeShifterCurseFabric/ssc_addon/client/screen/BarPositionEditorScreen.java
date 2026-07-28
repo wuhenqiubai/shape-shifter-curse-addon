@@ -863,4 +863,9 @@ public class BarPositionEditorScreen extends Screen {
             onChange.accept(getIntValue());
         }
     }
+
+    @Override
+    public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        // No blur — book texture serves as the background
+    }
 }
