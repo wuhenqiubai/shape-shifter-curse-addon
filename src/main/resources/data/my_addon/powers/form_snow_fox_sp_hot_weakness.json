@@ -3,10 +3,10 @@
     "health": {
         "type": "shape-shifter-curse:delay_attribute",
         "modifier": {
-            "name": "SP Snow Fox Hot Debuff Health",
+            "id": "my_addon:sp_snow_fox_hot_debuff_health",
             "attribute": "minecraft:generic.max_health",
             "value": -4.0,
-            "operation": "addition"
+            "operation": "add_value"
         },
         "tick_rate": 20,
         "updateHealth": true,
@@ -62,10 +62,10 @@
     "speed": {
         "type": "apoli:conditioned_attribute",
         "modifier": {
-            "name": "SP Snow Fox Hot Debuff Speed",
+            "id": "my_addon:sp_snow_fox_hot_debuff_speed",
             "attribute": "minecraft:generic.movement_speed",
             "value": -0.15,
-            "operation": "multiply_total"
+            "operation": "add_multiplied_total"
         },
         "tick_rate": 20,
         "condition": {

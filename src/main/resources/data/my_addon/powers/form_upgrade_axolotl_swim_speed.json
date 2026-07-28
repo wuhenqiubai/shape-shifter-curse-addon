@@ -2,9 +2,9 @@
     "type": "apoli:conditioned_attribute",
     "modifier": {
         "attribute": "additionalentityattributes:generic.water_speed",
-        "name": "Additional swim speed",
+        "id": "my_addon:additional_swim_speed",
         "value": 1.5,
-        "operation": "multiply_base"
+        "operation":"add_multiplied_total"
     },
     "tick_rate": 5,
     "condition": {

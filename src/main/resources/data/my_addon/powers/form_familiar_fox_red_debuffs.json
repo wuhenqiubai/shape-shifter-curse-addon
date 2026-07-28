@@ -3,7 +3,7 @@
     "exhaustion": {
         "type": "apoli:modify_exhaustion",
         "modifier": {
-            "name": "Low Mana Exhaustion",
+            "id": "my_addon:low_mana_exhaustion",
             "operation": "multiply_base",
             "value": 1.0
         },
@@ -16,7 +16,7 @@
     "high_mana_defense": {
         "type": "apoli:modify_damage_taken",
         "modifier": {
-            "name": "High Mana Defense",
+            "id": "my_addon:high_mana_defense",
             "operation": "multiply_total",
             "value": -0.2
         },
@@ -29,7 +29,7 @@
     "stage_1_damage": {
         "type": "apoli:modify_damage_dealt",
         "modifier": {
-            "name": "Low Mana Weakness 1",
+            "id": "my_addon:low_mana_weakness_1",
             "operation": "multiply_total",
             "value": -0.2
         },
@@ -52,9 +52,9 @@
         "type": "apoli:conditioned_attribute",
         "modifier": {
             "attribute": "minecraft:generic.movement_speed",
-            "operation": "multiply_total",
+            "operation": "add_multiplied_total",
             "value": -0.2,
-            "name": "Low Mana Slowness 1"
+            "id": "my_addon:low_mana_slowness_1"
         },
         "tick_rate": 20,
         "condition": {
@@ -75,7 +75,7 @@
     "stage_1_mining": {
         "type": "apoli:modify_break_speed",
         "modifier": {
-            "name": "Low Mana Mining Fatigue 1",
+            "id": "my_addon:low_mana_mining_fatigue_1",
             "operation": "multiply_total",
             "value": -0.2
         },
@@ -97,7 +97,7 @@
     "stage_2_damage": {
         "type": "apoli:modify_damage_dealt",
         "modifier": {
-            "name": "Low Mana Weakness 2",
+            "id": "my_addon:low_mana_weakness_2",
             "operation": "multiply_total",
             "value": -0.6
         },
@@ -111,9 +111,9 @@
         "type": "apoli:conditioned_attribute",
         "modifier": {
             "attribute": "minecraft:generic.movement_speed",
-            "operation": "multiply_total",
+            "operation": "add_multiplied_total",
             "value": -0.5,
-            "name": "Low Mana Slowness 2"
+            "id": "my_addon:low_mana_slowness_2"
         },
         "tick_rate": 20,
         "condition": {
@@ -125,7 +125,7 @@
     "stage_2_mining": {
         "type": "apoli:modify_break_speed",
         "modifier": {
-            "name": "Low Mana Mining Fatigue 2",
+            "id": "my_addon:low_mana_mining_fatigue_2",
             "operation": "multiply_total",
             "value": -0.5
         },
@@ -138,7 +138,7 @@
     "stage_2_health_drain": {
         "type": "apoli:modify_damage_taken",
         "modifier": {
-            "name": "Low Mana Damage Vulnerability",
+            "id": "my_addon:low_mana_damage_vulnerability",
             "operation": "multiply_total",
             "value": 0.2
         },

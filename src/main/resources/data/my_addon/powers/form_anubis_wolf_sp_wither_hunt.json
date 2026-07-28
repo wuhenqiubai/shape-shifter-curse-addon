@@ -62,9 +62,9 @@
         "type": "apoli:conditioned_attribute",
         "modifier": {
             "attribute": "minecraft:generic.movement_speed",
-            "operation": "multiply_total",
+            "operation": "add_multiplied_total",
             "value": 0.2,
-            "name": "Wither hunt speed boost"
+            "id": "my_addon:wither_hunt_speed_boost"
         },
         "tick_rate": 10,
         "condition": {

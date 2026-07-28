@@ -4,9 +4,9 @@
         "type": "apoli:attribute",
         "modifier": {
             "attribute": "minecraft:generic.attack_damage",
-            "operation": "multiply_total",
+            "operation": "add_multiplied_total",
             "value": 0.15,
-            "name": "Bat Desmodus Moon Buff Attack"
+            "id": "my_addon:bat_desmodus_moon_buff_attack"
         },
         "condition": {
             "type": "apoli:and",
@@ -21,9 +21,9 @@
         "type": "apoli:attribute",
         "modifier": {
             "attribute": "minecraft:generic.movement_speed",
-            "operation": "multiply_total",
+            "operation": "add_multiplied_total",
             "value": 0.05,
-            "name": "Bat Desmodus Moon Buff Speed"
+            "id": "bat_desmodus_moon_buff_speed"
         },
         "condition": {
             "type": "apoli:and",

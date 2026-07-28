@@ -2,9 +2,9 @@
     "type": "apoli:conditioned_attribute",
     "modifier": {
         "attribute": "minecraft:generic.attack_speed",
-        "operation": "multiply_total",
+        "operation": "add_multiplied_total",
         "value": -0.2,
-        "name": "Mancianima Weapon Attack Speed Down"
+        "id": "my_addon:mancianima_weapon_attack_speed_down"
     },
     "tick_rate": 5,
     "condition": {
