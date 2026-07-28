@@ -236,7 +236,7 @@ public final class EvolutionManager {
 
         // 性能优化：XP 里程碑 / 自动分支解锁检查降频到每 20t（XP 变化低频，升级解锁最多晚 1s，肉眼不可察）。
         // 上方「自动进入路线 / 离开起点形态重置」保持每 tick 即时响应变身，不受此节流影响。
-        if (player.age % 20 != 0) {
+        if (player.tickCount % 20 != 0) {
             return;
         }
         int level = player.experienceLevel;

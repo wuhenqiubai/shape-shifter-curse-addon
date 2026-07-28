@@ -174,12 +174,12 @@ public class AllaySPJukebox {
         // 性能优化：范围实体扫描(getEntitiesByClass) + buff 套用/移除 降频到每 5 tick 一次（原每 tick）。
         // applySpeedModifier 幂等（已有则跳过），回血本就每 60t、cleanup 本就每 40t（均为 5 的倍数，命中不变）；
         // 新进范围者最多晚 5t 获加速/被回血，肉眼不可察。
-        if (player.age % 5 == 0) {
+        if (player.tickCount % 5 == 0) {
             List<LivingEntity> nearbyEntities = getNearbyWhitelistEntities(player);
 
             if (mode == AllayJukeboxItem.MODE_HEAL) {
                 // Heal mode: every 3 seconds (60 ticks), heal 1 HP
-                if (player.age % 60 == 0) {
+                if (player.tickCount % 60 == 0) {
                     for (LivingEntity entity : nearbyEntities) {
                         entity.heal(1.0f);
                     }

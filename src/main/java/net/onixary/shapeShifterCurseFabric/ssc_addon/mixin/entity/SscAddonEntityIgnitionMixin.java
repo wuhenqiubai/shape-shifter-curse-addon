@@ -68,9 +68,9 @@ public abstract class SscAddonEntityIgnitionMixin implements SscIgnitedEntityAcc
 	/**
 	 * 装死（PLAYING_DEAD）期间锁定视角，取消视角输入。（原 SscAddonEntityMixin 合并至此；行为不变。）
 	 */
-	@Inject(method = "changeLookDirection", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "turn", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$onChangeLookDirectionPlayDead(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
-		if ((Object) this instanceof LivingEntity entity && entity.hasEffect(SscAddon.PLAYING_DEAD)) {
+		if ((Object) this instanceof LivingEntity entity && entity.hasEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
 			ci.cancel();
 		}
 	}

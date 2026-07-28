@@ -2,6 +2,9 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.player;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.damagesource.DamageSource;
@@ -9,6 +12,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.raid.Raider;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.GameRules;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAggroTracker;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -89,48 +95,44 @@ public abstract class SscPlayerMixin {
 		}
 		return result;
 	}
-	/**
-	 * 死亡时掉落药水袋内物品（仅当 keepInventory 关闭时）。（原 PotionBagDeathDropMixin 合并至此；行为不变。）
-	 * 1.20.1 yarn：PlayerEntity 覆写了 dropInventory()，在 keepInventory 关闭时执行 inventory.dropAll()；
-	 * 在 HEAD 注入：此时物品栏尚未 dropAll，可遍历找到药水袋并掉落其内物品。
-	 */
-	@Inject(method = "dropInventory()V", at = @At("HEAD"))
+
+	@Inject(method = "dropEquipment", at = @At("HEAD"))
 	private void ssc_addon$dropPotionBagItems(CallbackInfo ci) {
 		Player player = (Player) (Object) this;
-		boolean keepInventory = player.getWorld().getGameRules().getBoolean(GameRules.KEEP_INVENTORY);
+
+		// Check if keepInventory is enabled
+		boolean keepInventory = player.level().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY);
+
+		// If keepInventory is enabled, don't drop anything
 		if (keepInventory) {
 			return;
 		}
+
+		// Find potion bag in inventory
 		ItemStack potionBag = ItemStack.EMPTY;
-		for (int i = 0; i < player.getInventory().size(); i++) {
-			ItemStack stack = player.getInventory().getStack(i);
-			if (stack.isOf(SscAddon.POTION_BAG)) {
+		for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+			ItemStack stack = player.getInventory().getItem(i);
+			if (stack.is(SscAddon.POTION_BAG)) {
 				potionBag = stack;
 				break;
 			}
 		}
-		if (!potionBag.isEmpty() && potionBag.hasNbt()) {
-			NbtCompound nbt = potionBag.getNbt();
-			if (nbt != null && nbt.contains("Items", 9)) {
-				NbtList list = nbt.getList("Items", 10);
+
+		// Drop all items from the potion bag
+		if (!potionBag.isEmpty() && potionBag.has(DataComponents.CUSTOM_DATA)) {
+			CustomData nbt = potionBag.get(DataComponents.CUSTOM_DATA);
+			if (nbt != null && nbt.getUnsafe().contains("Items", 9)) {
+				ListTag list = nbt.getUnsafe().getList("Items", 10);
 				for (int i = 0; i < list.size(); ++i) {
-					NbtCompound itemTag = list.getCompound(i);
-					ItemStack stack = ItemStack.fromNbt(itemTag);
+					CompoundTag itemTag = list.getCompound(i);
+					ItemStack stack = ItemStack.parse(player.level().registryAccess(), itemTag).orElse(ItemStack.EMPTY);
 					if (!stack.isEmpty()) {
-						player.dropItem(stack, true, false);
+						player.drop(stack, true, false);
 					}
 				}
-				nbt.remove("Items");
+				// Clear the potion bag's items
+				CustomData.update(DataComponents.CUSTOM_DATA, potionBag, n -> n.remove("Items"));
 			}
 		}
 	}
-
-	/**
-	 * 禁止用 Q 键或任何方式丢弃药水袋。（原 PreventPotionBagDropMixin 合并至此；行为不变。）
-	 */
-	@Inject(method = "dropItem(Lnet/minecraft/item/ItemStack;ZZ)Lnet/minecraft/entity/ItemEntity;", at = @At("HEAD"), cancellable = true)
-	private void ssc_addon$preventPotionBagDrop(ItemStack stack, boolean throwRandomly, boolean retainOwnership, CallbackInfoReturnable<?> cir) {
-		if (stack.isOf(SscAddon.POTION_BAG)) {
-			cir.setReturnValue(null);
-		}
-	}}
+}
