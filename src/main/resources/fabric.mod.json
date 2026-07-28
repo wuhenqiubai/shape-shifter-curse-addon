@@ -50,7 +50,7 @@
     "minecraft": "1.21.1",
     "java": ">=21",
     "fabric": ">=0.110.0",
-    "shape-shifter-curse-unofficial": ">=1.10.0-rel.20+mc.1.21.1",
+    "shape-shifter-curse-unofficial": ">=1.10.0-rel.21+mc.1.21.1",
     "geckolib": ">=4.7.0",
     "trinkets": ">=3.10.0"
   },
