@@ -36,15 +36,20 @@ public final class VortexChargeClient {
 		KeyMapping key = SscAddonKeybindings.getPrimaryKey();
 		if (player == null || client.level == null || key == null) {
 			wasKeyPressed = false;
+			VortexChargeManager.setClientLocalCharging(false);
 			return;
 		}
 		if (!FormUtils.isAxolotlSP(player)) {
 			wasKeyPressed = false;
+			VortexChargeManager.setClientLocalCharging(false);
 			return;
 		}
+		// 每 tick 缓存本地玩家蓄力标记，供碰撞推挤 mixin 快速读取（避免每次碰撞读 Apoli 资源）
+		int vortexState = PowerUtils.getClientResourceValue(player, VortexChargeManager.VORTEX_STATE);
+		VortexChargeManager.setClientLocalCharging(vortexState > 0);
+
 		boolean pressed = key.isDown();
 		if (pressed && !wasKeyPressed) {
-			int vortexState = PowerUtils.getClientResourceValue(player, VortexChargeManager.VORTEX_STATE);
 			if (vortexState > 0) {
 				send(SscAddonNetworking.PACKET_VORTEX_RELEASE);
 			} else {

@@ -18,6 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -165,88 +166,35 @@ public class SscAddon implements ModInitializer {
 	/** 侵蚀烙印标记效果 - 2层(橙色) */
 	public static final MobEffect EROSION_BRAND_MARKER_2 = EROSION_BRAND_MARKER_2_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 3层(红色) */
-	public static final MobEffect EROSION_BRAND_MARKER_3 = EROSION_BRAND_MARKER_3_ENTRY.value();
+	public static final MobEffect EROSION_BRAND_MARKER_3 = new ErosionBrandMarkerEffect(0xDC143C);
 	public static final Item POTION_BAG = new PotionBagItem(new Item.Properties().stacksTo(1));
-	public static final EntityType<FrostBallEntity> FROST_BALL_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "frost_ball"),
-			FabricEntityTypeBuilder.<FrostBallEntity>create(MobCategory.MISC, FrostBallEntity::new)
-					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
-					.trackRangeBlocks(64).trackedUpdateRate(10)
-					.build()
-	);
+	public static final EntityType<FrostBallEntity> FROST_BALL_ENTITY =
+			registerEntity("frost_ball", MobCategory.MISC, FrostBallEntity::new, 0.25f, 0.25f, 64, 10);
 	// 进化美西螈「投掷水矛」直线水矛投射物（无重力匀速）
-	public static final EntityType<ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "thrown_water_spear"),
-			FabricEntityTypeBuilder.<ThrownWaterSpearEntity>create(MobCategory.MISC, ThrownWaterSpearEntity::new)
-					.dimensions(EntityDimensions.fixed(0.4f, 0.4f))
-					.trackRangeBlocks(64).trackedUpdateRate(10)
-					.build()
-	);
+	public static final EntityType<ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY =
+			registerEntity("thrown_water_spear", MobCategory.MISC, ThrownWaterSpearEntity::new, 0.4f, 0.4f, 64, 10);
 	// red 狐火火球投射物
-	public static final EntityType<FoxFireballEntity> FOX_FIREBALL_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "fox_fireball"),
-			FabricEntityTypeBuilder.<FoxFireballEntity>create(MobCategory.MISC, FoxFireballEntity::new)
-					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
-					.trackRangeBlocks(64).trackedUpdateRate(2)
-					.build()
-	);
+	public static final EntityType<FoxFireballEntity> FOX_FIREBALL_ENTITY =
+			registerEntity("fox_fireball", MobCategory.MISC, FoxFireballEntity::new, 0.25f, 0.25f, 64, 2);
 	// 寄生果蝠「感染孢子炸弹」投掷物
-	public static final EntityType<InfectionSporeBombEntity> INFECTION_SPORE_BOMB_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "infection_spore_bomb"),
-			FabricEntityTypeBuilder.<InfectionSporeBombEntity>create(MobCategory.MISC, InfectionSporeBombEntity::new)
-					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
-					.trackRangeBlocks(64).trackedUpdateRate(10)
-					.build()
-	);
+	public static final EntityType<InfectionSporeBombEntity> INFECTION_SPORE_BOMB_ENTITY =
+			registerEntity("infection_spore_bomb", MobCategory.MISC, InfectionSporeBombEntity::new, 0.25f, 0.25f, 64, 10);
 	// 寄生果蝠主技能「灵果寄生」投掷物
-	public static final EntityType<ParasiticSeedProjectile> PARASITIC_SEED_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "parasitic_seed"),
-			FabricEntityTypeBuilder.<ParasiticSeedProjectile>create(MobCategory.MISC, ParasiticSeedProjectile::new)
-					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
-					.trackRangeBlocks(64).trackedUpdateRate(10)
-					.build()
-	);
+	public static final EntityType<ParasiticSeedProjectile> PARASITIC_SEED_ENTITY =
+			registerEntity("parasitic_seed", MobCategory.MISC, ParasiticSeedProjectile::new, 0.25f, 0.25f, 64, 10);
 	public static final MenuType<PotionBagScreenHandler> POTION_BAG_SCREEN_HANDLER = new MenuType<>(PotionBagScreenHandler::new, FeatureFlagSet.of());
-	public static final EntityType<FrostStormEntity> FROST_STORM_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "frost_storm"),
-			FabricEntityTypeBuilder.<FrostStormEntity>create(MobCategory.MISC, FrostStormEntity::new)
-					.dimensions(EntityDimensions.fixed(1.0f, 2.0f))
-					.trackRangeBlocks(64).trackedUpdateRate(10)
-					.build()
-	);
+	public static final EntityType<FrostStormEntity> FROST_STORM_ENTITY =
+			registerEntity("frost_storm", MobCategory.MISC, FrostStormEntity::new, 1.0f, 2.0f, 64, 10);
 	// 荧光幼灵 - 潮汐波动粒子球实体
-	public static final EntityType<TidalOrbEntity> TIDAL_ORB_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "tidal_orb"),
-			FabricEntityTypeBuilder.<TidalOrbEntity>create(MobCategory.MISC, TidalOrbEntity::new)
-					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
-					.trackRangeBlocks(64).trackedUpdateRate(1)
-					.build()
-	);
+	public static final EntityType<TidalOrbEntity> TIDAL_ORB_ENTITY =
+			registerEntity("tidal_orb", MobCategory.MISC, TidalOrbEntity::new, 0.5f, 0.5f, 64, 1);
 	// 荧光幼灵 - 法阵激光实体
-	public static final EntityType<LaserBeamEntity> LASER_BEAM_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "laser_beam"),
-			FabricEntityTypeBuilder.<LaserBeamEntity>create(MobCategory.MISC, LaserBeamEntity::new)
-					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
-					.trackRangeBlocks(96).trackedUpdateRate(1)
-					.build()
-	);
+	public static final EntityType<LaserBeamEntity> LASER_BEAM_ENTITY =
+			registerEntity("laser_beam", MobCategory.MISC, LaserBeamEntity::new, 0.5f, 0.5f, 96, 1);
 	public static final Item SP_UPGRADE_THING = new SpUpgradeItem(new Item.Properties().stacksTo(1));
-	public static final Item PORTABLE_MOISTURIZER = new PortableMoisturizerItem(new Item.Properties().stacksTo(1));	public static final EntityType<WaterSpearEntity> WATER_SPEAR_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "water_spear"),
-			FabricEntityTypeBuilder.<WaterSpearEntity>create(MobCategory.MISC, WaterSpearEntity::new)
-					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
-					.trackRangeBlocks(4).trackedUpdateRate(20)
-					.build()
-	);
+	public static final Item PORTABLE_MOISTURIZER = new PortableMoisturizerItem(new Item.Properties().stacksTo(1));
+	public static final EntityType<WaterSpearEntity> WATER_SPEAR_ENTITY =
+			registerEntity("water_spear", MobCategory.MISC, WaterSpearEntity::new, 0.5f, 0.5f, 4, 20);
 	public static final Item SNOWBALL_LAUNCHER = new SnowballLauncherItem(new Item.Properties().stacksTo(1));
 	public static final Item PORTABLE_FRIDGE = new PortableFridgeItem(new Item.Properties().stacksTo(1));
 	public static final Item BLUE_FIRE_AMULET = new BlueFireAmuletItem(new Item.Properties().stacksTo(1).fireResistant());
@@ -275,6 +223,8 @@ public class SscAddon implements ModInitializer {
 	public static final Map<UUID, Integer> WS_LAST_SPEAR_COUNT = new ConcurrentHashMap<>();
 	// Evolution Stone
 	public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Properties().stacksTo(1).fireResistant());
+	// 灵能宝珠：进化形态专用转职道具（右键长按开界面选形态转职，扣 3 点、倒退 3 个里程碑）
+	public static final Item PSIONIC_ORB = new PsionicOrbItem(new Item.Properties().stacksTo(16).fireResistant());
 	public static final Item CORAL_BALL = new Item(new Item.Properties().stacksTo(64));
 	public static final Item ACTIVE_CORAL_NECKLACE = new ActiveCoralNecklaceItem(new Item.Properties().stacksTo(1));
 	// 风灵专属项链：加快疾风连爪耐力回复；朔望专属项链：强化九命复活
@@ -293,31 +243,13 @@ public class SscAddon implements ModInitializer {
 	public static final Item FRIEND_MARKER = new AllayFriendMarkerItem(new Item.Properties().stacksTo(64));
 	public static final Item CLEAR_FRIEND_MARKER = new AllayClearMarkerItem(new Item.Properties().stacksTo(64));
 	// Entities
-	public static final EntityType<AllayFriendMarkerEntity> FRIEND_MARKER_ENTITY_TYPE = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "friend_marker"),
-			FabricEntityTypeBuilder.<AllayFriendMarkerEntity>create(MobCategory.MISC, AllayFriendMarkerEntity::new)
-					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
-					.trackRangeBlocks(4).trackedUpdateRate(10)
-					.build()
-	);
-	public static final EntityType<AllayClearMarkerEntity> CLEAR_MARKER_ENTITY_TYPE = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "clear_friend_marker"),
-			FabricEntityTypeBuilder.<AllayClearMarkerEntity>create(MobCategory.MISC, AllayClearMarkerEntity::new)
-					.dimensions(EntityDimensions.fixed(0.25f, 0.25f))
-					.trackRangeBlocks(4).trackedUpdateRate(10)
-					.build()
-	);
+	public static final EntityType<AllayFriendMarkerEntity> FRIEND_MARKER_ENTITY_TYPE =
+			registerEntity("friend_marker", MobCategory.MISC, AllayFriendMarkerEntity::new, 0.25f, 0.25f, 4, 10);
+	public static final EntityType<AllayClearMarkerEntity> CLEAR_MARKER_ENTITY_TYPE =
+			registerEntity("clear_friend_marker", MobCategory.MISC, AllayClearMarkerEntity::new, 0.25f, 0.25f, 4, 10);
 	// 女巫使魔实体
-	public static final EntityType<WitchFamiliarEntity> WITCH_FAMILIAR_ENTITY = Registry.register(
-			BuiltInRegistries.ENTITY_TYPE,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "witch_familiar"),
-			FabricEntityTypeBuilder.<WitchFamiliarEntity>create(MobCategory.MONSTER, WitchFamiliarEntity::new)
-					.dimensions(EntityDimensions.fixed(0.5f, 0.7f))
-					.trackRangeBlocks(64).trackedUpdateRate(3)
-					.build()
-	);
+	public static final EntityType<WitchFamiliarEntity> WITCH_FAMILIAR_ENTITY =
+			registerEntity("witch_familiar", MobCategory.MONSTER, WitchFamiliarEntity::new, 0.5f, 0.7f, 64, 3);
 	// 女巫使魔怪物蛋（主色狐狸沙棕 #D5B48F，次色青蓝 #31C8CC）
 	public static final Item WITCH_FAMILIAR_SPAWN_EGG = new SpawnEggItem(WITCH_FAMILIAR_ENTITY, 0xD5B48F, 0x31C8CC, new Item.Properties());
 	// 无限压缩能量药水（饮用/喷溅/滞留三型；使用后空瓶自充能，效果同压缩能量药水 feed_potion）
@@ -350,6 +282,7 @@ public class SscAddon implements ModInitializer {
 					.displayItems((displayContext, entries) -> {
 						entries.accept(SP_UPGRADE_THING);
 						entries.accept(EVOLUTION_STONE);
+						entries.accept(PSIONIC_ORB);
 						entries.accept(LIFESAVING_CAT_TAIL);
 						entries.accept(PHANTOM_BELL);
 						entries.accept(FROST_AMULET);
@@ -400,22 +333,8 @@ public class SscAddon implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-        /*
-        // 旧代码(保留参考) 已拆分为私有方法
-        AutoConfig.register(SSCAddonClientConfig.class, GsonConfigSerializer::new);
-        AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
-        // 注册状态效果
-        // 注册物品
-        // 注册实体
-        // 注册配方
-        // 注册技能
-        // 注册形态
-        // 注册命令
-        // 注册Tick事件
-        */
-
-		// 新代码
 		registerConfig();
+		registerStatusEffects();
 		registerItems();
 		registerRecipeSerializers();
 		registerSoundEvents();
@@ -455,46 +374,72 @@ public class SscAddon implements ModInitializer {
 		AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
 	}
 
+	private void registerStatusEffects() {
+		registerEffect("fox_fire_burn", FOX_FIRE_BURN);
+		registerEffect("playing_dead", PLAYING_DEAD);
+		registerEffect("blue_fire_ring", BLUE_FIRE_RING);
+		registerEffect("true_invisibility", TRUE_INVISIBILITY);
+		registerEffect("pre_invisibility", PRE_INVISIBILITY);
+		registerEffect("stun", STUN);
+		registerEffect("rooted", ROOTED);
+		registerEffect("guaranteed_crit", GUARANTEED_CRIT);
+		registerEffect("frost_freeze", FROST_FREEZE);
+		registerEffect("frost_fall", FROST_FALL);
+		registerEffect("purified", PURIFIED);
+		registerEffect("bat_regen", BAT_REGEN);
+		registerEffect("bat_poison", BAT_POISON);
+		registerEffect("bat_absorption", BAT_ABSORPTION);
+		registerEffect("mist_form", MIST_FORM);
+		registerEffect("mist_charging", MIST_CHARGING);
+		registerEffect("sand_blind", SAND_BLIND);
+		registerEffect("deafen", DEAFEN);
+		registerEffect("erosion_brand_marker_1", EROSION_BRAND_MARKER_1);
+		registerEffect("erosion_brand_marker_2", EROSION_BRAND_MARKER_2);
+		registerEffect("erosion_brand_marker_3", EROSION_BRAND_MARKER_3);
+		registerEffect("tidal_slow", TIDAL_SLOW);
+	}
+
 	private void registerItems() {
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "sp_upgrade_thing"), SP_UPGRADE_THING);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "portable_moisturizer"), PORTABLE_MOISTURIZER);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "snowball_launcher"), SNOWBALL_LAUNCHER);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "portable_fridge"), PORTABLE_FRIDGE);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "blue_fire_amulet"), BLUE_FIRE_AMULET);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "frost_amulet"), FROST_AMULET);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "blood_garnet"), BLOOD_GARNET);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "bloodlust_ring"), BLOODLUST_RING);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "humus_ring"), HUMUS_RING);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "twin_pod"), TWIN_POD);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "invisibility_cloak"), INVISIBILITY_CLOAK);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "lifesaving_cat_tail"), LIFESAVING_CAT_TAIL);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "phantom_bell"), PHANTOM_BELL);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "water_spear"), WATER_SPEAR);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "potion_bag"), POTION_BAG);
+		registerItem("sp_upgrade_thing", SP_UPGRADE_THING);
+		registerItem("portable_moisturizer", PORTABLE_MOISTURIZER);
+		registerItem("snowball_launcher", SNOWBALL_LAUNCHER);
+		registerItem("portable_fridge", PORTABLE_FRIDGE);
+		registerItem("blue_fire_amulet", BLUE_FIRE_AMULET);
+		registerItem("frost_amulet", FROST_AMULET);
+		registerItem("blood_garnet", BLOOD_GARNET);
+		registerItem("bloodlust_ring", BLOODLUST_RING);
+		registerItem("humus_ring", HUMUS_RING);
+		registerItem("twin_pod", TWIN_POD);
+		registerItem("invisibility_cloak", INVISIBILITY_CLOAK);
+		registerItem("lifesaving_cat_tail", LIFESAVING_CAT_TAIL);
+		registerItem("phantom_bell", PHANTOM_BELL);
+		registerItem("water_spear", WATER_SPEAR);
+		registerItem("potion_bag", POTION_BAG);
 		Registry.register(BuiltInRegistries.MENU, ResourceLocation.fromNamespaceAndPath("ssc_addon", "potion_bag"), POTION_BAG_SCREEN_HANDLER);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "evolution_stone"), EVOLUTION_STONE);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "coral_ball"), CORAL_BALL);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "active_coral_necklace"), ACTIVE_CORAL_NECKLACE);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "wind_spirit_stamina_necklace"), WIND_SPIRIT_STAMINA_NECKLACE);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "nova_revive_necklace"), NOVA_REVIVE_NECKLACE);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "anubis_crystal"), ANUBIS_CRYSTAL);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "ankh_stone"), ANKH_STONE);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "binding_anklet"), BINDING_ANKLET);
+		registerItem("evolution_stone", EVOLUTION_STONE);
+		registerItem("psionic_orb", PSIONIC_ORB);
+		registerItem("coral_ball", CORAL_BALL);
+		registerItem("active_coral_necklace", ACTIVE_CORAL_NECKLACE);
+		registerItem("wind_spirit_stamina_necklace", WIND_SPIRIT_STAMINA_NECKLACE);
+		registerItem("nova_revive_necklace", NOVA_REVIVE_NECKLACE);
+		registerItem("anubis_crystal", ANUBIS_CRYSTAL);
+		registerItem("ankh_stone", ANKH_STONE);
+		registerItem("binding_anklet", BINDING_ANKLET);
 		BindingAnkletItem.registerLootTable();
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "erosion_sand_prism"), EROSION_SAND_PRISM);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "withered_sand_ring"), WITHERED_SAND_RING);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "allay_heal_wand"), ALLAY_HEAL_WAND);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "allay_jukebox"), ALLAY_JUKEBOX);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "friend_marker"), FRIEND_MARKER);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "clear_friend_marker"), CLEAR_FRIEND_MARKER);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "witch_familiar_spawn_egg"), WITCH_FAMILIAR_SPAWN_EGG);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "infinite_energy_potion"), INFINITE_ENERGY_POTION);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "infinite_energy_potion_splash"), INFINITE_ENERGY_POTION_SPLASH);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "infinite_energy_potion_lingering"), INFINITE_ENERGY_POTION_LINGERING);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "wither_potion"), WITHER_POTION);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "wither_potion_splash"), WITHER_POTION_SPLASH);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "wither_potion_lingering"), WITHER_POTION_LINGERING);
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", "music_disc_shape_shifters_dream"), MUSIC_DISC_SHAPE_SHIFTERS_DREAM);
+		registerItem("erosion_sand_prism", EROSION_SAND_PRISM);
+		registerItem("withered_sand_ring", WITHERED_SAND_RING);
+		registerItem("allay_heal_wand", ALLAY_HEAL_WAND);
+		registerItem("allay_jukebox", ALLAY_JUKEBOX);
+		registerItem("friend_marker", FRIEND_MARKER);
+		registerItem("clear_friend_marker", CLEAR_FRIEND_MARKER);
+		registerItem("witch_familiar_spawn_egg", WITCH_FAMILIAR_SPAWN_EGG);
+		registerItem("infinite_energy_potion", INFINITE_ENERGY_POTION);
+		registerItem("infinite_energy_potion_splash", INFINITE_ENERGY_POTION_SPLASH);
+		registerItem("infinite_energy_potion_lingering", INFINITE_ENERGY_POTION_LINGERING);
+		registerItem("wither_potion", WITHER_POTION);
+		registerItem("wither_potion_splash", WITHER_POTION_SPLASH);
+		registerItem("wither_potion_lingering", WITHER_POTION_LINGERING);
+		registerItem("music_disc_shape_shifters_dream", MUSIC_DISC_SHAPE_SHIFTERS_DREAM);
 		// 酿造（饮用+火药→喷溅；喷溅+龙息→滞留）完全由 BrewingRegistryInfiniteMixin 接管：
 		// 直接拦截 hasRecipe/craft 驱动产出，槽位放行由 BrewingStandInfinitePotionMixin 处理。
 		// 旧的 ITEM_RECIPES 注册需构造 PotionBrewing$Mix，在 Forge/Sinytra Connector 下构造签名不同会崩溃，已移除。
@@ -520,6 +465,24 @@ public class SscAddon implements ModInitializer {
 		FabricDefaultAttributeRegistry.register(WITCH_FAMILIAR_ENTITY, WitchFamiliarEntity.createWitchFamiliarAttributes());
 	}
 
+	// 注册辅助方法（消除重复的 Registry.register 样板）
+	private static <T extends Entity> EntityType<T> registerEntity(String id, MobCategory group,
+	                                                               EntityType.EntityFactory<T> factory, float width, float height, int trackRange, int updateRate) {
+		return Registry.register(BuiltInRegistries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("ssc_addon", id),
+				FabricEntityTypeBuilder.<T>create(group, factory)
+						.dimensions(EntityDimensions.fixed(width, height))
+						.trackRangeBlocks(trackRange).trackedUpdateRate(updateRate)
+						.build());
+	}
+
+	private static void registerItem(String id, Item item) {
+		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", id), item);
+	}
+
+	private static void registerEffect(String id, MobEffect effect) {
+		Registry.register(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", id), effect);
+	}
+
 	private void registerApoliSystems() {
 		SscAddonActions.register();
 		SscAddonConditions.register();
@@ -543,6 +506,7 @@ public class SscAddon implements ModInitializer {
 		BloodGarnetItem.registerLootTable();
 		BloodlustRingItem.registerLootTable();
 		HumusRingItem.registerLootTable();
+		EvolutionItemsLoot.register();
 	}
 
 	private void registerCommands() {

@@ -67,7 +67,10 @@ public class WitchFamiliarEntity extends Monster implements GeoEntity {
 	private static final int FIRE_RING_COOLDOWN_MAX = 240;  // 12秒冷却
 	private static final int FIRE_RING_POWER = 3;           // 爆炸威力（原版explosion_damage_entity power=3）
 	private static final float FIRE_RING_EFFECT_RADIUS = FIRE_RING_POWER * 2.0f; // 实际影响半径=6.0格
-	private static final float FIRE_RING_DAMAGE = 6.0f;     // on_fire伤害（原版8降低2点）
+	// 自定义伤害类型：effects=hurt（普通），受护甲/盾牌减伤，与 on_fire（火焰、穿透盔甲）区分
+	private static final ResourceLocation FIRE_RING_DAMAGE_TYPE =
+			ResourceLocation.fromNamespaceAndPath("ssc_addon", "witch_familiar_fire_ring");
+	private static final float FIRE_RING_DAMAGE = 6.0f;     // 瞬间伤害（受护甲减伤；原 on_fire 为 8，现降为 6）
 	private static final int FIRE_RING_IGNITE_SECONDS = 10; // 着火10秒
 	private static final float PARTICLE_OUTER_RADIUS = 4.0f; // 粒子外圈半径4格
 	private static final float PARTICLE_INNER_RADIUS = 1.5f; // 粒子内圈半径1.5格
@@ -259,7 +262,7 @@ public class WitchFamiliarEntity extends Monster implements GeoEntity {
 		List<Entity> entityList = serverWorld.getEntities(
 				this, new AABB(k, r, t, l, s, u));
 
-		ResourceKey<DamageType> onFireKey = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("minecraft", "on_fire"));
+		ResourceKey<DamageType> fireRingKey = ResourceKey.create(Registries.DAMAGE_TYPE, FIRE_RING_DAMAGE_TYPE);
 
 		for (Entity targetEntity : entityList) {
 			// 跳过爆炸免疫实体
@@ -297,8 +300,8 @@ public class WitchFamiliarEntity extends Monster implements GeoEntity {
 			targetEntity.setDeltaMovement(targetEntity.getDeltaMovement().add(
 					dx * knockbackIntensity, dy * knockbackIntensity, dz * knockbackIntensity));
 
-			// entity_action: damage 8 on_fire + set_on_fire 10秒
-			living.hurt(living.damageSources().source(onFireKey, this), FIRE_RING_DAMAGE);
+			// entity_action: 6点普通伤害（受护甲减伤）+ set_on_fire 10秒
+			living.hurt(living.damageSources().source(fireRingKey, this), FIRE_RING_DAMAGE);
 			living.igniteForSeconds(FIRE_RING_IGNITE_SECONDS);
 		}
 	}

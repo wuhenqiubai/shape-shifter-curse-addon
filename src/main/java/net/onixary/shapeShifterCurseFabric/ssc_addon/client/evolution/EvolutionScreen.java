@@ -104,8 +104,37 @@ public class EvolutionScreen extends Screen {
     private int treeLeft, treeTop, treeW, treeH;
 
     public EvolutionScreen(Screen parent) {
-        super(Component.translatable("evolution.my_addon.screen.title"));
+        super(resolveTitle());
         this.parent = parent;
+    }
+
+    /**
+     * 解析当前加点界面标题：随玩家所处进化路线动态显示（如「进化使魔」/「进化美西螈」）；
+     * 找不到路线时回退到通用兜底标题 evolution.my_addon.screen.title。
+     */
+    private static Component resolveTitle() {
+        EvolutionRoute r = resolveRoute();
+        return (r != null && r.displayNameKey != null && !r.displayNameKey.isEmpty())
+                ? Component.translatable(r.displayNameKey)
+                : Component.translatable("evolution.my_addon.screen.title");
+    }
+
+    /**
+     * 解析玩家当前所在的进化路线（路线解析的唯一数据源，供构造期与渲染期共用）。
+     * 优先级：玩家已选路线 {@code comp.getRoute()} → 当前形态对应的起点路线 → null。
+     * 必须是静态方法（供 {@code super()} 调用链使用）。
+     */
+    private static EvolutionRoute resolveRoute() {
+        Player p = Minecraft.getInstance().player;
+        EvolutionComponent comp = (p == null) ? null : RegEvolutionComponent.EVOLUTION.get(p);
+        String rid = (comp == null) ? null : comp.getRoute();
+        if (rid != null && !rid.isEmpty()) {
+            return EvolutionRegistry.INSTANCE.getRoute(rid);
+        }
+        net.onixary.shapeShifterCurseFabric.player_form.IForm f =
+                (p == null) ? null : net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.get(p).nowForm;
+        ResourceLocation fid = (f == null) ? null : f.getFormID();
+        return EvolutionRegistry.INSTANCE.getRouteByStartForm(fid);
     }
 
     private EvolutionComponent getComp() {
@@ -113,18 +142,9 @@ public class EvolutionScreen extends Screen {
         return p == null ? null : RegEvolutionComponent.EVOLUTION.get(p);
     }
 
-    /** 当前玩家所在的进化路线（优先玩家已选路线，其次当前形态对应路线）。 */
+    /** 当前玩家所在的进化路线（委托静态 {@link #resolveRoute()}，保留实例 API 供渲染期调用）。 */
     private EvolutionRoute route() {
-        EvolutionComponent comp = getComp();
-        String rid = (comp == null) ? null : comp.getRoute();
-        if (rid == null || rid.isEmpty()) {
-            Player p = Minecraft.getInstance().player;
-            net.onixary.shapeShifterCurseFabric.player_form.IForm f =
-                    (p == null) ? null : net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.get(p).nowForm;
-            ResourceLocation fid = (f == null) ? null : f.getFormID();
-            return EvolutionRegistry.INSTANCE.getRouteByStartForm(fid);
-        }
-        return EvolutionRegistry.INSTANCE.getRoute(rid);
+        return resolveRoute();
     }
 
     /** 当前路线全部节点（未加载时返回空列表）。 */
@@ -141,12 +161,15 @@ public class EvolutionScreen extends Screen {
 
     @Override
     protected void init() {
+        // 标题在构造期由 resolveTitle() 按当前进化路线动态确定，此处无需再设。
         // 不创建默认 ButtonWidget：返回按钮自绘，以便统一深色+金色风格。
         updateBtn();
         pending.clear();
         panX = 0;
         panY = 0;
         zoom = 1.0;
+        // 通知服务端玩家打开了加点界面，触发旧存档迁移检测（机制改内置 exp 后，旧存档进化等级自动加满）
+        ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_EVO_OPEN), PacketByteBufs.empty()));
     }
 
     private void updateBtn() {
@@ -522,16 +545,31 @@ public class EvolutionScreen extends Screen {
                 12, 26, TXT_GRAY);
 
         if (comp != null) {
-            int level = Minecraft.getInstance().player != null
-                    ? Minecraft.getInstance().player.experienceLevel : 0;
+            int level = comp.getEvoLevel();
             Component levelText = Component.translatable("evolution.my_addon.screen.level", level);
-            int lw = this.font.width(levelText);
-            ctx.drawString(this.font, levelText, this.width - 12 - lw, 8, TXT_GOLD);
+            int lw = this.textRenderer.getWidth(levelText);
+            ctx.drawString(this.textRenderer, levelText, this.width - 12 - lw, 8, TXT_GOLD);
 
             if (comp.isOnSscaRoute()) {
+                // 进化经验到下一级的进度条（等级下方，右对齐窄条）
+                int ebW = 90, ebH = 3;
+                int ebX = this.width - 12 - ebW;
+                int ebY = 19;
+                int curExp = comp.getExp();
+                float eProg;
+                if (level >= EvolutionComponent.EVO_LEVEL_CAP) {
+                    eProg = 1.0f;
+                } else {
+                    int c0 = EvolutionComponent.levelToTotalExp(level) * 2;
+                    int n0 = EvolutionComponent.levelToTotalExp(level + 1) * 2;
+                    eProg = (n0 > c0) ? Math.max(0f, Math.min(1f, (float) (curExp - c0) / (n0 - c0))) : 0f;
+                }
+                ctx.fill(ebX, ebY, ebX + ebW, ebY + ebH, 0xFF201810);
+                ctx.fill(ebX, ebY, ebX + (int) (ebW * eProg), ebY + ebH, 0xFF55C964);
+
                 Component pointsText = Component.translatable("evolution.my_addon.screen.points", simPoints(comp));
-                int pw = this.font.width(pointsText);
-                ctx.drawString(this.font, pointsText, this.width - 12 - pw, 26, TITLE_GOLD);
+                int pw = this.textRenderer.getWidth(pointsText);
+                ctx.drawString(this.textRenderer, pointsText, this.width - 12 - pw, 30, TITLE_GOLD);
             } else {
                 Component nr = Component.translatable("evolution.my_addon.screen.no_route");
                 int nw = this.font.width(nr);
@@ -554,8 +592,7 @@ public class EvolutionScreen extends Screen {
             Component prog = Component.translatable("evolution.my_addon.screen.progress", unlocked, total);
             ctx.drawString(this.font, prog, 12, y0 + 13, TXT_GOLD);
 
-            int level = Minecraft.getInstance().player != null
-                    ? Minecraft.getInstance().player.experienceLevel : 0;
+            int level = comp.getEvoLevel();
             EvolutionRoute br = route();
             boolean allBranch = br != null && !br.getBranchNodeIds().isEmpty();
             if (br != null) {
