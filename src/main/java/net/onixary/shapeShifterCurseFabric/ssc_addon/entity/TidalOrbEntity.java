@@ -16,6 +16,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -114,8 +115,8 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
         // 从玩家眼部前方生成，方向取准星
         Vec3 look = owner.getViewVector(1.0f);
         this.flyDir = look.normalize();
-        this.setPosition(owner.getX() + look.x * 0.8, owner.getEyeY() - 0.1 + look.y * 0.8, owner.getZ() + look.z * 0.8);
-        this.noClip = true;
+        this.setPos(owner.getX() + look.x * 0.8, owner.getEyeY() - 0.1 + look.y * 0.8, owner.getZ() + look.z * 0.8);
+        this.noPhysics = true;
         // 阿澪：飞行/拴人时长 +20%（拴人伤害在 tickAttracting 结算）
         this.isAling = FormUtils.isForm(owner, FormIdentifiers.AXOLOTL_ALING);
         if (this.isAling) {
@@ -205,7 +206,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
     private void tickDecelerating(ServerLevel sw) {
         // 0.75 秒线性减速到 0，保持当前方向不转向
         double t = (double) phaseTicks / DECEL_TICKS;
-        currentSpeed = flySpeed * (1.0 - MathHelper.clamp(t, 0.0, 1.0));
+        currentSpeed = flySpeed * (1.0 - Mth.clamp(t, 0.0, 1.0));
         if (moveWithWallCheck(sw, flyDir.x * currentSpeed, flyDir.y * currentSpeed, flyDir.z * currentSpeed)) {
             enterAttractPhase(sw);
             return;
@@ -300,36 +301,36 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
             if (!(e instanceof LivingEntity t) || !t.isAlive() || t.isSpectator()) continue;
             if (WhitelistUtils.isProtected(ownerUuid, sw, t)) continue;
             if (owner != null) {
-                t.damage(t.getDamageSources().playerAttack(owner), 4.0f);
+                t.hurt(t.damageSources().playerAttack(owner), 4.0f);
             } else {
-                t.damage(t.getDamageSources().magic(), 4.0f);
+                t.hurt(t.damageSources().magic(), 4.0f);
             }
         }
     }
 
     /** 海晶荧光坠增强：落点一次性爆炸——对 6 格内捕获目标造成 8 点物理伤害 + 35% 减速 12 秒，随后立即破裂。 */
-    private void explodeEnhanced(ServerWorld sw) {
-        ServerPlayerEntity owner = getOwner(sw);
+    private void explodeEnhanced(ServerLevel sw) {
+        ServerPlayer owner = getOwner(sw);
         double cx = tetherCenter.x, cy = tetherCenter.y, cz = tetherCenter.z;
         for (UUID id : tetheredTargets) {
             Entity e = sw.getEntity(id);
             if (!(e instanceof LivingEntity t) || !t.isAlive() || t.isSpectator()) continue;
             if (WhitelistUtils.isProtected(ownerUuid, sw, t)) continue;
             if (owner != null) {
-                t.damage(t.getDamageSources().playerAttack(owner), 8.0f);
+                t.hurt(t.damageSources().playerAttack(owner), 8.0f);
             } else {
-                t.damage(t.getDamageSources().magic(), 8.0f);
+                t.hurt(t.damageSources().magic(), 8.0f);
             }
             // 35% 减速 12 秒（TIDAL_SLOW amplifier=2 → -0.35）
-            t.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(
-                    SscAddon.TIDAL_SLOW, 240, 2, false, false, true));
+            t.addEffect(new MobEffectInstance(
+                    SscAddon.TIDAL_SLOW_ENTRY, 240, 2, false, false, true));
         }
         // 爆炸表现 + 立即破裂（跳过 8.5 秒拴人）
-        sw.spawnParticles(ParticleTypes.EXPLOSION, cx, cy + 0.5, cz, 3, 0.3, 0.3, 0.3, 0.0);
-        sw.spawnParticles(ParticleTypes.SPLASH, cx, cy, cz, 80, 1.5, 1.0, 1.5, 0.5);
-        sw.playSound(null, cx, cy, cz, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.0f, 1.3f);
+        sw.sendParticles(ParticleTypes.EXPLOSION, cx, cy + 0.5, cz, 3, 0.3, 0.3, 0.3, 0.0);
+        sw.sendParticles(ParticleTypes.SPLASH, cx, cy, cz, 80, 1.5, 1.0, 1.5, 0.5);
+        sw.playSound(null, cx, cy, cz, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0f, 1.3f);
         this.tetheredTargets.clear();
-        this.dataTracker.set(TETHER_ACTIVE, false);   // 爆炸后不再显示拴人束缚环
+        this.entityData.set(TETHER_ACTIVE, false);   // 爆炸后不再显示拴人束缚环
         phase = Phase.DELAY;
         phaseTicks = 0;
     }
@@ -395,7 +396,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
     }
 
     // ==================== DELAY ====================
-    private void tickDelay(ServerWorld sw) {
+    private void tickDelay(ServerLevel sw) {
         // 增强爆炸球已破裂，DELAY 期不再画拴人悬停粒子/束缚环（避免爆炸后还闪范围环）
         if (!isEnhanced) {
             spawnHoverParticles(sw);

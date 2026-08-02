@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.jackcooper.shapeShifterCurseAddon.event.*;
 import net.jackcooper.shapeShifterCurseAddon.item.PsionicOrbItem;
+import net.jackcooper.shapeShifterCurseAddon.item.SeaCrystalPendantItem;
 import net.jackcooper.shapeShifterCurseAddon.loot.EvolutionItemsLoot;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;

@@ -15,6 +15,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix3f;
@@ -48,18 +49,18 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	private static final double ENH_ARRAY_SIDE = 1.3;
 	private static final double ENH_ARRAY_UP = 1.7;
 
-	public FluorescentLaserRenderer(EntityRendererFactory.Context ctx) {
+	public FluorescentLaserRenderer(EntityRendererProvider.Context ctx) {
 		super(ctx);
 	}
 
 	@Override
-	public void render(LaserBeamEntity entity, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vcp, int light) {
+	public void render(LaserBeamEntity entity, float yaw, float tickDelta, PoseStack matrices, MultiBufferSource vcp, int light) {
 		// 海晶荧光坠增强单道：不依赖 owner 准星，实体本身就在法阵起点，按存的 dir 画缩型法阵 + 24 格光柱
 		if (entity.isEnhanced()) {
 			renderEnhanced(entity, tickDelta, matrices, vcp);
 			return;
 		}
-		Entity owner = entity.getWorld().getEntityById(entity.getTrackedOwnerId());
+		Entity owner = entity.level().getEntity(entity.getTrackedOwnerId());
 		if (owner == null) return;
 
 		float oyaw = Mth.lerp(tickDelta, owner.yRotO, owner.getYRot());
@@ -119,79 +120,79 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	}
 
 	/** 海晶荧光坠增强渲染：在玩家斜后方左/右/上三位置画缩小旋转法阵（剩余数由实体同步）；发射时从对应法阵朝命中方向画光柱。 */
-	private void renderEnhanced(LaserBeamEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vcp) {
-		Entity owner = entity.getWorld().getEntityById(entity.getTrackedOwnerId());
+	private void renderEnhanced(LaserBeamEntity entity, float tickDelta, PoseStack matrices, MultiBufferSource vcp) {
+		Entity owner = entity.level().getEntity(entity.getTrackedOwnerId());
 		if (owner == null) return;
-		float oyaw = MathHelper.lerp(tickDelta, owner.prevYaw, owner.getYaw());
-		float opitch = MathHelper.lerp(tickDelta, owner.prevPitch, owner.getPitch());
+		float oyaw = Mth.lerp(tickDelta, owner.yRotO, owner.getYRot());
+		float opitch = Mth.lerp(tickDelta, owner.xRotO, owner.getXRot());
 		double yawR = Math.toRadians(oyaw), pitchR = Math.toRadians(opitch);
 		double ax = -Math.sin(yawR) * Math.cos(pitchR);
 		double ay = -Math.sin(pitchR);
 		double az = Math.cos(yawR) * Math.cos(pitchR);
-		double ox = MathHelper.lerp(tickDelta, owner.prevX, owner.getX());
-		double oy = MathHelper.lerp(tickDelta, owner.prevY, owner.getY()) + owner.getStandingEyeHeight();
-		double oz = MathHelper.lerp(tickDelta, owner.prevZ, owner.getZ());
-		double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
-		double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
-		double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
-		Vec3d aimV = new Vec3d(ax, ay, az);
-		Vec3d rightV = aimV.crossProduct(new Vec3d(0, 1, 0));
-		if (rightV.lengthSquared() < 1.0e-6) rightV = new Vec3d(1, 0, 0);
+		double ox = Mth.lerp(tickDelta, owner.xo, owner.getX());
+		double oy = Mth.lerp(tickDelta, owner.yo, owner.getY()) + owner.getEyeHeight();
+		double oz = Mth.lerp(tickDelta, owner.zo, owner.getZ());
+		double ex = Mth.lerp(tickDelta, entity.xo, entity.getX());
+		double ey = Mth.lerp(tickDelta, entity.yo, entity.getY());
+		double ez = Mth.lerp(tickDelta, entity.zo, entity.getZ());
+		Vec3 aimV = new Vec3(ax, ay, az);
+		Vec3 rightV = aimV.cross(new Vec3(0, 1, 0));
+		if (rightV.lengthSqr() < 1.0e-6) rightV = new Vec3(1, 0, 0);
 		rightV = rightV.normalize();
-		Vec3d base = new Vec3d(ox, oy, oz).subtract(aimV.multiply(ENH_ARRAY_BACK));   // 斜后方
-		Vec3d[] pos = new Vec3d[]{
-				base.subtract(rightV.multiply(ENH_ARRAY_SIDE)),   // 左
-				base.add(rightV.multiply(ENH_ARRAY_SIDE)),        // 右
+		Vec3 base = new Vec3(ox, oy, oz).subtract(aimV.scale(ENH_ARRAY_BACK));   // 斜后方
+		Vec3[] pos = new Vec3[]{
+				base.subtract(rightV.scale(ENH_ARRAY_SIDE)),   // 左
+				base.add(rightV.scale(ENH_ARRAY_SIDE)),        // 右
 				base.add(0, ENH_ARRAY_UP, 0)                      // 上
 		};
 		int left = entity.getArraysLeft();
 		int firingIdx = entity.isFiring() ? entity.getFiringIdx() : -1;
 		float age = entity.getPhaseTick() + tickDelta;
 		float scale = entity.enhArrayScale();
-		VertexConsumer buf = vcp.getBuffer(RenderLayer.getLightning());
+		VertexConsumer buf = vcp.getBuffer(RenderType.lightning());
 		// 剩余待发射法阵（斜后方，缩小旋转，实时朝锁定点预瞑——未同步时回退朝准星）
-		Vec3d lock = entity.getLockPoint();
+		Vec3 lock = entity.getLockPoint();
 		for (int i = ENH_ARRAY_COUNT - left; i < ENH_ARRAY_COUNT; i++) {
 			if (i < 0 || i > 2) continue;
-			Vec3d p = pos[i];
+			Vec3 p = pos[i];
 			float ryaw = -oyaw, rpitch = opitch;   // 回退：朝玩家准星
 			if (lock != null) {
-				Vec3d d = lock.subtract(p);
-				if (d.lengthSquared() > 1.0e-6) {
+				Vec3 d = lock.subtract(p);
+				if (d.lengthSqr() > 1.0e-6) {
 					d = d.normalize();
 					ryaw = -(float) Math.toDegrees(Math.atan2(-d.x, d.z));
-					rpitch = (float) Math.toDegrees(Math.asin(MathHelper.clamp(-d.y, -1.0, 1.0)));
+					rpitch = (float) Math.toDegrees(Math.asin(Mth.clamp(-d.y, -1.0, 1.0)));
 				}
 			}
-			matrices.push();
+			matrices.pushPose();
 			matrices.translate(p.x - ex, p.y - ey, p.z - ez);
-			matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(ryaw));
-			matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(rpitch));
+			matrices.mulPose(Axis.YP.rotationDegrees(ryaw));
+			matrices.mulPose(Axis.XP.rotationDegrees(rpitch));
 			matrices.scale(scale, scale, scale);
-			drawArray(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), age);
-			matrices.pop();
+			drawArray(buf, matrices.last().pose(), matrices.last().normal(), age);
+			matrices.popPose();
 		}
 		// 发射光柱：从当前法阵位置指向「发射瞬间定格的世界锁定点」——法阵随玩家移动，激光始终连法阵与固定落点（追踪锁定）
 		if (firingIdx >= 0 && firingIdx <= 2) {
-			Vec3d fireLock = entity.getFireLock();
-			Vec3d fp = pos[firingIdx];
-			Vec3d d = fireLock.subtract(fp);
+			Vec3 fireLock = entity.getFireLock();
+			Vec3 fp = pos[firingIdx];
+			Vec3 d = fireLock.subtract(fp);
 			double len = d.length();
 			if (len > 1.0e-4) {
-				Vec3d dir = d.multiply(1.0 / len);
+				Vec3 dir = d.scale(1.0 / len);
 				float fyaw = (float) Math.toDegrees(Math.atan2(-dir.x, dir.z));
-				float fpitch = (float) Math.toDegrees(Math.asin(MathHelper.clamp(-dir.y, -1.0, 1.0)));
-				matrices.push();
+				float fpitch = (float) Math.toDegrees(Math.asin(Mth.clamp(-dir.y, -1.0, 1.0)));
+				matrices.pushPose();
 				matrices.translate(fp.x - ex, fp.y - ey, fp.z - ez);
-				matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-fyaw));
-				matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(fpitch));
-				matrices.push();
+				matrices.mulPose(Axis.YP.rotationDegrees(-fyaw));
+				matrices.mulPose(Axis.XP.rotationDegrees(fpitch));
+				matrices.pushPose();
 				matrices.scale(scale, scale, scale);
-				drawArray(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), age);
-				matrices.pop();
-				drawBeam(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(),
+				drawArray(buf, matrices.last().pose(), matrices.last().normal(), age);
+				matrices.popPose();
+				drawBeam(buf, matrices.last().pose(), matrices.last().normal(),
 						entity.enhBeamRadius(), (float) len);   // 光柱长度=当前法阵到固定锁定点实时距离，与伤害判定一致
-				matrices.pop();
+				matrices.popPose();
 			}
 		}
 	}

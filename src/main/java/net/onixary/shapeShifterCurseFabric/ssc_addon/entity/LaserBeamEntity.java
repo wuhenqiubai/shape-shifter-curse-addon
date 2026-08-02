@@ -30,6 +30,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import java.util.List;
@@ -75,21 +76,21 @@ public class LaserBeamEntity extends Entity {
 	private static final float DAMAGE = 20.0f;          // 每次 20 魔法伤害（释放 60t 共 6 次 = 120）
 
 	// ===== 同步数据（供渲染器）=====
-	private static final TrackedData<Integer> PHASE = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.INTEGER);       // 0 CHARGE / 1 RELEASE / 2 FADE
-	private static final TrackedData<Integer> PHASE_TICK = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.INTEGER);  // 当前阶段已用 tick
-	private static final TrackedData<Integer> OWNER_ID = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.INTEGER);
-	// 海晶荧光坠增强：单道视觉标记 + 发射方向（Vec3d 拆 3 个 float 同步给渲染器）
-	private static final TrackedData<Boolean> ENHANCED = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
-	private static final TrackedData<Float> DIR_X = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.FLOAT);
-	private static final TrackedData<Float> DIR_Y = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.FLOAT);
-	private static final TrackedData<Float> DIR_Z = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.FLOAT);
-	private static final TrackedData<Boolean> FIRING = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
-	private static final TrackedData<Integer> ARRAYS_LEFT = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.INTEGER);
-	private static final TrackedData<Integer> FIRING_IDX = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.INTEGER);
+	private static final EntityDataAccessor<Integer> PHASE = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.INT);       // 0 CHARGE / 1 RELEASE / 2 FADE
+	private static final EntityDataAccessor<Integer> PHASE_TICK = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.INT);  // 当前阶段已用 tick
+	private static final EntityDataAccessor<Integer> OWNER_ID = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.INT);
+	// 海晶荧光坠增强：单道视觉标记 + 发射方向（Vec3 拆 3 个 float 同步给渲染器）
+	private static final EntityDataAccessor<Boolean> ENHANCED = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.BOOLEAN);
+	private static final EntityDataAccessor<Float> DIR_X = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> DIR_Y = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> DIR_Z = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Boolean> FIRING = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.BOOLEAN);
+	private static final EntityDataAccessor<Integer> ARRAYS_LEFT = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Integer> FIRING_IDX = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.INT);
 	// 海晶荧光坠增强：实时锁定点（准星落点，服务端每 tick 同步）——供渲染器让剩余待发射法阵预瞑转向
-	private static final TrackedData<Float> LOCK_X = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.FLOAT);
-	private static final TrackedData<Float> LOCK_Y = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.FLOAT);
-	private static final TrackedData<Float> LOCK_Z = DataTracker.registerData(LaserBeamEntity.class, TrackedDataHandlerRegistry.FLOAT);
+	private static final EntityDataAccessor<Float> LOCK_X = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> LOCK_Y = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Float> LOCK_Z = SynchedEntityData.defineId(LaserBeamEntity.class, EntityDataSerializers.FLOAT);
 
 	private enum Phase { CHARGE, RELEASE, FADE }
 
@@ -112,83 +113,83 @@ public class LaserBeamEntity extends Entity {
 
 	public LaserBeamEntity(Level world, ServerPlayer owner) {
 		super(SscAddon.LASER_BEAM_ENTITY, world);
-		this.ownerUuid = owner.getUuid();
-		this.setPosition(owner.getX(), owner.getEyeY(), owner.getZ());
-		this.dataTracker.set(OWNER_ID, owner.getId());
-		this.noClip = true;
+		this.ownerUuid = owner.getUUID();
+		this.setPos(owner.getX(), owner.getEyeY(), owner.getZ());
+		this.entityData.set(OWNER_ID, owner.getId());
+		this.noPhysics = true;
 	}
 
 	/** 海晶荧光坠增强：持久「待机法阵」实体——combo 期间跟随玩家、在其前方显示旋转法阵（像原激光）；
 	 *  发射时 startFiring 进 8t 发射态额外画光柱。不定身/不伤害/不设 CD（由 Manager 管，combo 结束 discard）。 */
-	public LaserBeamEntity(World world, ServerPlayerEntity owner, boolean enhancedStandby) {
+	public LaserBeamEntity(Level world, ServerPlayer owner, boolean enhancedStandby) {
 		super(SscAddon.LASER_BEAM_ENTITY, world);
-		this.ownerUuid = owner.getUuid();
-		this.setPosition(owner.getX(), owner.getEyeY(), owner.getZ());
-		this.dataTracker.set(OWNER_ID, owner.getId());
-		this.dataTracker.set(ENHANCED, true);
-		this.dataTracker.set(PHASE, 1);
-		this.noClip = true;
+		this.ownerUuid = owner.getUUID();
+		this.setPos(owner.getX(), owner.getEyeY(), owner.getZ());
+		this.entityData.set(OWNER_ID, owner.getId());
+		this.entityData.set(ENHANCED, true);
+		this.entityData.set(PHASE, 1);
+		this.noPhysics = true;
 	}
 
 	/** 发射一道：进入 8t 发射态，记录发射法阵索引 + 发射瞬间定格的世界锁定点。
 	 *  激光落点固定为此世界点，法阵随玩家移动时激光始终指向它（追踪锁定，方向由渲染器/伤害按当前法阵位置实时算）。 */
-	public void startFiring(int arrayIdx, Vec3d fireLock) {
-		this.dataTracker.set(FIRING, true);
-		this.dataTracker.set(FIRING_IDX, arrayIdx);
-		this.dataTracker.set(DIR_X, (float) fireLock.x);
-		this.dataTracker.set(DIR_Y, (float) fireLock.y);
-		this.dataTracker.set(DIR_Z, (float) fireLock.z);
+	public void startFiring(int arrayIdx, Vec3 fireLock) {
+		this.entityData.set(FIRING, true);
+		this.entityData.set(FIRING_IDX, arrayIdx);
+		this.entityData.set(DIR_X, (float) fireLock.x);
+		this.entityData.set(DIR_Y, (float) fireLock.y);
+		this.entityData.set(DIR_Z, (float) fireLock.z);
 		this.enhFiringTicks = ENH_SHOT_TICKS;
 	}
 
 	public boolean isFiring() {
-		return this.dataTracker.get(FIRING);
+		return this.entityData.get(FIRING);
 	}
 
 	/** combo 当前剩余法阵数（渲染器据此画斜后方剩余法阵）。 */
 	public void setArraysLeft(int n) {
-		this.dataTracker.set(ARRAYS_LEFT, n);
+		this.entityData.set(ARRAYS_LEFT, n);
 	}
 
 	public int getArraysLeft() {
-		return this.dataTracker.get(ARRAYS_LEFT);
+		return this.entityData.get(ARRAYS_LEFT);
 	}
 
 	public int getFiringIdx() {
-		return this.dataTracker.get(FIRING_IDX);
+		return this.entityData.get(FIRING_IDX);
 	}
 
 	/** 服务端每 tick 同步的实时锁定点（准星落点），供渲染器让剩余待发射法阵预瞑转向。 */
-	public void setLockPoint(Vec3d p) {
-		this.dataTracker.set(LOCK_X, (float) p.x);
-		this.dataTracker.set(LOCK_Y, (float) p.y);
-		this.dataTracker.set(LOCK_Z, (float) p.z);
+	public void setLockPoint(Vec3 p) {
+		this.entityData.set(LOCK_X, (float) p.x);
+		this.entityData.set(LOCK_Y, (float) p.y);
+		this.entityData.set(LOCK_Z, (float) p.z);
 	}
 
 	/** 锁定点（未同步时返回 null，渲染器回退朝准星）。 */
-	public Vec3d getLockPoint() {
-		float x = this.dataTracker.get(LOCK_X);
-		float y = this.dataTracker.get(LOCK_Y);
-		float z = this.dataTracker.get(LOCK_Z);
+	public Vec3 getLockPoint() {
+		float x = this.entityData.get(LOCK_X);
+		float y = this.entityData.get(LOCK_Y);
+		float z = this.entityData.get(LOCK_Z);
 		if (x == 0f && y == 0f && z == 0f) return null;
-		return new Vec3d(x, y, z);
+		return new Vec3(x, y, z);
 	}
 
 	@Override
-	protected void initDataTracker() {
-		this.dataTracker.startTracking(PHASE, 0);
-		this.dataTracker.startTracking(PHASE_TICK, 0);
-		this.dataTracker.startTracking(OWNER_ID, 0);
-		this.dataTracker.startTracking(ENHANCED, false);
-		this.dataTracker.startTracking(DIR_X, 0f);
-		this.dataTracker.startTracking(DIR_Y, 0f);
-		this.dataTracker.startTracking(DIR_Z, 0f);
-		this.dataTracker.startTracking(FIRING, false);
-		this.dataTracker.startTracking(ARRAYS_LEFT, 3);
-		this.dataTracker.startTracking(FIRING_IDX, 0);
-		this.dataTracker.startTracking(LOCK_X, 0f);
-		this.dataTracker.startTracking(LOCK_Y, 0f);
-		this.dataTracker.startTracking(LOCK_Z, 0f);
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		this.entityData.set(PHASE, 0);
+		this.entityData.set(PHASE_TICK, 0);
+		this.entityData.set(OWNER_ID, 0);
+		this.entityData.set(ENHANCED, false);
+		this.entityData.set(DIR_X, 0f);
+		this.entityData.set(DIR_Y, 0f);
+		this.entityData.set(DIR_Z, 0f);
+		this.entityData.set(FIRING, false);
+		this.entityData.set(ARRAYS_LEFT, 3);
+		this.entityData.set(FIRING_IDX, 0);
+		this.entityData.set(LOCK_X, 0f);
+		this.entityData.set(LOCK_Y, 0f);
+		this.entityData.set(LOCK_Z, 0f);
 	}
 
 	// ===== 渲染器读取 =====
@@ -205,12 +206,12 @@ public class LaserBeamEntity extends Entity {
 	}
 
 	public boolean isEnhanced() {
-		return this.dataTracker.get(ENHANCED);
+		return this.entityData.get(ENHANCED);
 	}
 
 	/** 增强单道发射瞬间定格的世界锁定点（渲染器/伤害据当前法阵位置算方向与长度，实现落点固定的追踪锁定）。 */
-	public Vec3d getFireLock() {
-		return new Vec3d(this.dataTracker.get(DIR_X), this.dataTracker.get(DIR_Y), this.dataTracker.get(DIR_Z));
+	public Vec3 getFireLock() {
+		return new Vec3(this.entityData.get(DIR_X), this.entityData.get(DIR_Y), this.entityData.get(DIR_Z));
 	}
 
 	public float enhArrayScale() {
@@ -235,38 +236,38 @@ public class LaserBeamEntity extends Entity {
 
 	/** 增强单道光柱达 24 格、碰撞盒仅 0.5，放宽视锥剔除避免离屏被 cull。 */
 	@Override
-	public boolean shouldRender(double distance) {
+	public boolean shouldRenderAtSqrDistance(double distance) {
 		return true;
 	}
 
 	@Override
-	public Box getVisibilityBoundingBox() {
+	public @NotNull AABB getBoundingBoxForCulling() {
 		// 增强单道光柱最长 24 格、起点在玩家斜后方，扩大可见盒避免视锥剔除导致法阵/光柱整体不渲染
-		return this.dataTracker.get(ENHANCED) ? this.getBoundingBox().expand(48.0) : super.getVisibilityBoundingBox();
+		return this.entityData.get(ENHANCED) ? this.getBoundingBox().inflate(48.0) : super.getBoundingBoxForCulling();
 	}
 
 	@Override
 	public void tick() {
 		super.tick();
 		// 海晶荧光坠增强：持久「待机法阵」——combo 期间跟随玩家、前方显示旋转法阵；发射态额外画光柱 8t；由 Manager combo 结束 discard
-		if (this.dataTracker.get(ENHANCED)) {
-			if (this.getWorld().isClient) return;
-			if (!(this.getWorld() instanceof ServerWorld sw2)) return;
-			ServerPlayerEntity ownerE = getOwner(sw2);
-			if (ownerE == null || ownerE.isRemoved() || ownerE.isDead() || !FormUtils.isAxolotlFluorescent(ownerE)) {
+		if (this.entityData.get(ENHANCED)) {
+			if (this.level().isClientSide) return;
+			if (!(this.level() instanceof ServerLevel sw2)) return;
+			ServerPlayer ownerE = getOwner(sw2);
+			if (ownerE == null || ownerE.isRemoved() || ownerE.isDeadOrDying() || !FormUtils.isAxolotlFluorescent(ownerE)) {
 				this.discard();
 				return;
 			}
-			this.setPosition(ownerE.getX(), ownerE.getEyeY(), ownerE.getZ());   // 跟随玩家
+			this.setPos(ownerE.getX(), ownerE.getEyeY(), ownerE.getZ());   // 跟随玩家
 			phaseTicks++;
-			this.dataTracker.set(PHASE_TICK, phaseTicks);
-			if (this.dataTracker.get(FIRING)) {
+			this.entityData.set(PHASE_TICK, phaseTicks);
+			if (this.entityData.get(FIRING)) {
 				enhFiringTicks--;
-				if (enhFiringTicks <= 0) this.dataTracker.set(FIRING, false);
+				if (enhFiringTicks <= 0) this.entityData.set(FIRING, false);
 			}
 			return;
 		}
-		if (this.getWorld().isClient) {
+		if (this.level().isClientSide) {
 			return;   // 渲染由 FluorescentLaserRenderer 负责；粒子由服务端生成
 		}
 		if (!(this.level() instanceof ServerLevel sw)) return;

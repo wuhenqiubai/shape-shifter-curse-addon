@@ -32,11 +32,10 @@ public class TidalSlowEffect extends MobEffect {
         if (speedAttr != null) {
             speedAttr.removeModifier(SPEED_MODIFIER_UUID);
             // 减速幅度随 amplifier 提升：amplifier 0 = -15%、每级额外 -10%（amplifier 2 = -35%，海晶荧光坠爆炸球用）
-            speedAttr.addTemporaryModifier(new EntityAttributeModifier(
+            speedAttr.addTransientModifier(new AttributeModifier(
                     SPEED_MODIFIER_UUID,
-                    SPEED_MODIFIER_NAME,
-                    -(0.15 + amplifier * 0.10),
-                    EntityAttributeModifier.Operation.MULTIPLY_TOTAL
+		            -(0.15 + amplifier * 0.10),
+                    AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
             ));
         }
     }
