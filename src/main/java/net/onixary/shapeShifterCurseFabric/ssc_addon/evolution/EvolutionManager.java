@@ -325,7 +325,7 @@ public final class EvolutionManager {
         }
         EvolutionRoute targetRoute = EvolutionRegistry.INSTANCE.getRouteByStartForm(targetFormId);
         if (targetRoute == null || !targetRoute.enabled) {
-            player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.fail.invalid_target").formatted(Formatting.RED), true);
+            player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.fail.invalid_target").withStyle(ChatFormatting.RED), true);
             return;
         }
         EvolutionComponent comp = get(player);
@@ -334,8 +334,8 @@ public final class EvolutionManager {
         }
         // 门槛按「总进化点数（已用 + 未用）」判定，即已获得的里程碑点数总量
         if (comp.getGrantedLevelCount() < JOB_CHANGE_COST) {
-            player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.fail.not_enough_points", JOB_CHANGE_COST).formatted(Formatting.RED), true);
-            player.getLevel().playSound(null, player.getX(), player.getY(), player.getZ(),
+            player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.fail.not_enough_points", JOB_CHANGE_COST).withStyle(ChatFormatting.RED), true);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 1.0F, 1.0F);
             return;
         }
@@ -385,7 +385,7 @@ public final class EvolutionManager {
         comp.setJobChanging(false);
         sync(player);
         player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.success").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), false);
-        player.getLevel().playSound(null, player.getX(), player.getY(), player.getZ(),
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.0F);
     }
 
@@ -438,7 +438,7 @@ public final class EvolutionManager {
             player.getOffhandItem().shrink(1);
             return true;
         }
-        for (int i = 0; i < player.getInventory().size(); i++) {
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack s = player.getInventory().getItem(i);
             if (s.is(SscAddon.PSIONIC_ORB)) {
                 s.shrink(1);

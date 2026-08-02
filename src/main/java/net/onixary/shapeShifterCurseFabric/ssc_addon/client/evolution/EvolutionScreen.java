@@ -547,8 +547,8 @@ public class EvolutionScreen extends Screen {
         if (comp != null) {
             int level = comp.getEvoLevel();
             Component levelText = Component.translatable("evolution.my_addon.screen.level", level);
-            int lw = this.textRenderer.getWidth(levelText);
-            ctx.drawString(this.textRenderer, levelText, this.width - 12 - lw, 8, TXT_GOLD);
+            int lw = this.font.width(levelText);
+            ctx.drawString(this.font, levelText, this.width - 12 - lw, 8, TXT_GOLD);
 
             if (comp.isOnSscaRoute()) {
                 // 进化经验到下一级的进度条（等级下方，右对齐窄条）
@@ -568,8 +568,8 @@ public class EvolutionScreen extends Screen {
                 ctx.fill(ebX, ebY, ebX + (int) (ebW * eProg), ebY + ebH, 0xFF55C964);
 
                 Component pointsText = Component.translatable("evolution.my_addon.screen.points", simPoints(comp));
-                int pw = this.textRenderer.getWidth(pointsText);
-                ctx.drawString(this.textRenderer, pointsText, this.width - 12 - pw, 30, TITLE_GOLD);
+                int pw = this.font.width(pointsText);
+                ctx.drawString(this.font, pointsText, this.width - 12 - pw, 30, TITLE_GOLD);
             } else {
                 Component nr = Component.translatable("evolution.my_addon.screen.no_route");
                 int nw = this.font.width(nr);

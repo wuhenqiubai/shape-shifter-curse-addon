@@ -1,25 +1,26 @@
 package net.jackcooper.shapeShifterCurseAddon.item;
 
-import net.minecraft.client.item.TooltipContext;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.util.UseAction;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.level.Level;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionRegistry;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -34,54 +35,54 @@ import java.util.List;
  */
 public class PsionicOrbItem extends Item {
 
-    public PsionicOrbItem(Settings settings) {
+    public PsionicOrbItem(Properties settings) {
         super(settings);
     }
 
     @Override
-    public UseAction getUseAction(ItemStack stack) {
-        return UseAction.BOW;
+    public @NotNull UseAnim getUseAnimation(ItemStack stack) {
+        return UseAnim.BOW;
     }
 
     @Override
-    public int getMaxUseTime(ItemStack stack) {
+    public int getUseDuration(ItemStack stack, LivingEntity user) {
         return 32;
     }
 
     @Override
-    public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
-        user.setCurrentHand(hand);
-        return TypedActionResult.consume(user.getStackInHand(hand));
+    public @NotNull InteractionResultHolder<ItemStack> use(Level world, Player user, InteractionHand hand) {
+        user.startUsingItem(hand);
+        return InteractionResultHolder.consume(user.getItemInHand(hand));
     }
 
     @Override
-    public ItemStack finishUsing(ItemStack stack, World world, LivingEntity user) {
-        if (!world.isClient && user instanceof ServerPlayerEntity player) {
+    public @NotNull ItemStack finishUsingItem(ItemStack stack, Level world, LivingEntity user) {
+        if (!world.isClientSide && user instanceof ServerPlayer player) {
             IForm currentForm = FormUtils.getCurrentForm(player);
-            Identifier formId = currentForm != null ? currentForm.getFormID() : null;
+            ResourceLocation formId = currentForm != null ? currentForm.getFormID() : null;
             // 仅进化形态（某进化路线的起点形态）可用；数据驱动，未来新增进化形态自动接入
             if (formId != null && EvolutionRegistry.INSTANCE.getRouteByStartForm(formId) != null) {
                 // 服务端发 S2C 包让客户端打开转职选择界面（此处不消耗道具，玩家确认转职成功时才消耗）
                 SscAddonNetworking.sendOpenJobChange(player);
             } else {
-                player.sendMessage(Text.translatable("message.ssc_addon.job_change.fail.not_evolution").formatted(Formatting.RED), true);
+                player.displayClientMessage(Component.translatable("message.ssc_addon.job_change.fail.not_evolution").withStyle(ChatFormatting.RED), true);
                 world.playSound(null, player.getX(), player.getY(), player.getZ(),
-                        SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0F, 1.0F);
+                        SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 1.0F, 1.0F);
             }
         }
         return stack;
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, @org.jetbrains.annotations.Nullable World world, List<Text> tooltip, TooltipContext context) {
-        super.appendTooltip(stack, world, tooltip, context);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext tooltipContext, List<Component> tooltip, TooltipFlag tooltipFlag) {
+        super.appendHoverText(stack, tooltipContext, tooltip, tooltipFlag);
         String key = "item.ssc_addon.psionic_orb.tooltip";
-        if (I18n.hasTranslation(key)) {
-            for (String line : I18n.translate(key).split("\n")) {
-                tooltip.add(Text.literal(line).formatted(Formatting.GRAY));
+        if (I18n.exists(key)) {
+            for (String line : I18n.get(key).split("\n")) {
+                tooltip.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
             }
         } else {
-            tooltip.add(Text.translatable(key).formatted(Formatting.GRAY));
+            tooltip.add(Component.translatable(key).withStyle(ChatFormatting.GRAY));
         }
     }
 }

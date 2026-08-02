@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.jackcooper.shapeShifterCurseAddon.client.JobChangeSelectScreen;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.entity.NoopRenderer;
@@ -322,7 +323,7 @@ public class SscAddonClient implements ClientModInitializer {
         });
 
 		// 注册白名单 GUI S2C 同步包接收器：收到后打开/刷新 WhitelistManageScreen
-		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC), (BytePayload payload, net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context ctx) -> {
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC), (BytePayload payload, ClientPlayNetworking.Context ctx) -> {
 			boolean customMode = payload.data().readBoolean();
 			int n = payload.data().readInt();
 			if (n < 0 || n > 10000) return;
@@ -346,8 +347,8 @@ public class SscAddonClient implements ClientModInitializer {
 		});
 
 		// 灵能宝珠转职：服务端通知打开「转职选择形态」界面（jackcooper 独立类，当前形态灰显不可选）
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_OPEN_JOB_CHANGE, (client, handler, buf, responseSender) -> {
-			client().execute(() -> client.setScreen(
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_OPEN_JOB_CHANGE), (BytePayload payload, ClientPlayNetworking.Context ctx) -> {
+			ctx.client().execute(() -> ctx.client().setScreen(
 					new JobChangeSelectScreen()));
 		});
 

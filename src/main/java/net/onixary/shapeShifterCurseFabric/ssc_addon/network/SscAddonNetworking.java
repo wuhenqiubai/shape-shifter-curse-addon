@@ -332,19 +332,21 @@ public class SscAddonNetworking {
 		});
 
 		// 灵能宝珠转职：玩家在转职界面选定目标进化形态并确认
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_JOB_CHANGE_CONFIRM, (server, player, handler, buf, responseSender) -> {
-			String formId = buf.readString(256);
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				EvolutionManager.startJobChange(player, formId);
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_JOB_CHANGE_CONFIRM), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			FriendlyByteBuf buf = payload.data();
+			String formId = buf.readUtf(256);
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				EvolutionManager.startJobChange(ctx.player(), formId);
 			});
 		});
 
 		// 打开进化加点界面：检测旧存档并迁移到内置 exp 机制
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_EVO_OPEN, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				EvolutionManager.checkAndMigrate(player);
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_EVO_OPEN), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
+			FriendlyByteBuf buf = payload.data();
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				EvolutionManager.checkAndMigrate(ctx.player());
 			});
 		});
 
@@ -393,8 +395,8 @@ public class SscAddonNetworking {
 	}
 
 	/** 服务端：通知客户端打开灵能宝珠「转职选择形态」界面（无 payload）。 */
-	public static void sendOpenJobChange(ServerPlayerEntity player) {
-		ServerPlayNetworking.send(player, PACKET_OPEN_JOB_CHANGE, net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
+	public static void sendOpenJobChange(ServerPlayer player) {
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_OPEN_JOB_CHANGE), net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty()));
 	}
 
 	/** 服务端：把指定玩家当前白名单推送到其客户端，用于打开/刷新白名单 GUI。 */

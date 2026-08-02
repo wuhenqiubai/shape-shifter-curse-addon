@@ -49,7 +49,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 只要推挤双方任一是「蓄力中的玩家」就整体取消，玩家站得住、怪仍被吸附/震荡但推不动玩家。
 	 * 服务端用 {@link VortexChargeManager#isCharging} 快速查表；客户端用每 tick 缓存标记，避免每次碰撞读 Apoli 资源。
 	 */
-	@Inject(method = "pushAwayFrom", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "push", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$vortexChargingNoPush(Entity entity, CallbackInfo ci) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (ssc_addon$isVortexChargingPlayer(self) || ssc_addon$isVortexChargingPlayer(entity)) {
@@ -58,12 +58,12 @@ public abstract class SscAddonLivingEntityMixin {
 	}
 
 	private static boolean ssc_addon$isVortexChargingPlayer(Entity e) {
-		if (!(e instanceof PlayerEntity)) return false;
-		if (e instanceof ServerPlayerEntity sp) {
+		if (!(e instanceof Player)) return false;
+		if (e instanceof ServerPlayer sp) {
 			return VortexChargeManager.isCharging(sp);
 		}
 		// 客户端本地玩家：用每 tick 缓存标记（避免每次碰撞读 Apoli 资源）
-		return e.getWorld().isClient() && VortexChargeManager.isClientLocalCharging();
+		return e.level().isClientSide() && VortexChargeManager.isClientLocalCharging();
 	}
 
 	/**

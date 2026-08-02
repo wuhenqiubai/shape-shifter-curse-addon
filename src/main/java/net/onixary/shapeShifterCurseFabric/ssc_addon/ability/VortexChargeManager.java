@@ -135,7 +135,7 @@ public final class VortexChargeManager {
 			spawnAbsorbRing((ServerLevel) player.level(),
 					player.getX(), player.getY() + 1, player.getZ(), 8, s.ticks * 0.35);
 			// 蓄力期实体吸附：把范围内怪物朝玩家牵引，力度随击退抗性衰减（每级 -20%，免疫的吸不动）
-			pullEntitiesDuringCharge((ServerLevel) player.getWorld(), player);
+			pullEntitiesDuringCharge((ServerLevel) player.level(), player);
 		}
 		if (s.ticks % HIT_INTERVAL == 0) {
 			if (s.airSpent < MAX_AIR_SPENT && player.getAirSupply() >= AIR_PER_HIT) {
@@ -193,7 +193,7 @@ public final class VortexChargeManager {
 			living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 80, 2));
 			Vec3 push = living.position().subtract(player.position());
 			if (push.lengthSqr() < 1.0e-4) push = new Vec3(0, 1, 0);
-			push = push.normalize().multiply(0.8 * scale);
+			push = push.normalize().scale(0.8 * scale);
 			living.setDeltaMovement(push.x, 0.6 * scale, push.z);
 			living.hurtMarked = true;
 		}
@@ -269,7 +269,7 @@ public final class VortexChargeManager {
 			Vec3 dir = new Vec3(toPlayer.x, 0, toPlayer.z).normalize();
 			double force = PULL_FORCE * scale;
 			// 叠加朝向玩家的水平速度（不覆盖原有 Y，保留重力 / 跳跃）
-			living.setDeltaMovement(living.setDeltaMovement().x * 0.5 + dir.x * force,
+			living.setDeltaMovement(living.getDeltaMovement().x * 0.5 + dir.x * force,
 					living.getDeltaMovement().y,
 					living.getDeltaMovement().z * 0.5 + dir.z * force);
 			living.hurtMarked = true;
