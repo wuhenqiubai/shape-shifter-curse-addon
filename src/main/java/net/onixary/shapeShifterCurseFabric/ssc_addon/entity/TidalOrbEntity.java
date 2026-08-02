@@ -27,6 +27,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.TrinketUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import org.joml.Vector3f;
 
@@ -84,9 +85,12 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
     private UUID ownerUuid;
     // 阿澪(axolotl_aling)差异化：飞行/拴人时长 +20%，拴人期间造成伤害
     private boolean isAling = false;
+    // 海晶荧光坠增强：落点一次性爆炸（伤害+强减速）、飞行提速 55%
+    private boolean isEnhanced = false;
     private int maxFlyTicks = MAX_FLY_TICKS;
     private int tetherDuration = TETHER_DURATION_TICKS;
     private Vec3 flyDir = new Vec3(0, 0, 1);   // FLYING / DECEL 用
+    private double flySpeed = FLY_SPEED;         // 基础飞行速度（增强 ×1.55）
     private double currentSpeed = FLY_SPEED;     // DECEL 时衰减
     private Vec3 tetherCenter = null;           // 落点锚点（拴人中心）
     private final Set<UUID> tetheredTargets = new HashSet<>(); // 落点瞬间捕获、被拴住的目标 UUID
@@ -110,15 +114,20 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
         // 从玩家眼部前方生成，方向取准星
         Vec3 look = owner.getViewVector(1.0f);
         this.flyDir = look.normalize();
-        this.setPos(owner.getX() + look.x * 0.8, owner.getEyeY() - 0.1 + look.y * 0.8, owner.getZ() + look.z * 0.8);
-        this.currentSpeed = FLY_SPEED;
-        this.noPhysics = true;
+        this.setPosition(owner.getX() + look.x * 0.8, owner.getEyeY() - 0.1 + look.y * 0.8, owner.getZ() + look.z * 0.8);
+        this.noClip = true;
         // 阿澪：飞行/拴人时长 +20%（拴人伤害在 tickAttracting 结算）
         this.isAling = FormUtils.isForm(owner, FormIdentifiers.AXOLOTL_ALING);
         if (this.isAling) {
             this.maxFlyTicks = (int) Math.round(MAX_FLY_TICKS * 1.2);            // 160 -> 192
             this.tetherDuration = (int) Math.round(TETHER_DURATION_TICKS * 1.2); // 170 -> 204
         }
+        // 海晶荧光坠增强：飞行速度 +55%，落点变一次性爆炸
+        this.isEnhanced = TrinketUtils.isWearing(owner, SscAddon.SEA_CRYSTAL_PENDANT);
+        if (this.isEnhanced) {
+            this.flySpeed = FLY_SPEED * 1.55;
+        }
+        this.currentSpeed = this.flySpeed;
     }
 
     @Override
@@ -196,7 +205,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
     private void tickDecelerating(ServerLevel sw) {
         // 0.75 秒线性减速到 0，保持当前方向不转向
         double t = (double) phaseTicks / DECEL_TICKS;
-        currentSpeed = FLY_SPEED * (1.0 - Mth.clamp(t, 0.0, 1.0));
+        currentSpeed = flySpeed * (1.0 - MathHelper.clamp(t, 0.0, 1.0));
         if (moveWithWallCheck(sw, flyDir.x * currentSpeed, flyDir.y * currentSpeed, flyDir.z * currentSpeed)) {
             enterAttractPhase(sw);
             return;
@@ -257,6 +266,10 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
         sw.sendParticles(ParticleTypes.SPLASH, cx, cy, cz, 50, 0.8, 0.5, 0.8, 0.4);
         sw.sendParticles(ParticleTypes.BUBBLE_COLUMN_UP, cx, cy - 0.3, cz, 30, 0.6, 0.2, 0.6, 0.3);
         spawnTetherRing(sw, 40);
+        // 海晶荧光坠增强：落点一次性爆炸（8 点物理 + 35% 减速 12 秒），随后立即破裂，不长时间拴人
+        if (isEnhanced) {
+            explodeEnhanced(sw);
+        }
     }
 
     // ==================== ATTRACTING（潮汐束缚 / 拴人）====================
@@ -264,8 +277,8 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
         // 锚点悬停粒子 + 6 格束缚环
         spawnHoverParticles(sw);
         applyTether(sw);
-        // 阿澪：拴人期间每 2 秒(40t)对被拴目标造成 2 点物理伤害
-        if (isAling && phaseTicks > 0 && phaseTicks % 40 == 0) {
+        // 阿澪：拴人期间每秒(20t)对被拴目标造成 4 点物理伤害
+        if (isAling && phaseTicks > 0 && phaseTicks % 20 == 0) {
             tickTetherDamage(sw);
         }
         // 每 10 tick 把被拴目标同步给客机，用于渲染守卫者激光
@@ -287,11 +300,38 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
             if (!(e instanceof LivingEntity t) || !t.isAlive() || t.isSpectator()) continue;
             if (WhitelistUtils.isProtected(ownerUuid, sw, t)) continue;
             if (owner != null) {
-                t.hurt(t.damageSources().playerAttack(owner), 2.0f);
+                t.damage(t.getDamageSources().playerAttack(owner), 4.0f);
             } else {
-                t.hurt(t.damageSources().magic(), 2.0f);
+                t.damage(t.getDamageSources().magic(), 4.0f);
             }
         }
+    }
+
+    /** 海晶荧光坠增强：落点一次性爆炸——对 6 格内捕获目标造成 8 点物理伤害 + 35% 减速 12 秒，随后立即破裂。 */
+    private void explodeEnhanced(ServerWorld sw) {
+        ServerPlayerEntity owner = getOwner(sw);
+        double cx = tetherCenter.x, cy = tetherCenter.y, cz = tetherCenter.z;
+        for (UUID id : tetheredTargets) {
+            Entity e = sw.getEntity(id);
+            if (!(e instanceof LivingEntity t) || !t.isAlive() || t.isSpectator()) continue;
+            if (WhitelistUtils.isProtected(ownerUuid, sw, t)) continue;
+            if (owner != null) {
+                t.damage(t.getDamageSources().playerAttack(owner), 8.0f);
+            } else {
+                t.damage(t.getDamageSources().magic(), 8.0f);
+            }
+            // 35% 减速 12 秒（TIDAL_SLOW amplifier=2 → -0.35）
+            t.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(
+                    SscAddon.TIDAL_SLOW, 240, 2, false, false, true));
+        }
+        // 爆炸表现 + 立即破裂（跳过 8.5 秒拴人）
+        sw.spawnParticles(ParticleTypes.EXPLOSION, cx, cy + 0.5, cz, 3, 0.3, 0.3, 0.3, 0.0);
+        sw.spawnParticles(ParticleTypes.SPLASH, cx, cy, cz, 80, 1.5, 1.0, 1.5, 0.5);
+        sw.playSound(null, cx, cy, cz, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.0f, 1.3f);
+        this.tetheredTargets.clear();
+        this.dataTracker.set(TETHER_ACTIVE, false);   // 爆炸后不再显示拴人束缚环
+        phase = Phase.DELAY;
+        phaseTicks = 0;
     }
 
     /**
@@ -355,8 +395,11 @@ public class TidalOrbEntity extends Entity implements net.minecraft.world.entity
     }
 
     // ==================== DELAY ====================
-    private void tickDelay(ServerLevel sw) {
-        spawnHoverParticles(sw);
+    private void tickDelay(ServerWorld sw) {
+        // 增强爆炸球已破裂，DELAY 期不再画拴人悬停粒子/束缚环（避免爆炸后还闪范围环）
+        if (!isEnhanced) {
+            spawnHoverParticles(sw);
+        }
         if (phaseTicks >= POP_DELAY_TICKS) {
             pop(sw);
         }

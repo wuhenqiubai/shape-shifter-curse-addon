@@ -31,11 +31,12 @@ public class TidalSlowEffect extends MobEffect {
         AttributeInstance speedAttr = entity.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr != null) {
             speedAttr.removeModifier(SPEED_MODIFIER_UUID);
-            // 15% 减速：MULTIPLY_TOTAL -0.15
-            speedAttr.addTransientModifier(new AttributeModifier(
+            // 减速幅度随 amplifier 提升：amplifier 0 = -15%、每级额外 -10%（amplifier 2 = -35%，海晶荧光坠爆炸球用）
+            speedAttr.addTemporaryModifier(new EntityAttributeModifier(
                     SPEED_MODIFIER_UUID,
-		            -0.15,
-                    AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+                    SPEED_MODIFIER_NAME,
+                    -(0.15 + amplifier * 0.10),
+                    EntityAttributeModifier.Operation.MULTIPLY_TOTAL
             ));
         }
     }

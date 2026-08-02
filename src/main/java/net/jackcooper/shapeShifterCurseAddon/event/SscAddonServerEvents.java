@@ -29,6 +29,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpDeathDo
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSummonWolves;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentLaserManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
@@ -102,6 +103,7 @@ public final class SscAddonServerEvents {
 				AxolotlWaterSpurtHandler.tick(player);
 				PlayDeadAbsorptionManager.tick(player);
 				FluorescentTidalManager.tick(player);
+				FluorescentLaserManager.tick(player);
 				// 冥裁者凋零阶梯 / 凋零抗性追踪（凋零持续时长分层 + tick 跳过计数）
 				WitherFrenzyManager.tick(player);
 				EvolutionManager.tickPlayer(player);
@@ -231,6 +233,7 @@ public final class SscAddonServerEvents {
 			UndeadNeutralState.clearAll();
 			MancianimaPassive.clearAll();
 			SscAddonActions.clearAll();
+			FluorescentLaserManager.clearAll();   // 海晶荧光坠增强激光：清残留待机法阵实体
 			System.out.println("[SSC_ADDON] SERVER_STARTING ability state cleared");
 		});
 		// 服务器关闭前还原所有死亡领域方块（在世界存档之前触发）
@@ -260,6 +263,7 @@ public final class SscAddonServerEvents {
 			UndeadNeutralState.clearAll();
 			MancianimaPassive.clearAll();
 			SscAddonActions.clearAll();
+			FluorescentLaserManager.clearAll();   // 海晶荧光坠增强激光：清残留待机法阵实体
 			System.out.println("[SSC_ADDON] END_DATA_PACK_RELOAD ability state cleared");
 		});
 	}
