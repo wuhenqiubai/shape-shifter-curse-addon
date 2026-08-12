@@ -26,18 +26,24 @@ public final class WitchFamiliarSpawnHandler {
 
 	public static void register() {
 		// 野外自然生成（末影人权重10的一半=5）
-		SpawnPlacements.register(WITCH_FAMILIAR_ENTITY, SpawnPlacementTypes.ON_GROUND,
-				Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Monster::checkMonsterSpawnRules);
+		SpawnRestriction.register(SscAddon.WITCH_FAMILIAR_ENTITY, SpawnRestriction.Location.ON_GROUND,
+				Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, HostileEntity::canSpawnInDark);
+		// 仅在原版女巫会自然生成的主世界生物群系注册：foundInOverworld 已排除下界/末地，
+		// 再手动排除蘑菇岛与深暗之域（原版女巫/陆地怪物在主世界唯二不自然生成的群系）。
 		BiomeModifications.addSpawn(
-				BiomeSelectors.foundInOverworld(),
-				MobCategory.MONSTER,
-				WITCH_FAMILIAR_ENTITY,
+				BiomeSelectors.foundInOverworld().and(context ->
+						!context.getBiomeKey().equals(BiomeKeys.MUSHROOM_FIELDS)
+								&& !context.getBiomeKey().equals(BiomeKeys.DEEP_DARK)),
+				SpawnGroup.MONSTER,
+				SscAddon.WITCH_FAMILIAR_ENTITY,
 				5,    // 末影人权重10的一半
 				1, 1  // 最小/最大成组数量
 		);
 
 		ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
-			if (!(entity instanceof Witch witch)) return;
+			if (!(entity instanceof WitchEntity witch)) return;
+			// 仅主世界伴生：女巫使魔不在下界/末地等非主世界生成（跟随原版女巫生成逻辑）
+			if (!world.getRegistryKey().equals(World.OVERWORLD)) return;
 			// 每只女巫只检查一次
 			if (witch.getTags().contains("ssc_familiar_checked")) return;
 			witch.addTag("ssc_familiar_checked");

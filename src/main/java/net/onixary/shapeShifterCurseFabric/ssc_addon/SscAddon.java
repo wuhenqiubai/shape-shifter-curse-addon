@@ -52,14 +52,15 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.power.SscAddonPowers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.BlizzardTankRechargeRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.RefillMoisturizerRecipe;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.UpgradeMoisturizerRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.ReloadSnowballLauncherRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.InfiniteEnergyPotionRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.recipe.SpUpgradeRecipe;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.screen.PotionBagScreenHandler;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.story.TideSpiritStoryManager;
-import org.slf4j.LoggerFactory;
-
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPTotem;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPPortableBeacon;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSoulEnergy;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -211,6 +212,7 @@ public class SscAddon implements ModInitializer {
 	public static final Item HUMUS_RING = new HumusRingItem(new Item.Properties().stacksTo(1).fireResistant());
 	public static final Item TWIN_POD = new TwinPodItem(new Item.Properties().stacksTo(1).fireResistant());
 	public static final RecipeSerializer<RefillMoisturizerRecipe> REFILL_MOISTURIZER_SERIALIZER = new SimpleCraftingRecipeSerializer<>(RefillMoisturizerRecipe::new);
+	public static final RecipeSerializer<UpgradeMoisturizerRecipe> UPGRADE_MOISTURIZER_SERIALIZER = new SpecialRecipeSerializer<>(UpgradeMoisturizerRecipe::new);
 	public static final RecipeSerializer<ReloadSnowballLauncherRecipe> RELOAD_SNOWBALL_LAUNCHER_SERIALIZER = new SimpleCraftingRecipeSerializer<>(ReloadSnowballLauncherRecipe::new);
 	public static final RecipeSerializer<BlizzardTankRechargeRecipe> BLIZZARD_TANK_RECHARGE_SERIALIZER = new SimpleCraftingRecipeSerializer<>(BlizzardTankRechargeRecipe::new);
 	public static final RecipeSerializer<SpUpgradeRecipe> SP_UPGRADE_SERIALIZER = new SimpleCraftingRecipeSerializer<>(SpUpgradeRecipe::new);
@@ -324,6 +326,8 @@ public class SscAddon implements ModInitializer {
 						entries.accept(WITHER_POTION);
 						entries.accept(WITHER_POTION_SPLASH);
 						entries.accept(WITHER_POTION_LINGERING);
+						// 蛛网膜（多面薄层蛛网方块）
+						entries.add(net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks.WEB_MEMBRANE);
 					})
 					.build());
 	// SP Allay sound events
@@ -342,6 +346,12 @@ public class SscAddon implements ModInitializer {
 		registerConfig();
 		registerStatusEffects();
 		registerItems();
+		// 附属方块注册（蛛网膜等，jackcooper）
+		net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks.init();
+			// 附属实体注册（月织蛛蓄力蛛丝弹，jackcooper）
+		net.jackcooper.shapeShifterCurseAddon.entity.RegAddonEntities.init();
+		// 附属状态效果注册（蜘网缠身，jackcooper）
+		net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects.init();
 		registerRecipeSerializers();
 		registerSoundEvents();
 		registerEntityAttributes();
@@ -454,6 +464,7 @@ public class SscAddon implements ModInitializer {
 
 	private void registerRecipeSerializers() {
 		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "refill_moisturizer"), REFILL_MOISTURIZER_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "upgrade_moisturizer"), UPGRADE_MOISTURIZER_SERIALIZER);
 		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "reload_snowball_launcher"), RELOAD_SNOWBALL_LAUNCHER_SERIALIZER);
 		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
 		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
@@ -497,6 +508,7 @@ public class SscAddon implements ModInitializer {
 		SscAddonNetworking.registerServerReceivers();
 		StoryBookLoot.init();
 		AllaySPTotem.init();
+		AllaySPPortableBeacon.init(); // SP 悦灵右键信标切换激活（UseItemCallback 注册，此前漏注册导致功能失效）
 		InfectionSporeManager.init();
 		ParasiticSeedFieldManager.init();
 		ParasiticCombatTracker.init();

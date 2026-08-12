@@ -95,6 +95,8 @@ public final class SscAddonServerEvents {
 				BatDesmodusBloodThirst.tick(player);
 				MancianimaPassive.tick(player);
 				VortexChargeManager.tick(player);
+				net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.tick(player);
+				net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager.tick(player);
 				WindSpiritClawManager.tick(player);
 				WindDashManager.tick(player);
 				WindSpiritLandingSurgeManager.tick(player);
@@ -115,6 +117,16 @@ public final class SscAddonServerEvents {
 			Collection<ServerPlayer> players = server.getPlayerList().getPlayers();
 			FluorescentTidalManager.tickPendingCd(players);
 		});
+
+		// 月织蛛「织网术」/「蛛丝荡漾」：玩家掉线清理状态，防僵尸 UUID 残留
+		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((netHandler, server) -> {
+			net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.onDisconnect(netHandler.player.getUuid());
+			net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager.onDisconnect(netHandler.player.getUuid());
+		});
+
+		// 减速蜘网施法者表：服务器停止时清空，防跨存档/重启残留
+		ServerLifecycleEvents.SERVER_STOPPED.register(server ->
+				net.jackcooper.shapeShifterCurseAddon.block.WebMembraneOwners.clear());
 	}
 
 	/**

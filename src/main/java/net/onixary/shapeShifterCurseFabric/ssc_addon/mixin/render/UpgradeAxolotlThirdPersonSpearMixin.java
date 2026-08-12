@@ -33,7 +33,7 @@ public class UpgradeAxolotlThirdPersonSpearMixin {
 	@WrapOperation(
 			method = "render",
 			at = @At(value = "INVOKE",
-					target = "Lnet/minecraft/world/entity/LivingEntity;getMainHandItem()Lnet/minecraft/world/item/ItemStack;")
+					target = "Lnet/minecraft/entity/LivingEntity;getMainHandStack()Lnet/minecraft/item/ItemStack;"),require = 0
 	)
 	private ItemStack ssc_addon$swapTpSpear(LivingEntity entity, Operation<ItemStack> original) {
 		if (entity instanceof AbstractClientPlayer

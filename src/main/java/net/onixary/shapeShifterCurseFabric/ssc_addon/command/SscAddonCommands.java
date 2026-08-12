@@ -83,6 +83,9 @@ public class SscAddonCommands {
 						.then(Commands.literal("mana")
 								.executes(SscAddonCommands::debugMana)
 						)
+						.then(CommandManager.literal("anim")
+								.executes(SscAddonCommands::debugAnim)
+						)
 				)
 				.then(Commands.literal("get_book")
 						.requires(source -> source.hasPermission(2))
@@ -548,6 +551,18 @@ public class SscAddonCommands {
 		if (!foundMana) {
 			player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.no_mana").withStyle(ChatFormatting.YELLOW), false);
 		}
+		return 1;
+	}
+
+	/**
+	 * /ssc_addon debug anim：切换月织蛛动画调试日志记录（客户端功能）。
+	 * 服务端发 S2C 包给执行者，客户端切换本地日志记录开关；再次输入关闭。
+	 * 记录期间会把动画切换事件写入游戏日志（搜 SSCA_AnimDebug），便于分析二段跳等动画时序问题。
+	 */
+	private static int debugAnim(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
+		// 发 S2C 包给执行者客户端切换记录开关；反馈由客户端接收方给出（含切换后状态），此处不重复提示
+		net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.sendAnimDebugToggle(player);
 		return 1;
 	}
 

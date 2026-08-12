@@ -1,0 +1,9 @@
+{
+    "type": "apoli:attribute",
+    "modifier": {
+        "name": "Form axolotl sp health",
+        "attribute": "minecraft:generic.max_health",
+        "value": 14.0,
+        "operation": "addition"
+    }
+}

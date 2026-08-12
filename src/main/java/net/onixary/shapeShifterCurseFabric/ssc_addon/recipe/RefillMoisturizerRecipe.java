@@ -58,15 +58,9 @@ public class RefillMoisturizerRecipe extends CustomRecipe {
 		}
 
 		if (!moisturizer.isEmpty()) {
-			boolean wasActive = moisturizer.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe().getBoolean("Active");
 			moisturizer.setCount(1);
-
-			// Set Charge to Max (5400)
-			CustomData.update(DataComponents.CUSTOM_DATA, moisturizer, nbt -> nbt.putInt("Charge", PortableMoisturizerItem.MAX_CHARGE));
-
-			// Should we keep it active? Usually refilling allows it to continue working immediately.
-			CustomData.update(DataComponents.CUSTOM_DATA, moisturizer, nbt -> nbt.putBoolean("Active", wasActive));
-
+			// 按当前等级上限充满使用时间
+			PortableMoisturizerItem.setFullCharge(moisturizer);
 			return moisturizer;
 		}
 

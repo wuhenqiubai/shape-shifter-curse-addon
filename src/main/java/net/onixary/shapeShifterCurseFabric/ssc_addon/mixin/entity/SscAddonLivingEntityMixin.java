@@ -1,6 +1,17 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityGroup;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageTypes;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.mob.HuskEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -22,6 +33,8 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpTeleportAt
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem;
+import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.FrostFreezeEffect;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.power.EffectEfficiencyReductionPower;
@@ -42,7 +55,26 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(LivingEntity.class)
 public abstract class SscAddonLivingEntityMixin {
+	/** 月织蛛拴友军分担伤害致拴主牺牲时的伤害源（死亡消息 death.attack.tether_sacrifice）。 */
+	@org.spongepowered.asm.mixin.Unique
+	private static final RegistryKey<DamageType> ssca$TETHER_SACRIFICE_KEY =
+			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("my_addon", "tether_sacrifice"));
 
+	/**
+	 * 定身(STUN)的核心拦截：让 isImmobile() 在 STUN 期间返回 true。
+	 * <p>原版 {@code LivingEntity.tickMovement} 在跑 AI 前判 {@code if (isImmobile()) { 清零跳跃/移动输入 }
+	 * else if (canMoveVoluntarily()) { tickNewAi(); }}——STUN 走前一分支即<b>整体跳过 tickNewAi</b>，
+	 * 而 tickNewAi 含 goalSelector / targetSelector / navigation / moveControl / lookControl / jumpControl / mobTick，
+	 * 是怪物 AI 的全部。原 MobEntityMixin 只 cancel 了其中的 mobTick（子类特定逻辑），拦不住 goalSelector，
+	 * 故此前怪物中 STUN 仍会寻路攻击。改 isImmobile 单点拦截、最小侵入、服务端权威多人一致。
+	 * <p>物理不受影响：重力 / 击退 / 流体由 tickMovement 后续代码处理，STUN 怪仍会下坠/被击退，只是 AI 停。
+	 */
+	@Inject(method = "isImmobile", at = @At("RETURN"), cancellable = true)
+	private void ssca$stunImmobile(CallbackInfoReturnable<Boolean> cir) {
+		if (!cir.getReturnValueZ() && ((LivingEntity) (Object) this).hasStatusEffect(SscAddon.STUN)) {
+			cir.setReturnValue(true);
+		}
+	}
 	/**
 	 * SP 美西螈涡流蓄力：蓄力中的玩家不参与实体碰撞推挤——被涡流吸到身上的怪也挤不动玩家。
 	 * <p>{@code pushAwayFrom} 是 vanilla 实体互推的统一入口（碰撞双方各调一次），在 HEAD 处判定：
@@ -97,6 +129,70 @@ public abstract class SscAddonLivingEntityMixin {
 		if (!BindingAnkletItem.isRaiderFaction(attacker)) return amount;
 		if (!BindingAnkletItem.hasAnkletAuraNearby(attacker)) return amount;
 		return amount * BindingAnkletItem.DAMAGE_MULTIPLIER;
+	}
+
+	/**
+	 * 三级便携加湿器：佩戴者（美西螈系玩家）造成的所有伤害 +15%。
+	 */
+	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	private float ssc_addon$moisturizerLevel3DamageBoost(float amount, DamageSource source) {
+		if (amount <= 0.0F) return amount;
+		if (!(source.getAttacker() instanceof net.minecraft.entity.player.PlayerEntity attacker)) return amount;
+		if (!FormUtils.isMoistureDependent(attacker)) return amount;
+		if (!net.onixary.shapeShifterCurseFabric.ssc_addon.item.PortableMoisturizerItem.isLevel3Equipped(attacker)) return amount;
+		return amount * 1.15F;
+	}
+
+	/**
+	 * 月织蛛蛛丝拴生物（区分敌我）：
+	 * <ul>
+	 *   <li><b>拴敌人（非白名单）</b>：拴主对其伤害 +25%；它对拴主伤害 -25%。</li>
+	 *   <li><b>拴友军（白名单）</b>：友军只受 50% 伤害，另 50% 转移给拴主代为承担（链接护守）。</li>
+	 * </ul>
+	 * 仅服务端判定，多人一致。转移伤害用 magic()（无 attacker）+ 拴主非被拴目标 → 不会递归。
+	 */
+	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	private float ssc_addon$spiderTetherDamage(float amount, DamageSource source) {
+		if (amount <= 0.0F || source == null) return amount;
+		LivingEntity self = (LivingEntity) (Object) this;
+		if (self.getWorld().isClient()) return amount;
+		Entity attacker = source.getAttacker();
+
+		// A. self 是被某玩家拴住的目标
+		ServerPlayerEntity owner = SpiderMoonWeaverSwingManager.getTetheringPlayer(self);
+		if (owner != null && owner != self) {
+			if (WhitelistUtils.isProtected(owner, self)) {
+				// 拴住友军：友军只受 50%，另 50% 转移给拴主代为承担。
+				// 转移伤害延迟到主线程下一任务施加，避免在 damage 调用栈内同步重入 damage
+				// （重入会污染 MC/Apoli 伤害中间状态或抛异常，导致友军 damage 异常返回 → 表现为无敌打不动）。
+				// 死亡归属：用 tether_sacrifice 伤害源 + 攻击友军的凶手作为击杀者，死亡消息说明「为守护同伴牺牲」。
+				float transfer = amount * 0.5F;
+				if (transfer > 0.0F) {
+					final ServerPlayerEntity fOwner = owner;
+					final Entity killer = attacker;
+					fOwner.getServer().execute(() -> {
+						if (!fOwner.isAlive()) return;
+						DamageSource ds = (killer != null)
+								? fOwner.getDamageSources().create(ssca$TETHER_SACRIFICE_KEY, killer)
+								: fOwner.getDamageSources().create(ssca$TETHER_SACRIFICE_KEY);
+						fOwner.damage(ds, transfer);
+					});
+				}
+				return amount * 0.5F;
+			} else if (attacker == owner) {
+				// 拴住敌人 && 拴主攻击它 → 伤害 +25%
+				return amount * 1.25F;
+			}
+		}
+
+		// B. self 是玩家，被自己拴住的敌人攻击 → 受伤 -25%
+		if (self instanceof ServerPlayerEntity vp && attacker instanceof LivingEntity la
+				&& SpiderMoonWeaverSwingManager.isTethering(vp, la)
+				&& !WhitelistUtils.isProtected(vp, la)) {
+			return amount * 0.75F;
+		}
+
+		return amount;
 	}
 
 	/**
@@ -485,7 +581,7 @@ public abstract class SscAddonLivingEntityMixin {
 
 	/**
 	 * 蝙蝠玩家普攻命中其它生物（伤害真正生效）→ 累计 +8（受白名单与 0.3s 内CD约束）。
-	 * 同时承担「造成伤害的吸血效果」：50-75 → 20%、75-100 → 35%。
+	 * 同时承担「造成伤害的吸血效果」：50-75 → 30%、75-100 → 52.5%（原 20%/35%，强化 +50%）。
 	 */
 	@Inject(method = "hurt", at = @At("RETURN"))
 	private void ssc_addon$batDesmodusOnHit(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
@@ -510,8 +606,8 @@ public abstract class SscAddonLivingEntityMixin {
 				&& !source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL))) {
 			int stage = BatDesmodusBloodThirst.getStage(attacker);
 			float lifestealRate = 0f;
-			if (stage == 2) lifestealRate = 0.20f;
-			else if (stage == 3) lifestealRate = 0.35f;
+			if (stage == 2) lifestealRate = 0.30f;    // 原为 0.20f，强化 +50%
+			else if (stage == 3) lifestealRate = 0.525f;   // 原为 0.35f，强化 +50%
 			// 嗜血指环：高血渴阶段（已有吸血）额外 +15% 吸血率
 			if (lifestealRate > 0f && BatDesmodusBloodThirst.hasBloodlustRing(attacker)) {
 				lifestealRate += 0.15f;

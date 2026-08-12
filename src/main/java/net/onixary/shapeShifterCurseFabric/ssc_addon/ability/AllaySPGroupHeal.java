@@ -1,5 +1,16 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.passive.TameableEntity;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SkillBlocker;
 import net.minecraft.core.particles.ParticleTypes;
@@ -35,11 +46,12 @@ public class AllaySPGroupHeal {
 	private static final ResourceLocation HEAL_EXECUTE_ID = ResourceLocation.fromNamespaceAndPath("my_addon", "form_allay_sp_group_heal_heal_execute");
 	private static final ResourceLocation SOLO_DAMAGE_TIMER_ID = FormIdentifiers.ALLAY_GROUP_HEAL_SOLO_DAMAGE_TIMER;
 	private static final double HEAL_RADIUS = 20.0;
-	private static final float HEAL_AMOUNT = 20.0f;
 	private static final int RESISTANCE_TICKS = 200;
-	private static final int STANDARD_ABSORPTION_TICKS = 400;
 	private static final int SOLO_BLESSING_TICKS = 400;
-	private static final int SOLO_ABSORPTION_TICKS = 600;
+	// 群体治疗：每个目标回血 = 最大生命×75%，额外给 最大生命×50% 的黄心，持续30秒
+	private static final float HEAL_PERCENT = 0.75f;
+	private static final float ABSORPTION_PERCENT = 0.5f;
+	private static final int HEAL_ABSORPTION_TICKS = 600;
 
 	private AllaySPGroupHeal() {
 		throw new UnsupportedOperationException("This class cannot be instantiated.");
@@ -74,9 +86,8 @@ public class AllaySPGroupHeal {
 		if (soloHeal) {
 			applySoloBlessing(allayPlayer);
 		} else {
-			allayPlayer.heal(HEAL_AMOUNT);
-			allayPlayer.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, STANDARD_ABSORPTION_TICKS, 1, false, true, true));
-			allayPlayer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
+			healTarget(allayPlayer);
+			allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
 		}
 		spawnHealParticles(world, allayPlayer);
 		// 只有SP悦灵自己能听见
@@ -90,8 +101,8 @@ public class AllaySPGroupHeal {
 		for (LivingEntity entity : entities) {
 			// 统一走 WhitelistUtils.isBuffTarget，同时遵从服务端 whitelistEnabled 总开关
 			if (WhitelistUtils.isBuffTarget(allayPlayer, entity)) {
-				entity.heal(HEAL_AMOUNT);
-				entity.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
+				healTarget(entity);
+				entity.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, RESISTANCE_TICKS, 0, false, true, true));
 				spawnHealParticles(world, entity);
 				// 播放声音：治疗者听见私有声音，其他人听见空间声音
 				allayPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
@@ -112,12 +123,19 @@ public class AllaySPGroupHeal {
 		return !players.isEmpty();
 	}
 
-	private static void applySoloBlessing(ServerPlayer allayPlayer) {
-		allayPlayer.setHealth(allayPlayer.getMaxHealth());
-		allayPlayer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, SOLO_BLESSING_TICKS, 1, false, true, true));
-		allayPlayer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, SOLO_BLESSING_TICKS, 1, false, true, true));
-		allayPlayer.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, SOLO_ABSORPTION_TICKS, 2, false, true, true));
+	private static void applySoloBlessing(ServerPlayerEntity allayPlayer) {
+		healTarget(allayPlayer);
+		allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, SOLO_BLESSING_TICKS, 1, false, true, true));
+		allayPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, SOLO_BLESSING_TICKS, 1, false, true, true));
 		setResourceValue(allayPlayer, SOLO_DAMAGE_TIMER_ID, SOLO_BLESSING_TICKS);
+	}
+
+	/** 治疗单个目标：回血=最大生命×75%，并给予 最大生命×50% 的黄心（持续30秒）。 */
+	private static void healTarget(LivingEntity entity) {
+		float maxHp = entity.getMaxHealth();
+		entity.heal(maxHp * HEAL_PERCENT);
+		int amplifier = Math.max(0, Math.round(maxHp * ABSORPTION_PERCENT / 2.0f) - 1);
+		entity.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, HEAL_ABSORPTION_TICKS, amplifier, false, true, true));
 	}
 
 	/**

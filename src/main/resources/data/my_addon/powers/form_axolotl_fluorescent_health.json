@@ -1,9 +1,9 @@
 {
     "type": "apoli:attribute",
     "modifier": {
-        "id": "my_addon:form_axolotl_fluorescent_health_reduction",
+        "id": "my_addon:form_axolotl_fluorescent_health",
         "attribute": "minecraft:generic.max_health",
-        "value": -6.0,
+        "value": 2.0,
         "operation": "add_value"
     }
 }

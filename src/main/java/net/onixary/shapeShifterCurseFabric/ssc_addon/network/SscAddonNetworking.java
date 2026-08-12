@@ -64,12 +64,37 @@ public class SscAddonNetworking {
 	/** C2S：美西螈漩涡开始蓄力。无 payload。 */
 	public static final ResourceLocation PACKET_VORTEX_START = ResourceLocation.fromNamespaceAndPath("my_addon", "vortex_start");
 	/** C2S：美西螈漩涡释放（提前释放）。无 payload。 */
-	public static final ResourceLocation PACKET_VORTEX_RELEASE = ResourceLocation.fromNamespaceAndPath("my_addon", "vortex_release");
+	public static final Identifier PACKET_VORTEX_RELEASE = new Identifier("my_addon", "vortex_release");
+	/** C2S：月织蛛织网术 - 潜行双击主键切换 搭路/攻击 模式。无 payload。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_TOGGLE = new Identifier("my_addon", "spider_moon_weaver_toggle");
+	/** C2S：月织蛛织网术 - 主键按下开始蓄力。无 payload。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_CHARGE_START = new Identifier("my_addon", "spider_moon_weaver_charge_start");
+	/** C2S：月织蛛织网术 - 主键按下开始「平铺搭桥」蓄力（双击长按 / 潜行长按触发）。无 payload。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_CHARGE_START_FLAT = new Identifier("my_addon", "spider_moon_weaver_charge_start_flat");
+	/** C2S：月织蛛织网术 - 主键松开释放。无 payload。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_CHARGE_RELEASE = new Identifier("my_addon", "spider_moon_weaver_charge_release");
+	/** C2S：月织蛛二段跳 - 空中按跳跃键。无 payload。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_DOUBLE_JUMP = new Identifier("my_addon", "spider_moon_weaver_double_jump");
+	/** C2S：月织蛛蛛丝荡漾 - 次键按下（发射/断丝切换）。无 payload。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_SWING_PRESS = new Identifier("my_addon", "spider_moon_weaver_swing_press");
+	/** C2S：月织蛛蛛丝荡漾 - 摆荡中上报当前绳长 + 收放意图（服务端权威扣 mana）。payload: double ropeLen + varint reel(>0收/<0放/0无)。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_SWING_SYNC = new Identifier("my_addon", "spider_moon_weaver_swing_sync");
+	/** S2C：月织蛛蛛丝荡漾 - 状态同步给附近玩家（销点/绳长/状态/canExtend）。payload: UUID + boolean active + 3×double anchor + double ropeLen + varint state + boolean canExtend。 */
+	public static final Identifier PACKET_SPIDER_MOON_WEAVER_SWING_STATE = new Identifier("my_addon", "spider_moon_weaver_swing_state");
 
+	/** C2S：进化美西蟠上报「真正疾跑键」按住状态（区分双击 W/游泳自动疾跑）。payload: boolean held。 */
+	public static final Identifier PACKET_AXOLOTL_SPRINT_KEY = new Identifier("my_addon", "axolotl_sprint_key");
+
+	/** S2C：踩网蓝色高亮——仅向施法者发送，令其客户端把受害者描蓝边。payload: varint entityId + varint duration。 */
+	public static final Identifier PACKET_WEB_HIGHLIGHT = new Identifier("my_addon", "web_highlight");
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
 	public static final ResourceLocation PACKET_UPGRADE_AXOLOTL_SPEAR = ResourceLocation.fromNamespaceAndPath("my_addon", "upgrade_axolotl_spear");
 	/** C2S：进化美西螈次技能「涡流引导」按键。无 payload。 */
-	public static final ResourceLocation PACKET_UPGRADE_AXOLOTL_VORTEX = ResourceLocation.fromNamespaceAndPath("my_addon", "upgrade_axolotl_vortex");
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_VORTEX_GUIDE = new Identifier("my_addon", "upgrade_axolotl_vortex_guide");
+
+	/** S2C：动画调试记录开关切换（由 /ssc_addon debug anim 指令触发，服务端转发给执行者客户端）。无 payload。 */
+	public static final Identifier PACKET_ANIM_DEBUG_TOGGLE = new Identifier("my_addon", "anim_debug_toggle");
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_VORTEX = new Identifier("my_addon", "upgrade_axolotl_vortex");
 	/** S2C：进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（对追踪者+自身广播）。payload: UUID + boolean charging */
 	public static final ResourceLocation PACKET_SPEAR_CHARGE_STATE = ResourceLocation.fromNamespaceAndPath("my_addon", "spear_charge_state");
 
@@ -151,6 +176,47 @@ public class SscAddonNetworking {
 			ServerPlayNetworking.send(viewer, new BytePayload(BytePayload.id(PACKET_SPEAR_CHARGE_STATE), PacketByteBufs.copy(buf)));
 		}
 		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_SPEAR_CHARGE_STATE), buf));
+	}
+
+	/** S2C：向施法者发「高亮」（默认蓝色），令其客户端把 entityId 对应实体描边 duration tick。 */
+	public static void sendWebHighlight(ServerPlayerEntity owner, int entityId, int durationTicks) {
+		sendWebHighlight(owner, entityId, durationTicks, 0x3AA0FF);
+	}
+
+	/** S2C：向施法者发「高亮」并指定描边颜色（RGB），仅施法者可见。 */
+	public static void sendWebHighlight(ServerPlayerEntity owner, int entityId, int durationTicks, int color) {
+		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+		buf.writeVarInt(entityId);
+		buf.writeVarInt(durationTicks);
+		buf.writeInt(color);
+		ServerPlayNetworking.send(owner, PACKET_WEB_HIGHLIGHT, buf);
+	}
+
+	/** S2C：月织蛛蛛丝荡漾 - 向追踪该玩家的客户端 + 玩家自身广播摆荡状态（销点/绳长/状态/canExtend）。 */
+	public static void syncSwingState(ServerPlayerEntity player, boolean active,
+	                                  double ax, double ay, double az, double ropeLen, int state, boolean canExtend, int tetherEntityId) {
+		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+		buf.writeUuid(player.getUuid());
+		buf.writeBoolean(active);
+		buf.writeDouble(ax);
+		buf.writeDouble(ay);
+		buf.writeDouble(az);
+		buf.writeDouble(ropeLen);
+		buf.writeVarInt(state);
+		buf.writeBoolean(canExtend);
+		buf.writeInt(tetherEntityId);
+		for (ServerPlayerEntity viewer :
+				net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(player)) {
+			ServerPlayNetworking.send(viewer, PACKET_SPIDER_MOON_WEAVER_SWING_STATE,
+					net.fabricmc.fabric.api.networking.v1.PacketByteBufs.copy(buf));
+		}
+		ServerPlayNetworking.send(player, PACKET_SPIDER_MOON_WEAVER_SWING_STATE, buf);
+	}
+
+	/** S2C：向执行者发「动画调试记录开关切换」，客户端收到后切换本地日志记录。 */
+	public static void sendAnimDebugToggle(ServerPlayerEntity player) {
+		ServerPlayNetworking.send(player, PACKET_ANIM_DEBUG_TOGGLE,
+				net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create());
 	}
 
 	public static void registerServerReceivers() {
@@ -260,6 +326,40 @@ public class SscAddonNetworking {
 		// SSCA 美西螈漩涡蓄力 - 开始 / 释放
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_START), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.start(ctx.player())));
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_RELEASE), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager.release(ctx.player())));
+
+		// SSCA 月织蛛「织网术」- 切换模式 / 开始蓄力 / 释放
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_TOGGLE, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.toggleMode(player));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_CHARGE_START, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.start(player));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_CHARGE_START_FLAT, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.startFlat(player));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_CHARGE_RELEASE, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.release(player));
+		});
+		// SSCA 月织蛛二段跳 - 空中按跳跃键触发（跳跃由客户端原版 jump() 完成，此处仅广播音效粒子）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_DOUBLE_JUMP, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverDoubleJumpManager.onDoubleJump(player));
+		});
+		// SSCA 月织蛛蛛丝荡漾 - 次键按下（发射 / 断丝切换）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_SWING_PRESS, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager.onSecondaryPress(player));
+		});
+		// SSCA 月织蛛蛛丝荡漾 - 摆荡中上报绳长 + 收放意图（服务端权威扣 mana）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPIDER_MOON_WEAVER_SWING_SYNC, (server, player, handler, buf, responseSender) -> {
+			double ropeLen = buf.readDouble();
+			int reel = buf.readVarInt();
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager.onReelSync(player, ropeLen, reel));
+		});
+
+		// SSCA 进化美西蟠水流冲刺 - 真正疾跑键按住状态上报
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_AXOLOTL_SPRINT_KEY, (server, player, handler, buf, responseSender) -> {
+			boolean held = buf.readBoolean();
+			server.execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler.setClientSprintHeld(player, held));
+		});
 
 		// SSCA 进化美西螈技能：主「投掷水矛」 / 次「涡流引导」
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_UPGRADE_AXOLOTL_SPEAR), (BytePayload payload, ServerPlayNetworking.Context ctx) -> ctx.server().execute(() -> net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager.onKeyPress(ctx.player())));
