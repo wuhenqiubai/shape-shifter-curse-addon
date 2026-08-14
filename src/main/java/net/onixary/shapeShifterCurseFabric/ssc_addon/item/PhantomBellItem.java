@@ -1,29 +1,30 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import dev.emi.trinkets.api.SlotReference;
-import dev.emi.trinkets.api.TrinketItem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.client.item.TooltipContext;
+import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class PhantomBellItem extends TrinketItem {
+public class PhantomBellItem extends AccessoryItem {
 
 	public static final int MAX_COOLDOWN = 1200;
 
-	public PhantomBellItem(Properties settings) {
+	public PhantomBellItem(Settings settings) {
 		super(settings);
 	}
 
 	@Override
-	public boolean canEquip(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		return FormUtils.isFamiliarFoxForm(entity);
+	public boolean canEquip(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
+		return net.jackcooper.shapeShifterCurseAddon.item.AddonAccessoryGuard.canEquip(entity, FormUtils::isFamiliarFoxForm);
 	}
 
 	/**
@@ -64,24 +65,24 @@ public class PhantomBellItem extends TrinketItem {
 	/**
 	 * 根据CD进度获取Formatting颜色
 	 */
-	private ChatFormatting getFormattingForProgress(float progress) {
+	private Formatting getFormattingForProgress(float progress) {
 		if (progress < 0.33f) {
-			return ChatFormatting.RED;
+			return Formatting.RED;
 		} else if (progress < 0.66f) {
-			return ChatFormatting.GOLD;
+			return Formatting.GOLD;
 		} else {
-			return ChatFormatting.GREEN;
+			return Formatting.GREEN;
 		}
 	}
 
 	@Override
-	public boolean isBarVisible(ItemStack stack) {
+	public boolean isItemBarVisible(ItemStack stack) {
 		// 只有在冷却中才显示进度条
 		return isOnCooldown();
 	}
 
 	@Override
-	public int getBarWidth(ItemStack stack) {
+	public int getItemBarStep(ItemStack stack) {
 		// 返回0-13的值，表示进度条的长度
 		// 冷却剩余越少，进度条越长
 		int remaining = getCooldownRemaining();
@@ -90,30 +91,30 @@ public class PhantomBellItem extends TrinketItem {
 	}
 
 	@Override
-	public int getBarColor(ItemStack stack) {
+	public int getItemBarColor(ItemStack stack) {
 		int remaining = getCooldownRemaining();
 		float progress = 1.0f - ((float) remaining / MAX_COOLDOWN);
 		return getColorForProgress(progress);
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
 		// 移除了"装备在项链栏生效"的提示
-		tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.desc.1").withStyle(ChatFormatting.BLUE));
-		tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.desc.2").withStyle(ChatFormatting.BLUE));
+		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.desc.1").formatted(Formatting.BLUE));
+		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.desc.2").formatted(Formatting.BLUE));
 
 		// 显示CD状态
 		if (isOnCooldown()) {
 			int remainingTicks = getCooldownRemaining();
 			int remainingSeconds = remainingTicks / 20;
 			float progress = 1.0f - ((float) remainingTicks / MAX_COOLDOWN);
-			ChatFormatting color = getFormattingForProgress(progress);
-			tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.cooldown", remainingSeconds).withStyle(color));
+			Formatting color = getFormattingForProgress(progress);
+			tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.cooldown", remainingSeconds).formatted(color));
 		} else {
-			tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.ready").withStyle(ChatFormatting.GREEN));
+			tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.ready").formatted(Formatting.GREEN));
 		}
 
-		tooltip.add(Component.translatable("item.ssc_addon.phantom_bell.tooltip.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
-		super.appendHoverText(stack, context, tooltip, type);
+		tooltip.add(Text.translatable("item.ssc_addon.phantom_bell.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
+		super.appendTooltip(stack, world, tooltip, context);
 	}
 }

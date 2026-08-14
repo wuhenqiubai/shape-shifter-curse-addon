@@ -1,18 +1,18 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import dev.emi.trinkets.api.SlotReference;
-import dev.emi.trinkets.api.TrinketItem;
-import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
+import net.minecraft.client.item.TooltipContext;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.loot.LootPool;
+import net.minecraft.loot.condition.RandomChanceLootCondition;
+import net.minecraft.loot.entry.ItemEntry;
+import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import org.jetbrains.annotations.Nullable;
@@ -27,11 +27,11 @@ import java.util.List;
  *
  * 获取途径：20% 概率出现在废弃矿井战利品箱中。
  */
-public class BloodlustRingItem extends TrinketItem {
+public class BloodlustRingItem extends AccessoryItem {
 
-	private static final ResourceLocation MINESHAFT_LOOT = ResourceLocation.fromNamespaceAndPath("minecraft", "chests/abandoned_mineshaft");
+	private static final Identifier MINESHAFT_LOOT = new Identifier("minecraft", "chests/abandoned_mineshaft");
 
-	public BloodlustRingItem(Properties settings) {
+	public BloodlustRingItem(Settings settings) {
 		super(settings);
 	}
 
@@ -39,26 +39,26 @@ public class BloodlustRingItem extends TrinketItem {
 	 * 注册嗜血指环到废弃矿井战利品表（25% 概率）。
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (!MINESHAFT_LOOT.equals(key.location())) return;
-			LootPool.Builder pool = LootPool.lootPool()
-					.setRolls(ConstantValue.exactly(1.0F))
-					.when(LootItemRandomChanceCondition.randomChance(0.20F))
-					.add(LootItem.lootTableItem(SscAddon.BLOODLUST_RING));
-			tableBuilder.withPool(pool);
+		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
+			if (!MINESHAFT_LOOT.equals(id)) return;
+			LootPool.Builder pool = LootPool.builder()
+					.rolls(ConstantLootNumberProvider.create(1.0F))
+					.conditionally(RandomChanceLootCondition.builder(0.20F))
+					.with(ItemEntry.builder(SscAddon.BLOODLUST_RING));
+			tableBuilder.pool(pool);
 		});
 	}
 
 	@Override
-	public boolean canEquip(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		return FormUtils.isBatDesmodus(entity);
+	public boolean canEquip(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
+		return net.jackcooper.shapeShifterCurseAddon.item.AddonAccessoryGuard.canEquip(entity, FormUtils::isBatDesmodus);
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
-		tooltip.add(Component.translatable("item.ssc_addon.bloodlust_ring.tooltip_1").withStyle(ChatFormatting.DARK_RED));
-		tooltip.add(Component.translatable("item.ssc_addon.bloodlust_ring.tooltip_2").withStyle(ChatFormatting.RED));
-		tooltip.add(Component.translatable("item.ssc_addon.bloodlust_ring.tooltip_exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
-		super.appendHoverText(stack, context, tooltip, type);
+	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+		tooltip.add(Text.translatable("item.ssc_addon.bloodlust_ring.tooltip_1").formatted(Formatting.DARK_RED));
+		tooltip.add(Text.translatable("item.ssc_addon.bloodlust_ring.tooltip_2").formatted(Formatting.RED));
+		tooltip.add(Text.translatable("item.ssc_addon.bloodlust_ring.tooltip_exclusive").formatted(Formatting.LIGHT_PURPLE));
+		super.appendTooltip(stack, world, tooltip, context);
 	}
 }

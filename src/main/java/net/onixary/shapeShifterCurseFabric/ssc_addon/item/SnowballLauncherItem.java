@@ -1,96 +1,98 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import dev.emi.trinkets.api.TrinketsApi;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Snowball;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.UseAnim;
-import net.minecraft.world.level.Level;
+import net.minecraft.client.item.TooltipContext;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.thrown.SnowballEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.util.UseAction;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.TrinketUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 public class SnowballLauncherItem extends Item {
 	public static final int MAX_AMMO = 20;
 
-	public SnowballLauncherItem(Properties settings) {
+	public SnowballLauncherItem(Settings settings) {
 		super(settings);
 	}
 
 	public static int getAmmo(ItemStack stack) {
-		return stack.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).getUnsafe().getInt("Ammo");
+		NbtCompound nbt = stack.getNbt();
+		return nbt != null ? nbt.getInt("Ammo") : 0;
 	}
 
 	public static void setAmmo(ItemStack stack, int ammo) {
-		net.minecraft.world.item.component.CustomData.update(net.minecraft.core.component.DataComponents.CUSTOM_DATA, stack, nbt -> nbt.putInt("Ammo", Math.min(ammo, MAX_AMMO)));
+		NbtCompound nbt = stack.getOrCreateNbt();
+		nbt.putInt("Ammo", Math.min(ammo, MAX_AMMO));
 	}
 
 	@Override
-	public int getUseDuration(ItemStack stack, LivingEntity user) {
+	public int getMaxUseTime(ItemStack stack) {
 		return 72000;
 	}
 
 	@Override
-	public UseAnim getUseAnimation(ItemStack stack) {
-		return UseAnim.BOW;
+	public UseAction getUseAction(ItemStack stack) {
+		return UseAction.BOW;
 	}
 
 	@Override
-	public InteractionResultHolder<ItemStack> use(Level world, Player user, InteractionHand hand) {
+	public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
 		// Start using (holding down)
-		user.startUsingItem(hand);
-		return InteractionResultHolder.consume(user.getItemInHand(hand));
+		user.setCurrentHand(hand);
+		return TypedActionResult.consume(user.getStackInHand(hand));
 	}
 
 	@Override
-	public void onUseTick(Level world, LivingEntity user, ItemStack stack, int remainingUseTicks) {
-		int usedTicks = getUseDuration(stack, user) - remainingUseTicks;
+	public void usageTick(World world, LivingEntity user, ItemStack stack, int remainingUseTicks) {
+		int usedTicks = getMaxUseTime(stack) - remainingUseTicks;
 		// Fire every 7 ticks (approx 1.15x speed of Bottled Blizzard which is 8 ticks)
 		if (usedTicks % 7 == 0) {
 			fire(world, user, stack);
 		}
 	}
 
-	private void fire(Level world, LivingEntity entity, ItemStack stack) {
+	private void fire(World world, LivingEntity entity, ItemStack stack) {
 		int ammo = getAmmo(stack);
 		boolean isCreative = false;
 
-		if (entity instanceof Player player) {
-			isCreative = player.getAbilities().instabuild;
+		if (entity instanceof PlayerEntity player) {
+			isCreative = player.getAbilities().creativeMode;
 		}
 
 		if (ammo <= 0 && !isCreative) {
-			if (entity instanceof Player player) {
-				player.playSound(SoundEvents.DISPENSER_FAIL, 1.0F, 1.2F);
+			if (entity instanceof PlayerEntity player) {
+				player.playSound(SoundEvents.BLOCK_DISPENSER_FAIL, 1.0F, 1.2F);
 			}
-			entity.releaseUsingItem();
+			entity.stopUsingItem();
 			return;
 		}
 
-		if (!world.isClientSide) {
-			Snowball snowball = new Snowball(world, entity);
-			snowball.setItem(new ItemStack(net.minecraft.world.item.Items.SNOWBALL));
+		if (!world.isClient) {
+			SnowballEntity snowball = new SnowballEntity(world, entity);
+			snowball.setItem(new ItemStack(net.minecraft.item.Items.SNOWBALL));
 			// 2.25F velocity
-			snowball.shootFromRotation(entity, entity.getXRot(), entity.getYRot(), 0.0F, 2.25F, 1.0F);
-			world.addFreshEntity(snowball);
+			snowball.setVelocity(entity, entity.getPitch(), entity.getYaw(), 0.0F, 2.25F, 1.0F);
+			world.spawnEntity(snowball);
 
-			world.playSound(null, entity.getX(), entity.getY(), entity.getZ(), SoundEvents.DISPENSER_LAUNCH, SoundSource.PLAYERS, 1.0F, 1.0F / (world.getRandom().nextFloat() * 0.2F + 0.9F));
+			world.playSound(null, entity.getX(), entity.getY(), entity.getZ(), SoundEvents.BLOCK_DISPENSER_LAUNCH, SoundCategory.PLAYERS, 1.0F, 1.0F / (world.getRandom().nextFloat() * 0.2F + 0.9F));
 
-			// Play Amethyst sound if Portable Fridge is equipped
-			TrinketsApi.getTrinketComponent(entity).ifPresent(component -> {
-				if (component.isEquipped(SscAddon.PORTABLE_FRIDGE)) {
-					world.playSound(null, entity.getX(), entity.getY(), entity.getZ(), SoundEvents.AMETHYST_BLOCK_FALL, SoundSource.PLAYERS, 1.0F, 1.0F);
-				}
-			});
+			// 装备便携冰箱时播放紫水晶音效（框架无关）
+			if (TrinketUtils.isWearing(entity, SscAddon.PORTABLE_FRIDGE)) {
+				world.playSound(null, entity.getX(), entity.getY(), entity.getZ(), SoundEvents.BLOCK_AMETHYST_BLOCK_FALL, SoundCategory.PLAYERS, 1.0F, 1.0F);
+			}
 
 			if (!isCreative) {
 				setAmmo(stack, ammo - 1);
@@ -99,25 +101,25 @@ public class SnowballLauncherItem extends Item {
 	}
 
 	@Override
-	public boolean isBarVisible(ItemStack stack) {
+	public boolean isItemBarVisible(ItemStack stack) {
 		return true;
 	}
 
 	@Override
-	public int getBarWidth(ItemStack stack) {
+	public int getItemBarStep(ItemStack stack) {
 		return Math.min(13, Math.round((float) getAmmo(stack) / (float) MAX_AMMO * 13.0F));
 	}
 
 	@Override
-	public int getBarColor(ItemStack stack) {
+	public int getItemBarColor(ItemStack stack) {
 		return 0xA0E0FF;
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
+	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
 		int ammo = getAmmo(stack);
-		tooltip.add(Component.translatable("tooltip.ssc_addon.launcher.ammo", ammo, MAX_AMMO).withStyle(ChatFormatting.GRAY));
-		tooltip.add(Component.translatable("tooltip.ssc_addon.launcher.usage").withStyle(ChatFormatting.GOLD));
-		super.appendHoverText(stack, context, tooltip, type);
+		tooltip.add(Text.translatable("tooltip.ssc_addon.launcher.ammo", ammo, MAX_AMMO).formatted(Formatting.GRAY));
+		tooltip.add(Text.translatable("tooltip.ssc_addon.launcher.usage").formatted(Formatting.GOLD));
+		super.appendTooltip(stack, world, tooltip, context);
 	}
 }

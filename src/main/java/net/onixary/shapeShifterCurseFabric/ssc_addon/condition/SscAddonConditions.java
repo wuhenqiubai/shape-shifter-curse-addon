@@ -1,20 +1,19 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.condition;
 
-import dev.emi.trinkets.api.TrinketsApi;
 import io.github.apace100.apoli.data.ApoliDataTypes;
 import io.github.apace100.apoli.power.factory.condition.ConditionFactory;
 import io.github.apace100.apoli.registry.ApoliRegistries;
 import io.github.apace100.apoli.util.Comparison;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Tuple;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.Pair;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpDeathDomain;
@@ -23,6 +22,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormEros
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkClientState;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SkillBlocker;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.util.TrinketUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent;
 
@@ -33,56 +33,51 @@ public class SscAddonConditions {
 	}
 
 	public static void register() {
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "has_reverse_thermometer"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_reverse_thermometer"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof Player player) {
-						return TrinketsApi.getTrinketComponent(player).map(component ->
-								component.isEquipped(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("shape-shifter-curse", "charm_of_reverse_thermometer")))
-						).orElse(false);
+					if (entity instanceof PlayerEntity player) {
+						return TrinketUtils.isWearing(player,
+								Registries.ITEM.get(new Identifier("shape-shifter-curse", "charm_of_reverse_thermometer")));
 					}
 					return false;
 				}));
 
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "has_trinket"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_trinket"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM),
 				(data, entity) -> {
-					if (entity instanceof Player player) {
-						return TrinketsApi.getTrinketComponent(player).map(component ->
-								component.isEquipped((net.minecraft.world.item.Item) data.get("item"))
-						).orElse(false);
+					if (entity instanceof PlayerEntity player) {
+						return TrinketUtils.isWearing(player, (net.minecraft.item.Item) data.get("item"));
 					}
 					return false;
 				}));
 
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "item_on_cooldown"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "item_on_cooldown"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM),
 				(data, entity) -> {
-					if (entity instanceof Player player) {
-						return player.getCooldowns().isOnCooldown(data.get("item"));
+					if (entity instanceof PlayerEntity player) {
+						return player.getItemCooldownManager().isCoolingDown(data.get("item"));
 					}
 					return false;
 				}));
 
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "has_blue_fire_amulet"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_blue_fire_amulet"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof Player player) {
-						return TrinketsApi.getTrinketComponent(player).map(component ->
-								component.isEquipped(SscAddon.BLUE_FIRE_AMULET)
-						).orElse(false);
+					if (entity instanceof PlayerEntity player) {
+						return TrinketUtils.isWearing(player, SscAddon.BLUE_FIRE_AMULET);
 					}
 					return false;
 				}));
 
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "has_mana_percent_safe"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_mana_percent_safe"),
 				new SerializableData()
 						.add("mana_percent", SerializableDataTypes.DOUBLE)
 						.add("comparison", ApoliDataTypes.COMPARISON),
 				(data, entity) -> {
-					if (!(entity instanceof Player player)) return false;
+					if (!(entity instanceof PlayerEntity player)) return false;
 					double requiredPercent = data.getDouble("mana_percent");
 					Comparison comparison = data.get("comparison");
 
@@ -94,12 +89,12 @@ public class SscAddonConditions {
 					return comparison.compare(current / max, requiredPercent);
 				}));
 
-		registerBiEntity(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "not_actor_whitelisted"),
+		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "not_actor_whitelisted"),
 				new SerializableData(),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
-					if (!(actor instanceof ServerPlayer player)) return true;
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
+					if (!(actor instanceof ServerPlayerEntity player)) return true;
 					if (!(target instanceof LivingEntity living)) return true;
 					return !WhitelistUtils.isProtected(player, living);
 				}));
@@ -107,65 +102,65 @@ public class SscAddonConditions {
 		// 侵蚀烙印颜色状态条件 - 用于entity_glow
 		// 参数 "color"：yellow / orange / red / green
 		// 服务端使用服务器HashMap，客户端使用S2C同步的缓存数据
-		registerBiEntity(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "erosion_brand_state"),
+		registerBiEntity(new ConditionFactory<>(new Identifier("ssc_addon", "erosion_brand_state"),
 				new SerializableData()
 						.add("color", SerializableDataTypes.STRING),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
 					String color = data.getString("color");
 					// 服务端检查（actor是ServerPlayerEntity）
-					if (actor instanceof ServerPlayer) {
-						return GoldenSandstormErosionBrand.hasColor(actor.getUUID(), target.getUUID(), color);
+					if (actor instanceof ServerPlayerEntity) {
+						return GoldenSandstormErosionBrand.hasColor(actor.getUuid(), target.getUuid(), color);
 					}
 					// 客户端检查（使用网络同步的本地缓存）
-					if (actor.level().isClientSide()) {
-						return ErosionBrandClientState.hasColor(target.getUUID(), color);
+					if (actor.getWorld().isClient()) {
+						return ErosionBrandClientState.hasColor(target.getUuid(), color);
 					}
 					return false;
 				}));
 
 		// 契灵标记颜色条件 - 用于 entity_glow（黄/橙/红三档）
 		// 服务端：从 MancianimaMarkManager 查询；客户端：从 MancianimaMarkClientState 查询
-		registerBiEntity(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "mancianima_mark_color"),
+		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "mancianima_mark_color"),
 				new SerializableData()
 						.add("color", SerializableDataTypes.STRING),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
 					String color = data.getString("color");
-					if (actor instanceof ServerPlayer) {
-						String c = MancianimaMarkManager.getColorString(actor.getUUID(), target.getUUID());
+					if (actor instanceof ServerPlayerEntity) {
+						String c = MancianimaMarkManager.getColorString(actor.getUuid(), target.getUuid());
 						return c != null && c.equals(color);
 					}
-					if (actor.level().isClientSide()) {
-						return MancianimaMarkClientState.hasColor(target.getUUID(), color);
+					if (actor.getWorld().isClient()) {
+						return MancianimaMarkClientState.hasColor(target.getUuid(), color);
 					}
 					return false;
 				}));
 
 		// 契灵准星目标条件（仅客户端有效）：用于绿色高亮覆盖
-		registerBiEntity(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "mancianima_crosshair_target"),
+		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "mancianima_crosshair_target"),
 				new SerializableData(),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
 					if (actor == null || target == null) return false;
 					// 仅在客户端、且 actor 是本地玩家时才查询
-					if (!actor.level().isClientSide()) return false;
+					if (!actor.getWorld().isClient()) return false;
 					try {
-						return net.onixary.shapeShifterCurseFabric.ssc_addon.client.MancianimaCrosshairTracker.isCurrent(target.getUUID());
+						return net.onixary.shapeShifterCurseFabric.ssc_addon.client.MancianimaCrosshairTracker.isCurrent(target.getUuid());
 					} catch (Throwable t) { return false; }
 				}));
 
 		// Skill blocking condition - returns true when skill is NOT blocked (normal behavior)
 		// Add this condition to action_over_time powers so they don't execute when disabled
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "skill_disabled"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "skill_disabled"),
 				new SerializableData()
 						.add("form", SerializableDataTypes.STRING)
 						.add("skill", SerializableDataTypes.STRING),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
+					if (entity instanceof ServerPlayerEntity player) {
 						String form = data.getString("form");
 						String skill = data.getString("skill");
 						return !SkillBlocker.isSkillBlocked(player, form, skill);
@@ -174,22 +169,22 @@ public class SscAddonConditions {
 				}));
 
 		// SP阿努比斯之狼 - 是否处于自己的死亡领域范围内（用于领域内免疫自身受击凋零）
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "in_own_death_domain"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "in_own_death_domain"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
-						return AnubisWolfSpDeathDomain.isInActiveDomain(player.getUUID(), player.blockPosition());
+					if (entity instanceof ServerPlayerEntity player) {
+						return AnubisWolfSpDeathDomain.isInActiveDomain(player.getUuid(), player.getBlockPos());
 					}
 					return false;
 				}));
 
 		// SSCA 进化加点系统 - 天赋节点解锁条件
 		// 给「可解锁能力」的 power 挂在此条件后：未解锁则该 power 不生效（解锁后自动生效）
-		register(new ConditionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "has_talent"),
+		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_talent"),
 				new SerializableData()
 						.add("talent_id", SerializableDataTypes.STRING),
 				(data, entity) -> {
-					if (entity instanceof Player player) {
+					if (entity instanceof PlayerEntity player) {
 						return RegEvolutionComponent.EVOLUTION.get(player).isUnlocked(data.getString("talent_id"));
 					}
 					return false;
@@ -200,7 +195,7 @@ public class SscAddonConditions {
 		Registry.register(ApoliRegistries.ENTITY_CONDITION, factory.getSerializerId(), factory);
 	}
 
-	private static void registerBiEntity(ConditionFactory<Tuple<Entity, Entity>> factory) {
+	private static void registerBiEntity(ConditionFactory<Pair<Entity, Entity>> factory) {
 		Registry.register(ApoliRegistries.BIENTITY_CONDITION, factory.getSerializerId(), factory);
 	}
 }

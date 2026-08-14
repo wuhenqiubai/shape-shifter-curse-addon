@@ -1,63 +1,65 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import dev.emi.trinkets.api.SlotReference;
-import dev.emi.trinkets.api.TrinketItem;
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.Level;
+import net.minecraft.client.item.TooltipContext;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.world.World;
+import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class PortableFridgeItem extends TrinketItem {
+public class PortableFridgeItem extends AccessoryItem {
 
 	public static final int MAX_CHARGE = 64;
 
-	public PortableFridgeItem(Properties settings) {
+	public PortableFridgeItem(Settings settings) {
 		super(settings);
 	}
 
 	public static int getCharge(ItemStack stack) {
-		return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).getUnsafe().getInt("Charge");
+		if (!stack.hasNbt()) return 0;
+		if (stack.getNbt() != null) {
+			return stack.getNbt().getInt("Charge");
+		}
+		return 0;
 	}
 
 	public static void setCharge(ItemStack stack, int amount) {
-		CustomData.update(DataComponents.CUSTOM_DATA, stack, (net.minecraft.nbt.CompoundTag nbt) -> nbt.putInt("Charge", Math.max(0, Math.min(amount, MAX_CHARGE))));
+		stack.getOrCreateNbt().putInt("Charge", Math.max(0, Math.min(amount, MAX_CHARGE)));
 	}
 
 	@Override
-	public boolean canEquip(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		return FormUtils.isSnowFoxSP(entity);
+	public boolean canEquip(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
+		return net.jackcooper.shapeShifterCurseAddon.item.AddonAccessoryGuard.canEquip(entity, FormUtils::isSnowFoxSP);
 	}
 
 	@Override
-	public InteractionResultHolder<ItemStack> use(Level world, Player user, InteractionHand hand) {
-		if (!world.isClientSide) {
-			user.displayClientMessage(Component.translatable("item.ssc_addon.portable_fridge.charge", getCharge(user.getItemInHand(hand)), MAX_CHARGE), true);
+	public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
+		if (!world.isClient) {
+			user.sendMessage(Text.translatable("item.ssc_addon.portable_fridge.charge", getCharge(user.getStackInHand(hand)), MAX_CHARGE), true);
 		}
-		return InteractionResultHolder.success(user.getItemInHand(hand));
+		return TypedActionResult.success(user.getStackInHand(hand));
 	}
 
 	@Override
-	public void tick(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		if (entity.level().isClientSide) return;
+	public void accessoryTick(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
+		if (entity.getWorld().isClient) return;
 
 		// 1. Logic: Refill Launcher every 0.5s (10 ticks)
-		if (entity.tickCount % 10 == 0 && entity instanceof Player player) {
+		if (entity.age % 10 == 0 && entity instanceof PlayerEntity player) {
 			int currentCharge = getCharge(stack);
 
 			if (currentCharge > 0) {
 				// Find Snowball Launcher in inventory
-				for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-					ItemStack invStack = player.getInventory().getItem(i);
+				for (int i = 0; i < player.getInventory().size(); i++) {
+					ItemStack invStack = player.getInventory().getStack(i);
 					if (invStack.getItem() instanceof SnowballLauncherItem) {
 						int currentAmmo = SnowballLauncherItem.getAmmo(invStack);
 						if (currentAmmo < SnowballLauncherItem.MAX_AMMO) {
@@ -72,7 +74,7 @@ public class PortableFridgeItem extends TrinketItem {
 		}
 
 		// 2. Logic: Self-regenerate 1 charge every 2s (40 ticks)
-		if (entity.tickCount % 40 == 0) {
+		if (entity.age % 40 == 0) {
 			int currentCharge = getCharge(stack);
 			if (currentCharge < MAX_CHARGE) {
 				setCharge(stack, currentCharge + 1);
@@ -81,25 +83,25 @@ public class PortableFridgeItem extends TrinketItem {
 	}
 
 	@Override
-	public boolean isBarVisible(ItemStack stack) {
+	public boolean isItemBarVisible(ItemStack stack) {
 		return true;
 	}
 
 	@Override
-	public int getBarWidth(ItemStack stack) {
+	public int getItemBarStep(ItemStack stack) {
 		return Math.round(13.0f * getCharge(stack) / MAX_CHARGE);
 	}
 
 	@Override
-	public int getBarColor(ItemStack stack) {
+	public int getItemBarColor(ItemStack stack) {
 		return 0x00FFFF; // Cyan color for ice/snow
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
-		tooltip.add(Component.translatable("tooltip.ssc_addon.portable_fridge.desc").withStyle(ChatFormatting.AQUA));
-		tooltip.add(Component.translatable("tooltip.ssc_addon.portable_fridge.status", getCharge(stack), MAX_CHARGE).withStyle(ChatFormatting.GRAY));
-		tooltip.add(Component.translatable("tooltip.ssc_addon.portable_fridge.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
-		super.appendHoverText(stack, context, tooltip, type);
+	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+		tooltip.add(Text.translatable("tooltip.ssc_addon.portable_fridge.desc").formatted(Formatting.AQUA));
+		tooltip.add(Text.translatable("tooltip.ssc_addon.portable_fridge.status", getCharge(stack), MAX_CHARGE).formatted(Formatting.GRAY));
+		tooltip.add(Text.translatable("tooltip.ssc_addon.portable_fridge.exclusive").formatted(Formatting.LIGHT_PURPLE));
+		super.appendTooltip(stack, world, tooltip, context);
 	}
 }

@@ -52,10 +52,10 @@
     "java": ">=21",
     "fabric": ">=0.110.0",
     "shape-shifter-curse-unofficial": ">=1.10.0-dev",
-    "geckolib": ">=4.7.0",
-    "trinkets": ">=3.10.0"
+    "geckolib": ">=4.7.0"
   },
   "suggests": {
+    "trinkets": ">=3.10.0",
     "modmenu": "*",
     "lambdynlights": "*",
     "asyncparticles": "*"

@@ -1,20 +1,21 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import dev.emi.trinkets.api.SlotReference;
-import dev.emi.trinkets.api.TrinketItem;
-import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.minecraft.client.item.TooltipContext;
+import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.loot.LootPool;
+import net.minecraft.loot.condition.RandomChanceLootCondition;
+import net.minecraft.loot.entry.ItemEntry;
+import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -23,8 +24,8 @@ import java.util.List;
  * 效果：增加冥狼召唤数量和上限
  * 获取途径：沙漠神殿战利品箱，15%概率
  */
-public class AnubisCrystalItem extends TrinketItem {
-	public AnubisCrystalItem(Properties settings) {
+public class AnubisCrystalItem extends AccessoryItem {
+	public AnubisCrystalItem(Settings settings) {
 		super(settings);
 	}
 
@@ -32,28 +33,28 @@ public class AnubisCrystalItem extends TrinketItem {
 	 * 注册到沙漠神殿战利品表（15%概率，1个）
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (key.location().equals(ResourceLocation.fromNamespaceAndPath("minecraft", "chests/desert_pyramid"))) {
-				LootPool.Builder poolBuilder = LootPool.lootPool()
-						.setRolls(ConstantValue.exactly(1.0F))
-						.when(LootItemRandomChanceCondition.randomChance(0.15F))
-						.add(LootItem.lootTableItem(SscAddon.ANUBIS_CRYSTAL));
-				tableBuilder.withPool(poolBuilder);
+		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
+			if (id.equals(new Identifier("minecraft", "chests/desert_pyramid"))) {
+				LootPool.Builder poolBuilder = LootPool.builder()
+						.rolls(ConstantLootNumberProvider.create(1.0F))
+						.conditionally(RandomChanceLootCondition.builder(0.15F))
+						.with(ItemEntry.builder(SscAddon.ANUBIS_CRYSTAL));
+				tableBuilder.pool(poolBuilder);
 			}
 		});
 	}
 
 	@Override
-	public boolean canEquip(ItemStack stack, SlotReference slot, LivingEntity entity) {
-		return FormUtils.isAnubisWolfSP(entity);
+	public boolean canEquip(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
+		return net.jackcooper.shapeShifterCurseAddon.item.AddonAccessoryGuard.canEquip(entity, FormUtils::isAnubisWolfSP);
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
-		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_1").withStyle(ChatFormatting.LIGHT_PURPLE));
-		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_2").withStyle(ChatFormatting.GRAY));
-		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_3").withStyle(ChatFormatting.GRAY));
-		tooltip.add(Component.translatable("item.ssc_addon.anubis_crystal.tooltip_4").withStyle(ChatFormatting.RED));
-		super.appendHoverText(stack, context, tooltip, type);
+	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
+		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_2").formatted(Formatting.GRAY));
+		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_3").formatted(Formatting.GRAY));
+		tooltip.add(Text.translatable("item.ssc_addon.anubis_crystal.tooltip_4").formatted(Formatting.RED));
+		super.appendTooltip(stack, world, tooltip, context);
 	}
 }
