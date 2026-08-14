@@ -3,14 +3,13 @@ package net.jackcooper.shapeShifterCurseAddon.ability;
 import net.jackcooper.shapeShifterCurseAddon.entity.WebMembraneBullet;
 import net.jackcooper.shapeShifterCurseAddon.state.RegSpiderMoonWeaverStateComponent;
 import net.jackcooper.shapeShifterCurseAddon.state.SpiderMoonWeaverStateComponent;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.onixary.shapeShifterCurseFabric.additional_power.WebBridgeAction;
 import net.onixary.shapeShifterCurseFabric.blocks.RegCustomBlock;
 import net.onixary.shapeShifterCurseFabric.entity.projectile.WebBullet;
@@ -61,62 +60,62 @@ public final class SpiderMoonWeaverWebManager {
 
 	private SpiderMoonWeaverWebManager() {}
 
-	private static boolean isSpiderMoonWeaver(ServerPlayerEntity player) {
+	private static boolean isSpiderMoonWeaver(ServerPlayer player) {
 		return FormUtils.isForm(player, FormIdentifiers.SPIDER_MOON_WEAVER);
 	}
 
-	private static ManaComponent mana(ServerPlayerEntity player) {
+	private static ManaComponent mana(ServerPlayer player) {
 		return RegManaComponent.MANA.get(player);
 	}
 
 	/** 读取玩家当前模式（0=搭路 / 1=攻击）。 */
-	private static int getMode(ServerPlayerEntity player) {
+	private static int getMode(ServerPlayer player) {
 		return RegSpiderMoonWeaverStateComponent.SPIDER_MOON_WEAVER_STATE.get(player).getMode();
 	}
 
 	/** 潜行双击主键：切换 搭路 / 攻击 模式（客户端手势判定，蓄力中禁止切换）。 */
-	public static void toggleMode(ServerPlayerEntity player) {
+	public static void toggleMode(ServerPlayer player) {
 		if (!isSpiderMoonWeaver(player)) return;
-		if (CHARGING.containsKey(player.getUuid())) return;
+		if (CHARGING.containsKey(player.getUUID())) return;
 		int next = (getMode(player) == MODE_ATTACK) ? MODE_BRIDGE : MODE_ATTACK;
 		RegSpiderMoonWeaverStateComponent.SPIDER_MOON_WEAVER_STATE.get(player).setMode(next);
-		ServerWorld sw = (ServerWorld) player.getWorld();
+		ServerLevel sw = (ServerLevel) player.level();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.BLOCK_WOOL_PLACE, SoundCategory.PLAYERS, 0.8f, next == MODE_ATTACK ? 1.4f : 0.9f);
+				SoundEvents.BLOCK_WOOL_PLACE, SoundSource.PLAYERS, 0.8f, next == MODE_ATTACK ? 1.4f : 0.9f);
 		player.sendMessage(Text.translatable(next == MODE_ATTACK
 				? "message.my_addon.spider_moon_weaver.mode.attack"
 				: "message.my_addon.spider_moon_weaver.mode.bridge"), true);
 	}
 
 	/** 主键按住开始蓄力（服务端重校验 form / CD / mana）。 */
-	public static void start(ServerPlayerEntity player) {
-		if (CHARGING.containsKey(player.getUuid())) return;
+	public static void start(ServerPlayer player) {
+		if (CHARGING.containsKey(player.getUUID())) return;
 		if (!isSpiderMoonWeaver(player)) return;
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_PRIMARY_CD) > 0) return; // CD 中
 		if (mana(player).getMana() < START_MANA) return; // mana 不足
-		CHARGING.put(player.getUuid(), new int[]{0});
-		FLAT_CHARGING.remove(player.getUuid()); // 普通蓄力 → 蛛丝弹
-		ServerWorld sw = (ServerWorld) player.getWorld();
+		CHARGING.put(player.getUUID(), new int[]{0});
+		FLAT_CHARGING.remove(player.getUUID()); // 普通蓄力 → 蛛丝弹
+		ServerLevel sw = (ServerLevel) player.level();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.BLOCK_WOOL_HIT, SoundCategory.PLAYERS, 0.7f, 1.2f);
+				SoundEvents.BLOCK_WOOL_HIT, SoundSource.PLAYERS, 0.7f, 1.2f);
 	}
 
 	/** 主键按住开始「平铺搭桥」蓄力（双击长按 / 潜行长按触发；服务端重校验 form / CD / mana）。 */
-	public static void startFlat(ServerPlayerEntity player) {
-		if (CHARGING.containsKey(player.getUuid())) return;
+	public static void startFlat(ServerPlayer player) {
+		if (CHARGING.containsKey(player.getUUID())) return;
 		if (!isSpiderMoonWeaver(player)) return;
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_PRIMARY_CD) > 0) return; // CD 中
 		if (mana(player).getMana() < START_MANA) return; // mana 不足
-		CHARGING.put(player.getUuid(), new int[]{0});
-		FLAT_CHARGING.add(player.getUuid()); // 平铺蓄力 → 脚下平铺
-		ServerWorld sw = (ServerWorld) player.getWorld();
+		CHARGING.put(player.getUUID(), new int[]{0});
+		FLAT_CHARGING.add(player.getUUID()); // 平铺蓄力 → 脚下平铺
+		ServerLevel sw = (ServerLevel) player.level();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.BLOCK_WOOL_HIT, SoundCategory.PLAYERS, 0.7f, 1.0f);
+				SoundEvents.BLOCK_WOOL_HIT, SoundSource.PLAYERS, 0.7f, 1.0f);
 	}
 
 	/** 每服务端 tick 对每个在线玩家调用（挂在 SscAddonServerEvents 世界 tick 循环）。 */
-	public static void tick(ServerPlayerEntity player) {
-		int[] s = CHARGING.get(player.getUuid());
+	public static void tick(ServerPlayer player) {
+		int[] s = CHARGING.get(player.getUUID());
 		if (s == null) return;
 		if (player.isDead() || !isSpiderMoonWeaver(player)) {
 			cancel(player); // 死亡 / 形态丢失 → 取消，不结算
@@ -130,14 +129,14 @@ public final class SpiderMoonWeaverWebManager {
 			}
 			m.consumeMana(MANA_PER_TICK);
 			s[0]++;
-			ServerWorld sw = (ServerWorld) player.getWorld();
+			ServerLevel sw = (ServerLevel) player.level();
 			float chime = tierChimePitch(s[0]);
 			if (chime > 0f) {
 				// 跨档瞬间：靠齐原版 SSC 蓄力完成音效（note_block hat+snare 升调）+ cloud 粒子
 				sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.BLOCK_NOTE_BLOCK_HAT.value(), SoundCategory.PLAYERS, 0.8f, chime);
+						SoundEvents.BLOCK_NOTE_BLOCK_HAT.value(), SoundSource.PLAYERS, 0.8f, chime);
 				sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.BLOCK_NOTE_BLOCK_SNARE.value(), SoundCategory.PLAYERS, 0.8f, chime);
+						SoundEvents.BLOCK_NOTE_BLOCK_SNARE.value(), SoundSource.PLAYERS, 0.8f, chime);
 				sw.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 1.0, player.getZ(),
 						10, 0.5, 0.5, 0.5, 0.0);
 			} else if (s[0] % 4 == 0) {
@@ -157,9 +156,9 @@ public final class SpiderMoonWeaverWebManager {
 	}
 
 	/** 松开主键 / 自动释放：按当前档 + 模式 + 平铺标志发动。 */
-	public static void release(ServerPlayerEntity player) {
-		int[] s = CHARGING.remove(player.getUuid());
-		boolean flat = FLAT_CHARGING.remove(player.getUuid());
+	public static void release(ServerPlayer player) {
+		int[] s = CHARGING.remove(player.getUUID());
+		boolean flat = FLAT_CHARGING.remove(player.getUUID());
 		if (s == null) return;
 		int ticks = s[0];
 		int tier = ticks >= MAX_TICKS ? 3 : (ticks >= TIER2_TICKS ? 2 : 1);
@@ -174,9 +173,9 @@ public final class SpiderMoonWeaverWebManager {
 	}
 
 	/** 取消蓄力（不结算、不进 CD）。 */
-	public static void cancel(ServerPlayerEntity player) {
-		CHARGING.remove(player.getUuid());
-		FLAT_CHARGING.remove(player.getUuid());
+	public static void cancel(ServerPlayer player) {
+		CHARGING.remove(player.getUUID());
+		FLAT_CHARGING.remove(player.getUUID());
 	}
 
 	/** 玩家掉线清理，防僵尸 UUID 残留。 */
@@ -186,33 +185,33 @@ public final class SpiderMoonWeaverWebManager {
 	}
 
 	// 攻击模式：发射蛛丝弹（命中铺减速网）
-	private static void fireAttack(ServerPlayerEntity player, int tier) {
+	private static void fireAttack(ServerPlayer player, int tier) {
 		WebMembraneBullet bullet = new WebMembraneBullet(player, tier);
 		bullet.setVelocity(player, player.getPitch(), player.getYaw(), 0.0f, 1.6f, 1.0f);
-		player.getWorld().spawnEntity(bullet);
-		ServerWorld sw = (ServerWorld) player.getWorld();
+		player.level().spawnEntity(bullet);
+		ServerLevel sw = (ServerLevel) player.level();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_SNOWBALL_THROW, SoundCategory.PLAYERS, 0.9f, 0.7f);
+				SoundEvents.ENTITY_SNOWBALL_THROW, SoundSource.PLAYERS, 0.9f, 0.7f);
 	}
 
 	// 搭路模式-平铺：在玩家前方脚同高水平面铺原版 web_bridge 蛛丝桥（平地也能在前方铺出）
-	private static void fireBridgeFlat(ServerPlayerEntity player, int tier) {
+	private static void fireBridgeFlat(ServerPlayer player, int tier) {
 		int length = tier >= 3 ? 18 : (tier >= 2 ? 14 : 10);
 		BlockPos pos = player.getBlockPos(); // 脚同高水平面（空气层），从前方第一格开始能铺上
 		Direction dir = player.getHorizontalFacing();
-		WebBridgeAction.BuildWebBridge(player.getWorld(), pos, dir,
+		WebBridgeAction.BuildWebBridge(player.level(), pos, dir,
 				new WebBridgeAction.WebBridgeConfig(length, 0), RegCustomBlock.TEMP_WEB_BRIDGE);
-		ServerWorld sw = (ServerWorld) player.getWorld();
+		ServerLevel sw = (ServerLevel) player.level();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.BLOCK_GRASS_PLACE, SoundCategory.PLAYERS, 0.6f, 0.8f);
+				SoundEvents.BLOCK_GRASS_PLACE, SoundSource.PLAYERS, 0.6f, 0.8f);
 		sw.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.5, player.getZ(),
 				40, 1.0, 0.5, 1.0, 0.0);
 	}
 
 	// 搭路模式-发射：发射原版 WebBullet 蛛丝弹（命中方块 BuildWebLadder 建蛛丝梯，命中实体施缠绕）
-	private static void fireBridgeShoot(ServerPlayerEntity player, int tier) {
+	private static void fireBridgeShoot(ServerPlayer player, int tier) {
 		WebBullet bullet = new WebBullet(player, tier);
 		bullet.setVelocity(player, player.getPitch(), player.getYaw(), 0.0f, 2.0f, 1.0f); // 原版 speed=2, divergence=1
-		player.getWorld().spawnEntity(bullet);
+		player.level().spawnEntity(bullet);
 	}
 }

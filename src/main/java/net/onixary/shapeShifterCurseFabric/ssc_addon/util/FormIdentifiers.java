@@ -45,9 +45,9 @@ public class FormIdentifiers {
 	// 阿努比斯之狼SP灵魂能量资源
 	public static final ResourceLocation ANUBIS_WOLF_SP_SOUL_ENERGY = ResourceLocation.fromNamespaceAndPath("my_addon", "form_anubis_wolf_sp_soul_energy");
 	// 吸血蝙蝠SP形态ID
-	public static final Identifier BAT_DESMODUS = new Identifier("my_addon", "bat_desmodus");
+	public static final ResourceLocation BAT_DESMODUS = ResourceLocation.fromNamespaceAndPath("my_addon", "bat_desmodus");
 	// 月织蛛SP形态ID（月髓环进化）
-	public static final Identifier SPIDER_MOON_WEAVER = new Identifier("my_addon", "spider_moon_weaver");
+	public static final ResourceLocation SPIDER_MOON_WEAVER = ResourceLocation.fromNamespaceAndPath("my_addon", "spider_moon_weaver");
 	// 寄生果蝠形态ID
 	public static final ResourceLocation BAT_PARASITIC_FRUIT = ResourceLocation.fromNamespaceAndPath("my_addon", "bat_parasitic_fruit");
 	// 寄生果蝠"种子量"能量资源（最大 10）

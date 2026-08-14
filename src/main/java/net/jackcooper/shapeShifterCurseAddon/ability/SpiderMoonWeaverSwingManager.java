@@ -1,18 +1,17 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
+import com.zigythebird.playeranimcore.math.MathHelper;
 import net.jackcooper.shapeShifterCurseAddon.entity.SpiderSwingBullet;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.mana.ManaComponent;
 import net.onixary.shapeShifterCurseFabric.mana.RegManaComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -54,7 +53,7 @@ public final class SpiderMoonWeaverSwingManager {
 
 	private static final class SwingState {
 		int state = STATE_IDLE;
-		Vec3d anchor = Vec3d.ZERO;    // SWINGING 销点
+		Vec3 anchor = Vec3.ZERO;    // SWINGING 销点
 		int tetherEntityId = -1;      // TETHER 目标实体 id
 		double ropeLen = 0.0;
 		boolean canExtend = true;
@@ -69,19 +68,19 @@ public final class SpiderMoonWeaverSwingManager {
 
 	private SpiderMoonWeaverSwingManager() {}
 
-	private static boolean isSpiderMoonWeaver(ServerPlayerEntity player) {
+	private static boolean isSpiderMoonWeaver(ServerPlayer player) {
 		return FormUtils.isForm(player, FormIdentifiers.SPIDER_MOON_WEAVER);
 	}
 
-	private static ManaComponent mana(ServerPlayerEntity player) {
+	private static ManaComponent mana(ServerPlayer player) {
 		return RegManaComponent.MANA.get(player);
 	}
 
-	private static SwingState state(ServerPlayerEntity player) {
-		return STATES.computeIfAbsent(player.getUuid(), k -> new SwingState());
+	private static SwingState state(ServerPlayer player) {
+		return STATES.computeIfAbsent(player.getUUID(), k -> new SwingState());
 	}
 
-	private static void broadcastState(ServerPlayerEntity player, SwingState s) {
+	private static void broadcastState(ServerPlayer player, SwingState s) {
 		SscAddonNetworking.syncSwingState(player, s.state != STATE_IDLE,
 				s.anchor.x, s.anchor.y, s.anchor.z, s.ropeLen, s.state, s.canExtend, s.tetherEntityId);
 	}
@@ -92,40 +91,40 @@ public final class SpiderMoonWeaverSwingManager {
 	 */
 	public static boolean isTethering(Entity player, Entity target) {
 		if (player == null || target == null) return false;
-		SwingState s = STATES.get(player.getUuid());
+		SwingState s = STATES.get(player.getUUID());
 		return s != null && s.state == STATE_TETHER && s.tetherEntityId == target.getId();
 	}
 
 	/**
 	 * 反查正拴住（TETHER）指定实体的拴主玩家，无则返回 null。用于被拴目标受伤时找拴主（敌我判定/伤害分担）。
 	 */
-	public static ServerPlayerEntity getTetheringPlayer(Entity target) {
+	public static ServerPlayer getTetheringPlayer(Entity target) {
 		if (target == null || target.getServer() == null) return null;
 		for (Map.Entry<UUID, SwingState> e : STATES.entrySet()) {
 			SwingState s = e.getValue();
 			if (s.state == STATE_TETHER && s.tetherEntityId == target.getId()) {
-				ServerPlayerEntity sp = target.getServer().getPlayerManager().getPlayer(e.getKey());
+				ServerPlayer sp = target.getServer().getPlayerList().getPlayer(e.getKey());
 				if (sp != null) return sp;
 			}
 		}
 		return null;
 	}
 
-	private static Vec3d torso(ServerPlayerEntity player) {
-		return player.getPos().add(0, 1.0, 0);
+	private static Vec3 torso(ServerPlayer player) {
+		return player.position().add(0, 1.0, 0);
 	}
 
-	private static Vec3d entityCenter(LivingEntity e) {
-		return e.getPos().add(0, e.getHeight() * 0.5, 0);
+	private static Vec3 entityCenter(LivingEntity e) {
+		return e.position().add(0, e.getBbHeight() * 0.5, 0);
 	}
 
 	// ==== 次键：IDLE→发弹 / 否则→断丝 ====
-	public static void onSecondaryPress(ServerPlayerEntity player) {
+	public static void onSecondaryPress(ServerPlayer player) {
 		if (!isSpiderMoonWeaver(player)) return;
 		SwingState s = state(player);
 		if (s.state == STATE_IDLE) {
 			// 飞行中再按键 → 取消飞弹（→ remove → onBulletMiss → 5 秒 CD）
-			SpiderSwingBullet flying = BULLET_IN_FLIGHT.get(player.getUuid());
+			SpiderSwingBullet flying = BULLET_IN_FLIGHT.get(player.getUUID());
 			if (flying != null && flying.isAlive()) {
 				flying.discard();
 				return;
@@ -137,27 +136,27 @@ public final class SpiderMoonWeaverSwingManager {
 	}
 
 	/** 发射蛛丝飞弹（抛物线投射物，碰撞后回调进入摆荡 / tether）。 */
-	private static void shootBullet(ServerPlayerEntity player) {
+	private static void shootBullet(ServerPlayer player) {
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_SECONDARY_CD) > 0) return;
-		if (BULLET_IN_FLIGHT.containsKey(player.getUuid())) return;
+		if (BULLET_IN_FLIGHT.containsKey(player.getUUID())) return;
 		if (mana(player).getMana() < 1.0) {
-			player.sendMessage(Text.translatable("message.my_addon.spider_moon_weaver.swing.no_mana"), true);
+			player.sendSystemMessage(Component.translatable("message.my_addon.spider_moon_weaver.swing.no_mana"), true);
 			return;
 		}
 		SpiderSwingBullet bullet = new SpiderSwingBullet(player);
-		bullet.setVelocity(player, player.getPitch(), player.getYaw(), 0.0f, BULLET_SPEED, 0.0f);
-		player.getWorld().spawnEntity(bullet);
-		BULLET_IN_FLIGHT.put(player.getUuid(), bullet);
-		ServerWorld sw = (ServerWorld) player.getWorld();
+		bullet.setDeltaMovement(player, player.getPitch(), player.getYaw(), 0.0f, BULLET_SPEED, 0.0f);
+		player.level().spawnEntity(bullet);
+		BULLET_IN_FLIGHT.put(player.getUUID(), bullet);
+		ServerLevel sw = (ServerLevel) player.level();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ENTITY_SPIDER_AMBIENT, SoundCategory.PLAYERS, 0.6f, 1.3f);
+				SoundEvents.SPIDER_AMBIENT, SoundSource.PLAYERS, 0.6f, 1.3f);
 	}
 
 	// ==== 飞弹碰撞回调（由 SpiderSwingBullet 调用） ====
 
 	/** 飞弹命中方块 → 钩住进入摆荡。 */
-	public static void onBulletHitBlock(ServerPlayerEntity player, Vec3d anchor) {
-		BULLET_IN_FLIGHT.remove(player.getUuid());
+	public static void onBulletHitBlock(ServerPlayer player, Vec3 anchor) {
+		BULLET_IN_FLIGHT.remove(player.getUUID());
 		if (!isSpiderMoonWeaver(player)) return;
 		SwingState s = state(player);
 		s.state = STATE_SWINGING;
@@ -169,18 +168,18 @@ public final class SpiderMoonWeaverSwingManager {
 	}
 
 	/** 拴住目标的高光描边色：白名单友军→绿，敌人→蓝（仅施法者可见）。 */
-	private static int tetherHighlightColor(ServerPlayerEntity player, LivingEntity target) {
+	private static int tetherHighlightColor(ServerPlayer player, LivingEntity target) {
 		return WhitelistUtils.isProtected(player, target) ? 0x3AF03A : 0x3AA0FF;
 	}
 
 	/** 飞弹命中生物 → 连接进入 tether 拖拽。 */
-	public static void onBulletHitEntity(ServerPlayerEntity player, LivingEntity target) {
-		BULLET_IN_FLIGHT.remove(player.getUuid());
+	public static void onBulletHitEntity(ServerPlayer player, LivingEntity target) {
+		BULLET_IN_FLIGHT.remove(player.getUUID());
 		if (!isSpiderMoonWeaver(player)) return;
 		SwingState s = state(player);
 		s.state = STATE_TETHER;
 		s.tetherEntityId = target.getId();
-		s.anchor = Vec3d.ZERO;
+		s.anchor = Vec3.ZERO;
 		s.ropeLen = MathHelper.clamp(torso(player).distanceTo(entityCenter(target)), MIN_ROPE_LEN, TETHER_MAX_LEN);
 		s.canExtend = true;
 		mana(player).consumeMana(TETHER_HIT_MANA_COST); // 勾中生物瞬间额外扣 8 点 mana（自动 clamp 到 0 不会负、自动同步客户端 mana 条）
@@ -189,26 +188,26 @@ public final class SpiderMoonWeaverSwingManager {
 	}
 
 	/** 飞弹 miss 落地消失 / 被移除 → 5 秒 CD（幂等：仅仍在飞未命中时生效）。 */
-	public static void onBulletMiss(ServerPlayerEntity player) {
-		if (BULLET_IN_FLIGHT.remove(player.getUuid()) != null) {
+	public static void onBulletMiss(ServerPlayer player) {
+		if (BULLET_IN_FLIGHT.remove(player.getUUID()) != null) {
 			PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_SECONDARY_CD, 100);
 		}
 	}
 
 	// ==== 断丝 ====
-	private static void breakWeb(ServerPlayerEntity player, SwingState s, boolean giveCd) {
+	private static void breakWeb(ServerPlayer player, SwingState s, boolean giveCd) {
 		boolean wasActive = s.state != STATE_IDLE;
 		s.state = STATE_IDLE;
-		s.anchor = Vec3d.ZERO;
+		s.anchor = Vec3.ZERO;
 		s.tetherEntityId = -1;
 		s.ropeLen = 0.0;
 		s.canExtend = true;
 		s.stuckTicks = 0;
 		s.lastPX = Double.NaN;
 		if (wasActive) {
-			ServerWorld sw = (ServerWorld) player.getWorld();
+			ServerLevel sw = (ServerLevel) player.level();
 			sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.BLOCK_WOOL_BREAK, SoundCategory.PLAYERS, 0.7f, 1.1f);
+					SoundEvents.BLOCK_WOOL_BREAK, SoundSource.PLAYERS, 0.7f, 1.1f);
 			if (giveCd) {
 				PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_SECONDARY_CD, 100);
 			}
@@ -217,8 +216,8 @@ public final class SpiderMoonWeaverSwingManager {
 	}
 
 	// ==== 每服务端 tick ====
-	public static void tick(ServerPlayerEntity player) {
-		SwingState s = STATES.get(player.getUuid());
+	public static void tick(ServerPlayer player) {
+		SwingState s = STATES.get(player.getUUID());
 		if (s == null || s.state == STATE_IDLE) return;
 		if (player.isDead() || !isSpiderMoonWeaver(player)) {
 			breakWeb(player, s, false);
@@ -232,9 +231,9 @@ public final class SpiderMoonWeaverSwingManager {
 	}
 
 	/** SWINGING：断丝检测 + 定期广播 + 销点粒子（物理在客户端）。 */
-	private static void tickSwinging(ServerPlayerEntity player, SwingState s) {
+	private static void tickSwinging(ServerPlayer player, SwingState s) {
 		player.fallDistance = 0.0f; // 服务端清摔落距离防摆荡落地摔伤（不影响客户端 fallDistance 驱动的 FALL 动画）
-		Vec3d torso = torso(player);
+		Vec3 torso = torso(player);
 		double dist = torso.distanceTo(s.anchor);
 		if (dist > BREAK_OVERSTRETCH) {
 			breakWeb(player, s, true);
@@ -247,22 +246,22 @@ public final class SpiderMoonWeaverSwingManager {
 		if (++s.broadcastTick >= 3) {
 			s.broadcastTick = 0;
 			broadcastState(player, s);
-			((ServerWorld) player.getWorld()).spawnParticles(net.minecraft.particle.ParticleTypes.CLOUD,
+			((ServerLevel) player.level()).spawnParticles(net.minecraft.particle.ParticleTypes.CLOUD,
 					s.anchor.x, s.anchor.y, s.anchor.z, 2, 0.12, 0.12, 0.12, 0.0);
 		}
 	}
 
 	/** TETHER：拉目标生物向玩家（按抗性缩放，有阻力）+ 断丝检测 + 高光刷新 + 广播。 */
-	private static void tickTether(ServerPlayerEntity player, SwingState s) {
+	private static void tickTether(ServerPlayer player, SwingState s) {
 		player.fallDistance = 0.0f; // 服务端清摔落距离防 tether 拖拽落地摔伤
-		ServerWorld world = (ServerWorld) player.getWorld();
+		ServerLevel world = (ServerLevel) player.level();
 		Entity target = world.getEntityById(s.tetherEntityId);
 		if (!(target instanceof LivingEntity living) || !living.isAlive()) {
 			breakWeb(player, s, true);
 			return;
 		}
-		Vec3d pPos = torso(player);
-		Vec3d tPos = entityCenter(living);
+		Vec3 pPos = torso(player);
+		Vec3 tPos = entityCenter(living);
 		double dist = pPos.distanceTo(tPos);
 		if (dist > BREAK_OVERSTRETCH) {
 			breakWeb(player, s, true);
@@ -276,19 +275,19 @@ public final class SpiderMoonWeaverSwingManager {
 		// 超出绳长 → 拉目标向玩家（趋向速度，防撞墙累积；按 1-抗性缩放，重型拉不动由客户端把玩家拉过去）
 		if (dist > ropeLen) {
 			double resist = knockbackResist(living);
-			Vec3d dir = pPos.subtract(tPos).normalize();
+			Vec3 dir = pPos.subtract(tPos).normalize();
 			double over = dist - ropeLen;
 			double desired = Math.min(over * 0.3, 0.55) * (1.0 - resist);
 			if (desired > 0.001) {
-				Vec3d tv = living.getVelocity();
-				double toward = tv.dotProduct(dir);
+				Vec3 tv = living.getDeltaMovement();
+				double toward = tv.dot(dir);
 				if (toward < desired) {
 					tv = tv.add(dir.multiply(desired - toward));
 					double sp = tv.length();
 					if (sp > 0.55) tv = tv.multiply(0.55 / sp); // 硬上限防生物爆冲
-					living.setVelocity(tv);
-					living.velocityModified = true;
-					living.velocityDirty = true;
+					living.setDeltaMovement(tv);
+					living.hurtMarked = true;
+					living.hasImpulse = true;
 				}
 			}
 		}
@@ -321,7 +320,7 @@ public final class SpiderMoonWeaverSwingManager {
 	}
 
 	private static double knockbackResist(LivingEntity living) {
-		EntityAttributeInstance inst = living.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
+		AttributeInstance inst = living.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
 		return inst != null ? MathHelper.clamp(inst.getValue(), 0.0, 1.0) : 0.0;
 	}
 
@@ -329,8 +328,8 @@ public final class SpiderMoonWeaverSwingManager {
 	 * 客户端每 tick 上报绳长 + 收放意图（+1 收 / -1 放 / 0）。服务端信任客户端 ropeLen（转发 + 断丝参考），
 	 * 放绳权威扣 mana，mana 不足则 canExtend=false 广播阻止继续放绳。SWINGING / TETHER 均适用。
 	 */
-	public static void onReelSync(ServerPlayerEntity player, double clientRopeLen, int reel) {
-		SwingState s = STATES.get(player.getUuid());
+	public static void onReelSync(ServerPlayer player, double clientRopeLen, int reel) {
+		SwingState s = STATES.get(player.getUUID());
 		if (s == null || (s.state != STATE_SWINGING && s.state != STATE_TETHER)) return;
 		// tether 拴生物：最大间距 16 且禁止放绳延长；swinging 荡漾仍可到 32 并放绳
 		double maxLen = (s.state == STATE_TETHER) ? TETHER_MAX_LEN : MAX_ROPE_REACH;
@@ -354,19 +353,19 @@ public final class SpiderMoonWeaverSwingManager {
 		}
 	}
 
-	private static double computeObscuration(ServerPlayerEntity player, Vec3d from, Vec3d to) {
+	private static double computeObscuration(ServerPlayer player, Vec3 from, Vec3 to) {
 		double totalDist = from.distanceTo(to);
 		if (totalDist < 2.0) return 0.0;
 		int samples = MathHelper.ceil(totalDist * 2.0);
 		double obscured = 0.0;
-		Vec3d dir = to.subtract(from).normalize();
+		Vec3 dir = to.subtract(from).normalize();
 		double skip = 0.6 / totalDist;
 		for (int i = 0; i < samples; i++) {
 			double t = (i + 0.5) / samples;
 			if (t < skip || t > 1.0 - skip) continue;
-			Vec3d p = from.add(dir.multiply(totalDist * t));
+			Vec3 p = from.add(dir.multiply(totalDist * t));
 			BlockPos bp = BlockPos.ofFloored(p);
-			if (player.getWorld().getBlockState(bp).isSolidBlock(player.getWorld(), bp)) {
+			if (player.level().getBlockState(bp).isSolidBlock(player.level(), bp)) {
 				obscured += 0.5;
 			}
 		}

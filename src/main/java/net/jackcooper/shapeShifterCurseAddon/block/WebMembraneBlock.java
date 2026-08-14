@@ -1,29 +1,22 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.ConnectingBlock;
-import net.minecraft.block.LichenGrower;
-import net.minecraft.block.MultifaceGrowthBlock;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.mob.SpiderEntity;
-import net.minecraft.entity.passive.TameableEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.registry.tag.FluidTags;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldAccess;
 import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.MultifaceBlock;
+import net.minecraft.world.level.block.MultifaceSpreader;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -37,8 +30,8 @@ import java.util.UUID;
  * 遇水即被冲毁（不掉落，由 Settings.dropsNothing() 保证）；可燃且蔓延快（可燃在 RegAddonBlocks 注册）。
  */
 @SuppressWarnings("deprecation") // 本类覆写多个 vanilla 标注 @Deprecated 的 Block 方法（碰撞 / 邻居更新 / 放置），统一抑制
-public class WebMembraneBlock extends MultifaceGrowthBlock {
-	private final LichenGrower grower = new LichenGrower(this);
+public class WebMembraneBlock extends MultifaceBlock {
+	private final MultifaceSpreader grower = new MultifaceSpreader(this);
 
 	/** 定时消失下限（tick）：60 秒。 */
 	public static final int LIFESPAN_MIN = 1200;
@@ -56,22 +49,22 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 	}
 
 	@Override
-	public LichenGrower getGrower() {
+	public MultifaceSpreader getGrower() {
 		return this.grower;
 	}
 
 	// 放置即排定随机寿命（错峰消失）；被水冲毁 / 烧掉时提前失效，scheduledTick 命中空气则无操作
 	@Override
-	public void onBlockAdded(BlockState state, World world, BlockPos pos, BlockState oldState, boolean notify) {
+	public void onBlockAdded(BlockState state, Level world, BlockPos pos, BlockState oldState, boolean notify) {
 		super.onBlockAdded(state, world, pos, oldState, notify);
-		if (!world.isClient) {
+		if (!world.isClient()) {
 			int life = LIFESPAN_MIN + world.getRandom().nextInt(LIFESPAN_MAX - LIFESPAN_MIN + 1);
 			world.scheduleBlockTick(pos, this, life);
 		}
 	}
 
 	@Override
-	public void scheduledTick(BlockState state, ServerWorld world, BlockPos pos, Random random) {
+	public void scheduledTick(BlockState state, ServerLevel world, BlockPos pos, Random random) {
 		if (state.isOf(this)) {
 			world.setBlockState(pos, Blocks.AIR.getDefaultState());
 			WebMembraneOwners.remove(pos);
@@ -85,7 +78,7 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 	 * 无可附着面则跳过（多面块放不上）。由蛛丝弹命中调用，服务端执行（概率用服务端随机，多人一致）；
 	 * 每块经 onBlockAdded 各自排定 60~90s 随机寿命，并登记施法者 ownerId 供白名单判定。
 	 */
-	public static void coatArea(ServerWorld world, BlockPos center, double radius, UUID ownerId) {
+	public static void coatArea(ServerLevel world, BlockPos center, double radius, UUID ownerId) {
 		int r = (int) Math.ceil(radius);
 		int splash = r + 2; // 溅射带：基础半径外多扫 2 格，低概率延伸出辐射枝杈
 		double core = r * 0.7; // 近心核心区：高概率填满
@@ -131,7 +124,7 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 	// 接触到水就被冲毁（返回空气）；不掉落由 dropsNothing() 保证
 	@Override
 	public BlockState getStateForNeighborUpdate(BlockState state, Direction direction, BlockState neighborState,
-												WorldAccess world, BlockPos pos, BlockPos neighborPos) {
+	                                            WorldAccess world, BlockPos pos, BlockPos neighborPos) {
 		if (isTouchingWater(world, pos)) {
 			return Blocks.AIR.getDefaultState();
 		}
@@ -152,11 +145,11 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 
 	// 减速 30% + 施加「蛛网缠身」并踩烂脚下这块网（消耗式）；蜘蛛 / 月织蛛自身 / 施法者白名单个体（队友·宠物）免疫
 	@Override
-	public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+	public void onEntityCollision(BlockState state, Level world, BlockPos pos, Entity entity) {
 		if (isImmune(world, pos, entity)) {
 			return;
 		}
-		entity.slowMovement(state, new Vec3d(0.7D, 1.0D, 0.7D));
+		entity.slowMovement(state, new Vec3(0.7D, 1.0D, 0.7D));
 		if (!world.isClient && entity instanceof LivingEntity living) {
 			// 施加/刷新蛛网缠身（防牛奶、任何形态不免疫）；脚下蛛网粒子由效果自身逐 tick 生成
 			living.addStatusEffect(new StatusEffectInstance(RegAddonEffects.SPIDER_WEB_BOUND, WEB_BOUND_DURATION, 0, false, false, true));
@@ -165,13 +158,13 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 			// 踩烂脚下这块网：非免疫生物走过即毁
 			world.setBlockState(pos, Blocks.AIR.getDefaultState());
 			WebMembraneOwners.remove(pos);
-			if (world instanceof ServerWorld sw) {
+			if (world instanceof ServerLevel sw) {
 				// 踩网音效
 				sw.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-						SoundEvents.BLOCK_WET_GRASS_BREAK, SoundCategory.BLOCKS, 0.5f, 1.1f);
+						SoundEvents.BLOCK_WET_GRASS_BREAK, SoundSource.BLOCKS, 0.5f, 1.1f);
 				// 蓝色高亮：仅通知施法者本机给受害者描蓝边
 				if (casterId != null) {
-					ServerPlayerEntity caster = sw.getServer().getPlayerManager().getPlayer(casterId);
+					ServerPlayer caster = sw.getServer().getPlayerManager().getPlayer(casterId);
 					if (caster != null && caster != living) {
 						SscAddonNetworking.sendWebHighlight(caster, living.getId(), WEB_HIGHLIGHT_DURATION);
 					}
@@ -189,28 +182,28 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 	 *   <li>施法者离线 / 记录丢失（重启）→ 安全回退为默认白名单（玩家 + 已驯服宠物免疫，怪物受影响）。</li>
 	 * </ul>
 	 */
-	private static boolean isImmune(World world, BlockPos pos, Entity entity) {
+	private static boolean isImmune(Level world, BlockPos pos, Entity entity) {
 		if (entity instanceof SpiderEntity) {
 			return true;
 		}
 		if (!(entity instanceof LivingEntity living)) {
 			return true;
 		}
-		if (living instanceof PlayerEntity player
+		if (living instanceof Player player
 				&& (FormUtils.isForm(player, FormIdentifiers.SPIDER_MOON_WEAVER)
 				|| FormUtils.isForm(player, FormIdentifiers.ALLAY_SP)
 				|| FormUtils.isForm(player, FormIdentifiers.FALLEN_ALLAY_SP))) {
 			return true;
 		}
 		UUID ownerId = WebMembraneOwners.get(pos);
-		if (ownerId != null && world instanceof ServerWorld sw) {
-			ServerPlayerEntity owner = sw.getServer().getPlayerManager().getPlayer(ownerId);
+		if (ownerId != null && world instanceof ServerLevel sw) {
+			ServerPlayer owner = sw.getServer().getPlayerManager().getPlayer(ownerId);
 			if (owner != null) {
 				return WhitelistUtils.isProtected(owner, living); // 施法者白名单：队友免疫，敌人被缠
 			}
 		}
 		// 施法者未知（离线 / 重启后记录丢失）：默认白名单（玩家 + 宠物免疫，怪物受影响）
-		if (living instanceof PlayerEntity) {
+		if (living instanceof Player) {
 			return true;
 		}
 		return living instanceof TameableEntity tameable && tameable.getOwnerUuid() != null;
