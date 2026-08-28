@@ -1,12 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin;
 
-import net.onixary.shapeShifterCurseFabric.player_form.IForm;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Mixin to cancel Iron's Spellbooks casting animation for specific forms (SP/Red).

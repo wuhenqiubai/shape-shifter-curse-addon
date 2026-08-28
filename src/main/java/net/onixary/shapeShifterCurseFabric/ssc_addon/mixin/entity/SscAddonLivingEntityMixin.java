@@ -345,7 +345,7 @@ public abstract class SscAddonLivingEntityMixin {
 		}
 	}
 
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$capAllayIncomingDamage(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (self.getWorld().isClient() || !FormUtils.isAllaySP(self)) return;
@@ -363,7 +363,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 寄生果蝠「感染孢子」：被感染的实体造成伤害时减免 15%。
 	 * 伤害源攻击者命中：检查 attacker 是否处于感染状态，是则按 0.85x 缩放 amount。
 	 */
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$infectionAttackerDamageReduction(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (self.getWorld().isClient()) return;
@@ -382,7 +382,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 *   2. 该玩家召唤的冥狼（AnubisWolfMinionEntity）造成的伤害 —— 经 getMinionOwnerUUID() 找主人
 	 * 增伤倍率由 WitherFrenzyManager.getDamageMultiplier 统一给出。仅服务端判定。
 	 */
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$anubisWolfWitherFrenzy(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (self.getWorld().isClient()) return;
@@ -414,7 +414,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 * （每 7 次 tick 跳过 2 次，等效间隔 ×1.4）。净伤害 ≈ 原值 57%。
 	 * 凋零伤害来源 = DamageTypes.WITHER。
 	 */
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$anubisWolfWitherResistance(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (self.getWorld().isClient()) return;
@@ -512,7 +512,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 恐惧伤害修正：契灵 marker 对其红标受害者 +25%；红标受害者对 marker -25%。
 	 * 注入 applyDamage 调用点，可同时访问 DamageSource 和 amount。
 	 */
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$mancianimaFearAmount(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		DamageSource source = args.get(0);
@@ -618,7 +618,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 * - 受害方为蝙蝠玩家 + 0-25 阶段 → 受到伤害 ×0.85（排除虚空 / 直接击杀 / 间接魔法-喷溅滞留药水）
 	 * - 攻击方为蝙蝠玩家 + 75-100 阶段 → 造成伤害 ×1.15
 	 */
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$batDesmodusDamageScaling(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (self.getWorld().isClient()) return;
@@ -658,7 +658,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 *   而非两个 0.75 相乘得到的 43.75%）。
 	 * 用 Java mixin 而非 Apoli condition，确保严格按加点生效（condition 在 modify_damage_taken 中可能不阻止 modifier）。
 	 */
-	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
+	@ModifyArgs(method = "damage", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/LivingEntity;applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V"))
 	private void ssc_addon$upgradeFoxPotionResist(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (self.getWorld().isClient()) return;

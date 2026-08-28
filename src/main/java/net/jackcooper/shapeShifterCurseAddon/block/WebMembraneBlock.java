@@ -5,7 +5,6 @@ import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
 import net.minecraft.block.*;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.Ownable;
 import net.minecraft.entity.Tameable;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.mob.SpiderEntity;

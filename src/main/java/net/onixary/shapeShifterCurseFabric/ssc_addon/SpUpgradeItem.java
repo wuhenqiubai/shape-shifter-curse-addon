@@ -26,7 +26,6 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.AdvancementUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.MoonMarrowFormAdvancements;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;

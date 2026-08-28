@@ -16,7 +16,6 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
 
 /**
  * 致盲效果 - 金沙岚SP的凋零金沙技能施加的debuff

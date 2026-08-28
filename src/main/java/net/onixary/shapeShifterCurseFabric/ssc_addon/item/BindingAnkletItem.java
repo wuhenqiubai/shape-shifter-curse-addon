@@ -23,7 +23,6 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.SscAddonLiving
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.TrinketUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
