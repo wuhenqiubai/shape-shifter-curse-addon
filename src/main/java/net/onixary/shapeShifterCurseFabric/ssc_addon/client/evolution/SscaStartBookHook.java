@@ -2,9 +2,9 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.evolution;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.ConfirmScreen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.screen.ConfirmScreen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.custom_ui.StartBookScreenV2;
 
@@ -43,16 +43,16 @@ public final class SscaStartBookHook {
             int myButtonY = mainButtonY + StartBookScreenV2.ButtonSizeY + GAP;
             int myButtonX = scaledWidth / 2 - BUTTON_W / 2;
 
-            Button button = Button.builder(
-                    Component.translatable("evolution.my_addon.start.button"),
+            ButtonWidget button = ButtonWidget.builder(
+                    Text.translatable("evolution.my_addon.start.button"),
                     b -> openConfirm(client, screen)
-            ).bounds(myButtonX, myButtonY, BUTTON_W, BUTTON_H).build();
+            ).dimensions(myButtonX, myButtonY, BUTTON_W, BUTTON_H).build();
             Screens.getButtons(screen).add(button);
         });
     }
 
     /** 打开确认对话框：说明 SSCA 进化路线与 SSC 本体的区别。 */
-    private static void openConfirm(net.minecraft.client.Minecraft client, net.minecraft.client.gui.screens.Screen startScreen) {
+    private static void openConfirm(net.minecraft.client.MinecraftClient client, net.minecraft.client.gui.screen.Screen startScreen) {
         ConfirmScreen confirm = new ConfirmScreen(
                 accepted -> {
                     if (accepted) {
@@ -61,10 +61,10 @@ public final class SscaStartBookHook {
                         client.setScreen(startScreen);
                     }
                 },
-                Component.translatable("evolution.my_addon.start.confirm.title"),
-                Component.translatable("evolution.my_addon.start.confirm.message"),
-                Component.translatable("evolution.my_addon.start.confirm.yes"),
-                Component.translatable("evolution.my_addon.start.confirm.no"));
+                Text.translatable("evolution.my_addon.start.confirm.title"),
+                Text.translatable("evolution.my_addon.start.confirm.message"),
+                Text.translatable("evolution.my_addon.start.confirm.yes"),
+                Text.translatable("evolution.my_addon.start.confirm.no"));
         client.setScreen(confirm);
     }
 }

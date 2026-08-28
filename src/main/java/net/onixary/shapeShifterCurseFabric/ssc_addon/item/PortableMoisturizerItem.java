@@ -1,6 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.client.item.TooltipContext;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.item.tooltip.TooltipType;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -51,28 +53,27 @@ public class PortableMoisturizerItem extends AccessoryItem {
 
 	// ===== NBT =====
 	public static int getLevel(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
 		if (nbt == null || !nbt.contains("Level")) return 1;
-		return Math.max(1, Math.min(MAX_LEVEL, nbt.getInt("Level")));
+		return Math.max(1, Math.min(MAX_LEVEL, nbt.getNbt().getInt("Level")));
 	}
 
 	public static void setLevel(ItemStack stack, int level) {
-		stack.getOrCreateNbt().putInt("Level", Math.max(1, Math.min(MAX_LEVEL, level)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Level", Math.max(1, Math.min(MAX_LEVEL, level))));
 	}
 
 	public static int getCharge(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
-		return nbt == null ? 0 : nbt.getInt("Charge");
+		return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt().getInt("Charge");
 	}
 
 	public static void setCharge(ItemStack stack, int charge) {
 		int max = getMaxCharge(getLevel(stack));
-		stack.getOrCreateNbt().putInt("Charge", Math.max(0, Math.min(charge, max)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Charge", Math.max(0, Math.min(charge, max))));
 	}
 
 	/** 配方充满：按当前等级上限充满使用时间。 */
 	public static void setFullCharge(ItemStack stack) {
-		stack.getOrCreateNbt().putInt("Charge", getMaxCharge(getLevel(stack)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Charge", getMaxCharge(getLevel(stack))));
 	}
 
 	// ===== 装备限制：仅美西螈系可佩戴 =====
@@ -124,7 +125,7 @@ public class PortableMoisturizerItem extends AccessoryItem {
 	}
 
 	/** 攻击者是否佩戴了三级加湿器（供伤害 mixin 判定全伤害 +15%，服务端调用；框架无关）。 */
-	public static boolean isLevel3Equipped(LivingEntity entity) {
+	public static boolean isLevel3Equipped(PlayerEntity entity) {
 		if (entity == null) return false;
 		return TrinketUtils.isWearing(entity, stack ->
 				stack.getItem() == SscAddon.PORTABLE_MOISTURIZER && getLevel(stack) >= 3);
@@ -147,7 +148,7 @@ public class PortableMoisturizerItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		int level = getLevel(stack);
 		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.level", level).formatted(Formatting.GOLD));
 		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.charge",
@@ -159,7 +160,7 @@ public class PortableMoisturizerItem extends AccessoryItem {
 		}
 		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.refill").formatted(Formatting.DARK_GRAY));
 		tooltip.add(Text.translatable("tooltip.ssc_addon.moisturizer.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 
 	private static String formatTime(int seconds) {

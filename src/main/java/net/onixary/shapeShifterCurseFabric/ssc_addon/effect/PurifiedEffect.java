@@ -1,10 +1,10 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.server.world.ServerWorld;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager;
 
 import java.util.ArrayList;
@@ -16,38 +16,38 @@ import java.util.List;
  * 效果本身无任何属性修改，仅作为信号使用
  * 持续时间极短（1秒），仅用于在下一个tick被Java代码检测到
  */
-public class PurifiedEffect extends MobEffect {
+public class PurifiedEffect extends StatusEffect {
 
 	public PurifiedEffect() {
-		super(MobEffectCategory.NEUTRAL, 0x99DDFF); // Light blue color
+		super(StatusEffectCategory.NEUTRAL, 0x99DDFF); // Light blue color
 	}
 
 	@Override
-	public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
+	public boolean canApplyUpdateEffect(int duration, int amplifier) {
 		return true;
 	}
 
 	@Override
-	public boolean applyEffectTick(LivingEntity entity, int amplifier) {
-		if (entity.level().isClientSide) return false;
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
+		if (entity.getWorld().isClient) return false;
 
 		// Clear all harmful effects (or all effects except this one)
 		// Since we are iterating while modifying, we need a copy
-		List<MobEffectInstance> effects = new ArrayList<>(entity.getActiveEffects());
+		List<StatusEffectInstance> effects = new ArrayList<>(entity.getStatusEffects());
 
-		for (MobEffectInstance instance : effects) {
+		for (StatusEffectInstance instance : effects) {
 			// Don't remove self
-			if (instance.getEffect().value() == this) continue;
+			if (instance.getEffectType().value() == this) continue;
 
 			// Remove the effect
 			// Note: removeStatusEffect returns boolean, doesn't throw concurrent modification if we iterate over a copy
-			entity.removeEffect(instance.getEffect());
+			entity.removeStatusEffect(instance.getEffectType());
 		}
 
 		// 净化同样清除“感染孢子”（由自定义管理器维护，非原版状态效果），并驱散身边的滞留毒雾云
-		if (entity.level() instanceof ServerLevel sw) {
-			InfectionSporeManager.cureInfection(entity.getUUID());
-			InfectionSporeManager.dissipateCloudsNear(sw, entity.position(), InfectionSporeManager.CLOUD_PURIFY_REACH);
+		if (entity.getWorld() instanceof ServerWorld sw) {
+			InfectionSporeManager.cureInfection(entity.getUuid());
+			InfectionSporeManager.dissipateCloudsNear(sw, entity.getPos(), InfectionSporeManager.CLOUD_PURIFY_REACH);
 		}
 		return false;
 	}

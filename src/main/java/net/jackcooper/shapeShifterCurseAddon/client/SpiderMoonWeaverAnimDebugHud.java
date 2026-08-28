@@ -1,11 +1,12 @@
 package net.jackcooper.shapeShifterCurseAddon.client;
 
-import dev.kosmx.playerAnim.api.layered.AnimationStack;
-import dev.kosmx.playerAnim.api.layered.IAnimation;
-import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
-import dev.kosmx.playerAnim.api.layered.ModifierLayer;
-import dev.kosmx.playerAnim.core.data.KeyframeAnimation;
-import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationAccess;
+import com.zigythebird.playeranim.api.PlayerAnimationAccess;
+import com.zigythebird.playeranim.animation.PlayerAnimManager;
+import com.zigythebird.playeranimcore.animation.Animation;
+import com.zigythebird.playeranimcore.animation.AnimationController;
+import com.zigythebird.playeranimcore.animation.layered.AnimationStack;
+import com.zigythebird.playeranimcore.animation.layered.IAnimation;
+import com.zigythebird.playeranimcore.animation.layered.ModifierLayer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -103,63 +104,50 @@ public final class SpiderMoonWeaverAnimDebugHud {
 				SpiderMoonWeaverDoubleJumpClient.isJumpAvailable());
 	}
 
-	/** 通过 KosmX API 读玩家当前播放的动画名 + 进度。 */
+	/** 通过 PAL 1.1.5 API 读玩家当前播放的动画名 + 进度。 */
 	public static String readCurrentAnimation(ClientPlayerEntity player) {
 		try {
-			AnimationStack stack = PlayerAnimationAccess.getPlayerAnimLayer(player);
-			// AnimationStack.layers 是私有字段，用反射取出所有动画层，遍历找当前 active 的 KeyframeAnimationPlayer
-			KeyframeAnimationPlayer kp = findActivePlayerFromStack(stack);
-			if (kp == null) return "无动画 / T-pose";
-			KeyframeAnimation data = kp.getData();
+			PlayerAnimManager manager = PlayerAnimationAccess.getPlayerAnimManager(player);
+			// manager 是 AnimationStack 子类：getLayers() 公开返回所有动画层，遍历找当前激活的控制器
+			AnimationController ctrl = findActivePlayerFromStack(manager);
+			if (ctrl == null) return "无动画 / T-pose";
+			Animation animation = ctrl.getCurrentAnimation() != null ? ctrl.getCurrentAnimation().animation() : null;
 			String name = "未知动画";
-			if (data != null && data.extraData != null) {
-				// 动画名通常存在 extraData 的 "name" key（Emotecraft/KosmX 约定）
-				Object n = data.extraData.get("name");
-				if (n == null) n = data.extraData.get("animation_name");
-				if (n instanceof String s && !s.isEmpty()) name = s;
-				else name = "uuid=" + data.getUuid();
+			if (animation != null) {
+				// 动画名存于 Animation.getNameOrId()（PAL 1.1.5）
+				name = animation.getNameOrId();
+				if (name == null || name.isEmpty() || "null".equals(name)) name = "uuid=" + animation.uuid();
 			}
-			int tick = kp.getCurrentTick();
-			int total = (data != null) ? data.getLength() : -1;
-			int end = (data != null) ? data.endTick : -1;
-			int stop = (data != null) ? data.stopTick : -1;
-			boolean infinite = (data != null) && data.isInfinite;
-			// stopTick>endTick 表示循环动画（到达 endTick 后回到 stopTick 循环）
-			boolean loop = (data != null) && data.stopTick > data.endTick;
-			return String.format("%s  tick=%d/%d (end=%d stop=%d inf=%b loop=%b)",
-					name, tick, total, end, stop, infinite, loop);
+			float tick = ctrl.getAnimationTicks();
+			float total = animation != null ? animation.length() : -1;
+			boolean infinite = animation != null && animation.loopType() == Animation.LoopType.LOOP;
+			return String.format("%s  tick=%.1f/%.1f (state=%s inf=%b)",
+					name, tick, total, ctrl.getAnimationState(), infinite);
 		} catch (Throwable t) {
 			return "读取失败: " + t.getClass().getSimpleName() + ": " + t.getMessage();
 		}
 	}
 
-	/** 用反射从 AnimationStack.layers 私有字段取出所有动画层，遍历找当前激活的 KeyframeAnimationPlayer。 */
-	public static KeyframeAnimationPlayer findActivePlayerFromStack(AnimationStack stack) {
+	/** 从 AnimationStack（PlayerAnimManager）的公开层列表遍历，找当前激活的 AnimationController。 */
+	public static AnimationController findActivePlayerFromStack(AnimationStack stack) {
 		if (stack == null) return null;
 		try {
-			java.lang.reflect.Field f = AnimationStack.class.getDeclaredField("layers");
-			f.setAccessible(true);
-			Object layers = f.get(stack);
-			if (layers instanceof List<?> list) {
-				for (Object entry : list) {
-					if (entry == null) continue;
-					// 层是 Pair<Integer, IAnimation>，KosmX Pair 字段名可能不是 second；遍历所有字段取 IAnimation
-					for (java.lang.reflect.Field df : entry.getClass().getDeclaredFields()) {
-						df.setAccessible(true);
-						Object anim = df.get(entry);
-						KeyframeAnimationPlayer kp = findActivePlayer(anim);
-						if (kp != null) return kp;
-					}
-				}
+			// AnimationStack.getLayers() 返回 List<Pair<Integer, IAnimation>>（无需反射）
+			List<it.unimi.dsi.fastutil.Pair<Integer, IAnimation>> layers = stack.getLayers();
+			if (layers == null) return null;
+			for (it.unimi.dsi.fastutil.Pair<Integer, IAnimation> entry : layers) {
+				if (entry == null) continue;
+				AnimationController ctrl = findActivePlayer(entry.second());
+				if (ctrl != null) return ctrl;
 			}
 		} catch (Throwable ignored) { }
 		return null;
 	}
 
-	/** 在单个动画对象中递归找当前激活的 KeyframeAnimationPlayer（穿透 ModifierLayer 修饰链）。 */
-	private static KeyframeAnimationPlayer findActivePlayer(Object anim) {
+	/** 在单个动画对象中递归找当前激活的 AnimationController（穿透 ModifierLayer 修饰链）。 */
+	private static AnimationController findActivePlayer(Object anim) {
 		if (anim == null) return null;
-		if (anim instanceof KeyframeAnimationPlayer kfp) return kfp.isActive() ? kfp : null;
+		if (anim instanceof AnimationController ctrl) return ctrl.isActive() ? ctrl : null;
 		// ModifierLayer.getAnimation() 返回当前播放的基础动画
 		if (anim instanceof ModifierLayer<?> ml) {
 			try {

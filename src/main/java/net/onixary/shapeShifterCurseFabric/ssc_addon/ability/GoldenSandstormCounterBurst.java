@@ -1,16 +1,16 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -47,44 +47,44 @@ public class GoldenSandstormCounterBurst {
 	 * @param player 金沙岚SP玩家
 	 * @return 是否成功触发
 	 */
-	public static boolean execute(ServerPlayer player) {
+	public static boolean execute(ServerPlayerEntity player) {
 		// CD检查
 		int cd = PowerUtils.getResourceValue(player, FormIdentifiers.GOLDEN_SANDSTORM_COUNTER_BURST_CD);
 		if (cd > 0) return false;
 
-		if (!(player.level() instanceof ServerLevel serverWorld)) return false;
+		if (!(player.getWorld() instanceof ServerWorld serverWorld)) return false;
 
 		// 搜索范围内的实体
-		AABB searchBox = player.getBoundingBox().inflate(BURST_RANGE);
-		java.util.List<Entity> allEntities = serverWorld.getEntities(player, searchBox);
+		Box searchBox = player.getBoundingBox().expand(BURST_RANGE);
+		java.util.List<Entity> allEntities = serverWorld.getOtherEntities(player, searchBox);
 
 		for (Entity entity : allEntities) {
 			if (!(entity instanceof LivingEntity living)) continue;
 			if (!living.isAlive()) continue;
-			if (living.getUUID().equals(player.getUUID())) continue;
+			if (living.getUuid().equals(player.getUuid())) continue;
 			// 白名单检查
 			if (WhitelistUtils.isProtected(player, living)) continue;
 
-			double distSq = living.distanceToSqr(player);
+			double distSq = living.squaredDistanceTo(player);
 			if (distSq > BURST_RANGE * BURST_RANGE) continue;
 
 			// 计算击退方向：从玩家指向目标
-			Vec3 direction = living.position().subtract(player.position());
+			Vec3d direction = living.getPos().subtract(player.getPos());
 			double dist = direction.length();
 			if (dist > 0.01) {
 				direction = direction.normalize();
 				// 施加击退（水平+轻微上抛）
-				living.setDeltaMovement(living.getDeltaMovement().add(
+				living.setVelocity(living.getVelocity().add(
 						direction.x * KNOCKBACK_STRENGTH,
 						0.15,
 						direction.z * KNOCKBACK_STRENGTH
 				));
-				living.hurtMarked = true;
+				living.velocityModified = true;
 			}
 
 			// 施加凋零效果（传入 player 作为 source，使金沙岚回血系统可注册凋零来源）
-			living.addEffect(new MobEffectInstance(
-					MobEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER, false, true, true
+			living.addStatusEffect(new StatusEffectInstance(
+					StatusEffects.WITHER, WITHER_DURATION, WITHER_AMPLIFIER, false, true, true
 			), player);
 		}
 
@@ -93,7 +93,7 @@ public class GoldenSandstormCounterBurst {
 
 		// 音效和粒子（无论是否命中都播放，提示玩家触发了反噬）
 		serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.WITHER_SHOOT, SoundSource.PLAYERS, 0.5f, 1.2f);
+				SoundEvents.ENTITY_WITHER_SHOOT, SoundCategory.PLAYERS, 0.5f, 1.2f);
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.SOUL_FIRE_FLAME,
 				player.getX(), player.getY() + 1.0, player.getZ(),
 				25, 1.5, 0.5, 1.5, 0.05);

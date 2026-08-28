@@ -3,12 +3,12 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.hud;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
@@ -31,45 +31,45 @@ import java.util.Map;
  */
 @Environment(EnvType.CLIENT)
 public class SkillCooldownBarRenderer implements HudRenderCallback {
-	private static final Minecraft mc = Minecraft.getInstance();
+	private static final MinecraftClient mc = MinecraftClient.getInstance();
 
 	// 贴图尺寸：4×20
 	private static final int TEX_W = 4;
 	private static final int TEX_H = 20;
 
 	// 贴图路径
-	private static final ResourceLocation TEX_EMPTY = ResourceLocation.fromNamespaceAndPath("my_addon", "textures/gui/skill_cd_bar_empty.png");
-	private static final ResourceLocation TEX_FULL = ResourceLocation.fromNamespaceAndPath("my_addon", "textures/gui/skill_cd_bar_full.png");
+	private static final Identifier TEX_EMPTY = Identifier.of("my_addon", "textures/gui/skill_cd_bar_empty.png");
+	private static final Identifier TEX_FULL = Identifier.of("my_addon", "textures/gui/skill_cd_bar_full.png");
 	private static final String SSCA_FORM_NAMESPACE = "my_addon";
 
 	// 技能触发偏差阈值：实际值与期望衰减值偏差超过此值视为技能触发
 	private static final int DEVIATION_THRESHOLD = 2;
 
 	// CD百分比计算：每个资源最近触发时的最大值
-	private final Map<ResourceLocation, Integer> trackedMaxValues = new HashMap<>();
+	private final Map<Identifier, Integer> trackedMaxValues = new HashMap<>();
 	// 逐帧值追踪：用于配合tick计算期望衰减
-	private final Map<ResourceLocation, Integer> lastFrameValues = new HashMap<>();
+	private final Map<Identifier, Integer> lastFrameValues = new HashMap<>();
 	// 形态切换压制：仅对通用资源生效
 	// 只有检测到技能触发（值偏离期望衰减）或归零才解除
-	private final Map<ResourceLocation, Integer> suppressionBaseline = new HashMap<>();
+	private final Map<Identifier, Integer> suppressionBaseline = new HashMap<>();
 
-	private ResourceLocation lastFormId = null;
+	private Identifier lastFormId = null;
 	// 游戏tick追踪：计算帧间经过的tick数，用于期望衰减计算
 	private long lastRenderTick = -1;
 	private int ticksDelta = 1;
 
 	@Override
-	public void onHudRender(GuiGraphics context, DeltaTracker tickCounter) {
-		if (mc.options.hideGui || mc.player == null) return;
+	public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
+		if (mc.options.hudHidden || mc.player == null) return;
 
 		SSCAddonClientConfig config = SSCAddonConfig.client();
 		if (!config.showCdBar) return;
 
-		Player player = mc.player;
+		PlayerEntity player = mc.player;
 
 		// 计算帧间经过的tick数（用于期望衰减计算）
-		if (mc.level != null) {
-			long currentTick = mc.level.getGameTime();
+		if (mc.world != null) {
+			long currentTick = mc.world.getTime();
 			if (lastRenderTick >= 0) {
 				ticksDelta = (int) (currentTick - lastRenderTick);
 				if (ticksDelta < 1) ticksDelta = 1;
@@ -90,7 +90,7 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 			return;
 		}
 
-		ResourceLocation formId = curForm.getFormID();
+		Identifier formId = curForm.getFormID();
 		if (!SSCA_FORM_NAMESPACE.equals(formId.getNamespace())) {
 			resetCooldownTracking();
 			return;
@@ -103,8 +103,8 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 		}
 
 		// 根据形态确定要显示的CD资源
-		ResourceLocation primaryCdId = FormIdentifiers.SP_PRIMARY_CD;
-		ResourceLocation secondaryCdId = FormIdentifiers.SP_SECONDARY_CD;
+		Identifier primaryCdId = FormIdentifiers.SP_PRIMARY_CD;
+		Identifier secondaryCdId = FormIdentifiers.SP_SECONDARY_CD;
 
 		if (formId.equals(FormIdentifiers.FALLEN_ALLAY_SP)) {
 			primaryCdId = FormIdentifiers.FALLEN_ALLAY_VEX_CD;
@@ -150,11 +150,11 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 		int cdType = config.cdBarPosType;
 		int cdOffX = config.cdBarPosOffsetX;
 		int cdOffY = config.cdBarPosOffsetY;
-		net.minecraft.util.Tuple<Integer, Integer> anchor =
+		net.minecraft.util.Pair<Integer, Integer> anchor =
 				net.onixary.shapeShifterCurseFabric.util.UIPositionUtils.getCorrectPosition(cdType, 0, 0);
-		int scaledWidth = mc.getWindow().getGuiScaledWidth();
-		int primaryX = anchor.getA() + cdOffX;
-		int barY = anchor.getB() + cdOffY;
+		int scaledWidth = mc.getWindow().getScaledWidth();
+		int primaryX = anchor.getLeft() + cdOffX;
+		int barY = anchor.getRight() + cdOffY;
 		// 副条：对称时相对屏幕垂直中线镜像主条 X；非对称时用独立偏移
 		int secondaryX;
 		int secondaryY;
@@ -162,8 +162,8 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 			secondaryX = scaledWidth - primaryX - TEX_W;
 			secondaryY = barY;
 		} else {
-			secondaryX = anchor.getA() + config.cdSecondaryBarPosOffsetX;
-			secondaryY = anchor.getB() + config.cdSecondaryBarPosOffsetY;
+			secondaryX = anchor.getLeft() + config.cdSecondaryBarPosOffsetX;
+			secondaryY = anchor.getRight() + config.cdSecondaryBarPosOffsetY;
 		}
 
 		// 进化美西螈：主动技能未解锁前不显示对应 CD 条（主=投掷水矛 / 副=涡流引导）
@@ -190,7 +190,7 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 	 * 渲染一个CD条及数字
 	 * @param hideWhenReady 为true时，CD=0不渲染（可选CD条专用）
 	 */
-	private void renderCdBarWithNumber(GuiGraphics context, Player player, ResourceLocation cdId,
+	private void renderCdBarWithNumber(DrawContext context, PlayerEntity player, Identifier cdId,
 	                                   int x, int y, boolean isPrimary, boolean hideWhenReady) {
 		int currentCd = getResourceValue(player, cdId);
 
@@ -242,7 +242,7 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 		if (remainSec > 0 && cfg.showCdSeconds) {
 			String text = String.valueOf(remainSec);
 			float scale = 0.75f;
-			int textW = (int) (mc.font.width(text) * scale);
+			int textW = (int) (mc.textRenderer.getWidth(text) * scale);
 			int textX;
 			if (isPrimary) {
 				textX = x - textW - 1;
@@ -250,26 +250,26 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 				textX = x + TEX_W + 1;
 			}
 			int textY = y + (TEX_H - (int) (8 * scale)) / 2;
-			context.pose().pushPose();
-			context.pose().translate(textX, textY, 0);
-			context.pose().scale(scale, scale, 1.0f);
-			context.drawString(mc.font, Component.literal(text),
+			context.getMatrices().push();
+			context.getMatrices().translate(textX, textY, 0);
+			context.getMatrices().scale(scale, scale, 1.0f);
+			context.drawText(mc.textRenderer, Text.literal(text),
 					0, 0, 0xFFFFFF, true);
-			context.pose().popPose();
+			context.getMatrices().pop();
 		}
 	}
 
 	/**
 	 * 渲染一个竖向CD条
 	 */
-	private void renderCdBar(GuiGraphics context, int x, int y, double cdPercent) {
+	private void renderCdBar(DrawContext context, int x, int y, double cdPercent) {
 		if (cdPercent <= 0) {
-			context.blit(TEX_FULL, x, y, 0, 0, TEX_W, TEX_H, TEX_W, TEX_H);
+			context.drawTexture(TEX_FULL, x, y, 0, 0, TEX_W, TEX_H, TEX_W, TEX_H);
 			return;
 		}
 
 		// 先绘制empty作为完整背景
-		context.blit(TEX_EMPTY, x, y, 0, 0, TEX_W, TEX_H, TEX_W, TEX_H);
+		context.drawTexture(TEX_EMPTY, x, y, 0, 0, TEX_W, TEX_H, TEX_W, TEX_H);
 
 		if (cdPercent >= 1.0) return;
 
@@ -286,13 +286,13 @@ public class SkillCooldownBarRenderer implements HudRenderCallback {
 		// 从底部向上叠加full纹理
 		int fullStartY = y + (TEX_H - readyH);
 		float fullUV = TEX_H - readyH;
-		context.blit(TEX_FULL, x, fullStartY, 0, fullUV, TEX_W, readyH, TEX_W, TEX_H);
+		context.drawTexture(TEX_FULL, x, fullStartY, 0, fullUV, TEX_W, readyH, TEX_W, TEX_H);
 	}
 
 	/**
 	 * 从Apoli VariableIntPower读取当前值（客户端侧）
 	 */
-	private int getResourceValue(Player player, ResourceLocation resourceId) {
+	private int getResourceValue(PlayerEntity player, Identifier resourceId) {
 		return PowerUtils.getClientResourceValue(player, resourceId);
 	}
 

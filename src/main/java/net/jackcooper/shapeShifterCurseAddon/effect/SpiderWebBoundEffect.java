@@ -11,6 +11,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.particle.BlockStateParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 
 /**
  * 蛛网缠身：非白名单生物踩过月织蛛的减速蛛网（web_membrane）时施加，或被蛛网弹爆炸范围波及时直接施加。
@@ -30,7 +31,7 @@ public class SpiderWebBoundEffect extends StatusEffect {
 	public SpiderWebBoundEffect() {
 		super(StatusEffectCategory.HARMFUL, 0xBFC4CC);
 		this.addAttributeModifier(EntityAttributes.GENERIC_MOVEMENT_SPEED,
-				"6C9E2A1F-8B3D-4A7E-9F21-3D5C7A0B1E44", -0.5D, EntityAttributeModifier.Operation.MULTIPLY_TOTAL);
+                Identifier.of("6C9E2A1F-8B3D-4A7E-9F21-3D5C7A0B1E44"), -0.5D, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 	}
 
 	@Override
@@ -39,7 +40,7 @@ public class SpiderWebBoundEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
 		if (entity.getWorld() instanceof ServerWorld sw) {
 			double spread = Math.max(0.15, entity.getWidth() * 0.35);
 			sw.spawnParticles(new BlockStateParticleEffect(ParticleTypes.BLOCK, Blocks.COBWEB.getDefaultState()),
@@ -49,5 +50,6 @@ public class SpiderWebBoundEffect extends StatusEffect {
 		// 挖掘疲劳 + 虚弱：放在蜘网缠身内联动，随蜘网缠身同进退（环境/ambient=false，粒子=false）
 		entity.addStatusEffect(new StatusEffectInstance(StatusEffects.MINING_FATIGUE, SUB_DURATION, 0, false, false, false));
 		entity.addStatusEffect(new StatusEffectInstance(StatusEffects.WEAKNESS, SUB_DURATION, 0, false, false, false));
+		return false;
 	}
 }

@@ -1,17 +1,17 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils;
@@ -37,8 +37,8 @@ public class SnowFoxSpMeleeAbility {
 	private static final int FROST_FREEZE_DURATION = 60;
 	private static final int MANA_COST = 15;
 	// ==== NEW CODE: 使用FormIdentifiers ====
-	private static final ResourceLocation RESOURCE_ID = FormIdentifiers.SNOW_FOX_RESOURCE;
-	private static final ResourceLocation REGEN_COOLDOWN_ID = FormIdentifiers.SNOW_FOX_REGEN_COOLDOWN;
+	private static final Identifier RESOURCE_ID = FormIdentifiers.SNOW_FOX_RESOURCE;
+	private static final Identifier REGEN_COOLDOWN_ID = FormIdentifiers.SNOW_FOX_REGEN_COOLDOWN;
 
 	private SnowFoxSpMeleeAbility() {
 	}
@@ -47,17 +47,17 @@ public class SnowFoxSpMeleeAbility {
 	 * 执行雪刺冲刺
 	 * 注意：冷却由Apoli apoli:active_self power的cooldown字段管理
 	 */
-	public static boolean execute(ServerPlayer player) {
+	public static boolean execute(ServerPlayerEntity player) {
 		int currentMana = PowerUtils.getResourceValue(player, RESOURCE_ID);
 
 		if (currentMana < MANA_COST) {
 			// 法力不足提示音仅施法者自己听（player.playSound 在服务端会排除自己，故改为定向发包）
 			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager.playSoundToPlayer(
-					player, SoundEvents.FIRE_EXTINGUISH, 0.5f, 1.0f);
+					player, SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
 			return false;
 		}
 
-		if (DASHING_PLAYERS.containsKey(player.getUUID())) {
+		if (DASHING_PLAYERS.containsKey(player.getUuid())) {
 			return false;
 		}
 
@@ -65,13 +65,13 @@ public class SnowFoxSpMeleeAbility {
 		PowerUtils.setResourceValueAndSync(player, REGEN_COOLDOWN_ID, 100);
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SNOW_FOX_MELEE_PRIMARY_CD, 120);
 
-		Vec3 lookDir = player.getLookAngle().normalize();
+		Vec3d lookDir = player.getRotationVector().normalize();
 
 		DashingPlayerData data = new DashingPlayerData(lookDir, 0);
-		DASHING_PLAYERS.put(player.getUUID(), data);
+		DASHING_PLAYERS.put(player.getUuid(), data);
 
-		player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.TRIDENT_RIPTIDE_1, SoundSource.PLAYERS, 1.0f, 1.2f);
+		player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+				SoundEvents.ITEM_TRIDENT_RIPTIDE_1, SoundCategory.PLAYERS, 1.0f, 1.2f);
 
 		return true;
 	}
@@ -79,8 +79,8 @@ public class SnowFoxSpMeleeAbility {
 	/**
 	 * 每tick更新冲刺状态
 	 */
-	public static void tick(ServerPlayer player) {
-		DashingPlayerData data = DASHING_PLAYERS.get(player.getUUID());
+	public static void tick(ServerPlayerEntity player) {
+		DashingPlayerData data = DASHING_PLAYERS.get(player.getUuid());
 		if (data == null) return;
 
 		double distanceMoved = data.ticksElapsed * DASH_SPEED;
@@ -90,37 +90,37 @@ public class SnowFoxSpMeleeAbility {
 		// 在第一 tick 就被这里 return 掉，setVelocity 一次都没执行，玩家原地不动也碰不到敌人。
 		// 水平撞墙才需要终止 dash，所以只看 horizontalCollision。
 		if (distanceMoved >= DASH_DISTANCE || player.horizontalCollision) {
-			DASHING_PLAYERS.remove(player.getUUID());
+			DASHING_PLAYERS.remove(player.getUuid());
 			return;
 		}
 
-		Vec3 velocity = data.direction.scale(DASH_SPEED);
-		player.setDeltaMovement(velocity);
-		player.hurtMarked = true;
+		Vec3d velocity = data.direction.multiply(DASH_SPEED);
+		player.setVelocity(velocity);
+		player.velocityModified = true;
 		// 关键（多人/客机修复）：玩家移动是客户端权威，单靠 velocityModified 不保证把"自身速度"
 		// 下发给控制端，远端客机会原地不动、冲刺无位移、也碰不到沿途实体导致无伤害。
 		// 这里每 tick 显式给该玩家连接补发速度包，强制客机应用冲刺速度（主机本地玩家不受影响）。
-		if (player.connection != null) {
-			player.connection.send(
-					new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(player));
+		if (player.networkHandler != null) {
+			player.networkHandler.sendPacket(
+					new net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket(player));
 		}
 
-		AABB hitbox = player.getBoundingBox().inflate(0.5);
-		List<Entity> nearbyEntities = player.level().getEntities(player, hitbox,
-				entity -> entity instanceof LivingEntity && !data.hitEntities.contains(entity.getUUID()));
+		Box hitbox = player.getBoundingBox().expand(0.5);
+		List<Entity> nearbyEntities = player.getWorld().getOtherEntities(player, hitbox,
+				entity -> entity instanceof LivingEntity && !data.hitEntities.contains(entity.getUuid()));
 
 		for (Entity entity : nearbyEntities) {
 			if (entity instanceof LivingEntity target) {
 				if (WhitelistUtils.isProtected(player, target)) {
-					data.hitEntities.add(entity.getUUID());
+					data.hitEntities.add(entity.getUuid());
 					continue;
 				}
-				data.hitEntities.add(entity.getUUID());
+				data.hitEntities.add(entity.getUuid());
 
-				DamageSource source = player.damageSources().playerAttack(player);
-				target.hurt(source, DAMAGE);
+				DamageSource source = player.getDamageSources().playerAttack(player);
+				target.damage(source, DAMAGE);
 
-				target.addEffect(new MobEffectInstance(
+				target.addStatusEffect(new StatusEffectInstance(
 						SscAddon.FROST_FREEZE_ENTRY,
 						FROST_FREEZE_DURATION,
 						0,
@@ -130,18 +130,18 @@ public class SnowFoxSpMeleeAbility {
 				));
 
 				// 使用ParticleUtils
-				if (player.level() instanceof ServerLevel serverWorld) {
-					ParticleUtils.spawnHitParticles(serverWorld, new Vec3(target.getX(), target.getY() + target.getBbHeight() / 2, target.getZ()));
+				if (player.getWorld() instanceof ServerWorld serverWorld) {
+					ParticleUtils.spawnHitParticles(serverWorld, new Vec3d(target.getX(), target.getY() + target.getHeight() / 2, target.getZ()));
 				}
 
-				player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-						SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 0.8f, 1.5f);
+				player.getWorld().playSound(null, target.getX(), target.getY(), target.getZ(),
+						SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 0.8f, 1.5f);
 			}
 		}
 
 		// 使用ParticleUtils
-		if (player.level() instanceof ServerLevel serverWorld) {
-			ParticleUtils.spawnSnowflakeParticles(serverWorld, new Vec3(player.getX(), player.getY() + 0.5, player.getZ()));
+		if (player.getWorld() instanceof ServerWorld serverWorld) {
+			ParticleUtils.spawnSnowflakeParticles(serverWorld, new Vec3d(player.getX(), player.getY() + 0.5, player.getZ()));
 		}
 
 		data.ticksElapsed++;
@@ -150,8 +150,8 @@ public class SnowFoxSpMeleeAbility {
 	/**
 	 * 检查玩家是否正在冲刺
 	 */
-	public static boolean isDashing(Player player) {
-		return DASHING_PLAYERS.containsKey(player.getUUID());
+	public static boolean isDashing(PlayerEntity player) {
+		return DASHING_PLAYERS.containsKey(player.getUuid());
 	}
 
 	/**
@@ -232,11 +232,11 @@ public class SnowFoxSpMeleeAbility {
 	 * 冲刺中玩家数据
 	 */
 	private static class DashingPlayerData {
-		final Vec3 direction;
+		final Vec3d direction;
 		final Set<UUID> hitEntities;
 		int ticksElapsed;
 
-		DashingPlayerData(Vec3 direction, int ticksElapsed) {
+		DashingPlayerData(Vec3d direction, int ticksElapsed) {
 			this.direction = direction;
 			this.hitEntities = new HashSet<>();
 			this.ticksElapsed = ticksElapsed;

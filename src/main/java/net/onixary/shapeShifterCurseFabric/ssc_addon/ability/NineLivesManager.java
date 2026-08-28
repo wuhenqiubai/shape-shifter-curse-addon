@@ -7,14 +7,14 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -56,38 +56,38 @@ public final class NineLivesManager {
 
     public static void init() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
                 tickPlayer(p);
             }
         });
         // 真死重生后回满 9 命（延迟到 tick 里设，确保重生后 power 已授予）
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) ->
-                RESPAWN_REFILL.put(newPlayer.getUUID(), Boolean.TRUE));
+                RESPAWN_REFILL.put(newPlayer.getUuid(), Boolean.TRUE));
     }
 
     /** 标记进入战斗（受伤或攻击时调用）。 */
-    public static void markCombat(ServerPlayer player) {
-        LAST_COMBAT.put(player.getUUID(), player.level().getGameTime());
+    public static void markCombat(ServerPlayerEntity player) {
+        LAST_COMBAT.put(player.getUuid(), player.getWorld().getTime());
     }
 
     /** 是否脱离战斗（超过 10s 未战斗）。 */
-    public static boolean isOutOfCombat(ServerPlayer player) {
-        long last = LAST_COMBAT.getOrDefault(player.getUUID(), Long.MIN_VALUE / 2);
-        return player.level().getGameTime() - last > OUT_OF_COMBAT_TICKS;
+    public static boolean isOutOfCombat(ServerPlayerEntity player) {
+        long last = LAST_COMBAT.getOrDefault(player.getUuid(), Long.MIN_VALUE / 2);
+        return player.getWorld().getTime() - last > OUT_OF_COMBAT_TICKS;
     }
 
     /** 复活后无敌窗口（此期间 mixin 取消一切伤害）；时长由复活时是否戴朔望专属项链决定（1s / 1.8s）。 */
-    public static boolean isInvulnerable(ServerPlayer player) {
-        long end = INVULN_END.getOrDefault(player.getUUID(), Long.MIN_VALUE / 2);
-        return player.level().getGameTime() < end;
+    public static boolean isInvulnerable(ServerPlayerEntity player) {
+        long end = INVULN_END.getOrDefault(player.getUuid(), Long.MIN_VALUE / 2);
+        return player.getWorld().getTime() < end;
     }
 
     /**
      * 致死伤害时尝试用九命复活。返回 true 表示已复活（调用方应取消本次死亡）。
      */
-    public static boolean tryRevive(ServerPlayer player) {
-        long now = player.level().getGameTime();
-        long rev = REVIVE_TICK.getOrDefault(player.getUUID(), Long.MIN_VALUE / 2);
+    public static boolean tryRevive(ServerPlayerEntity player) {
+        long now = player.getWorld().getTime();
+        long rev = REVIVE_TICK.getOrDefault(player.getUuid(), Long.MIN_VALUE / 2);
         if (now - rev < REVIVE_CD_TICKS) {
             return false; // 复活后 3s cd 内不触发（真死）
         }
@@ -103,7 +103,7 @@ public final class NineLivesManager {
      * 舍身自爆专用复活：绕过复活 cd（保证「必定复活」），仅要求尚有命数。
      * 供 {@link NovaSkillManager} 引爆时对自己调用——自己也被炸倒，但九命必定接住，净消耗 1 命。
      */
-    public static void reviveForSelfDetonate(ServerPlayer player) {
+    public static void reviveForSelfDetonate(ServerPlayerEntity player) {
         int lives = PowerUtils.getResourceValue(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES);
         if (lives <= 0) {
             return; // 发动门控已保证有命；万一无命则不复活（也不真死，自己不受本次自爆影响）
@@ -115,22 +115,22 @@ public final class NineLivesManager {
      * 复活核心：消耗 1 命 + 回血 + 6 颗黄心 30s + 无敌 + 全员可闻的图腾音效/特效。
      * 戴朔望专属项链「轮回猫瞳」时：回血 6→8、无敌 1s→1.8s，并在复活瞬间震退+减速周围敌人。
      */
-    private static void doRevive(ServerPlayer player) {
+    private static void doRevive(ServerPlayerEntity player) {
         boolean hasNecklace = TrinketUtils.isWearing(player, net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.NOVA_REVIVE_NECKLACE);
         float heal = hasNecklace ? REVIVE_HEAL_NECKLACE : REVIVE_HEAL;
         int invuln = hasNecklace ? INVULN_TICKS_NECKLACE : INVULN_TICKS;
-        long now = player.level().getGameTime();
+        long now = player.getWorld().getTime();
         PowerUtils.changeResourceValueAndSync(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES, -1);
         player.setHealth(heal);
-        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, ABSORB_DURATION, ABSORB_AMPLIFIER, false, false, true));
-        REVIVE_TICK.put(player.getUUID(), now);
-        INVULN_END.put(player.getUUID(), now + invuln);
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, ABSORB_DURATION, ABSORB_AMPLIFIER, false, false, true));
+        REVIVE_TICK.put(player.getUuid(), now);
+        INVULN_END.put(player.getUuid(), now + invuln);
         markCombat(player);
         // 复活音效：全员可闻（第一参 null），音量适中（0.6）避免过响
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.TOTEM_USE, SoundSource.PLAYERS, 0.6F, 1.2F);
-        if (player.level() instanceof ServerLevel sw) {
-            sw.sendParticles(ParticleTypes.TOTEM_OF_UNDYING,
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.ITEM_TOTEM_USE, SoundCategory.PLAYERS, 0.6F, 1.2F);
+        if (player.getWorld() instanceof ServerWorld sw) {
+            sw.spawnParticles(ParticleTypes.TOTEM_OF_UNDYING,
                     player.getX(), player.getY() + 1.0, player.getZ(), 40, 0.4, 0.6, 0.4, 0.2);
             if (hasNecklace) {
                 reviveBurst(player, sw);
@@ -139,55 +139,55 @@ public final class NineLivesManager {
     }
 
     /** 朔望专属项链专属：复活瞬间对周围 4 格内非白名单敌人震退 + 减速，给自己喘息空间。 */
-    private static void reviveBurst(ServerPlayer player, ServerLevel sw) {
-        for (LivingEntity e : sw.getEntitiesOfClass(LivingEntity.class,
-                player.getBoundingBox().inflate(4.0), e -> e != player && e.isAlive())) {
+    private static void reviveBurst(ServerPlayerEntity player, ServerWorld sw) {
+        for (LivingEntity e : sw.getEntitiesByClass(LivingEntity.class,
+                player.getBoundingBox().expand(4.0), e -> e != player && e.isAlive())) {
             if (WhitelistUtils.isProtected(player, e)) {
                 continue;
             }
             double dx = e.getX() - player.getX();
             double dz = e.getZ() - player.getZ();
             if (dx * dx + dz * dz < 1.0e-4) {
-                dx = player.getLookAngle().x;
-                dz = player.getLookAngle().z;
+                dx = player.getRotationVector().x;
+                dz = player.getRotationVector().z;
             }
-            e.knockback(0.8, -dx, -dz);
-            e.hurtMarked = true;
-            e.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60, 1, false, true, true));
+            e.takeKnockback(0.8, -dx, -dz);
+            e.velocityModified = true;
+            e.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 60, 1, false, true, true));
         }
-        sw.sendParticles(ParticleTypes.SWEEP_ATTACK, player.getX(), player.getY() + 0.5, player.getZ(), 8, 1.5, 0.3, 1.5, 0.0);
+        sw.spawnParticles(ParticleTypes.SWEEP_ATTACK, player.getX(), player.getY() + 0.5, player.getZ(), 8, 1.5, 0.3, 1.5, 0.0);
         sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 1.0F, 0.8F);
+                SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, 1.0F, 0.8F);
     }
 
-    private static void tickPlayer(ServerPlayer player) {
+    private static void tickPlayer(ServerPlayerEntity player) {
         boolean isNova = FormUtils.isForm(player, FormIdentifiers.OCELOT_NOVA);
         // 重生回满 9 命
-        if (Boolean.TRUE.equals(RESPAWN_REFILL.get(player.getUUID()))) {
+        if (Boolean.TRUE.equals(RESPAWN_REFILL.get(player.getUuid()))) {
             if (isNova && PowerUtils.hasResource(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES, 0)) {
                 PowerUtils.setResourceValueAndSync(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES, MAX_LIVES);
-                RESPAWN_REFILL.remove(player.getUUID());
+                RESPAWN_REFILL.remove(player.getUuid());
             } else if (!isNova) {
-                RESPAWN_REFILL.remove(player.getUUID());
+                RESPAWN_REFILL.remove(player.getUuid());
             }
         }
         if (!isNova || !PowerUtils.hasResource(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES, 0)) {
-            REGEN_ACC.remove(player.getUUID());
+            REGEN_ACC.remove(player.getUuid());
             return;
         }
         int lives = PowerUtils.getResourceValue(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES);
         if (lives >= MAX_LIVES) {
-            REGEN_ACC.put(player.getUUID(), 0);
+            REGEN_ACC.put(player.getUuid(), 0);
             return;
         }
         if (!isOutOfCombat(player)) {
             return; // 战斗中不恢复
         }
-        int acc = REGEN_ACC.getOrDefault(player.getUUID(), 0) + 1;
+        int acc = REGEN_ACC.getOrDefault(player.getUuid(), 0) + 1;
         if (acc >= REGEN_INTERVAL) {
             PowerUtils.changeResourceValueAndSync(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES, 1);
             acc = 0;
         }
-        REGEN_ACC.put(player.getUUID(), acc);
+        REGEN_ACC.put(player.getUuid(), acc);
     }
 }

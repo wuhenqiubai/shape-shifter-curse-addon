@@ -3,17 +3,17 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.passive.TameableEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -44,37 +44,37 @@ public final class MancianimaCrosshairTracker {
 		ClientTickEvents.END_CLIENT_TICK.register(MancianimaCrosshairTracker::onTick);
 	}
 
-	private static void onTick(Minecraft mc) {
-		if (mc.player == null || mc.level == null) { currentTarget = null; return; }
-		Player player = mc.player;
+	private static void onTick(MinecraftClient mc) {
+		if (mc.player == null || mc.world == null) { currentTarget = null; return; }
+		PlayerEntity player = mc.player;
 		if (!isMancianima(player)) { currentTarget = null; return; }
 
-		Vec3 eye = player.getEyePosition(1.0f);
-		Vec3 look = player.getViewVector(1.0f);
-		Vec3 end = eye.add(look.scale(MAX_DIST));
+		Vec3d eye = player.getCameraPosVec(1.0f);
+		Vec3d look = player.getRotationVec(1.0f);
+		Vec3d end = eye.add(look.multiply(MAX_DIST));
 
 		// 先做方块遮挡判定，命中方块则限制最远可标记距离
-		BlockHitResult blockHit = mc.level.clip(new ClipContext(eye, end,
-				ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+		BlockHitResult blockHit = mc.world.raycast(new RaycastContext(eye, end,
+				RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, player));
 		double maxDistSq = MAX_DIST * MAX_DIST;
 		if (blockHit != null && blockHit.getType() == HitResult.Type.BLOCK) {
-			maxDistSq = eye.distanceToSqr(blockHit.getLocation());
+			maxDistSq = eye.squaredDistanceTo(blockHit.getPos());
 		}
 
-		AABB box = player.getBoundingBox().expandTowards(look.scale(MAX_DIST)).inflate(1.0);
+		Box box = player.getBoundingBox().stretch(look.multiply(MAX_DIST)).expand(1.0);
 		// 过滤：跳过自身、玩家、已驯服宠物（与服务端默认白名单行为对齐）
 		Predicate<Entity> filter = e -> e != player && e.isAlive() && e instanceof LivingEntity
-				&& !(e instanceof Player)
-				&& !(e instanceof TamableAnimal tame && tame.getOwnerUUID() != null);
-		EntityHitResult hit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(player, eye, end, box, filter, maxDistSq);
+				&& !(e instanceof PlayerEntity)
+				&& !(e instanceof TameableEntity tame && tame.getOwnerUuid() != null);
+		EntityHitResult hit = net.minecraft.entity.projectile.ProjectileUtil.raycast(player, eye, end, box, filter, maxDistSq);
 		if (hit != null && hit.getType() == HitResult.Type.ENTITY) {
-			currentTarget = hit.getEntity().getUUID();
+			currentTarget = hit.getEntity().getUuid();
 		} else {
 			currentTarget = null;
 		}
 	}
 
-	private static boolean isMancianima(Player player) {
+	private static boolean isMancianima(PlayerEntity player) {
 		try {
 			IForm form = player.getComponent(RegPlayerFormComponent.PLAYER_FORM).nowForm;
 			return form != null && FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(form.getFormID());

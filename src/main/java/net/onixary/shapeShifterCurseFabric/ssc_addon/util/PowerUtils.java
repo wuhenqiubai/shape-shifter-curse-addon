@@ -5,9 +5,9 @@ import io.github.apace100.apoli.power.Power;
 import io.github.apace100.apoli.power.PowerType;
 import io.github.apace100.apoli.power.PowerTypeRegistry;
 import io.github.apace100.apoli.power.VariableIntPower;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +22,7 @@ public class PowerUtils {
 	 * 用于HUD渲染器等只能在客户端读取资源的场景
 	 */
 	@net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
-	public static int getClientResourceValue(Player player, ResourceLocation resourceId) {
+	public static int getClientResourceValue(PlayerEntity player, Identifier resourceId) {
 		// 走每 tick 缓存，避免每帧遍历玩家全部 power
 		return ClientResourceCache.getValue(player, resourceId);
 	}
@@ -33,12 +33,12 @@ public class PowerUtils {
 	 * @return int[2] {current, max}，失败返回 {0, 1}
 	 */
 	@net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
-	public static int[] getClientResourceValueAndMax(Player player, ResourceLocation resourceId) {
+	public static int[] getClientResourceValueAndMax(PlayerEntity player, Identifier resourceId) {
 		// 走每 tick 缓存，避免每帧每个 HUD 条都遍历玩家全部 power
 		return ClientResourceCache.getValueAndMax(player, resourceId);
 	}
 
-	public static int getResourceValue(ServerPlayer player, ResourceLocation resourceId) {
+	public static int getResourceValue(ServerPlayerEntity player, Identifier resourceId) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(resourceId);
@@ -52,7 +52,7 @@ public class PowerUtils {
 		return 0;
 	}
 
-	public static void setResourceValue(ServerPlayer player, ResourceLocation resourceId, int value) {
+	public static void setResourceValue(ServerPlayerEntity player, Identifier resourceId, int value) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(resourceId);
@@ -65,7 +65,7 @@ public class PowerUtils {
 		}
 	}
 
-	public static void setResourceValueClamped(ServerPlayer player, ResourceLocation resourceId, int value, int min, int max) {
+	public static void setResourceValueClamped(ServerPlayerEntity player, Identifier resourceId, int value, int min, int max) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(resourceId);
@@ -79,7 +79,7 @@ public class PowerUtils {
 		}
 	}
 
-	public static void changeResourceValue(ServerPlayer player, ResourceLocation resourceId, int change) {
+	public static void changeResourceValue(ServerPlayerEntity player, Identifier resourceId, int change) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(resourceId);
@@ -95,7 +95,7 @@ public class PowerUtils {
 		}
 	}
 
-	public static void syncPower(ServerPlayer player, ResourceLocation powerId) {
+	public static void syncPower(ServerPlayerEntity player, Identifier powerId) {
 		try {
 			PowerHolderComponent.sync(player);
 		} catch (Exception e) {
@@ -103,12 +103,12 @@ public class PowerUtils {
 		}
 	}
 
-	public static void setResourceValueAndSync(ServerPlayer player, ResourceLocation resourceId, int value) {
+	public static void setResourceValueAndSync(ServerPlayerEntity player, Identifier resourceId, int value) {
 		setResourceValue(player, resourceId, value);
 		syncPower(player, resourceId);
 	}
 
-	public static void changeResourceValueAndSync(ServerPlayer player, ResourceLocation resourceId, int change) {
+	public static void changeResourceValueAndSync(ServerPlayerEntity player, Identifier resourceId, int change) {
 		changeResourceValue(player, resourceId, change);
 		syncPower(player, resourceId);
 	}
@@ -116,7 +116,7 @@ public class PowerUtils {
 	/**
 	 * 获取Apoli资源最大值（服务端）
 	 */
-	public static int getResourceMax(ServerPlayer player, ResourceLocation resourceId) {
+	public static int getResourceMax(ServerPlayerEntity player, Identifier resourceId) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(resourceId);
@@ -130,14 +130,14 @@ public class PowerUtils {
 		return 0;
 	}
 
-	public static boolean hasResource(ServerPlayer player, ResourceLocation resourceId, int required) {
+	public static boolean hasResource(ServerPlayerEntity player, Identifier resourceId, int required) {
 		return getResourceValue(player, resourceId) >= required;
 	}
 
 	/**
 	 * 检查玩家是否处于 SP Allay 形态
 	 */
-	public static boolean isSpAllay(ServerPlayer player) {
+	public static boolean isSpAllay(ServerPlayerEntity player) {
 		try {
 			return PowerHolderComponent.KEY.get(player).getPowers().stream()
 					.anyMatch(p -> p.getType().getIdentifier().getNamespace().equals("my_addon")
@@ -152,7 +152,7 @@ public class PowerUtils {
 	 * 重启某个 Apoli 冷却型能力（active_self 等 CooldownPower）的冷却到满。
 	 * 用于让“水矛合成冷却”从水矛消失那刻重新起算，避免持矛期间冷却走完后扛出即可秒合成。
 	 */
-	public static void resetCooldown(ServerPlayer player, ResourceLocation cooldownPowerId) {
+	public static void resetCooldown(ServerPlayerEntity player, Identifier cooldownPowerId) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(cooldownPowerId);

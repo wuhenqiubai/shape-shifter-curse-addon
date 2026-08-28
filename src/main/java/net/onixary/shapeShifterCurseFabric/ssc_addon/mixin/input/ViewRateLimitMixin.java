@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.input;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.math.MathHelper;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,9 +28,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ViewRateLimitMixin {
 
 	@Shadow
-	public float yRotO;
+	public float prevYaw;
 	@Shadow
-	public float xRotO;
+	public float prevPitch;
 
 	// ===== 限速曲线（度/秒）=====
 	@Unique
@@ -56,12 +56,12 @@ public abstract class ViewRateLimitMixin {
 	@Unique
 	private static long ssca$lastNanos = 0L;
 
-	@Inject(method = "turn", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "changeLookDirection", at = @At("HEAD"), cancellable = true)
 	private void ssca$smoothView(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
 		Entity self = (Entity) (Object) this;
-		Minecraft mc = Minecraft.getInstance();
+		MinecraftClient mc = MinecraftClient.getInstance();
 		if (mc == null || self != mc.player) return;
-		LocalPlayer player = mc.player;
+		ClientPlayerEntity player = mc.player;
 		LaserBeamEntity laser = LaserBeamEntity.getActiveForClient(player);
 		if (laser == null) {
 			// 无激光（含海晶荧光坠增强激光——已在 getActiveForClient 排除，不限视角）：重置状态，放行原版
@@ -120,10 +120,10 @@ public abstract class ViewRateLimitMixin {
 			ci.cancel();
 			return;
 		}
-		player.setYRot(player.getYRot() + (float) dYaw);
-		player.setXRot(Mth.clamp(player.getXRot() + (float) dPitch, -90.0F, 90.0F));
-		this.yRotO += (float) dYaw;
-		this.xRotO = Mth.clamp(this.xRotO + (float) dPitch, -90.0F, 90.0F);
+		player.setYaw(player.getYaw() + (float) dYaw);
+		player.setPitch(MathHelper.clamp(player.getPitch() + (float) dPitch, -90.0F, 90.0F));
+		this.prevYaw += (float) dYaw;
+		this.prevPitch = MathHelper.clamp(this.prevPitch + (float) dPitch, -90.0F, 90.0F);
 		ci.cancel();
 	}
 

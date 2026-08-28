@@ -1,13 +1,13 @@
 package net.jackcooper.shapeShifterCurseAddon.event;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.EntityTypeTags;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.registry.tag.EntityTypeTags;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
 import java.util.Random;
@@ -30,7 +30,7 @@ public final class FluorescentDodgeHandler {
 	public static void register() {
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
 			// 仅玩家、荧光幼灵形态、物理类伤害
-			if (!(entity instanceof Player self)) {
+			if (!(entity instanceof PlayerEntity self)) {
 				return true;
 			}
 			if (!FormUtils.isAxolotlFluorescent(self)) {
@@ -41,11 +41,11 @@ public final class FluorescentDodgeHandler {
 			}
 			if (DODGE_RNG.nextFloat() < DODGE_CHANCE) {
 				// 闪避成功：取消伤害 + 水花反馈
-				if (self.level() instanceof ServerLevel sw) {
-					sw.sendParticles(ParticleTypes.SPLASH, self.getX(), self.getY() + 1.0, self.getZ(), 16, 0.4, 0.6, 0.4, 0.3);
-					sw.sendParticles(ParticleTypes.BUBBLE, self.getX(), self.getY() + 1.0, self.getZ(), 8, 0.4, 0.6, 0.4, 0.1);
+				if (self.getWorld() instanceof ServerWorld sw) {
+					sw.spawnParticles(ParticleTypes.SPLASH, self.getX(), self.getY() + 1.0, self.getZ(), 16, 0.4, 0.6, 0.4, 0.3);
+					sw.spawnParticles(ParticleTypes.BUBBLE, self.getX(), self.getY() + 1.0, self.getZ(), 8, 0.4, 0.6, 0.4, 0.1);
 					sw.playSound(null, self.getX(), self.getY() + 1.0, self.getZ(),
-							SoundEvents.PLAYER_SPLASH_HIGH_SPEED, SoundSource.PLAYERS, 0.6f, 1.5f);
+							SoundEvents.ENTITY_PLAYER_SPLASH_HIGH_SPEED, SoundCategory.PLAYERS, 0.6f, 1.5f);
 				}
 				return false;
 			}
@@ -55,12 +55,12 @@ public final class FluorescentDodgeHandler {
 
 	/** 判定是否为物理类伤害（可被闪避）。 */
 	private static boolean isPhysicalDamage(DamageSource source) {
-		String id = source.type().msgId();
+		String id = source.getType().msgId();
 		// 物理攻击/弹射物/荆棘/仙人掌/飞镖等；排除魔法/火焰/岩浆/药水/窒息/饥饿/虚空/溺水/干渴
 		return "mob".equals(id) || "player".equals(id) || "sting".equals(id)
 				|| "arrow".equals(id) || "trident".equals(id) || "fireball".equals(id)
 				|| "thrown".equals(id) || "thorns".equals(id) || "cactus".equals(id)
 				|| "sweetBerryBush".equals(id) || "stalagmite".equals(id) || "fallingStalactite".equals(id)
-				|| (source.getDirectEntity() != null && source.getDirectEntity().getType().is(EntityTypeTags.ARROWS));
+				|| (source.getSource() != null && source.getSource().getType().isIn(EntityTypeTags.ARROWS));
 	}
 }

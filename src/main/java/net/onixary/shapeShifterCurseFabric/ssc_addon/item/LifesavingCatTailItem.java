@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
 import net.fabricmc.api.EnvType;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.item.TooltipContext;
+import net.minecraft.item.tooltip.TooltipType;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
@@ -28,9 +28,9 @@ public class LifesavingCatTailItem extends AccessoryItem {
 	}
 
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
 			// Add Lifesaving Cat Tail to Cat drops (1% chance)
-			if (id.equals(new Identifier("minecraft", "entities/cat"))) {
+			if (key.getValue().equals(Identifier.of("minecraft", "entities/cat"))) {
 				LootPool.Builder poolBuilder = LootPool.builder()
 						.rolls(ConstantLootNumberProvider.create(1.0f))
 						.conditionally(net.minecraft.loot.condition.RandomChanceLootCondition.builder(0.01f))
@@ -121,7 +121,7 @@ public class LifesavingCatTailItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		// "保命猫尾"
 		// 装备到腰带栏生效，无法修补、叠加、附魔、交易
 		// 在sp野猫受到致命伤害时免疫一次死亡...
@@ -140,6 +140,6 @@ public class LifesavingCatTailItem extends AccessoryItem {
 		}
 
 		tooltip.add(Text.translatable("item.ssc_addon.lifesaving_cat_tail.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

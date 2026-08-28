@@ -33,17 +33,17 @@ public class SscAddonConditions {
 	}
 
 	public static void register() {
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_reverse_thermometer"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "has_reverse_thermometer"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof PlayerEntity player) {
 						return TrinketUtils.isWearing(player,
-								Registries.ITEM.get(new Identifier("shape-shifter-curse", "charm_of_reverse_thermometer")));
+								Registries.ITEM.get(Identifier.of("shape-shifter-curse", "charm_of_reverse_thermometer")));
 					}
 					return false;
 				}));
 
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_trinket"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "has_trinket"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM),
 				(data, entity) -> {
@@ -53,7 +53,7 @@ public class SscAddonConditions {
 					return false;
 				}));
 
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "item_on_cooldown"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "item_on_cooldown"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM),
 				(data, entity) -> {
@@ -63,7 +63,7 @@ public class SscAddonConditions {
 					return false;
 				}));
 
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_blue_fire_amulet"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "has_blue_fire_amulet"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof PlayerEntity player) {
@@ -72,7 +72,7 @@ public class SscAddonConditions {
 					return false;
 				}));
 
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_mana_percent_safe"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "has_mana_percent_safe"),
 				new SerializableData()
 						.add("mana_percent", SerializableDataTypes.DOUBLE)
 						.add("comparison", ApoliDataTypes.COMPARISON),
@@ -89,7 +89,7 @@ public class SscAddonConditions {
 					return comparison.compare(current / max, requiredPercent);
 				}));
 
-		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "not_actor_whitelisted"),
+		registerBiEntity(new ConditionFactory<>(Identifier.of("my_addon", "not_actor_whitelisted"),
 				new SerializableData(),
 				(data, pair) -> {
 					Entity actor = pair.getLeft();
@@ -102,7 +102,7 @@ public class SscAddonConditions {
 		// 侵蚀烙印颜色状态条件 - 用于entity_glow
 		// 参数 "color"：yellow / orange / red / green
 		// 服务端使用服务器HashMap，客户端使用S2C同步的缓存数据
-		registerBiEntity(new ConditionFactory<>(new Identifier("ssc_addon", "erosion_brand_state"),
+		registerBiEntity(new ConditionFactory<>(Identifier.of("ssc_addon", "erosion_brand_state"),
 				new SerializableData()
 						.add("color", SerializableDataTypes.STRING),
 				(data, pair) -> {
@@ -122,7 +122,7 @@ public class SscAddonConditions {
 
 		// 契灵标记颜色条件 - 用于 entity_glow（黄/橙/红三档）
 		// 服务端：从 MancianimaMarkManager 查询；客户端：从 MancianimaMarkClientState 查询
-		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "mancianima_mark_color"),
+		registerBiEntity(new ConditionFactory<>(Identifier.of("my_addon", "mancianima_mark_color"),
 				new SerializableData()
 						.add("color", SerializableDataTypes.STRING),
 				(data, pair) -> {
@@ -140,7 +140,7 @@ public class SscAddonConditions {
 				}));
 
 		// 契灵准星目标条件（仅客户端有效）：用于绿色高亮覆盖
-		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "mancianima_crosshair_target"),
+		registerBiEntity(new ConditionFactory<>(Identifier.of("my_addon", "mancianima_crosshair_target"),
 				new SerializableData(),
 				(data, pair) -> {
 					Entity actor = pair.getLeft();
@@ -155,7 +155,7 @@ public class SscAddonConditions {
 
 		// Skill blocking condition - returns true when skill is NOT blocked (normal behavior)
 		// Add this condition to action_over_time powers so they don't execute when disabled
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "skill_disabled"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "skill_disabled"),
 				new SerializableData()
 						.add("form", SerializableDataTypes.STRING)
 						.add("skill", SerializableDataTypes.STRING),
@@ -169,7 +169,7 @@ public class SscAddonConditions {
 				}));
 
 		// SP阿努比斯之狼 - 是否处于自己的死亡领域范围内（用于领域内免疫自身受击凋零）
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "in_own_death_domain"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "in_own_death_domain"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -180,7 +180,7 @@ public class SscAddonConditions {
 
 		// SSCA 进化加点系统 - 天赋节点解锁条件
 		// 给「可解锁能力」的 power 挂在此条件后：未解锁则该 power 不生效（解锁后自动生效）
-		register(new ConditionFactory<>(new Identifier("ssc_addon", "has_talent"),
+		register(new ConditionFactory<>(Identifier.of("ssc_addon", "has_talent"),
 				new SerializableData()
 						.add("talent_id", SerializableDataTypes.STRING),
 				(data, entity) -> {

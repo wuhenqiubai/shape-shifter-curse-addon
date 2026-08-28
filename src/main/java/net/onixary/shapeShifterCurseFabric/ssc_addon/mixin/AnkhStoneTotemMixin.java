@@ -3,7 +3,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin;
 import io.github.apace100.apoli.power.CooldownPower;
 import io.github.apace100.apoli.power.PowerType;
 import io.github.apace100.apoli.util.HudRender;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.additional_power.VirtualTotemPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.AnkhStoneItem;
 import org.spongepowered.asm.mixin.Mixin;

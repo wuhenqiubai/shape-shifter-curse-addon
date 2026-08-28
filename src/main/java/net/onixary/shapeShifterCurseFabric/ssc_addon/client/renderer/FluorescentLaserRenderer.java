@@ -1,21 +1,21 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.renderer;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.CameraType;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.Perspective;
+import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.EntityRendererFactory;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.LaserBeamEntity;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix3f;
@@ -30,7 +30,7 @@ import org.joml.Matrix4f;
  */
 @Environment(EnvType.CLIENT)
 public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
-	private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png");
+	private static final Identifier TEXTURE = Identifier.of("minecraft", "textures/misc/white.png");
 
 	private static final float[] CYAN   = {0.35f, 0.90f, 1.00f, 0.85f};
 	private static final float[] BLUE   = {0.35f, 0.55f, 1.00f, 0.85f};
@@ -49,55 +49,55 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	private static final double ENH_ARRAY_SIDE = 1.3;
 	private static final double ENH_ARRAY_UP = 1.7;
 
-	public FluorescentLaserRenderer(EntityRendererProvider.Context ctx) {
+	public FluorescentLaserRenderer(EntityRendererFactory.Context ctx) {
 		super(ctx);
 	}
 
 	@Override
-	public void render(LaserBeamEntity entity, float yaw, float tickDelta, PoseStack matrices, MultiBufferSource vcp, int light) {
+	public void render(LaserBeamEntity entity, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vcp, int light) {
 		// 海晶荧光坠增强单道：不依赖 owner 准星，实体本身就在法阵起点，按存的 dir 画缩型法阵 + 24 格光柱
 		if (entity.isEnhanced()) {
 			renderEnhanced(entity, tickDelta, matrices, vcp);
 			return;
 		}
-		Entity owner = entity.level().getEntity(entity.getTrackedOwnerId());
+		Entity owner = entity.getWorld().getEntityById(entity.getTrackedOwnerId());
 		if (owner == null) return;
 
-		float oyaw = Mth.lerp(tickDelta, owner.yRotO, owner.getYRot());
-		float opitch = Mth.lerp(tickDelta, owner.xRotO, owner.getXRot());
+		float oyaw = MathHelper.lerp(tickDelta, owner.prevYaw, owner.getYaw());
+		float opitch = MathHelper.lerp(tickDelta, owner.prevPitch, owner.getPitch());
 		double yawR = Math.toRadians(oyaw), pitchR = Math.toRadians(opitch);
 		double ax = -Math.sin(yawR) * Math.cos(pitchR);
 		double ay = -Math.sin(pitchR);
 		double az = Math.cos(yawR) * Math.cos(pitchR);
 		double d = LaserBeamEntity.arrayDist();
 
-		double ox = Mth.lerp(tickDelta, owner.xo, owner.getX());
-		double oy = Mth.lerp(tickDelta, owner.yo, owner.getY()) + owner.getEyeHeight();
-		double oz = Mth.lerp(tickDelta, owner.zo, owner.getZ());
-		double ex = Mth.lerp(tickDelta, entity.xo, entity.getX());
-		double ey = Mth.lerp(tickDelta, entity.yo, entity.getY());
-		double ez = Mth.lerp(tickDelta, entity.zo, entity.getZ());
+		double ox = MathHelper.lerp(tickDelta, owner.prevX, owner.getX());
+		double oy = MathHelper.lerp(tickDelta, owner.prevY, owner.getY()) + owner.getStandingEyeHeight();
+		double oz = MathHelper.lerp(tickDelta, owner.prevZ, owner.getZ());
+		double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
+		double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
+		double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
 
-		matrices.pushPose();
+		matrices.push();
 		// 平移到法阵位置（玩家眼部 + 准星 * arrayDist）
 		matrices.translate((ox - ex) + ax * d, (oy - ey) + ay * d, (oz - ez) + az * d);
 		// 朝向准星：旋转后本地 +Z = 准星方向
-		matrices.mulPose(Axis.YP.rotationDegrees(-oyaw));
-		matrices.mulPose(Axis.XP.rotationDegrees(opitch));
+		matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-oyaw));
+		matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(opitch));
 
 		int phaseId = entity.getPhaseId();
 		float pt = entity.getPhaseTick() + tickDelta;
 		float age = pt + phaseId * 200f;   // 连续自转时间
 
 		// 法阵/光柱用 lightning 渲染层（天然双面、发光、无视光照，任意角度可见）
-		VertexConsumer buf = vcp.getBuffer(RenderType.lightning());
+		VertexConsumer buf = vcp.getBuffer(RenderLayer.getLightning());
 
 		// === 法阵（XY 平面，法线 +Z=准星）===
-		drawArray(buf, matrices.last().pose(), matrices.last().normal(), age);
+		drawArray(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), age);
 
 		// === 蓄力期四条白线（客户端绘制，无粒子残留）===
 		if (phaseId == 0) {
-			drawChargeLines(buf, matrices.last().pose(), matrices.last().normal(), pt, entity.beamLength());
+			drawChargeLines(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), pt, entity.beamLength());
 			// 法阵核心发光粒子（END_ROD）：仅在非第一人称视角下生成
 			// 第一人称下法阵紧贴相机，中央粒子会遮挡视线；第三人称（含自己按 F5 切换）可见
 			spawnArrayCoreParticleIfThirdPerson(ox + ax * d, oy + ay * d, oz + az * d);
@@ -110,89 +110,89 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 				radius *= Math.max(0.0f, 1.0f - pt / FADE_TICKS);
 			}
 			if (radius > 0.02f) {
-				drawBeam(buf, matrices.last().pose(), matrices.last().normal(),
+				drawBeam(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(),
 						radius, (float) entity.beamLength());
 			}
 		}
 
-		matrices.popPose();
+		matrices.pop();
 		super.render(entity, yaw, tickDelta, matrices, vcp, light);
 	}
 
 	/** 海晶荧光坠增强渲染：在玩家斜后方左/右/上三位置画缩小旋转法阵（剩余数由实体同步）；发射时从对应法阵朝命中方向画光柱。 */
-	private void renderEnhanced(LaserBeamEntity entity, float tickDelta, PoseStack matrices, MultiBufferSource vcp) {
-		Entity owner = entity.level().getEntity(entity.getTrackedOwnerId());
+	private void renderEnhanced(LaserBeamEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vcp) {
+		Entity owner = entity.getWorld().getEntityById(entity.getTrackedOwnerId());
 		if (owner == null) return;
-		float oyaw = Mth.lerp(tickDelta, owner.yRotO, owner.getYRot());
-		float opitch = Mth.lerp(tickDelta, owner.xRotO, owner.getXRot());
+		float oyaw = MathHelper.lerp(tickDelta, owner.prevYaw, owner.getYaw());
+		float opitch = MathHelper.lerp(tickDelta, owner.prevPitch, owner.getPitch());
 		double yawR = Math.toRadians(oyaw), pitchR = Math.toRadians(opitch);
 		double ax = -Math.sin(yawR) * Math.cos(pitchR);
 		double ay = -Math.sin(pitchR);
 		double az = Math.cos(yawR) * Math.cos(pitchR);
-		double ox = Mth.lerp(tickDelta, owner.xo, owner.getX());
-		double oy = Mth.lerp(tickDelta, owner.yo, owner.getY()) + owner.getEyeHeight();
-		double oz = Mth.lerp(tickDelta, owner.zo, owner.getZ());
-		double ex = Mth.lerp(tickDelta, entity.xo, entity.getX());
-		double ey = Mth.lerp(tickDelta, entity.yo, entity.getY());
-		double ez = Mth.lerp(tickDelta, entity.zo, entity.getZ());
-		Vec3 aimV = new Vec3(ax, ay, az);
-		Vec3 rightV = aimV.cross(new Vec3(0, 1, 0));
-		if (rightV.lengthSqr() < 1.0e-6) rightV = new Vec3(1, 0, 0);
+		double ox = MathHelper.lerp(tickDelta, owner.prevX, owner.getX());
+		double oy = MathHelper.lerp(tickDelta, owner.prevY, owner.getY()) + owner.getStandingEyeHeight();
+		double oz = MathHelper.lerp(tickDelta, owner.prevZ, owner.getZ());
+		double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
+		double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
+		double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
+		Vec3d aimV = new Vec3d(ax, ay, az);
+		Vec3d rightV = aimV.crossProduct(new Vec3d(0, 1, 0));
+		if (rightV.lengthSquared() < 1.0e-6) rightV = new Vec3d(1, 0, 0);
 		rightV = rightV.normalize();
-		Vec3 base = new Vec3(ox, oy, oz).subtract(aimV.scale(ENH_ARRAY_BACK));   // 斜后方
-		Vec3[] pos = new Vec3[]{
-				base.subtract(rightV.scale(ENH_ARRAY_SIDE)),   // 左
-				base.add(rightV.scale(ENH_ARRAY_SIDE)),        // 右
+		Vec3d base = new Vec3d(ox, oy, oz).subtract(aimV.multiply(ENH_ARRAY_BACK));   // 斜后方
+		Vec3d[] pos = new Vec3d[]{
+				base.subtract(rightV.multiply(ENH_ARRAY_SIDE)),   // 左
+				base.add(rightV.multiply(ENH_ARRAY_SIDE)),        // 右
 				base.add(0, ENH_ARRAY_UP, 0)                      // 上
 		};
 		int left = entity.getArraysLeft();
 		int firingIdx = entity.isFiring() ? entity.getFiringIdx() : -1;
 		float age = entity.getPhaseTick() + tickDelta;
 		float scale = entity.enhArrayScale();
-		VertexConsumer buf = vcp.getBuffer(RenderType.lightning());
+		VertexConsumer buf = vcp.getBuffer(RenderLayer.getLightning());
 		// 剩余待发射法阵（斜后方，缩小旋转，实时朝锁定点预瞑——未同步时回退朝准星）
-		Vec3 lock = entity.getLockPoint();
+		Vec3d lock = entity.getLockPoint();
 		for (int i = ENH_ARRAY_COUNT - left; i < ENH_ARRAY_COUNT; i++) {
 			if (i < 0 || i > 2) continue;
-			Vec3 p = pos[i];
+			Vec3d p = pos[i];
 			float ryaw = -oyaw, rpitch = opitch;   // 回退：朝玩家准星
 			if (lock != null) {
-				Vec3 d = lock.subtract(p);
-				if (d.lengthSqr() > 1.0e-6) {
+				Vec3d d = lock.subtract(p);
+				if (d.lengthSquared() > 1.0e-6) {
 					d = d.normalize();
 					ryaw = -(float) Math.toDegrees(Math.atan2(-d.x, d.z));
-					rpitch = (float) Math.toDegrees(Math.asin(Mth.clamp(-d.y, -1.0, 1.0)));
+					rpitch = (float) Math.toDegrees(Math.asin(MathHelper.clamp(-d.y, -1.0, 1.0)));
 				}
 			}
-			matrices.pushPose();
+			matrices.push();
 			matrices.translate(p.x - ex, p.y - ey, p.z - ez);
-			matrices.mulPose(Axis.YP.rotationDegrees(ryaw));
-			matrices.mulPose(Axis.XP.rotationDegrees(rpitch));
+			matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(ryaw));
+			matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(rpitch));
 			matrices.scale(scale, scale, scale);
-			drawArray(buf, matrices.last().pose(), matrices.last().normal(), age);
-			matrices.popPose();
+			drawArray(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), age);
+			matrices.pop();
 		}
 		// 发射光柱：从当前法阵位置指向「发射瞬间定格的世界锁定点」——法阵随玩家移动，激光始终连法阵与固定落点（追踪锁定）
 		if (firingIdx >= 0 && firingIdx <= 2) {
-			Vec3 fireLock = entity.getFireLock();
-			Vec3 fp = pos[firingIdx];
-			Vec3 d = fireLock.subtract(fp);
+			Vec3d fireLock = entity.getFireLock();
+			Vec3d fp = pos[firingIdx];
+			Vec3d d = fireLock.subtract(fp);
 			double len = d.length();
 			if (len > 1.0e-4) {
-				Vec3 dir = d.scale(1.0 / len);
+				Vec3d dir = d.multiply(1.0 / len);
 				float fyaw = (float) Math.toDegrees(Math.atan2(-dir.x, dir.z));
-				float fpitch = (float) Math.toDegrees(Math.asin(Mth.clamp(-dir.y, -1.0, 1.0)));
-				matrices.pushPose();
+				float fpitch = (float) Math.toDegrees(Math.asin(MathHelper.clamp(-dir.y, -1.0, 1.0)));
+				matrices.push();
 				matrices.translate(fp.x - ex, fp.y - ey, fp.z - ez);
-				matrices.mulPose(Axis.YP.rotationDegrees(-fyaw));
-				matrices.mulPose(Axis.XP.rotationDegrees(fpitch));
-				matrices.pushPose();
+				matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-fyaw));
+				matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(fpitch));
+				matrices.push();
 				matrices.scale(scale, scale, scale);
-				drawArray(buf, matrices.last().pose(), matrices.last().normal(), age);
-				matrices.popPose();
-				drawBeam(buf, matrices.last().pose(), matrices.last().normal(),
+				drawArray(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), age);
+				matrices.pop();
+				drawBeam(buf, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(),
 						entity.enhBeamRadius(), (float) len);   // 光柱长度=当前法阵到固定锁定点实时距离，与伤害判定一致
-				matrices.popPose();
+				matrices.pop();
 			}
 		}
 	}
@@ -204,16 +204,16 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	 * 该粒子为纯客户端粒子，每个玩家各自按自己视角判定，互不影响。
 	 */
 	private void spawnArrayCoreParticleIfThirdPerson(double wx, double wy, double wz) {
-		Minecraft mc = Minecraft.getInstance();
-		if (mc.level == null) return;
+		MinecraftClient mc = MinecraftClient.getInstance();
+		if (mc.world == null) return;
 		// 仅第三人称（含反向第三人称）生成；第一人称跳过
-		if (mc.options.getCameraType() == CameraType.FIRST_PERSON) return;
+		if (mc.options.getPerspective() == Perspective.FIRST_PERSON) return;
 		// 每帧生成 1 个，参数与服务端原 spawnParticles(count=2,delta=0.1,speed=0.01) 大致相当
-		mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.END_ROD,
+		mc.world.addParticle(net.minecraft.particle.ParticleTypes.END_ROD,
 				wx, wy, wz,
-				(mc.level.random.nextDouble() - 0.5) * 0.02,
-				(mc.level.random.nextDouble() - 0.5) * 0.02,
-				(mc.level.random.nextDouble() - 0.5) * 0.02);
+				(mc.world.random.nextDouble() - 0.5) * 0.02,
+				(mc.world.random.nextDouble() - 0.5) * 0.02,
+				(mc.world.random.nextDouble() - 0.5) * 0.02);
 	}
 
 	// ==================== 蓄力四线（XY 平面四角 → +Z）====================
@@ -347,12 +347,12 @@ public class FluorescentLaserRenderer extends EntityRenderer<LaserBeamEntity> {
 	}
 
 	private void v(VertexConsumer buf, Matrix4f pose, Matrix3f nrm, float x, float y, float z, float[] c) {
-		buf.addVertex(pose, x, y, z).setColor(c[0], c[1], c[2], c[3]).setUv(0.5f, 0.5f)
-				.setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(0f, 0f, 1f);
+		buf.vertex(pose, x, y, z).color(c[0], c[1], c[2], c[3]).texture(0.5f, 0.5f)
+				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(0f, 0f, 1f);
 	}
 
 	@Override
-	public @NotNull ResourceLocation getTextureLocation(LaserBeamEntity entity) {
+	public @NotNull Identifier getTexture(LaserBeamEntity entity) {
 		return TEXTURE;
 	}
 }

@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.palette;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.player_form.skin.PlayerSkinComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.skin.RegPlayerSkinComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.palette.PaletteCodec;
@@ -26,9 +26,9 @@ public final class PalettePreviewRenderer {
     /**
      * @param previewCode 槽位代码；null 或空表示预览当前真实配色
      */
-    public static void render(GuiGraphics context, int x, int y, int size,
+    public static void render(DrawContext context, int x, int y, int size,
                               int mouseX, int mouseY,
-                              LocalPlayer player, String previewCode) {
+                              ClientPlayerEntity player, String previewCode) {
         if (player == null) return;
 
         FormTextureUtils.ColorSetting backupColor = null;
@@ -73,7 +73,7 @@ public final class PalettePreviewRenderer {
     }
 
     /** 复刻 BookOfShapeShifterScreenV2_P1.RenderEntity 的鼠标跟随旋转。 */
-    private static void drawEntityFollowMouse(GuiGraphics context, int x, int y, int size,
+    private static void drawEntityFollowMouse(DrawContext context, int x, int y, int size,
                                               int mouseX, int mouseY, LivingEntity entity) {
         float f = (float) Math.atan(mouseX / 40.0F);
         float g = (float) Math.atan(mouseY / 40.0F);
@@ -81,27 +81,27 @@ public final class PalettePreviewRenderer {
         Quaternionf head = new Quaternionf().rotateX(g * 20.0F * 0.017453292F);
         body.mul(head);
 
-        float bh = entity.yBodyRot;
-        float yaw = entity.getYRot();
-        float pitch = entity.getXRot();
-        float phy = entity.yHeadRotO;
-        float hy = entity.yHeadRot;
-        float pby = entity.yBodyRotO;
-        entity.yBodyRot = 180.0F + f * 20.0F;
-        entity.yBodyRotO = entity.yBodyRot;
-        entity.setYRot(180.0F + f * 40.0F);
-        entity.setXRot(-g * 20.0F);
-        entity.yHeadRot = entity.getYRot();
-        entity.yHeadRotO = entity.getYRot();
+        float bh = entity.bodyYaw;
+        float yaw = entity.getYaw();
+        float pitch = entity.getPitch();
+        float phy = entity.prevHeadYaw;
+        float hy = entity.headYaw;
+        float pby = entity.prevBodyYaw;
+        entity.bodyYaw = 180.0F + f * 20.0F;
+        entity.prevBodyYaw = entity.bodyYaw;
+        entity.setYaw(180.0F + f * 40.0F);
+        entity.setPitch(-g * 20.0F);
+        entity.headYaw = entity.getYaw();
+        entity.prevHeadYaw = entity.getYaw();
         try {
-            InventoryScreen.renderEntityInInventory(context, (float)x, (float)y, size, new org.joml.Vector3f(0.0f, entity.getBbHeight() / 2.0f, 0.0f), body, head, entity);
+            InventoryScreen.drawEntity(context, (float)x, (float)y, size, new org.joml.Vector3f(0.0f, entity.getHeight() / 2.0f, 0.0f), body, head, entity);
         } finally {
-            entity.yBodyRot = bh;
-            entity.yBodyRotO = pby;
-            entity.setYRot(yaw);
-            entity.setXRot(pitch);
-            entity.yHeadRotO = phy;
-            entity.yHeadRot = hy;
+            entity.bodyYaw = bh;
+            entity.prevBodyYaw = pby;
+            entity.setYaw(yaw);
+            entity.setPitch(pitch);
+            entity.prevHeadYaw = phy;
+            entity.headYaw = hy;
         }
     }
 }

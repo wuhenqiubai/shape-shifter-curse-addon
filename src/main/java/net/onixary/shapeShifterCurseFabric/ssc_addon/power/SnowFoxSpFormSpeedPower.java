@@ -9,24 +9,24 @@ import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
 import java.util.UUID;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.util.Identifier;
 
 public class SnowFoxSpFormSpeedPower extends Power {
 
-	private static final ResourceLocation MELEE_SPEED_UUID = ResourceLocation.parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
-	private static final ResourceLocation RANGED_SPEED_UUID = ResourceLocation.parse("b2c3d4e5-f6a7-8901-bcde-f12345678901");
+	private static final Identifier MELEE_SPEED_UUID = Identifier.of("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+	private static final Identifier RANGED_SPEED_UUID = Identifier.of("b2c3d4e5-f6a7-8901-bcde-f12345678901");
 
-	private final ResourceLocation resourceId;
+	private final Identifier resourceId;
 	private final double meleeSpeedBonus;
 	private final double rangedSpeedPenalty;
 
 	private int lastSwitchState = -1;
 
-	public SnowFoxSpFormSpeedPower(PowerType<?> type, LivingEntity entity, ResourceLocation resourceId, double meleeSpeedBonus, double rangedSpeedPenalty) {
+	public SnowFoxSpFormSpeedPower(PowerType<?> type, LivingEntity entity, Identifier resourceId, double meleeSpeedBonus, double rangedSpeedPenalty) {
 		super(type, entity);
 		this.resourceId = resourceId;
 		this.meleeSpeedBonus = meleeSpeedBonus;
@@ -36,7 +36,7 @@ public class SnowFoxSpFormSpeedPower extends Power {
 
 	public static PowerFactory<Power> createFactory() {
 		return new PowerFactory<>(
-				ResourceLocation.fromNamespaceAndPath("ssc_addon", "snow_fox_sp_form_speed"),
+				Identifier.of("ssc_addon", "snow_fox_sp_form_speed"),
 				new SerializableData()
 						.add("resource", SerializableDataTypes.IDENTIFIER)
 						.add("melee_speed_bonus", SerializableDataTypes.DOUBLE, 0.1)
@@ -53,7 +53,7 @@ public class SnowFoxSpFormSpeedPower extends Power {
 
 	@Override
 	public void tick() {
-		if (entity.level().isClientSide()) return;
+		if (entity.getWorld().isClient()) return;
 
 		int currentState = getSwitchState();
 
@@ -78,7 +78,7 @@ public class SnowFoxSpFormSpeedPower extends Power {
 	}
 
 	private void updateSpeedModifier(int state) {
-		AttributeInstance speedAttr = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+		EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr == null) return;
 
 		// Remove existing modifiers
@@ -87,20 +87,20 @@ public class SnowFoxSpFormSpeedPower extends Power {
 
 		if (state == 0) {
 			// Melee state: +10% speed
-			AttributeModifier meleeModifier = new AttributeModifier(
+			EntityAttributeModifier meleeModifier = new EntityAttributeModifier(
 					MELEE_SPEED_UUID,
 					meleeSpeedBonus,
-					AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 			);
-			speedAttr.addTransientModifier(meleeModifier);
+			speedAttr.addTemporaryModifier(meleeModifier);
 		} else if (state == 1) {
 			// Ranged state: -10% speed
-			AttributeModifier rangedModifier = new AttributeModifier(
+			EntityAttributeModifier rangedModifier = new EntityAttributeModifier(
 					RANGED_SPEED_UUID,
 					rangedSpeedPenalty,
-					AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
 			);
-			speedAttr.addTransientModifier(rangedModifier);
+			speedAttr.addTemporaryModifier(rangedModifier);
 		}
 	}
 
@@ -108,7 +108,7 @@ public class SnowFoxSpFormSpeedPower extends Power {
 	public void onRemoved() {
 		super.onRemoved();
 		// Clean up modifiers when power is removed
-		AttributeInstance speedAttr = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+		EntityAttributeInstance speedAttr = entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(MELEE_SPEED_UUID);
 			speedAttr.removeModifier(RANGED_SPEED_UUID);

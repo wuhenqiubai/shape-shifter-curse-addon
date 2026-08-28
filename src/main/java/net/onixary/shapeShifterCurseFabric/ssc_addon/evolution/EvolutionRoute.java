@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Identifier;
 
 /**
  * 一条 SSCA 进化路线（一个形态的完整进化加点设计），由单个 route JSON 解析而来。
@@ -23,7 +23,7 @@ public class EvolutionRoute {
     /** 路线显示名 lang key。 */
     public final String displayNameKey;
     /** 进入该路线对应的形态 id（如「进化使魔」）；可空。 */
-    public final ResourceLocation startForm;
+    public final Identifier startForm;
     /** 发放升级点的经验等级里程碑（升序）。 */
     public final int[] levelMilestones;
     /** 自动解锁分支节点的经验等级（<=0 = 关闭）。 */
@@ -40,10 +40,10 @@ public class EvolutionRoute {
     public static class Branch {
         public final String id;
         public final String displayNameKey;
-        public final ResourceLocation spForm;
+        public final Identifier spForm;
         public final List<String> requiresNodes;
 
-        public Branch(String id, String displayNameKey, ResourceLocation spForm, List<String> requiresNodes) {
+        public Branch(String id, String displayNameKey, Identifier spForm, List<String> requiresNodes) {
             this.id = id;
             this.displayNameKey = displayNameKey;
             this.spForm = spForm;
@@ -51,7 +51,7 @@ public class EvolutionRoute {
         }
     }
 
-    private EvolutionRoute(String routeId, boolean enabled, String displayNameKey, ResourceLocation startForm,
+    private EvolutionRoute(String routeId, boolean enabled, String displayNameKey, Identifier startForm,
                            int[] levelMilestones, int autoBranchLevel, List<EvolutionNode> nodes,
                            Map<String, Branch> branches, String baseNodeId) {
         this.routeId = routeId;
@@ -97,7 +97,7 @@ public class EvolutionRoute {
         boolean enabled = !o.has("enabled") || o.get("enabled").getAsBoolean();
         String displayNameKey = o.has("display_name") ? o.get("display_name").getAsString()
                 : "evolution.my_addon." + routeId + ".name";
-        ResourceLocation startForm = o.has("start_form") ? ResourceLocation.tryParse(o.get("start_form").getAsString()) : null;
+        Identifier startForm = o.has("start_form") ? Identifier.tryParse(o.get("start_form").getAsString()) : null;
         int autoBranchLevel = o.has("auto_branch_level") ? o.get("auto_branch_level").getAsInt() : -1;
         int[] milestones = parseIntArray(o, "level_milestones");
 
@@ -127,7 +127,7 @@ public class EvolutionRoute {
                 JsonObject b = en.getValue().getAsJsonObject();
                 String bName = b.has("display_name") ? b.get("display_name").getAsString()
                         : "evolution.my_addon." + routeId + ".branch." + bid;
-                ResourceLocation spForm = b.has("sp_form") ? ResourceLocation.tryParse(b.get("sp_form").getAsString()) : null;
+                Identifier spForm = b.has("sp_form") ? Identifier.tryParse(b.get("sp_form").getAsString()) : null;
                 List<String> req = new ArrayList<>();
                 if (b.has("requires_nodes") && b.get("requires_nodes").isJsonArray()) {
                     for (JsonElement e : b.getAsJsonArray("requires_nodes")) {

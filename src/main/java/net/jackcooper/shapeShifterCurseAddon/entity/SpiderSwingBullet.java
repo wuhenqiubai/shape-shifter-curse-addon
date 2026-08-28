@@ -1,18 +1,19 @@
 package net.jackcooper.shapeShifterCurseAddon.entity;
 
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.entity.projectile.WebBullet;
 import net.onixary.shapeShifterCurseFabric.mana.ManaComponent;
 import net.onixary.shapeShifterCurseFabric.mana.RegManaComponent;
@@ -34,25 +35,25 @@ public class SpiderSwingBullet extends WebBullet {
 	private double lastManaCharge = 0.0;
 	private int life = 0;
 
-	public SpiderSwingBullet(EntityType<? extends SpiderSwingBullet> type, Level world) {
+	public SpiderSwingBullet(EntityType<? extends SpiderSwingBullet> type, World world) {
 		super(type, world);
 	}
 
 	public SpiderSwingBullet(LivingEntity owner) {
-		super(RegAddonEntities.SPIDER_SWING_BULLET, owner.level());
+		super(RegAddonEntities.SPIDER_SWING_BULLET, owner.getWorld());
 		this.owner = owner;
 		this.setOwner(owner);
 		this.setPosition(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
 	}
 
 	@Override
-	protected float getGravity() {
+	protected double getGravity() {
 		return 0.025f; // 轻微下坠抛物线
 	}
 
 	@Override
 	public void tick() {
-		if (this.level() instanceof ServerLevel sw && this.owner instanceof Player player) {
+		if (this.getWorld() instanceof ServerWorld sw && this.owner instanceof PlayerEntity player) {
 			traveled += this.getVelocity().length();
 			ManaComponent m = RegManaComponent.MANA.get(player);
 			while (traveled - lastManaCharge >= 2.0) {
@@ -73,18 +74,18 @@ public class SpiderSwingBullet extends WebBullet {
 		life++;
 		super.tick(); // WebBullet.tick：发射音效 + 轨迹粒子 + 移动 + 碰撞检测
 		if (life > 140 && !this.isRemoved()) {
-			if (this.level() instanceof ServerLevel sw) fadeOut(sw);
+			if (this.getWorld() instanceof ServerWorld sw) fadeOut(sw);
 			this.discard();
 		}
 	}
 
 	@Override
 	public void onBlockHit(BlockHitResult hit) {
-		if (this.level() instanceof ServerLevel sw && this.owner instanceof ServerPlayer sp) {
+		if (this.getWorld() instanceof ServerWorld sw && this.owner instanceof ServerPlayerEntity sp) {
 			Vec3d anchor = hit.getPos();
 			SpiderMoonWeaverSwingManager.onBulletHitBlock(sp, anchor);
 			sw.playSound(null, anchor.x, anchor.y, anchor.z,
-					SoundEvents.BLOCK_TRIPWIRE_ATTACH, SoundSource.PLAYERS, 0.9f, 1.4f);
+					SoundEvents.BLOCK_TRIPWIRE_ATTACH, SoundCategory.PLAYERS, 0.9f, 1.4f);
 		}
 		this.discard();
 	}
@@ -92,27 +93,27 @@ public class SpiderSwingBullet extends WebBullet {
 	@Override
 	public void onEntityHit(EntityHitResult hit) {
 		Entity e = hit.getEntity();
-		if (this.level() instanceof ServerLevel sw && this.owner instanceof ServerPlayer sp
+		if (this.getWorld() instanceof ServerWorld sw && this.owner instanceof ServerPlayerEntity sp
 				&& e instanceof LivingEntity living && living != sp) {
 			SpiderMoonWeaverSwingManager.onBulletHitEntity(sp, living);
 			sw.playSound(null, living.getX(), living.getY(), living.getZ(),
-					SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 0.9f, 1.6f); // 叮！
+					SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), SoundCategory.PLAYERS, 0.9f, 1.6f); // 叮！
 			this.discard();
 		}
 		// 命中无效目标（如自己）：不 discard，继续飞
 	}
 
-	private void fadeOut(ServerLevel sw) {
+	private void fadeOut(ServerWorld sw) {
 		sw.spawnParticles(ParticleTypes.CLOUD, this.getX(), this.getY(), this.getZ(),
 				12, 0.2, 0.2, 0.2, 0.02);
 		sw.playSound(null, this.getX(), this.getY(), this.getZ(),
-				SoundEvents.BLOCK_WOOL_BREAK, SoundSource.NEUTRAL, 0.5f, 1.2f);
+				SoundEvents.BLOCK_WOOL_BREAK, SoundCategory.NEUTRAL, 0.5f, 1.2f);
 	}
 
 	@Override
 	public void remove(Entity.RemovalReason reason) {
 		// 统一 miss 处理（超程/超时/液体/未命中）：onBulletMiss 幂等，仅仍在飞（未命中）时给 5 秒 CD
-		if (!this.level().isClient && this.owner instanceof ServerPlayer sp) {
+		if (!this.getWorld().isClient && this.owner instanceof ServerPlayerEntity sp) {
 			SpiderMoonWeaverSwingManager.onBulletMiss(sp);
 		}
 		super.remove(reason);

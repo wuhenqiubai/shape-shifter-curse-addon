@@ -1,5 +1,9 @@
 package net.jackcooper.shapeShifterCurseAddon.client;
 
+import com.zigythebird.playeranim.api.PlayerAnimationAccess;
+import com.zigythebird.playeranim.animation.PlayerAnimManager;
+import com.zigythebird.playeranimcore.animation.Animation;
+import com.zigythebird.playeranimcore.animation.AnimationController;
 import io.netty.buffer.Unpooled;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -11,6 +15,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -81,8 +86,8 @@ public final class SpiderMoonWeaverDoubleJumpClient {
 			jumpAvailable = false; // 消耗本次滞空的二段跳额度，落地才补满
 			doubleJumpActive = true; // 标记二段跳激活，期间监控 jump 动画进度以提前切 fall
 			// 通知服务端播二段跳音效粒子（并广播给其他玩家）
-			ClientPlayNetworking.send(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_DOUBLE_JUMP,
-					new PacketByteBuf(Unpooled.buffer()));
+			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_DOUBLE_JUMP),
+					new PacketByteBuf(Unpooled.buffer())));
 		}
 		wasJumpPressed = pressed;
 	}
@@ -119,15 +124,14 @@ public final class SpiderMoonWeaverDoubleJumpClient {
 	 */
 	private static boolean shouldAdvanceToFall(ClientPlayerEntity player) {
 		try {
-			dev.kosmx.playerAnim.api.layered.AnimationStack stack =
-					dev.kosmx.playerAnim.minecraftApi.PlayerAnimationAccess.getPlayerAnimLayer(player);
-			dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer kp = SpiderMoonWeaverAnimDebugHud.findActivePlayerFromStack(stack);
-			if (kp == null) return false;
-			dev.kosmx.playerAnim.core.data.KeyframeAnimation data = kp.getData();
+			PlayerAnimManager manager = PlayerAnimationAccess.getPlayerAnimManager(player);
+			AnimationController ctrl = SpiderMoonWeaverAnimDebugHud.findActivePlayerFromStack(manager);
+			if (ctrl == null) return false;
+			Animation data = ctrl.getCurrentAnimation() != null ? ctrl.getCurrentAnimation().animation() : null;
 			if (data == null) return false;
-			// 动画名含 spider_3_jump 且播放进度≥姿态结束点(endTick-1) 时，提示应切 fall
-			String name = (data.extraData != null) ? String.valueOf(data.extraData.get("name")) : "";
-			if (name != null && name.contains("spider_3_jump") && kp.getCurrentTick() >= data.endTick - 1) {
+			// 动画名含 spider_3_jump 且播放进度≥姿态结束点(长度-1) 时，提示应切 fall
+			String name = data.getNameOrId();
+			if (name != null && name.contains("spider_3_jump") && ctrl.getAnimationTicks() >= data.length() - 1) {
 				return true;
 			}
 		} catch (Throwable ignored) { }

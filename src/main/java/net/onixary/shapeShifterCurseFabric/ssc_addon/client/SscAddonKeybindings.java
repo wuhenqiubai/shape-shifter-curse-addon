@@ -1,14 +1,14 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client;
 
-import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
 import net.onixary.shapeShifterCurseFabric.client.ShapeShifterCurseFabricClient;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonConfig;
 import org.lwjgl.glfw.GLFW;
-import com.mojang.blaze3d.platform.InputConstants;
 import java.lang.reflect.Field;
 
 /**
@@ -18,7 +18,7 @@ import java.lang.reflect.Field;
  * 判断技能键是否按下（见 ApoliClient.onInitializeClient 的 START_CLIENT_TICK）。该 ID 解析成哪个
  * KeyBinding 完全由我们通过 {@code ApoliClient.registerPowerKeybinding} 决定。
  *
- * <p>因此这里提供两个「虚拟 KeyBinding」并重写其 {@link KeyMapping#isDown()} 动态返回：
+ * <p>因此这里提供两个「虚拟 KeyBinding」并重写其 {@link KeyBinding#isPressed()} 动态返回：
  * <ul>
  *   <li>当前形态<b>启用</b>了自定义键位 → 返回该形态自定义键的物理按下状态；</li>
  *   <li>否则（<b>同步 SSC</b>）→ 返回 SSC 原版 G 键（primary_active / secondary_active）的状态。</li>
@@ -29,13 +29,13 @@ import java.lang.reflect.Field;
 public class SscAddonKeybindings {
 	public static final String CATEGORY = "key.categories.ssc_addon";
 
-	private static KeyMapping virtualPrimary;
-	private static KeyMapping virtualSecondary;
+	private static KeyBinding virtualPrimary;
+	private static KeyBinding virtualSecondary;
 
 	/** 原版 SSC 主动技能键位缓存（反射一次性获取，规避 IDE 对本地 jar 字段索引失效的误报）。 */
 	private static volatile boolean sscKeysResolved = false;
-	private static KeyMapping sscSkill1Key;
-	private static KeyMapping sscSkill2Key;
+	private static KeyBinding sscSkill1Key;
+	private static KeyBinding sscSkill2Key;
 
 	/**
 	 * 通过反射获取原版 SSC 主动技能键位绑定，并缓存结果。
@@ -46,7 +46,7 @@ public class SscAddonKeybindings {
 	 * 「cannot be resolved or is not a field」。改用反射访问可规避该误报，
 	 * 运行时行为与直接引用完全一致（字段确实存在且为 public）。字段缺失时安全降级返回 null。</p>
 	 */
-	private static KeyMapping getSscSkillKey(boolean primary) {
+	private static KeyBinding getSscSkillKey(boolean primary) {
 		if (!sscKeysResolved) {
 			resolveSscSkillKeys();
 		}
@@ -63,8 +63,8 @@ public class SscAddonKeybindings {
 			Field f2 = cls.getDeclaredField("useActiveSkill2PowerKeybind");
 			f1.setAccessible(true);
 			f2.setAccessible(true);
-			sscSkill1Key = (KeyMapping) f1.get(null);
-			sscSkill2Key = (KeyMapping) f2.get(null);
+			sscSkill1Key = (KeyBinding) f1.get(null);
+			sscSkill2Key = (KeyBinding) f2.get(null);
 		} catch (Throwable t) {
 			// 原版字段缺失或不可访问：降级为 null，键位检测返回 false
 			sscSkill1Key = null;
@@ -78,7 +78,7 @@ public class SscAddonKeybindings {
 	}
 
 	/** 取得 SP 主动技能键位（虚拟键，按形态路由 自定义键 / SSC G 键）。 */
-	public static KeyMapping getPrimaryKey() {
+	public static KeyBinding getPrimaryKey() {
 		if (virtualPrimary == null) {
 			virtualPrimary = new VirtualSkillKey("key.ssc_addon.virtual_sp_primary", true);
 		}
@@ -86,7 +86,7 @@ public class SscAddonKeybindings {
 	}
 
 	/** 取得 SP 副技能键位（虚拟键，按形态路由 自定义键 / SSC G 键）。 */
-	public static KeyMapping getSecondaryKey() {
+	public static KeyBinding getSecondaryKey() {
 		if (virtualSecondary == null) {
 			virtualSecondary = new VirtualSkillKey("key.ssc_addon.virtual_sp_secondary", false);
 		}
@@ -101,7 +101,7 @@ public class SscAddonKeybindings {
 
 	/** 取得当前客户端玩家所处形态的 path（无则 null）。 */
 	private static String getCurrentFormPath() {
-		Minecraft mc = Minecraft.getInstance();
+		MinecraftClient mc = MinecraftClient.getInstance();
 		if (mc.player == null) {
 			return null;
 		}
@@ -125,7 +125,7 @@ public class SscAddonKeybindings {
 		// 任意 GUI 界面打开时不触发技能（与原版键位一致）。
 		// 自定义键用裸 GLFW 检测，不像原版键位会在开界面时被 unpress，
 		// 故必须在此显式拦截，否则在「特殊键位设置」等界面内按绑定键会误放技能。
-		if (Minecraft.getInstance().screen != null) {
+		if (MinecraftClient.getInstance().currentScreen != null) {
 			return false;
 		}
 		String formPath = getCurrentFormPath();
@@ -138,8 +138,8 @@ public class SscAddonKeybindings {
 			}
 		}
 		// 同步 SSC：跟随原版主动技能键（active_skill_1/2）
-		KeyMapping sscKey = getSscSkillKey(primary);
-		return sscKey != null && sscKey.isDown();
+		KeyBinding sscKey = getSscSkillKey(primary);
+		return sscKey != null && sscKey.isPressed();
 	}
 
 	/** 判断给定 InputUtil 翻译键（键盘/鼠标）当前是否被物理按住。 */
@@ -150,13 +150,13 @@ public class SscAddonKeybindings {
 			return false;
 		}
 		try {
-			InputConstants.Key key = InputConstants.getKey(translationKey);
-			long window = Minecraft.getInstance().getWindow().getWindow();
-			if (key.getType() == InputConstants.Type.KEYSYM) {
-				return InputConstants.isKeyDown(window, key.getValue());
+			InputUtil.Key key = InputUtil.fromTranslationKey(translationKey);
+			long window = MinecraftClient.getInstance().getWindow().getHandle();
+			if (key.getCategory() == InputUtil.Type.KEYSYM) {
+				return InputUtil.isKeyPressed(window, key.getCode());
 			}
-			if (key.getType() == InputConstants.Type.MOUSE) {
-				return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
+			if (key.getCategory() == InputUtil.Type.MOUSE) {
+				return GLFW.glfwGetMouseButton(window, key.getCode()) == GLFW.GLFW_PRESS;
 			}
 		} catch (Throwable ignored) {
 		}
@@ -172,7 +172,7 @@ public class SscAddonKeybindings {
 	 * 读不到按键。此方法直接读物理键状态，不受该 mixin 影响。
 	 */
 	public static boolean isSecondaryRawPressed() {
-		if (Minecraft.getInstance().screen != null) {
+		if (MinecraftClient.getInstance().currentScreen != null) {
 			return false;
 		}
 		String formPath = getCurrentFormPath();
@@ -183,21 +183,21 @@ public class SscAddonKeybindings {
 				return isPhysicalKeyDown(entry.secondaryKey);
 			}
 		}
-		KeyMapping ssc = getSscSkillKey(false);
-		return ssc != null && isPhysicalKeyDown(ssc.saveString());
+		KeyBinding ssc = getSscSkillKey(false);
+		return ssc != null && isPhysicalKeyDown(ssc.getBoundKeyTranslationKey());
 	}
 
 	/** 虚拟键位：不绑定任何物理键，isPressed 动态计算。 */
-	private static final class VirtualSkillKey extends KeyMapping {
+	private static final class VirtualSkillKey extends KeyBinding {
 		private final boolean primary;
 
 		private VirtualSkillKey(String translationKey, boolean primary) {
-			super(translationKey, InputConstants.UNKNOWN.getValue(), CATEGORY);
+			super(translationKey, InputUtil.UNKNOWN_KEY.getCode(), CATEGORY);
 			this.primary = primary;
 		}
 
 		@Override
-		public boolean isDown() {
+		public boolean isPressed() {
 			return computePressed(this.primary);
 		}
 	}

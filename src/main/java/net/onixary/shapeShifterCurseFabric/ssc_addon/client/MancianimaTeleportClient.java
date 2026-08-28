@@ -5,14 +5,14 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.particle.DustParticleEffect;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -51,9 +51,9 @@ public final class MancianimaTeleportClient {
 		ClientTickEvents.END_CLIENT_TICK.register(MancianimaTeleportClient::onClientTick);
 	}
 
-	private static void onClientTick(Minecraft client) {
-		LocalPlayer player = client.player;
-		ClientLevel world = client.level;
+	private static void onClientTick(MinecraftClient client) {
+		ClientPlayerEntity player = client.player;
+		ClientWorld world = client.world;
 		if (player == null || world == null) {
 			wasKeyPressed = false;
 			previewing = false;
@@ -67,9 +67,9 @@ public final class MancianimaTeleportClient {
 			return;
 		}
 
-		KeyMapping key = SscAddonKeybindings.getSecondaryKey();
+		KeyBinding key = SscAddonKeybindings.getSecondaryKey();
 		if (key == null) return;
-		boolean isPressed = key.isDown();
+		boolean isPressed = key.isPressed();
 
 		SSCAddonClientConfig cfg;
 		try {
@@ -79,8 +79,8 @@ public final class MancianimaTeleportClient {
 		}
 		SSCAddonClientConfig.MancianimaTeleportMode mode = cfg.mancianimaTeleportMode;
 
-		Vec3 eye = player.getEyePosition();
-		Vec3 look = player.getLookAngle().normalize();
+		Vec3d eye = player.getEyePos();
+		Vec3d look = player.getRotationVector().normalize();
 
 		if (mode == SSCAddonClientConfig.MancianimaTeleportMode.RAYCAST) {
 			// 按下边沿 → 发包
@@ -95,7 +95,7 @@ public final class MancianimaTeleportClient {
 				boolean canTeleport = PowerUtils.getClientResourceValue(player, FormIdentifiers.SP_SECONDARY_CD) <= 0
 						&& ManaUtils.getPlayerMana(player) >= MancianimaTeleport.MANA_COST;
 				if (canTeleport) {
-					Vec3 landing = MancianimaTeleport.computePlatformLanding(world, eye, look, player);
+					Vec3d landing = MancianimaTeleport.computePlatformLanding(world, eye, look, player);
 					if (landing != null && (previewParticleTick++ % 2) == 0) {
 						renderPreview(world, landing);
 					}
@@ -112,8 +112,8 @@ public final class MancianimaTeleportClient {
 		wasKeyPressed = isPressed;
 	}
 
-	private static void renderPreview(ClientLevel world, Vec3 landing) {
-		DustParticleOptions dust = new DustParticleOptions(PURPLE, 1.2f);
+	private static void renderPreview(ClientWorld world, Vec3d landing) {
+		DustParticleEffect dust = new DustParticleEffect(PURPLE, 1.2f);
 		// 在落点（脚部）上方铺一圈紫色粉尘，呈现一个落地标记
 		double cx = landing.x;
 		double cy = landing.y + 0.05;
@@ -134,16 +134,16 @@ public final class MancianimaTeleportClient {
 	}
 
 	private static void sendTeleportPacket(byte mode) {
-		FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeByte(mode);
 		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_MANCIANIMA_TELEPORT), buf));
 	}
 
-	private static boolean isMancianima(LocalPlayer player) {
+	private static boolean isMancianima(ClientPlayerEntity player) {
 		try {
 			IForm form = player.getComponent(RegPlayerFormComponent.PLAYER_FORM).nowForm;
 			if (form == null) return false;
-			ResourceLocation id = form.getFormID();
+			Identifier id = form.getFormID();
 			return id != null && FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(id);
 		} catch (Exception e) {
 			return false;

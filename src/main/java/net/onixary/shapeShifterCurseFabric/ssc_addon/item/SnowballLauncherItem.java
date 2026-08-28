@@ -1,11 +1,13 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.client.item.TooltipContext;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.thrown.SnowballEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -29,17 +31,16 @@ public class SnowballLauncherItem extends Item {
 	}
 
 	public static int getAmmo(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
-		return nbt != null ? nbt.getInt("Ammo") : 0;
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
+		return nbt != null ? nbt.getNbt().getInt("Ammo") : 0;
 	}
 
 	public static void setAmmo(ItemStack stack, int ammo) {
-		NbtCompound nbt = stack.getOrCreateNbt();
-		nbt.putInt("Ammo", Math.min(ammo, MAX_AMMO));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("Ammo", Math.min(ammo, MAX_AMMO)));
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity entity) {
 		return 72000;
 	}
 
@@ -57,7 +58,7 @@ public class SnowballLauncherItem extends Item {
 
 	@Override
 	public void usageTick(World world, LivingEntity user, ItemStack stack, int remainingUseTicks) {
-		int usedTicks = getMaxUseTime(stack) - remainingUseTicks;
+		int usedTicks = getMaxUseTime(stack, user) - remainingUseTicks;
 		// Fire every 7 ticks (approx 1.15x speed of Bottled Blizzard which is 8 ticks)
 		if (usedTicks % 7 == 0) {
 			fire(world, user, stack);
@@ -116,10 +117,10 @@ public class SnowballLauncherItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		int ammo = getAmmo(stack);
 		tooltip.add(Text.translatable("tooltip.ssc_addon.launcher.ammo", ammo, MAX_AMMO).formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("tooltip.ssc_addon.launcher.usage").formatted(Formatting.GOLD));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

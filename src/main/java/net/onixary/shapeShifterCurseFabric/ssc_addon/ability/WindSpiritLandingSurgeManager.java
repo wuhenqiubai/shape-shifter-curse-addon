@@ -1,16 +1,16 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
@@ -65,18 +65,18 @@ public final class WindSpiritLandingSurgeManager {
 
     /** 伤害结算时：若攻击方是风灵且在空中，标记本次滞空命中过。 */
     private static void handleDamageDealt(LivingEntity target, DamageSource source) {
-        Entity attacker = source.getEntity();
-        if (!(attacker instanceof ServerPlayer player)) return;
+        Entity attacker = source.getAttacker();
+        if (!(attacker instanceof ServerPlayerEntity player)) return;
         if (!FormUtils.isOcelotSP(player)) return;
-        if (player.onGround()) return; // 不在空中则忽略
+        if (player.isOnGround()) return; // 不在空中则忽略
         // 在空中造成伤害 → 标记
-        HIT_DURING_AIR.put(player.getUUID(), Boolean.TRUE);
+        HIT_DURING_AIR.put(player.getUuid(), Boolean.TRUE);
     }
 
     /** 每服务端 tick 对每个在线玩家调用（由 SscAddon tick 循环驱动）。 */
-    public static void tick(ServerPlayer player) {
-        UUID uuid = player.getUUID();
-        boolean curOnGround = player.onGround();
+    public static void tick(ServerPlayerEntity player) {
+        UUID uuid = player.getUuid();
+        boolean curOnGround = player.isOnGround();
         Boolean prevOnGroundObj = PREV_ON_GROUND.get(uuid);
         float curFall = player.fallDistance;
         Float prevFallObj = PREV_FALL_DISTANCE.get(uuid);
@@ -102,12 +102,12 @@ public final class WindSpiritLandingSurgeManager {
     }
 
     /** 尝试触发落地风涌（含 CD / 空中命中检查）。 */
-    private static void tryTriggerSurge(ServerPlayer player, UUID uuid) {
+    private static void tryTriggerSurge(ServerPlayerEntity player, UUID uuid) {
         // 非风灵不触发
         if (!FormUtils.isOcelotSP(player)) return;
 
-        ServerLevel world = (ServerLevel) player.level();
-        long now = world.getGameTime();
+        ServerWorld world = (ServerWorld) player.getWorld();
+        long now = world.getTime();
 
         // CD 检查
         Long next = NEXT_AVAILABLE_TICK.get(uuid);
@@ -117,39 +117,39 @@ public final class WindSpiritLandingSurgeManager {
         if (Boolean.TRUE.equals(HIT_DURING_AIR.get(uuid))) return;
 
         // 触发风涌：3 格半径 AOE
-        Vec3 center = player.position();
-        AABB box = new AABB(center.subtract(RADIUS, RADIUS, RADIUS), center.add(RADIUS, RADIUS, RADIUS));
-        for (Entity e : world.getEntities(player, box)) {
+        Vec3d center = player.getPos();
+        Box box = new Box(center.subtract(RADIUS, RADIUS, RADIUS), center.add(RADIUS, RADIUS, RADIUS));
+        for (Entity e : world.getOtherEntities(player, box)) {
             if (!(e instanceof LivingEntity living)) continue;
             if (living == player) continue;
             if (WhitelistUtils.isProtected(player, living)) continue; // 默认白名单
-            living.hurt(player.damageSources().playerAttack(player), DAMAGE);
-            Vec3 push = living.position().subtract(center);
-            if (push.lengthSqr() < 1.0e-4) push = new Vec3(0, 1, 0);
+            living.damage(player.getDamageSources().playerAttack(player), DAMAGE);
+            Vec3d push = living.getPos().subtract(center);
+            if (push.lengthSquared() < 1.0e-4) push = new Vec3d(0, 1, 0);
             push = push.normalize();
-            living.knockback(0.5, -push.x, -push.z);
+            living.takeKnockback(0.5, -push.x, -push.z);
         }
 
         // 粒子：环形冲击波 + 向上扬尘
-        world.sendParticles(ParticleTypes.POOF, center.x, center.y + 0.1, center.z,
+        world.spawnParticles(ParticleTypes.POOF, center.x, center.y + 0.1, center.z,
                 20, RADIUS * 0.5, 0.1, RADIUS * 0.5, 0.08);
-        world.sendParticles(ParticleTypes.CLOUD, center.x, center.y + 0.2, center.z,
+        world.spawnParticles(ParticleTypes.CLOUD, center.x, center.y + 0.2, center.z,
                 16, RADIUS * 0.6, 0.15, RADIUS * 0.6, 0.06);
-        world.sendParticles(ParticleTypes.SWEEP_ATTACK, center.x, center.y + 0.5, center.z,
+        world.spawnParticles(ParticleTypes.SWEEP_ATTACK, center.x, center.y + 0.5, center.z,
                 4, RADIUS * 0.3, 0.2, RADIUS * 0.3, 0.0);
 
         // 音效（全员可听）
         world.playSound(null, center.x, center.y, center.z,
-                SoundEvents.PLAYER_BIG_FALL, SoundSource.PLAYERS, 0.6f, 1.3f);
+                SoundEvents.ENTITY_PLAYER_BIG_FALL, SoundCategory.PLAYERS, 0.6f, 1.3f);
         world.playSound(null, center.x, center.y, center.z,
-                SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.4f, 1.5f);
+                SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 0.4f, 1.5f);
 
         // 设置 CD
         NEXT_AVAILABLE_TICK.put(uuid, now + COOLDOWN_TICKS);
     }
 
-    public static void onPlayerDisconnect(ServerPlayer player) {
-        UUID uuid = player.getUUID();
+    public static void onPlayerDisconnect(ServerPlayerEntity player) {
+        UUID uuid = player.getUuid();
         PREV_ON_GROUND.remove(uuid);
         PREV_FALL_DISTANCE.remove(uuid);
         NEXT_AVAILABLE_TICK.remove(uuid);

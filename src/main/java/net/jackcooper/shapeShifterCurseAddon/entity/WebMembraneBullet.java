@@ -1,6 +1,7 @@
 package net.jackcooper.shapeShifterCurseAddon.entity;
 
 import net.jackcooper.shapeShifterCurseAddon.block.WebMembraneBlock;
+import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
@@ -16,6 +17,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.entity.projectile.WebBullet;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
+import net.onixary.shapeShifterCurseFabric.status_effects.EntangledEffectUtils;
 
 /**
  * 月织蛛「攻击模式」蛛丝弹：复用原版 {@link WebBullet} 的飞行 / 粒子 / 发射音效，
@@ -98,16 +100,16 @@ public class WebMembraneBullet extends WebBullet {
 			// 距离线性衰减 + 踩网加成（用 sqrt 还原线性距离参与衰减比例计算）
 			double dist = Math.sqrt(distSq);
 			double prob = base + (edge - base) * (dist / AURA_RADIUS);
-			StatusEffectInstance bound = living.getStatusEffect(net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects.SPIDER_WEB_BOUND);
+			StatusEffectInstance bound = living.getStatusEffect(RegAddonEffects.SPIDER_WEB_BOUND);
 			int boundLeft = bound != null ? bound.getDuration() : 0;
 			prob += Math.min(0.30, (boundLeft / 20.0) * 0.05);
 			if (world.getRandom().nextDouble() < prob) {
 				// 走原版缠身一次叠满转茧逻辑（500t = 5×100，达 ENTANGLED_DURATION_PER_LEVEL×(MAX_LEVEL+1) 阈值）
-				net.onixary.shapeShifterCurseFabric.status_effects.EntangledEffectUtils.applyEntangledEffect(this.owner, living, 500);
+				EntangledEffectUtils.applyEntangledEffect(this.owner, living, 500);
 			} else {
 				// 未裹茧：施加蜘网缠身（减速+挖掘疲劳+虚弱），为后续踩网/再次命中累积裹茧概率
 				living.addStatusEffect(new StatusEffectInstance(
-						net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects.SPIDER_WEB_BOUND,
+						RegAddonEffects.SPIDER_WEB_BOUND,
 						AURA_DURATION, 0, false, false, true));
 			}
 		}

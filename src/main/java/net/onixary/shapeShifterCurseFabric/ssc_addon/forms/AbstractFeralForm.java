@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 import static net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric.MOD_ID;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Identifier;
 
 /**
  * 四足野性形态的抽象基类
@@ -36,41 +36,41 @@ public abstract class AbstractFeralForm extends Form_FeralBase {
 	protected AnimationHolder anim_sleep = AnimationHolder.EMPTY;
 	protected AnimationHolder anim_elytra_fly = AnimationHolder.EMPTY;
 
-	protected AbstractFeralForm(ResourceLocation formID) {
+	protected AbstractFeralForm(Identifier formID) {
 		super(formID);
 		// 父类 Form_FeralBase 构造已 bodyType(FERAL)
 	}
 
 	// SSC 1.9.0 起 PlayerFormBase 已移除该 v2 API；子类仍通过 super 调用初始化字段，故保留
 	public void Anim_registerAnims() {
-		anim_idle = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("idle")), true);
-		anim_sneak_idle = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("sneak_idle")), true);
-		anim_ride = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("ride")), true);
-		anim_walk = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("walk")), true, 1.2f, 2);
-		anim_sneak_walk = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("sneak_walk")), true);
-		anim_run = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("run")), true, 2.3f);
-		anim_float = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("float")), true);
-		anim_swim = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("swim")), true);
-		anim_dig = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("dig")), true);
-		anim_jump = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("jump")), true);
-		anim_climb = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("climb")), true);
-		anim_fall = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("fall")), true);
-		anim_attack = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("attack")), true);
-		anim_sleep = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("sleep")), true);
-		anim_elytra_fly = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("elytra_fly")), true);
-		anim_sneak_rush = new AnimationHolder(ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId("run")), true, 2.3f);
+		anim_idle = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("idle")), true);
+		anim_sneak_idle = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("sneak_idle")), true);
+		anim_ride = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("ride")), true);
+		anim_walk = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("walk")), true, 1.2f, 2);
+		anim_sneak_walk = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("sneak_walk")), true);
+		anim_run = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("run")), true, 2.3f);
+		anim_float = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("float")), true);
+		anim_swim = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("swim")), true);
+		anim_dig = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("dig")), true);
+		anim_jump = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("jump")), true);
+		anim_climb = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("climb")), true);
+		anim_fall = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("fall")), true);
+		anim_attack = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("attack")), true);
+		anim_sleep = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("sleep")), true);
+		anim_elytra_fly = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("elytra_fly")), true);
+		anim_sneak_rush = new AnimationHolder(Identifier.of(MOD_ID, getAnimId("run")), true, 2.3f);
 	}
 
 	protected String getAnimId(String animName) {
 		return "form_feral_common_" + animName;
 	}
 
-	protected ResourceLocation getAnimIdentifier(String animName) {
-		return ResourceLocation.fromNamespaceAndPath(MOD_ID, getAnimId(animName));
+	protected Identifier getAnimIdentifier(String animName) {
+		return Identifier.of(MOD_ID, getAnimId(animName));
 	}
 
 	@Override
-	public @Nullable AbstractAnimStateController getAnimStateController(Player player, AnimSystem.AnimSystemData animSystemData, @NotNull ResourceLocation animStateID) {
+	public @Nullable AbstractAnimStateController getAnimStateController(PlayerEntity player, AnimSystem.AnimSystemData animSystemData, @NotNull Identifier animStateID) {
 		AnimStateEnum animStateEnum = AnimStateEnum.getStateEnum(animStateID);
 		if (animStateEnum != null) {
 			return getControllerMapping(animStateEnum);

@@ -2,9 +2,9 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.render.entity.PlayerEntityRenderer;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.render.form_render.DefaultModelAnimationSystem;
 import net.onixary.shapeShifterCurseFabric.render.form_render.FormModel;
 import net.onixary.shapeShifterCurseFabric.render.form_render.FormRenderer;
@@ -45,9 +45,9 @@ public class UpgradeAxolotlSpearChargeArmMixin {
 
     @Inject(method = "processAnimation", at = @At("TAIL"), require = 0)
     private void ssc_addon$raiseSpearChargeArm(FormRenderer formRenderer, FormModel model,
-            PlayerRenderer renderer, Player player, float limbAngle, float limbDistance,
+            PlayerEntityRenderer renderer, PlayerEntity player, float limbAngle, float limbDistance,
             float tickDelta, float animationProgress, float headYaw, float headPitch, CallbackInfo ci) {
-        if (player == null || !UpgradeAxolotlSpearRenderState.isCharging(player.getUUID())) {
+        if (player == null || !UpgradeAxolotlSpearRenderState.isCharging(player.getUuid())) {
             return;
         }
         // 蓄力中：覆盖右臂（持矛手）骨骼旋转为三叉戟蓄力角度（举过肩）
@@ -71,11 +71,11 @@ public class UpgradeAxolotlSpearChargeArmMixin {
      */
     @WrapOperation(method = "finishRender",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/player/Player;getDeltaMovement()Lnet/minecraft/world/phys/Vec3;"),
+                    target = "Lnet/minecraft/entity/player/PlayerEntity;getVelocity()Lnet/minecraft/util/math/Vec3d;"),
             require = 0)
-    private Vec3 ssc_addon$fixRemoteTailVerticalDrag(Player player, Operation<Vec3> original) {
-        Vec3 velocity = original.call(player);
-        double realVerticalDelta = player.getY() - player.yo;
-        return new Vec3(velocity.x, realVerticalDelta, velocity.z);
+    private Vec3d ssc_addon$fixRemoteTailVerticalDrag(PlayerEntity player, Operation<Vec3d> original) {
+        Vec3d velocity = original.call(player);
+        double realVerticalDelta = player.getY() - player.prevY;
+        return new Vec3d(velocity.x, realVerticalDelta, velocity.z);
     }
 }

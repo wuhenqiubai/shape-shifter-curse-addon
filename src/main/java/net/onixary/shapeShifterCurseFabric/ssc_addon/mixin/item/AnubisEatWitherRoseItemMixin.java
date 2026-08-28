@@ -5,18 +5,18 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.item;
 
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.UseAnim;
-import net.minecraft.world.level.Level;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.util.UseAction;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import org.spongepowered.asm.mixin.Mixin;
@@ -39,36 +39,36 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class AnubisEatWitherRoseItemMixin {
 
 	@Inject(method = "use", at = @At("HEAD"), cancellable = true)
-	private void ssc_addon$anubisWitherRoseUse(Level world, Player user, InteractionHand hand,
-			CallbackInfoReturnable<InteractionResultHolder<ItemStack>> cir) {
-		ItemStack stack = user.getItemInHand(hand);
-		if (!stack.is(Items.WITHER_ROSE)) return;
+	private void ssc_addon$anubisWitherRoseUse(World world, PlayerEntity user, Hand hand,
+			CallbackInfoReturnable<TypedActionResult<ItemStack>> cir) {
+		ItemStack stack = user.getStackInHand(hand);
+		if (!stack.isOf(Items.WITHER_ROSE)) return;
 		if (!FormUtils.isForm(user, FormIdentifiers.ANUBIS_WOLF_SP)) return;
-		user.startUsingItem(hand);
-		cir.setReturnValue(InteractionResultHolder.consume(stack));
+		user.setCurrentHand(hand);
+		cir.setReturnValue(TypedActionResult.consume(stack));
 	}
 
-	@Inject(method = "getUseDuration", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "getMaxUseTime", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$anubisWitherRoseMaxUseTime(ItemStack stack, LivingEntity user, CallbackInfoReturnable<Integer> cir) {
-		if (stack.is(Items.WITHER_ROSE)) {
+		if (stack.isOf(Items.WITHER_ROSE)) {
 			cir.setReturnValue(32);
 		}
 	}
 
-	@Inject(method = "getUseAnimation", at = @At("HEAD"), cancellable = true)
-	private void ssc_addon$anubisWitherRoseUseAction(ItemStack stack, CallbackInfoReturnable<UseAnim> cir) {
-		if (stack.is(Items.WITHER_ROSE)) {
-			cir.setReturnValue(UseAnim.EAT);
+	@Inject(method = "getUseAction", at = @At("HEAD"), cancellable = true)
+	private void ssc_addon$anubisWitherRoseUseAction(ItemStack stack, CallbackInfoReturnable<UseAction> cir) {
+		if (stack.isOf(Items.WITHER_ROSE)) {
+			cir.setReturnValue(UseAction.EAT);
 		}
 	}
 
-	@Inject(method = "finishUsingItem", at = @At("HEAD"), cancellable = true)
-	private void ssc_addon$anubisWitherRoseFinish(ItemStack stack, Level world, LivingEntity user,
+	@Inject(method = "finishUsing", at = @At("HEAD"), cancellable = true)
+	private void ssc_addon$anubisWitherRoseFinish(ItemStack stack, World world, LivingEntity user,
 			CallbackInfoReturnable<ItemStack> cir) {
-		if (!stack.is(Items.WITHER_ROSE)) return;
-		if (!(user instanceof ServerPlayer sp)) return;
+		if (!stack.isOf(Items.WITHER_ROSE)) return;
+		if (!(user instanceof ServerPlayerEntity sp)) return;
 		if (!FormUtils.isForm(sp, FormIdentifiers.ANUBIS_WOLF_SP)) return;
-		MobEffectInstance current = sp.getEffect(MobEffects.WITHER);
+		StatusEffectInstance current = sp.getStatusEffect(StatusEffects.WITHER);
 		int amplifier;
 		int duration;
 		if (current == null) {
@@ -80,9 +80,9 @@ public abstract class AnubisEatWitherRoseItemMixin {
 			amplifier = Math.min(current.getAmplifier() + 1, 2);
 			duration = 400;
 		}
-		sp.addEffect(new MobEffectInstance(MobEffects.WITHER, duration, amplifier));
-		if (!sp.getAbilities().instabuild) {
-			stack.shrink(1);
+		sp.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, duration, amplifier));
+		if (!sp.getAbilities().creativeMode) {
+			stack.decrement(1);
 		}
 		cir.setReturnValue(stack);
 	}

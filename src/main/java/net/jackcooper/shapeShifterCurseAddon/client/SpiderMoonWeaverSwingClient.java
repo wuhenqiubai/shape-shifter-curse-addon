@@ -10,6 +10,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.Vec3d;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.client.SscAddonKeybindings;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -106,15 +107,15 @@ public final class SpiderMoonWeaverSwingClient {
 	}
 
 	private static void sendPress() {
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_PRESS,
-				new PacketByteBuf(Unpooled.buffer()));
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_PRESS),
+				new PacketByteBuf(Unpooled.buffer())));
 	}
 
 	private static void sendSync(double ropeLen, int reel) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeDouble(ropeLen);
 		buf.writeVarInt(reel);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_SYNC, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_SYNC), buf));
 	}
 
 	/** 收到服务端 S2C 状态同步：更新镜像。 */

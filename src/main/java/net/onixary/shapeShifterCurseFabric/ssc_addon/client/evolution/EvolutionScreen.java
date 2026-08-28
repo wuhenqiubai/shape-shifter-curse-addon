@@ -3,16 +3,16 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.evolution;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionNode;
@@ -44,7 +44,7 @@ import java.util.List;
 public class EvolutionScreen extends Screen {
 
     @Override
-    public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
         // No blur — book texture serves as the background
     }
 
@@ -112,11 +112,11 @@ public class EvolutionScreen extends Screen {
      * 解析当前加点界面标题：随玩家所处进化路线动态显示（如「进化使魔」/「进化美西螈」）；
      * 找不到路线时回退到通用兜底标题 evolution.my_addon.screen.title。
      */
-    private static Component resolveTitle() {
+    private static Text resolveTitle() {
         EvolutionRoute r = resolveRoute();
         return (r != null && r.displayNameKey != null && !r.displayNameKey.isEmpty())
-                ? Component.translatable(r.displayNameKey)
-                : Component.translatable("evolution.my_addon.screen.title");
+                ? Text.translatable(r.displayNameKey)
+                : Text.translatable("evolution.my_addon.screen.title");
     }
 
     /**
@@ -125,7 +125,7 @@ public class EvolutionScreen extends Screen {
      * 必须是静态方法（供 {@code super()} 调用链使用）。
      */
     private static EvolutionRoute resolveRoute() {
-        Player p = Minecraft.getInstance().player;
+        PlayerEntity p = MinecraftClient.getInstance().player;
         EvolutionComponent comp = (p == null) ? null : RegEvolutionComponent.EVOLUTION.get(p);
         String rid = (comp == null) ? null : comp.getRoute();
         if (rid != null && !rid.isEmpty()) {
@@ -133,12 +133,12 @@ public class EvolutionScreen extends Screen {
         }
         net.onixary.shapeShifterCurseFabric.player_form.IForm f =
                 (p == null) ? null : net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent.PLAYER_FORM.get(p).nowForm;
-        ResourceLocation fid = (f == null) ? null : f.getFormID();
+        Identifier fid = (f == null) ? null : f.getFormID();
         return EvolutionRegistry.INSTANCE.getRouteByStartForm(fid);
     }
 
     private EvolutionComponent getComp() {
-        Player p = Minecraft.getInstance().player;
+        PlayerEntity p = MinecraftClient.getInstance().player;
         return p == null ? null : RegEvolutionComponent.EVOLUTION.get(p);
     }
 
@@ -295,7 +295,7 @@ public class EvolutionScreen extends Screen {
     // ---------------- 渲染主流程 ----------------
 
     @Override
-    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         updateTreeRect();
         updateBtn();
 
@@ -351,8 +351,8 @@ public class EvolutionScreen extends Screen {
 
     /** scissors：逻辑坐标 → framebuffer 物理坐标（左下原点翻转）。 */
     private void enableScissor(int x1, int y1, int x2, int y2) {
-        double gs = Minecraft.getInstance().getWindow().getGuiScale();
-        int ph = Minecraft.getInstance().getWindow().getScreenHeight();
+        double gs = MinecraftClient.getInstance().getWindow().getScaleFactor();
+        int ph = MinecraftClient.getInstance().getWindow().getHeight();
         int px1 = (int) Math.floor(x1 * gs);
         int px2 = (int) Math.ceil(x2 * gs);
         int pbottom = (int) Math.floor(y1 * gs);
@@ -365,7 +365,7 @@ public class EvolutionScreen extends Screen {
     }
 
     /** 绘制矩形边框（4 条 fill）。 */
-    private void drawPanelBorder(GuiGraphics ctx, int x, int y, int w, int h, int color) {
+    private void drawPanelBorder(DrawContext ctx, int x, int y, int w, int h, int color) {
         ctx.fill(x, y, x + w, y + 1, color);
         ctx.fill(x, y + h - 1, x + w, y + h, color);
         ctx.fill(x, y, x + 1, y + h, color);
@@ -374,7 +374,7 @@ public class EvolutionScreen extends Screen {
 
     // ---------------- 连接线（不伸入节点框内） ----------------
 
-    private void drawConnections(GuiGraphics ctx, EvolutionComponent comp) {
+    private void drawConnections(DrawContext ctx, EvolutionComponent comp) {
         if (comp == null) return;
         for (EvolutionNode node : nodes()) {
             for (String pid : node.prereqs) {
@@ -391,7 +391,7 @@ public class EvolutionScreen extends Screen {
      * 绘制前置 pre → node 的折线连接。折线在两端节点边缘外停止（不进入节点框）。
      * 形状：从 pre 右边出发 → 水平到中点 → 垂直到 node 行 → 水平到 node 左边。
      */
-    private void drawConnection(GuiGraphics ctx, EvolutionNode pre, EvolutionNode node, boolean active, boolean staged) {
+    private void drawConnection(DrawContext ctx, EvolutionNode pre, EvolutionNode node, boolean active, boolean staged) {
         double half = hn();
         double px = ncx(pre), py = ncy(pre);
         double nx = ncx(node), ny = ncy(node);
@@ -419,7 +419,7 @@ public class EvolutionScreen extends Screen {
         drawLineH(ctx, midX, ex, ey, color, glow);
     }
 
-    private void drawLineH(GuiGraphics ctx, double xa, double xb, double y, int color, int glow) {
+    private void drawLineH(DrawContext ctx, double xa, double xb, double y, int color, int glow) {
         int x1 = (int) Math.round(Math.min(xa, xb));
         int x2 = (int) Math.round(Math.max(xa, xb));
         int yi = (int) Math.round(y);
@@ -429,7 +429,7 @@ public class EvolutionScreen extends Screen {
         ctx.fill(x1, yi - 1, x2, yi + 2, color);
     }
 
-    private void drawLineV(GuiGraphics ctx, double x, double ya, double yb, int color, int glow) {
+    private void drawLineV(DrawContext ctx, double x, double ya, double yb, int color, int glow) {
         int xi = (int) Math.round(x);
         int y1 = (int) Math.round(Math.min(ya, yb));
         int y2 = (int) Math.round(Math.max(ya, yb));
@@ -441,7 +441,7 @@ public class EvolutionScreen extends Screen {
 
     // ---------------- 节点 ----------------
 
-    private void drawNode(GuiGraphics ctx, EvolutionNode node, boolean unlocked, boolean staged, boolean canUn) {
+    private void drawNode(DrawContext ctx, EvolutionNode node, boolean unlocked, boolean staged, boolean canUn) {
         double cx = ncx(node), cy = ncy(node), half = hn();
         int left = (int) Math.round(cx - half);
         int top = (int) Math.round(cy - half);
@@ -483,32 +483,32 @@ public class EvolutionScreen extends Screen {
         // 物品图标（按 zoom 缩放绘制）
         double iconScale = Math.max(0.5, Math.min(zoom, 1.5));
         int iconDraw = 16;
-        ctx.pose().pushPose();
-        ctx.pose().translate(cx - iconDraw * iconScale / 2.0, cy - iconDraw * iconScale / 2.0, 0);
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(cx - iconDraw * iconScale / 2.0, cy - iconDraw * iconScale / 2.0, 0);
         if (Math.abs(iconScale - 1.0) > 0.01) {
-            ctx.pose().scale((float) iconScale, (float) iconScale, 1.0f);
+            ctx.getMatrices().scale((float) iconScale, (float) iconScale, 1.0f);
         }
-        ctx.renderItem(new ItemStack(node.icon), 0, 0);
-        ctx.pose().popPose();
+        ctx.drawItem(new ItemStack(node.icon), 0, 0);
+        ctx.getMatrices().pop();
 
         // 节点名称（下方，居中）
-        Component name = Component.translatable(node.nameKey);
+        Text name = Text.translatable(node.nameKey);
         int nameColor = unlocked ? 0xFFFFD700 : (staged ? 0xFFFFB060
                 : (canUn ? 0xFF99FF99 : (node.autoUnlock ? 0xFF66E0E0 : 0xFF888888)));
-        int nameW = this.font.width(name);
-        ctx.drawString(this.font, name,
+        int nameW = this.textRenderer.getWidth(name);
+        ctx.drawTextWithShadow(this.textRenderer, name,
                 (int) Math.round(cx - nameW / 2.0), top + size + 3, nameColor);
     }
 
     /** 虚线边框：用间断 fill 模拟。 */
-    private void drawDashedBorder(GuiGraphics ctx, int x, int y, int w, int h, int color) {
+    private void drawDashedBorder(DrawContext ctx, int x, int y, int w, int h, int color) {
         dashedH(ctx, x, y, w, color);
         dashedH(ctx, x, y + h - 1, w, color);
         dashedV(ctx, x, y, h, color);
         dashedV(ctx, x + w - 1, y, h, color);
     }
 
-    private void dashedH(GuiGraphics ctx, int x, int y, int w, int color) {
+    private void dashedH(DrawContext ctx, int x, int y, int w, int color) {
         int p = x;
         while (p < x + w) {
             int seg = Math.min(DASH, x + w - p);
@@ -517,7 +517,7 @@ public class EvolutionScreen extends Screen {
         }
     }
 
-    private void dashedV(GuiGraphics ctx, int x, int y, int h, int color) {
+    private void dashedV(DrawContext ctx, int x, int y, int h, int color) {
         int p = y;
         while (p < y + h) {
             int seg = Math.min(DASH, y + h - p);
@@ -535,20 +535,20 @@ public class EvolutionScreen extends Screen {
 
     // ---------------- 顶部 / 底部信息面板 ----------------
 
-    private void drawTopBar(GuiGraphics ctx, EvolutionComponent comp) {
+    private void drawTopBar(DrawContext ctx, EvolutionComponent comp) {
         ctx.fill(0, 0, this.width, TOP_BAR, PANEL_BG);
         drawPanelBorder(ctx, 0, 0, this.width, TOP_BAR, GOLD_BOR);
         // 左：标题
-        ctx.drawString(this.font, this.title, 12, 8, TITLE_GOLD);
-        ctx.drawString(this.font,
-                Component.translatable("evolution.my_addon.screen.route_active").withStyle(ChatFormatting.DARK_GRAY),
+        ctx.drawTextWithShadow(this.textRenderer, this.title, 12, 8, TITLE_GOLD);
+        ctx.drawTextWithShadow(this.textRenderer,
+                Text.translatable("evolution.my_addon.screen.route_active").formatted(Formatting.DARK_GRAY),
                 12, 26, TXT_GRAY);
 
         if (comp != null) {
             int level = comp.getEvoLevel();
-            Component levelText = Component.translatable("evolution.my_addon.screen.level", level);
-            int lw = this.font.width(levelText);
-            ctx.drawString(this.font, levelText, this.width - 12 - lw, 8, TXT_GOLD);
+            Text levelText = Text.translatable("evolution.my_addon.screen.level", level);
+            int lw = this.textRenderer.getWidth(levelText);
+            ctx.drawTextWithShadow(this.textRenderer, levelText, this.width - 12 - lw, 8, TXT_GOLD);
 
             if (comp.isOnSscaRoute()) {
                 // 进化经验到下一级的进度条（等级下方，右对齐窄条）
@@ -567,18 +567,18 @@ public class EvolutionScreen extends Screen {
                 ctx.fill(ebX, ebY, ebX + ebW, ebY + ebH, 0xFF201810);
                 ctx.fill(ebX, ebY, ebX + (int) (ebW * eProg), ebY + ebH, 0xFF55C964);
 
-                Component pointsText = Component.translatable("evolution.my_addon.screen.points", simPoints(comp));
-                int pw = this.font.width(pointsText);
-                ctx.drawString(this.font, pointsText, this.width - 12 - pw, 30, TITLE_GOLD);
+                Text pointsText = Text.translatable("evolution.my_addon.screen.points", simPoints(comp));
+                int pw = this.textRenderer.getWidth(pointsText);
+                ctx.drawTextWithShadow(this.textRenderer, pointsText, this.width - 12 - pw, 30, TITLE_GOLD);
             } else {
-                Component nr = Component.translatable("evolution.my_addon.screen.no_route");
-                int nw = this.font.width(nr);
-                ctx.drawString(this.font, nr, this.width - 12 - nw, 26, TXT_GRAY);
+                Text nr = Text.translatable("evolution.my_addon.screen.no_route");
+                int nw = this.textRenderer.getWidth(nr);
+                ctx.drawTextWithShadow(this.textRenderer, nr, this.width - 12 - nw, 26, TXT_GRAY);
             }
         }
     }
 
-    private void drawBottomBar(GuiGraphics ctx, EvolutionComponent comp) {
+    private void drawBottomBar(DrawContext ctx, EvolutionComponent comp) {
         int y0 = this.height - BOT_BAR;
         ctx.fill(0, y0, this.width, this.height, PANEL_BG);
         drawPanelBorder(ctx, 0, y0, this.width, BOT_BAR, GOLD_BOR);
@@ -589,8 +589,8 @@ public class EvolutionScreen extends Screen {
                 if (comp.isUnlocked(n.id)) unlocked++;
             }
             int total = nodes().size();
-            Component prog = Component.translatable("evolution.my_addon.screen.progress", unlocked, total);
-            ctx.drawString(this.font, prog, 12, y0 + 13, TXT_GOLD);
+            Text prog = Text.translatable("evolution.my_addon.screen.progress", unlocked, total);
+            ctx.drawTextWithShadow(this.textRenderer, prog, 12, y0 + 13, TXT_GOLD);
 
             int level = comp.getEvoLevel();
             EvolutionRoute br = route();
@@ -600,10 +600,10 @@ public class EvolutionScreen extends Screen {
                     if (!comp.isUnlocked(bn)) { allBranch = false; break; }
                 }
             }
-            Component right;
+            Text right;
             int rightColor;
             if (allBranch) {
-                right = Component.translatable("evolution.my_addon.screen.branch_ready");
+                right = Text.translatable("evolution.my_addon.screen.branch_ready");
                 rightColor = TITLE_GOLD;
             } else {
                 int nextMs = -1;
@@ -611,44 +611,44 @@ public class EvolutionScreen extends Screen {
                     if (level < m) { nextMs = m; break; }
                 }
                 if (nextMs < 0) {
-                    right = Component.translatable("evolution.my_addon.screen.no_milestone");
+                    right = Text.translatable("evolution.my_addon.screen.no_milestone");
                     rightColor = TXT_GRAY;
                 } else {
-                    right = Component.translatable("evolution.my_addon.screen.next_milestone", nextMs);
+                    right = Text.translatable("evolution.my_addon.screen.next_milestone", nextMs);
                     rightColor = TXT_GOLD;
                 }
             }
-            int rw = this.font.width(right);
-            ctx.drawString(this.font, right, this.width - 12 - rw, y0 + 13, rightColor);
+            int rw = this.textRenderer.getWidth(right);
+            ctx.drawTextWithShadow(this.textRenderer, right, this.width - 12 - rw, y0 + 13, rightColor);
         }
     }
 
     /** 树区域左下角操作提示。 */
-    private void drawHints(GuiGraphics ctx) {
+    private void drawHints(DrawContext ctx) {
         int x = treeLeft + 6;
         int y = treeTop + treeH - 12;
-        ctx.drawString(this.font,
-                Component.translatable("evolution.my_addon.screen.hint_pan"), x, y, TXT_GRAY);
+        ctx.drawTextWithShadow(this.textRenderer,
+                Text.translatable("evolution.my_addon.screen.hint_pan"), x, y, TXT_GRAY);
         if (!pending.isEmpty()) {
-            ctx.drawString(this.font,
-                    Component.translatable("evolution.my_addon.screen.pending", pending.size(), pendingCost()),
+            ctx.drawTextWithShadow(this.textRenderer,
+                    Text.translatable("evolution.my_addon.screen.pending", pending.size(), pendingCost()),
                     x, y - 12, N_PEND_BOR);
         }
     }
 
     // ---------------- 返回按钮 ----------------
 
-    private void drawBackButton(GuiGraphics ctx, boolean hovered) {
+    private void drawBackButton(DrawContext ctx, boolean hovered) {
         int x = btnRect[0], y = btnRect[1], w = btnRect[2], h = btnRect[3];
         ctx.fill(x, y, x + w, y + h, hovered ? BBGH : BBG);
         drawPanelBorder(ctx, x, y, w, h, BBOR);
-        Component t = Component.translatable("gui.back");
-        int tw = this.font.width(t);
-        ctx.drawString(this.font, t, x + (w - tw) / 2, y + (h - 8) / 2, BTXT);
+        Text t = Text.translatable("gui.back");
+        int tw = this.textRenderer.getWidth(t);
+        ctx.drawTextWithShadow(this.textRenderer, t, x + (w - tw) / 2, y + (h - 8) / 2, BTXT);
     }
 
     /** 确认加点按钮：仅有待确认节点时有效，启用时金绿脉冲发光。 */
-    private void drawConfirmButton(GuiGraphics ctx, boolean hovered, boolean enabled) {
+    private void drawConfirmButton(DrawContext ctx, boolean hovered, boolean enabled) {
         int x = confBtnRect[0], y = confBtnRect[1], w = confBtnRect[2], h = confBtnRect[3];
         ctx.fill(x, y, x + w, y + h, enabled && hovered ? 0xD01A3A12 : (enabled ? CONF_BG : BBG));
         if (enabled) {
@@ -656,14 +656,14 @@ public class EvolutionScreen extends Screen {
             ctx.fill(x - 2, y - 2, x + w + 2, y + h + 2, (CONF_BOR & 0x00FFFFFF) | (pulse << 24));
         }
         drawPanelBorder(ctx, x, y, w, h, enabled ? CONF_BOR : N_LK_BOR);
-        Component t = Component.translatable("evolution.my_addon.screen.confirm");
-        int tw = this.font.width(t);
-        ctx.drawString(this.font, t, x + (w - tw) / 2, y + (h - 8) / 2,
+        Text t = Text.translatable("evolution.my_addon.screen.confirm");
+        int tw = this.textRenderer.getWidth(t);
+        ctx.drawTextWithShadow(this.textRenderer, t, x + (w - tw) / 2, y + (h - 8) / 2,
                 enabled ? CONF_TXT : CONF_DIS_TXT);
     }
 
     /** 进化树区域背景横扫流光（动态装饰，不影响布局）。 */
-    private void drawAmbientGlow(GuiGraphics ctx) {
+    private void drawAmbientGlow(DrawContext ctx) {
         long now = System.currentTimeMillis();
         double sweep = (now % 5200L) / 5200.0;
         int gx = treeLeft + (int) (sweep * treeW);
@@ -675,45 +675,45 @@ public class EvolutionScreen extends Screen {
 
     // ---------------- Tooltip ----------------
 
-    private void drawNodeTooltip(GuiGraphics ctx, EvolutionNode node, int mouseX, int mouseY, EvolutionComponent comp) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable(node.nameKey).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
-        lines.add(Component.literal(" "));
-        lines.add(Component.translatable(node.descKey).withStyle(ChatFormatting.GRAY));
-        lines.add(Component.literal(" "));
+    private void drawNodeTooltip(DrawContext ctx, EvolutionNode node, int mouseX, int mouseY, EvolutionComponent comp) {
+        List<Text> lines = new ArrayList<>();
+        lines.add(Text.translatable(node.nameKey).formatted(Formatting.GOLD, Formatting.BOLD));
+        lines.add(Text.literal(" "));
+        lines.add(Text.translatable(node.descKey).formatted(Formatting.GRAY));
+        lines.add(Text.literal(" "));
 
         if (comp.isUnlocked(node.id)) {
-            lines.add(Component.translatable("evolution.my_addon.screen.state.unlocked").withStyle(ChatFormatting.GREEN));
+            lines.add(Text.translatable("evolution.my_addon.screen.state.unlocked").formatted(Formatting.GREEN));
         } else if (pending.contains(node.id)) {
-            lines.add(Component.translatable("evolution.my_addon.screen.cost", node.cost).withStyle(ChatFormatting.YELLOW));
-            lines.add(Component.translatable("evolution.my_addon.screen.state.staged").withStyle(ChatFormatting.GOLD));
+            lines.add(Text.translatable("evolution.my_addon.screen.cost", node.cost).formatted(Formatting.YELLOW));
+            lines.add(Text.translatable("evolution.my_addon.screen.state.staged").formatted(Formatting.GOLD));
         } else if (node.autoUnlock) {
-            lines.add(Component.translatable("evolution.my_addon.screen.state.auto").withStyle(ChatFormatting.AQUA));
+            lines.add(Text.translatable("evolution.my_addon.screen.state.auto").formatted(Formatting.AQUA));
         } else {
-            lines.add(Component.translatable("evolution.my_addon.screen.cost", node.cost).withStyle(ChatFormatting.YELLOW));
+            lines.add(Text.translatable("evolution.my_addon.screen.cost", node.cost).formatted(Formatting.YELLOW));
             if (!comp.isOnSscaRoute()) {
-                lines.add(Component.translatable("evolution.my_addon.screen.state.need_route").withStyle(ChatFormatting.RED));
+                lines.add(Text.translatable("evolution.my_addon.screen.state.need_route").formatted(Formatting.RED));
             } else if (!preMetAll(comp, node)) {
                 List<String> names = new ArrayList<>();
                 for (String pid : node.prereqs) {
                     if (!comp.isUnlocked(pid)) {
                         EvolutionNode pn = node(pid);
-                        if (pn != null) names.add(Component.translatable(pn.nameKey).getString());
+                        if (pn != null) names.add(Text.translatable(pn.nameKey).getString());
                     }
                 }
                 if (!names.isEmpty()) {
-                    lines.add(Component.translatable("evolution.my_addon.screen.prereqs_need", String.join(" / ", names))
-                            .withStyle(ChatFormatting.RED));
+                    lines.add(Text.translatable("evolution.my_addon.screen.prereqs_need", String.join(" / ", names))
+                            .formatted(Formatting.RED));
                 } else {
-                    lines.add(Component.translatable("evolution.my_addon.screen.state.locked").withStyle(ChatFormatting.RED));
+                    lines.add(Text.translatable("evolution.my_addon.screen.state.locked").formatted(Formatting.RED));
                 }
             } else if (comp.getPoints() < node.cost) {
-                lines.add(Component.translatable("evolution.my_addon.screen.state.no_points").withStyle(ChatFormatting.RED));
+                lines.add(Text.translatable("evolution.my_addon.screen.state.no_points").formatted(Formatting.RED));
             } else {
-                lines.add(Component.translatable("evolution.my_addon.screen.state.click_unlock").withStyle(ChatFormatting.GREEN));
+                lines.add(Text.translatable("evolution.my_addon.screen.state.click_unlock").formatted(Formatting.GREEN));
             }
         }
-        ctx.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+        ctx.drawTooltip(this.textRenderer, lines, mouseX, mouseY);
     }
 
     // ---------------- 鼠标 / 滚轮事件 ----------------
@@ -722,7 +722,7 @@ public class EvolutionScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
             if (inBtn(mouseX, mouseY)) {
-                this.onClose();
+                this.close();
                 return true;
             }
             if (!pending.isEmpty() && inConfBtn(mouseX, mouseY)) {
@@ -793,40 +793,40 @@ public class EvolutionScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
-    private static void sendString(ResourceLocation packet, String value) {
-        FriendlyByteBuf buf = PacketByteBufs.create();
-        buf.writeUtf(value);
+    private static void sendString(Identifier packet, String value) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(value);
         ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), buf));
     }
 
     /** 提交全部待确认节点：一次性批量发送（服务端限频一次、按序逐个解锁），播放获得经验“叮”声，再清空暂存。 */
     private void commitPending() {
         if (pending.isEmpty()) return;
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        PacketByteBuf buf = PacketByteBufs.create();
         buf.writeInt(pending.size());
         for (String id : pending) {
-            buf.writeUtf(id);
+            buf.writeString(id);
         }
         ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_EVO_UNLOCK_BATCH), buf));
         pending.clear();
-        Player p = Minecraft.getInstance().player;
+        PlayerEntity p = MinecraftClient.getInstance().player;
         if (p != null) {
-            p.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0F, 1.0F);
+            p.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0F, 1.0F);
         }
     }
 
     private void playClick(float pitch) {
-        Player p = Minecraft.getInstance().player;
+        PlayerEntity p = MinecraftClient.getInstance().player;
         if (p != null) p.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.4F, pitch);
     }
 
     @Override
-    public void onClose() {
-        Minecraft.getInstance().setScreen(this.parent);
+    public void close() {
+        MinecraftClient.getInstance().setScreen(this.parent);
     }
 
     @Override
-    public boolean isPauseScreen() {
+    public boolean shouldPause() {
         return false;
     }
 }

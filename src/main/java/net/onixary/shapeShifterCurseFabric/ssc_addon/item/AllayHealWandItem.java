@@ -9,27 +9,27 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Predicate;
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.world.World;
 
 /**
  * SP悦灵单体治疗物品
@@ -43,10 +43,10 @@ public class AllayHealWandItem extends Item {
 	public static final double MAX_RANGE = 20.0;
 	public static final int MANA_COST = 12;
 
-	private static final ResourceLocation MANA_RESOURCE_ID = ResourceLocation.fromNamespaceAndPath("my_addon", "form_allay_sp_mana_resource");
-	private static final ResourceLocation MANA_COOLDOWN_ID = ResourceLocation.fromNamespaceAndPath("my_addon", "form_allay_sp_mana_cooldown_resource");
+	private static final Identifier MANA_RESOURCE_ID = Identifier.of("my_addon", "form_allay_sp_mana_resource");
+	private static final Identifier MANA_COOLDOWN_ID = Identifier.of("my_addon", "form_allay_sp_mana_cooldown_resource");
 
-	public AllayHealWandItem(Properties settings) {
+	public AllayHealWandItem(net.minecraft.item.Item.Settings settings) {
 		super(settings);
 	}
 
@@ -54,23 +54,23 @@ public class AllayHealWandItem extends Item {
 	 * Get the entity the player is looking at within MAX_RANGE
 	 */
 	@Nullable
-	public static LivingEntity getTargetedEntity(Player player) {
-		Vec3 eyePos = player.getEyePosition();
-		Vec3 lookDir = player.getViewVector(1.0f);
-		Vec3 endPos = eyePos.add(lookDir.scale(MAX_RANGE));
+	public static LivingEntity getTargetedEntity(PlayerEntity player) {
+		Vec3d eyePos = player.getEyePos();
+		Vec3d lookDir = player.getRotationVec(1.0f);
+		Vec3d endPos = eyePos.add(lookDir.multiply(MAX_RANGE));
 
 		// Get all entities in the range
-		AABB searchBox = player.getBoundingBox().inflate(MAX_RANGE);
-		Predicate<Entity> predicate = entity -> !entity.isSpectator() && entity.isPickable() && entity instanceof LivingEntity && entity != player;
+		Box searchBox = player.getBoundingBox().expand(MAX_RANGE);
+		Predicate<Entity> predicate = entity -> !entity.isSpectator() && entity.canHit() && entity instanceof LivingEntity && entity != player;
 
 		double closestDist = MAX_RANGE * MAX_RANGE;
 		LivingEntity closestEntity = null;
 
-		for (Entity entity : player.level().getEntities(player, searchBox, predicate)) {
-			AABB entityBox = entity.getBoundingBox().inflate(entity.getPickRadius());
-			var optional = entityBox.clip(eyePos, endPos);
+		for (Entity entity : player.getWorld().getOtherEntities(player, searchBox, predicate)) {
+			Box entityBox = entity.getBoundingBox().expand(entity.getTargetingMargin());
+			var optional = entityBox.raycast(eyePos, endPos);
 			if (optional.isPresent()) {
-				double dist = eyePos.distanceToSqr(optional.get());
+				double dist = eyePos.squaredDistanceTo(optional.get());
 				if (dist < closestDist) {
 					closestDist = dist;
 					closestEntity = (LivingEntity) entity;
@@ -84,14 +84,14 @@ public class AllayHealWandItem extends Item {
 	/**
 	 * Check if there's a clear line of sight between player and target (no blocks in the way)
 	 */
-	public static boolean hasLineOfSight(Player player, LivingEntity target) {
-		Vec3 eyePos = player.getEyePosition();
-		Vec3 targetPos = target.getEyePosition();
+	public static boolean hasLineOfSight(PlayerEntity player, LivingEntity target) {
+		Vec3d eyePos = player.getEyePos();
+		Vec3d targetPos = target.getEyePos();
 
-		HitResult blockHit = player.level().clip(new ClipContext(
+		HitResult blockHit = player.getWorld().raycast(new RaycastContext(
 				eyePos, targetPos,
-				ClipContext.Block.COLLIDER,
-				ClipContext.Fluid.NONE,
+				RaycastContext.ShapeType.COLLIDER,
+				RaycastContext.FluidHandling.NONE,
 				player
 		));
 
@@ -100,13 +100,13 @@ public class AllayHealWandItem extends Item {
 			return true;
 		}
 
-		double blockDist = eyePos.distanceToSqr(blockHit.getLocation());
-		double targetDist = eyePos.distanceToSqr(targetPos);
+		double blockDist = eyePos.squaredDistanceTo(blockHit.getPos());
+		double targetDist = eyePos.squaredDistanceTo(targetPos);
 
 		return blockDist >= targetDist;
 	}
 
-	private static int getManaValue(ServerPlayer player) {
+	private static int getManaValue(ServerPlayerEntity player) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(MANA_RESOURCE_ID);
@@ -122,7 +122,7 @@ public class AllayHealWandItem extends Item {
 
 	// ===== Mana resource read/write =====
 
-	private static void setManaValue(ServerPlayer player, int value) {
+	private static void setManaValue(ServerPlayerEntity player, int value) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(MANA_RESOURCE_ID);
@@ -137,7 +137,7 @@ public class AllayHealWandItem extends Item {
 		}
 	}
 
-	private static void triggerManaCooldown(ServerPlayer player) {
+	private static void triggerManaCooldown(ServerPlayerEntity player) {
 		try {
 			PowerHolderComponent powerHolder = PowerHolderComponent.KEY.get(player);
 			PowerType<?> powerType = PowerTypeRegistry.get(MANA_COOLDOWN_ID);
@@ -153,10 +153,10 @@ public class AllayHealWandItem extends Item {
 	}
 
 	@Override
-	public InteractionResultHolder<ItemStack> use(Level world, Player user, InteractionHand hand) {
-		ItemStack stack = user.getItemInHand(hand);
+	public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
+		ItemStack stack = user.getStackInHand(hand);
 
-		if (!world.isClientSide && user instanceof ServerPlayer serverPlayer) {
+		if (!world.isClient && user instanceof ServerPlayerEntity serverPlayer) {
 			// Find the targeted entity
 			LivingEntity target = getTargetedEntity(serverPlayer);
 
@@ -165,8 +165,8 @@ public class AllayHealWandItem extends Item {
 				// - 开关关闭：仅作用于非怪物/非敌对生物
 				// - 开关开启：白名单空时仅治疗玩家/驯服宠物/owner-tag；非空时仅治疗白名单内对象
 				if (!net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils.isBuffTarget(serverPlayer, target)) {
-					serverPlayer.displayClientMessage(Component.translatable("item.ssc_addon.allay_heal_wand.no_target").withStyle(ChatFormatting.RED), true);
-					return InteractionResultHolder.fail(stack);
+					serverPlayer.sendMessage(Text.translatable("item.ssc_addon.allay_heal_wand.no_target").formatted(Formatting.RED), true);
+					return TypedActionResult.fail(stack);
 				}
 				// Check line of sight (no block obstruction)
 				boolean hasLineOfSight = hasLineOfSight(serverPlayer, target);
@@ -175,8 +175,8 @@ public class AllayHealWandItem extends Item {
 					// Check mana
 					int currentMana = getManaValue(serverPlayer);
 					if (currentMana < MANA_COST) {
-						serverPlayer.displayClientMessage(Component.translatable("item.ssc_addon.allay_heal_wand.no_mana").withStyle(ChatFormatting.RED), true);
-						return InteractionResultHolder.fail(stack);
+						serverPlayer.sendMessage(Text.translatable("item.ssc_addon.allay_heal_wand.no_mana").formatted(Formatting.RED), true);
+						return TypedActionResult.fail(stack);
 					}
 
 					// Consume mana
@@ -189,38 +189,38 @@ public class AllayHealWandItem extends Item {
 					target.heal(HEAL_AMOUNT);
 
 					// Spawn heal particles
-					ServerLevel serverWorld = (ServerLevel) world;
+					ServerWorld serverWorld = (ServerWorld) world;
 					net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld, ParticleTypes.HEART,
-							target.getX(), target.getY() + target.getBbHeight() + 0.5, target.getZ(),
+							target.getX(), target.getY() + target.getHeight() + 0.5, target.getZ(),
 							5, 0.3, 0.3, 0.3, 0.01);
 
 					// Play heal sound
 					// User hears private sound
-					serverPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
+					serverPlayer.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
 					// Target and nearby players hear positional sound (exclude user to avoid double sound)
 					world.playSound(serverPlayer, target.getX(), target.getY(), target.getZ(),
-							SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 1.0f, 1.5f);
+							SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 1.0f, 1.5f);
 
 					// Set cooldown
-					user.getCooldowns().addCooldown(this, COOLDOWN_TICKS);
+					user.getItemCooldownManager().set(this, COOLDOWN_TICKS);
 
-					return InteractionResultHolder.success(stack);
+					return TypedActionResult.success(stack);
 				} else {
 					// Target is behind a wall
-					serverPlayer.displayClientMessage(Component.translatable("item.ssc_addon.allay_heal_wand.blocked").withStyle(ChatFormatting.RED), true);
+					serverPlayer.sendMessage(Text.translatable("item.ssc_addon.allay_heal_wand.blocked").formatted(Formatting.RED), true);
 				}
 			} else {
-				serverPlayer.displayClientMessage(Component.translatable("item.ssc_addon.allay_heal_wand.no_target").withStyle(ChatFormatting.GRAY), true);
+				serverPlayer.sendMessage(Text.translatable("item.ssc_addon.allay_heal_wand.no_target").formatted(Formatting.GRAY), true);
 			}
 		}
 
-		return InteractionResultHolder.pass(stack);
+		return TypedActionResult.pass(stack);
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
-		tooltip.add(Component.translatable("item.ssc_addon.allay_heal_wand.tooltip").withStyle(ChatFormatting.AQUA));
-		tooltip.add(Component.translatable("item.ssc_addon.allay_heal_wand.tooltip.exclusive").withStyle(ChatFormatting.LIGHT_PURPLE));
-		super.appendHoverText(stack, context, tooltip, type);
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+		tooltip.add(Text.translatable("item.ssc_addon.allay_heal_wand.tooltip").formatted(Formatting.AQUA));
+		tooltip.add(Text.translatable("item.ssc_addon.allay_heal_wand.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.render;
 
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
@@ -45,7 +45,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(targets = "net.onixary.shapeShifterCurseFabric.custom_ui.FormColorSelectMenu", priority = 1100)
 public abstract class FormColorSelectMenuMixin extends Screen {
 
-    protected FormColorSelectMenuMixin(Component title) {
+    protected FormColorSelectMenuMixin(Text title) {
         super(title);
     }
 

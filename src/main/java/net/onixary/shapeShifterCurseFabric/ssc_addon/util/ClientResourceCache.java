@@ -4,8 +4,8 @@ import io.github.apace100.apoli.component.PowerHolderComponent;
 import io.github.apace100.apoli.power.VariableIntPower;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Identifier;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,15 +18,15 @@ import java.util.Map;
  */
 @Environment(EnvType.CLIENT)
 public final class ClientResourceCache {
-    private static Player cachedPlayer;
+    private static PlayerEntity cachedPlayer;
     private static long cachedTick = Long.MIN_VALUE;
-    private static final Map<ResourceLocation, int[]> CACHE = new HashMap<>();
+    private static final Map<Identifier, int[]> CACHE = new HashMap<>();
     private static final int[] ABSENT = {0, 1};
 
     private ClientResourceCache() {
     }
 
-    private static void rebuild(Player player, long tick) {
+    private static void rebuild(PlayerEntity player, long tick) {
         cachedPlayer = player;
         cachedTick = tick;
         CACHE.clear();
@@ -39,27 +39,27 @@ public final class ClientResourceCache {
         }
     }
 
-    private static void ensureFresh(Player player) {
-        long tick = player.level() != null ? player.level().getGameTime() : cachedTick;
+    private static void ensureFresh(PlayerEntity player) {
+        long tick = player.getWorld() != null ? player.getWorld().getTime() : cachedTick;
         if (player != cachedPlayer || tick != cachedTick) {
             rebuild(player, tick);
         }
     }
 
     /** 该玩家是否持有指定 VariableIntPower（走每 tick 缓存）。 */
-    public static boolean has(Player player, ResourceLocation resourceId) {
+    public static boolean has(PlayerEntity player, Identifier resourceId) {
         ensureFresh(player);
         return CACHE.containsKey(resourceId);
     }
 
     /** 取 {@code [value, max]}；不存在返回 {@code {0, 1}}（沿用旧语义）。 */
-    public static int[] getValueAndMax(Player player, ResourceLocation resourceId) {
+    public static int[] getValueAndMax(PlayerEntity player, Identifier resourceId) {
         ensureFresh(player);
         int[] v = CACHE.get(resourceId);
         return v != null ? v : ABSENT;
     }
 
-    public static int getValue(Player player, ResourceLocation resourceId) {
+    public static int getValue(PlayerEntity player, Identifier resourceId) {
         return getValueAndMax(player, resourceId)[0];
     }
 }

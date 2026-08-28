@@ -1,18 +1,18 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.Vex;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.raid.Raider;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.mob.HostileEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.mob.VexEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.raid.RaiderEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,8 +26,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Mixin(Vex.class)
-public abstract class FallenAllayVexMixin extends Mob {
+@Mixin(VexEntity.class)
+public abstract class FallenAllayVexMixin extends MobEntity {
 
 	// Persistent target lock (vex UUID -> target entity UUID)
 	@Unique
@@ -39,15 +39,15 @@ public abstract class FallenAllayVexMixin extends Mob {
 	@Unique
 	private static final ConcurrentHashMap<UUID, Integer> VEX_WANDER_TIMER = new ConcurrentHashMap<>();
 
-	protected FallenAllayVexMixin(EntityType<? extends Mob> entityType, Level world) {
+	protected FallenAllayVexMixin(EntityType<? extends MobEntity> entityType, World world) {
 		super(entityType, world);
 	}
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void ssc_addon$onVexTick(CallbackInfo ci) {
-		if (this.level().isClientSide()) return;
+		if (this.getWorld().isClient()) return;
 
-		Set<String> tags = this.getTags();
+		Set<String> tags = this.getCommandTags();
 		String ownerUuidStr = null;
 		boolean isFallenVex = false;
 
@@ -61,14 +61,14 @@ public abstract class FallenAllayVexMixin extends Mob {
 
 		if (!isFallenVex || ownerUuidStr == null) return;
 
-		ServerLevel serverWorld = (ServerLevel) this.level();
-		Player owner = serverWorld.getServer().getPlayerList().getPlayer(UUID.fromString(ownerUuidStr));
+		ServerWorld serverWorld = (ServerWorld) this.getWorld();
+		PlayerEntity owner = serverWorld.getServer().getPlayerManager().getPlayer(UUID.fromString(ownerUuidStr));
 
 		// On death: clean up all maps, start CD if last vex
-		if (this.isDeadOrDying() || this.getHealth() <= 0 || !this.isAlive()) {
-			VEX_TARGET.remove(this.getUUID());
-			VEX_WANDER_DEST.remove(this.getUUID());
-			VEX_WANDER_TIMER.remove(this.getUUID());
+		if (this.isDead() || this.getHealth() <= 0 || !this.isAlive()) {
+			VEX_TARGET.remove(this.getUuid());
+			VEX_WANDER_DEST.remove(this.getUuid());
+			VEX_WANDER_TIMER.remove(this.getUuid());
 			if (owner != null) {
 				applyCooldownIfLast(owner, ownerUuidStr, serverWorld);
 			}
@@ -86,7 +86,7 @@ public abstract class FallenAllayVexMixin extends Mob {
 		if (currentTarget == null) {
 			currentTarget = findBestTarget(owner, ownerUuidStr, serverWorld);
 			if (currentTarget != null) {
-				VEX_TARGET.put(this.getUUID(), currentTarget.getUUID());
+				VEX_TARGET.put(this.getUuid(), currentTarget.getUuid());
 			}
 		}
 
@@ -106,14 +106,14 @@ public abstract class FallenAllayVexMixin extends Mob {
 	 * If already beyond 10 blocks, fly back toward owner instead.
 	 */
 	@Unique
-	private void wanderNearOwner(Player owner) {
-		UUID id = this.getUUID();
-		double dist2ToOwner = this.distanceToSqr(owner);
+	private void wanderNearOwner(PlayerEntity owner) {
+		UUID id = this.getUuid();
+		double dist2ToOwner = this.squaredDistanceTo(owner);
 
 		// If outside the sphere, fly back toward owner
 		if (dist2ToOwner > 100.0) {
-			net.minecraft.world.phys.Vec3 toOwner = owner.position().add(0, 1.0, 0).subtract(this.position());
-			this.setDeltaMovement(toOwner.normalize().scale(Math.min(0.35, 0.1 + dist2ToOwner * 0.003)));
+			net.minecraft.util.math.Vec3d toOwner = owner.getPos().add(0, 1.0, 0).subtract(this.getPos());
+			this.setVelocity(toOwner.normalize().multiply(Math.min(0.35, 0.1 + dist2ToOwner * 0.003)));
 			VEX_WANDER_DEST.remove(id);
 			VEX_WANDER_TIMER.put(id, 0);
 			return;
@@ -125,7 +125,7 @@ public abstract class FallenAllayVexMixin extends Mob {
 
 		double[] dest = VEX_WANDER_DEST.get(id);
 		boolean needNew = dest == null || timer <= 0
-				|| this.distanceToSqr(dest[0], dest[1], dest[2]) < 1.0;
+				|| this.squaredDistanceTo(dest[0], dest[1], dest[2]) < 1.0;
 
 		if (needNew) {
 			// Pick a random point inside the 10-block sphere around owner
@@ -142,11 +142,11 @@ public abstract class FallenAllayVexMixin extends Mob {
 		}
 
 		// Fly toward the chosen wander point at casual speed
-		net.minecraft.world.phys.Vec3 delta = new net.minecraft.world.phys.Vec3(
+		net.minecraft.util.math.Vec3d delta = new net.minecraft.util.math.Vec3d(
 				dest[0] - this.getX(), dest[1] - this.getY(), dest[2] - this.getZ());
-		double d2 = delta.lengthSqr();
+		double d2 = delta.lengthSquared();
 		if (d2 > 0.25) {
-			this.setDeltaMovement(delta.normalize().scale(Math.min(0.3, 0.1 + d2 * 0.008)));
+			this.setVelocity(delta.normalize().multiply(Math.min(0.3, 0.1 + d2 * 0.008)));
 		}
 	}
 
@@ -154,12 +154,12 @@ public abstract class FallenAllayVexMixin extends Mob {
 	 * Resolve the stored target; clear slot if dead or absent.
 	 */
 	@Unique
-	private LivingEntity resolveTarget(ServerLevel serverWorld) {
-		UUID targetId = VEX_TARGET.get(this.getUUID());
+	private LivingEntity resolveTarget(ServerWorld serverWorld) {
+		UUID targetId = VEX_TARGET.get(this.getUuid());
 		if (targetId == null) return null;
 		Entity e = serverWorld.getEntity(targetId);
 		if (e instanceof LivingEntity le && le.isAlive()) return le;
-		VEX_TARGET.remove(this.getUUID());
+		VEX_TARGET.remove(this.getUuid());
 		return null;
 	}
 
@@ -168,32 +168,32 @@ public abstract class FallenAllayVexMixin extends Mob {
 	 * Priority: marked (glowing) > player > hostile > other
 	 */
 	@Unique
-	private LivingEntity findBestTarget(Player owner, String ownerUuidStr,
-	                                    ServerLevel serverWorld) {
-		AABB searchBox = this.getBoundingBox().inflate(16.0);
-		List<LivingEntity> candidates = serverWorld.getEntitiesOfClass(LivingEntity.class, searchBox,
+	private LivingEntity findBestTarget(PlayerEntity owner, String ownerUuidStr,
+	                                    ServerWorld serverWorld) {
+		Box searchBox = this.getBoundingBox().expand(16.0);
+		List<LivingEntity> candidates = serverWorld.getEntitiesByClass(LivingEntity.class, searchBox,
 				e -> e != owner && e != this && e.isAlive()
-						&& !(e instanceof Vex)
-						&& !(e instanceof Raider));
+						&& !(e instanceof VexEntity)
+						&& !(e instanceof RaiderEntity));
 
 		LivingEntity markedTarget = null;
 		LivingEntity playerTarget = null;
 		LivingEntity hostileTarget = null;
 		LivingEntity otherTarget = null;
 
-		boolean ownerIsServerPlayer = owner instanceof net.minecraft.server.level.ServerPlayer;
-		net.minecraft.server.level.ServerPlayer serverOwner = ownerIsServerPlayer
-				? (net.minecraft.server.level.ServerPlayer) owner : null;
+		boolean ownerIsServerPlayer = owner instanceof net.minecraft.server.network.ServerPlayerEntity;
+		net.minecraft.server.network.ServerPlayerEntity serverOwner = ownerIsServerPlayer
+				? (net.minecraft.server.network.ServerPlayerEntity) owner : null;
 
 		for (LivingEntity e : candidates) {
 			// 始终跳过自己的驯服动物
-			if (e instanceof net.minecraft.world.entity.TamableAnimal tameable
-					&& owner.getUUID().equals(tameable.getOwnerUUID())) {
+			if (e instanceof net.minecraft.entity.passive.TameableEntity tameable
+					&& owner.getUuid().equals(tameable.getOwnerUuid())) {
 				continue;
 			}
 			// 始终跳过自己的恕魔（候选列表已过滤 VexEntity，但保留保险）
-			if (e instanceof Vex vex
-					&& vex.getTags().contains("owner:" + ownerUuidStr)) {
+			if (e instanceof VexEntity vex
+					&& vex.getCommandTags().contains("owner:" + ownerUuidStr)) {
 				continue;
 			}
 			// 统一白名单判定：受服务端总开关控制
@@ -202,11 +202,11 @@ public abstract class FallenAllayVexMixin extends Mob {
 				continue;
 			}
 
-			if (e.hasEffect(MobEffects.GLOWING)) {
+			if (e.hasStatusEffect(StatusEffects.GLOWING)) {
 				if (markedTarget == null) markedTarget = e;
-			} else if (e instanceof Player) {
+			} else if (e instanceof PlayerEntity) {
 				if (playerTarget == null) playerTarget = e;
-			} else if (e instanceof Monster) {
+			} else if (e instanceof HostileEntity) {
 				if (hostileTarget == null) hostileTarget = e;
 			} else {
 				if (otherTarget == null) otherTarget = e;
@@ -223,8 +223,8 @@ public abstract class FallenAllayVexMixin extends Mob {
 	 * While at least one vex is alive, keep vex_cd pinned at 400 so the skill can't be recast.
 	 */
     @Unique
-    private void pinVexCd(Player owner) {
-        if (!(owner instanceof ServerPlayer serverOwner)) return;
+    private void pinVexCd(PlayerEntity owner) {
+        if (!(owner instanceof ServerPlayerEntity serverOwner)) return;
         int currentCd = PowerUtils.getResourceValue(serverOwner, FormIdentifiers.FALLEN_ALLAY_VEX_CD);
         if (currentCd < 400) {
             PowerUtils.setResourceValueAndSync(serverOwner, FormIdentifiers.FALLEN_ALLAY_VEX_CD, 400);
@@ -232,16 +232,16 @@ public abstract class FallenAllayVexMixin extends Mob {
     }
 
     @Unique
-    private void applyCooldownIfLast(Player owner, String ownerUuidStr, ServerLevel serverWorld) {
+    private void applyCooldownIfLast(PlayerEntity owner, String ownerUuidStr, ServerWorld serverWorld) {
         boolean hasOtherVex = false;
-        for (Entity v : serverWorld.getEntitiesOfClass(Vex.class, owner.getBoundingBox().inflate(128.0),
+        for (Entity v : serverWorld.getEntitiesByClass(VexEntity.class, owner.getBoundingBox().expand(128.0),
                 e -> e != (Object) this && e.isAlive())) {
-            if (v.getTags().contains("owner:" + ownerUuidStr) && v.getTags().contains("ssc_fallen_allay_vex")) {
+            if (v.getCommandTags().contains("owner:" + ownerUuidStr) && v.getCommandTags().contains("ssc_fallen_allay_vex")) {
                 hasOtherVex = true;
                 break;
             }
         }
-        if (!hasOtherVex && owner instanceof ServerPlayer serverOwner) {
+        if (!hasOtherVex && owner instanceof ServerPlayerEntity serverOwner) {
             PowerUtils.setResourceValueAndSync(serverOwner, FormIdentifiers.FALLEN_ALLAY_VEX_CD, 400);
         }
     }

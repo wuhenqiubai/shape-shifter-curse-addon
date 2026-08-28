@@ -5,9 +5,9 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.world.World;
@@ -29,9 +29,9 @@ public class WindSpiritStaminaNecklaceItem extends AccessoryItem {
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
         tooltip.add(Text.translatable("item.ssc_addon.wind_spirit_stamina_necklace.desc").formatted(Formatting.AQUA));
         tooltip.add(Text.translatable("item.ssc_addon.wind_spirit_stamina_necklace.tooltip.exclusive").formatted(Formatting.LIGHT_PURPLE));
-        super.appendTooltip(stack, world, tooltip, context);
+        super.appendTooltip(stack, context, tooltip, type);
     }
 }

@@ -3,6 +3,7 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.effect;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.registry.Registries;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.status_effects.EntangledEffectUtils;
 import net.onixary.shapeShifterCurseFabric.status_effects.RegOtherStatusEffects;
@@ -27,13 +28,13 @@ public class EntangledFullStunMixin {
         if (target.getWorld().isClient) {
             return;
         }
-        StatusEffectInstance full = target.getStatusEffect(RegOtherStatusEffects.ENTANGLED_FULL_EFFECT);
+        StatusEffectInstance full = target.getStatusEffect(Registries.STATUS_EFFECT.getEntry(RegOtherStatusEffects.ENTANGLED_FULL_EFFECT));
         if (full == null) {
             // 本次只是累积缠绕、尚未成茧，不施加定身
             return;
         }
         // 茧内定身：STUN 时长与茧保持一致，茧存在期间始终无法动弹
         int duration = full.getDuration();
-        target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN, duration, 0, false, false, true));
+        target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, duration, 0, false, false, true));
     }
 }

@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.minecraft.item.tooltip.TooltipType;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
@@ -12,10 +12,8 @@ import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -29,7 +27,7 @@ import java.util.List;
  */
 public class TwinPodItem extends AccessoryItem {
 
-	private static final Identifier MINESHAFT_LOOT = new Identifier("minecraft", "chests/abandoned_mineshaft");
+	private static final Identifier MINESHAFT_LOOT = Identifier.of("minecraft", "chests/abandoned_mineshaft");
 
 	public TwinPodItem(Settings settings) {
 		super(settings);
@@ -39,8 +37,8 @@ public class TwinPodItem extends AccessoryItem {
 	 * 注册双生种荚到废弃矿井战利品表（10% 概率）。
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!MINESHAFT_LOOT.equals(id)) return;
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (!MINESHAFT_LOOT.equals(key.getValue())) return;
 			LootPool.Builder pool = LootPool.builder()
 					.rolls(ConstantLootNumberProvider.create(1.0F))
 					.conditionally(RandomChanceLootCondition.builder(0.20F))
@@ -55,10 +53,10 @@ public class TwinPodItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.twin_pod.tooltip_1").formatted(Formatting.DARK_GREEN));
 		tooltip.add(Text.translatable("item.ssc_addon.twin_pod.tooltip_2").formatted(Formatting.YELLOW));
 		tooltip.add(Text.translatable("item.ssc_addon.twin_pod.tooltip_exclusive").formatted(Formatting.GOLD));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

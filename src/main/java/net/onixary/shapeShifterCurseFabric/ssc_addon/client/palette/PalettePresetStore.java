@@ -4,8 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ServerInfo;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -171,11 +171,11 @@ public final class PalettePresetStore {
 
     /** 多人取服务器地址；单机取世界目录名；无法判断时退回 "default"。 */
     private String detectCurrentScopeKey() {
-        Minecraft mc = Minecraft.getInstance();
-        ServerData si = mc.getCurrentServer();
-        if (si != null && si.ip != null && !si.ip.isEmpty()) return "server_" + si.ip;
-        if (mc.isLocalServer() && mc.getSingleplayerServer() != null) {
-            return "world_" + mc.getSingleplayerServer().getWorldData().getLevelName();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ServerInfo si = mc.getCurrentServerEntry();
+        if (si != null && si.address != null && !si.address.isEmpty()) return "server_" + si.address;
+        if (mc.isInSingleplayer() && mc.getServer() != null) {
+            return "world_" + mc.getServer().getSaveProperties().getLevelName();
         }
         return "default";
     }

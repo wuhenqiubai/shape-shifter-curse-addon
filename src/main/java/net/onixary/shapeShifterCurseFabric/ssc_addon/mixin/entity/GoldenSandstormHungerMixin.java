@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.food.FoodData;
+import net.minecraft.entity.player.HungerManager;
+import net.minecraft.entity.player.PlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -19,19 +19,19 @@ import org.spongepowered.asm.mixin.injection.At;
  *
  * Mixin 只拦截 heal 调用本身，不影响饱食/耗散度/只饱食计时器。
  */
-@Mixin(FoodData.class)
+@Mixin(HungerManager.class)
 public abstract class GoldenSandstormHungerMixin {
 
 	@WrapOperation(
-			method = "tick",
-			at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;heal(F)V"),
+			method = "update",
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/player/PlayerEntity;heal(F)V"),
 			require = 0
 	)
-	private void ssc_addon$blockNaturalRegen(Player player, float amount, Operation<Void> original) {
+	private void ssc_addon$blockNaturalRegen(PlayerEntity player, float amount, Operation<Void> original) {
 		// 金沙岚SP禁用饱食度自然回血
 		if (FormUtils.isForm(player, FormIdentifiers.GOLDEN_SANDSTORM_SP)) return;
 		// 被感染孢子状态的实体禁用饱食度自然回血
-		if (InfectionSporeManager.isInfected(player.getUUID())) return;
+		if (InfectionSporeManager.isInfected(player.getUuid())) return;
 		original.call(player, amount);
 	}
 }

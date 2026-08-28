@@ -1,14 +1,13 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.recipe;
 
-import net.minecraft.inventory.RecipeInputInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.util.Identifier;
+import net.minecraft.recipe.input.CraftingRecipeInput;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.PortableMoisturizerItem;
@@ -23,8 +22,8 @@ public class UpgradeMoisturizerRecipe extends SpecialCraftingRecipe {
 	private static final int[] CORNERS = {0, 2, 6, 8};
 	private static final int[] EDGES = {1, 3, 5, 7};
 
-	public UpgradeMoisturizerRecipe(Identifier id, CraftingRecipeCategory category) {
-		super(id, category);
+	public UpgradeMoisturizerRecipe(CraftingRecipeCategory category) {
+		super(category);
 	}
 
 	/** 升级到下一级四角所需材料：一级用湿海绵，二级用海洋之心。 */
@@ -38,22 +37,22 @@ public class UpgradeMoisturizerRecipe extends SpecialCraftingRecipe {
 	}
 
 	@Override
-	public boolean matches(RecipeInputInventory inventory, World world) {
-		if (inventory.getWidth() != 3 || inventory.getHeight() != 3) return false;
-		ItemStack center = inventory.getStack(4);
+	public boolean matches(CraftingRecipeInput input, World world) {
+		if (input.getWidth() != 3 || input.getHeight() != 3) return false;
+		ItemStack center = input.getStackInSlot(4);
 		if (center.getItem() != SscAddon.PORTABLE_MOISTURIZER) return false;
 		int level = PortableMoisturizerItem.getLevel(center);
 		if (level >= PortableMoisturizerItem.MAX_LEVEL) return false;
 		Item corner = cornerMaterial(level);
 		Item edge = edgeMaterial(level);
-		for (int i : CORNERS) if (inventory.getStack(i).getItem() != corner) return false;
-		for (int i : EDGES) if (inventory.getStack(i).getItem() != edge) return false;
+		for (int i : CORNERS) if (input.getStackInSlot(i).getItem() != corner) return false;
+		for (int i : EDGES) if (input.getStackInSlot(i).getItem() != edge) return false;
 		return true;
 	}
 
 	@Override
-	public ItemStack craft(RecipeInputInventory inventory, DynamicRegistryManager registryManager) {
-		ItemStack center = inventory.getStack(4);
+	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
+		ItemStack center = input.getStackInSlot(4);
 		if (center.getItem() != SscAddon.PORTABLE_MOISTURIZER) return ItemStack.EMPTY;
 		int level = PortableMoisturizerItem.getLevel(center);
 		if (level >= PortableMoisturizerItem.MAX_LEVEL) return ItemStack.EMPTY;

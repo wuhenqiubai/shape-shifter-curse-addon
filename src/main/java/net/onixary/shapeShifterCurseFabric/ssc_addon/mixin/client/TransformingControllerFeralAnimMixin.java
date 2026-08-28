@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.client.ShapeShifterCurseFabricClient;
 import net.onixary.shapeShifterCurseFabric.player_animation.AnimationHolder;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimSystem;
@@ -36,13 +36,13 @@ public class TransformingControllerFeralAnimMixin {
 
 	/** 主包「直立→四足」变身动画 id（与 TransformingController.registerAnim 中一致）。 */
 	@Unique
-	private static final ResourceLocation SSC_ADDON_NORMAL_TO_FERAL_ANIM =
-			ResourceLocation.fromNamespaceAndPath("shape-shifter-curse", "player_on_transform_normal_to_feral");
+	private static final Identifier SSC_ADDON_NORMAL_TO_FERAL_ANIM =
+			Identifier.of("shape-shifter-curse", "player_on_transform_normal_to_feral");
 
 	@Inject(method = "getAnimation", at = @At("HEAD"), cancellable = true)
-	private void sscAddon$forceFeralTransformAnim(Player player, AnimSystem.AnimSystemData data,
+	private void sscAddon$forceFeralTransformAnim(PlayerEntity player, AnimSystem.AnimSystemData data,
 												  CallbackInfoReturnable<AnimationHolder> cir) {
-		String toFormName = ShapeShifterCurseFabricClient.getClientTransformToForm(player.getUUID());
+		String toFormName = ShapeShifterCurseFabricClient.getClientTransformToForm(player.getUuid());
 		if (toFormName == null) {
 			return;
 		}

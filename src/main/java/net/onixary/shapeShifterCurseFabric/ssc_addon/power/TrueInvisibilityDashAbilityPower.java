@@ -10,14 +10,14 @@ import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.apoli.util.HudRender;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
@@ -40,7 +40,7 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "true_invisibility_dash"),
+		return new PowerFactory<>(Identifier.of("my_addon", "true_invisibility_dash"),
 				new SerializableData()
 						.add("cooldown", SerializableDataTypes.INT, COOLDOWN_TICKS)
 						.add("hud_render", ApoliDataTypes.HUD_RENDER, HudRender.DONT_RENDER)
@@ -61,21 +61,21 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 	 * 使用服务端tick，保证多人一致性
 	 */
 	public boolean isInternalCooldownReady() {
-		return entity.level().getGameTime() >= internalCooldownEndTime;
+		return entity.getWorld().getTime() >= internalCooldownEndTime;
 	}
 
 	/**
 	 * Apply internal cooldown (called from TrueInvisibilityAbilityPower)
 	 */
 	public void applyInternalCooldown() {
-		internalCooldownEndTime = entity.level().getGameTime() + COOLDOWN_TICKS;
+		internalCooldownEndTime = entity.getWorld().getTime() + COOLDOWN_TICKS;
 	}
 
 	/**
 	 * Get remaining cooldown in seconds for display
 	 */
 	public int getRemainingCooldownSeconds() {
-		long remaining = internalCooldownEndTime - entity.level().getGameTime();
+		long remaining = internalCooldownEndTime - entity.getWorld().getTime();
 		if (remaining <= 0) return 0;
 		return (int) Math.ceil(remaining / 20.0);
 	}
@@ -83,12 +83,12 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 	@Override
 	public boolean canUse() {
 		// Can only use when invisible
-		return entity.hasEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		return entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 	}
 
 	@Override
 	public void onUse() {
-		if (entity == null || entity.level().isClientSide) return;
+		if (entity == null || entity.getWorld().isClient) return;
 
 		// Double check: MUST be invisible to use this
 		// Note: Apoli might call onUse without checking canUse() in some network contexts
@@ -97,22 +97,22 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 		}
 
 		// Remove invisibility immediately
-		entity.removeEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
-		entity.removeEffect(MobEffects.INVISIBILITY);
+		entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		entity.removeStatusEffect(StatusEffects.INVISIBILITY);
 
 		// Apply 50% slow (Slowness III = -45%, close enough) for 1 second
-		entity.addEffect(new MobEffectInstance(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN, 20, 2, false, false, false));
+		entity.addStatusEffect(new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS, 20, 2, false, false, false));
 
 		// Play Cat Hiss Sound (周围人能听见)
-		entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-				SoundEvents.CAT_HISS, SoundSource.PLAYERS, 1.0f, 1.0f);
+		entity.getWorld().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+				SoundEvents.ENTITY_CAT_HISS, SoundCategory.PLAYERS, 1.0f, 1.0f);
 
 		// Dash forward 5 blocks
-		float yaw = entity.getYRot();
-		float f = -net.minecraft.util.Mth.sin(yaw * 0.017453292F);
-		float g = net.minecraft.util.Mth.cos(yaw * 0.017453292F);
-		entity.push(f * 1.5, 0.5, g * 1.5);
-		entity.hurtMarked = true;
+		float yaw = entity.getYaw();
+		float f = -net.minecraft.util.math.MathHelper.sin(yaw * 0.017453292F);
+		float g = net.minecraft.util.math.MathHelper.cos(yaw * 0.017453292F);
+		entity.addVelocity(f * 1.5, 0.5, g * 1.5);
+		entity.velocityModified = true;
 
 		// Start waiting for 1 second to apply stun
 		isWaitingForStun = true;
@@ -132,7 +132,7 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 	public void tick() {
 		super.tick();
 
-		if (entity == null || entity.level().isClientSide) return;
+		if (entity == null || entity.getWorld().isClient) return;
 
 		if (isWaitingForStun) {
 			ticksSinceDash++;
@@ -145,11 +145,11 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 	}
 
 	private void performStunEffect() {
-		ServerLevel world = (ServerLevel) entity.level();
+		ServerWorld world = (ServerWorld) entity.getWorld();
 
 		// Apply stun to nearby entities (5 blocks radius for 10 blocks diameter sphere)
-		net.minecraft.world.phys.AABB box = entity.getBoundingBox().inflate(5.0, 5.0, 5.0);
-		world.getEntitiesOfClass(LivingEntity.class, box, (e) -> {
+		net.minecraft.util.math.Box box = entity.getBoundingBox().expand(5.0, 5.0, 5.0);
+		world.getEntitiesByClass(LivingEntity.class, box, (e) -> {
 					// Filter Logic:
 					// 1. Not self
 					if (e == entity) return false;
@@ -163,21 +163,21 @@ public class TrueInvisibilityDashAbilityPower extends ActiveCooldownPower {
 				})
 				.forEach(target -> {
 					// Whitelist check
-					if (entity instanceof ServerPlayer sPlayer && WhitelistUtils.isProtected(sPlayer, target))
+					if (entity instanceof ServerPlayerEntity sPlayer && WhitelistUtils.isProtected(sPlayer, target))
 						return;
 					// Apply Stun: 1.5s = 30 ticks
-					target.addEffect(new MobEffectInstance(SscAddon.STUN_ENTRY, 30, 0, false, false, true));
+					target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, 30, 0, false, false, true));
 				});
 
 		// Particle effect
-		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.core.particles.ParticleTypes.POOF,
+		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.particle.ParticleTypes.POOF,
 				entity.getX(), entity.getY(), entity.getZ(), 15, 0.8, 0.2, 0.8, 0.1);
-		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.core.particles.ParticleTypes.CLOUD,
+		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.particle.ParticleTypes.CLOUD,
 				entity.getX(), entity.getY(), entity.getZ(), 10, 0.5, 0.1, 0.5, 0.05);
 
 		// Play additional sound when stun triggers
 		world.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-				SoundEvents.WARDEN_SONIC_BOOM, SoundSource.PLAYERS, 0.5f, 1.5f);
+				SoundEvents.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.PLAYERS, 0.5f, 1.5f);
 
 
 		isWaitingForStun = false;

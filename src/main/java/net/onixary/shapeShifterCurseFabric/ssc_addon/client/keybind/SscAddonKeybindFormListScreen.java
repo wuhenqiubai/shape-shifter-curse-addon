@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.client.keybind;
 
 import me.shedaniel.autoconfig.AutoConfig;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.SSCAddonClientConfig;
 
 /**
@@ -17,7 +17,7 @@ public class SscAddonKeybindFormListScreen extends Screen {
 	private final Screen parent;
 
 	public SscAddonKeybindFormListScreen(Screen parent) {
-		super(Component.translatable("text.ssc_addon.keybind.title"));
+		super(Text.translatable("text.ssc_addon.keybind.title"));
 		this.parent = parent;
 	}
 
@@ -47,35 +47,35 @@ public class SscAddonKeybindFormListScreen extends Screen {
 
 			SSCAddonClientConfig.FormKeybind entry = cfg.formKeybinds.get(formPath);
 			boolean custom = entry != null && entry.enabled;
-			Component status = custom
-					? Component.translatable("text.ssc_addon.keybind.status.custom").withStyle(ChatFormatting.GREEN)
-					: Component.translatable("text.ssc_addon.keybind.status.sync").withStyle(ChatFormatting.GRAY);
-			Component label = Component.empty()
+			Text status = custom
+					? Text.translatable("text.ssc_addon.keybind.status.custom").formatted(Formatting.GREEN)
+					: Text.translatable("text.ssc_addon.keybind.status.sync").formatted(Formatting.GRAY);
+			Text label = Text.empty()
 					.append(SscAddonSkillForms.displayName(formPath))
 					.append(" ")
 					.append(status);
 
-			addRenderableWidget(Button.builder(label,
-							b -> this.minecraft.setScreen(new SscAddonKeybindConfigScreen(this, formPath)))
-					.size(btnW, btnH).pos(x, y).build());
+			addDrawableChild(ButtonWidget.builder(label,
+							b -> this.client.setScreen(new SscAddonKeybindConfigScreen(this, formPath)))
+					.size(btnW, btnH).position(x, y).build());
 		}
 
 		int backY = startY + rows * (btnH + rowGap) + 10;
-		addRenderableWidget(Button.builder(
-						Component.translatable("text.ssc_addon.config.close"),
-						b -> onClose())
-				.size(200, btnH).pos((width - 200) / 2, backY).build());
+		addDrawableChild(ButtonWidget.builder(
+						Text.translatable("text.ssc_addon.config.close"),
+						b -> close())
+				.size(200, btnH).position((width - 200) / 2, backY).build());
 	}
 
 	@Override
-	public void onClose() {
-		this.minecraft.setScreen(parent);
+	public void close() {
+		this.client.setScreen(parent);
 	}
 
 	@Override
-	public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		this.renderBackground(context, mouseX, mouseY,  delta);
 		super.render(context, mouseX, mouseY, delta);
-		context.drawCenteredString(this.font, this.title, this.width / 2, 18, 0xFFFFFF);
+		context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 18, 0xFFFFFF);
 	}
 }

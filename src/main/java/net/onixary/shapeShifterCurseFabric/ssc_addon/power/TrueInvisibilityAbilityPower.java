@@ -10,13 +10,13 @@ import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.apoli.util.HudRender;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.TrinketUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -46,7 +46,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	}
 
 	public static PowerFactory<Power> createFactory() {
-		return new PowerFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "true_invisibility"),
+		return new PowerFactory<>(Identifier.of("my_addon", "true_invisibility"),
 				new SerializableData()
 						.add("cooldown", SerializableDataTypes.INT, COOLDOWN_TICKS)
 						.add("duration", SerializableDataTypes.INT, 100)
@@ -79,30 +79,30 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	public void tick() {
 		super.tick();
 
-		if (entity == null || entity.level().isClientSide) return;
+		if (entity == null || entity.getWorld().isClient) return;
 
-		if (entity.hasEffect(SscAddon.PURIFIED_ENTRY)) {
-			if (entity.hasEffect(SscAddon.PRE_INVISIBILITY_ENTRY)) {
-				entity.removeEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
-				entity.removeEffect(MobEffects.INVISIBILITY);
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
+			if (entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY)) {
+				entity.removeStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
+				entity.removeStatusEffect(StatusEffects.INVISIBILITY);
 				applyUniversalCooldown();
 			}
-			if (entity.hasEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) {
+			if (entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) {
 				breakInvisibility(false);
 			}
 			wasInvisible = false;
 			return;
 		}
 
-		boolean isInvisible = entity.hasEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
-		boolean isPrecasting = entity.hasEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
+		boolean isInvisible = entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		boolean isPrecasting = entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
 
 		// Natural End Detection (Time expired - not from action break or key cancel)
 		if (wasInvisible && !isInvisible && !isPrecasting && lastAmplifier == 0) {
 			applyUniversalCooldown();
 			// Play glass break sound for natural expiration
-			entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-					SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
+			entity.getWorld().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+					SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0f, 1.0f);
 		}
 
 		if (!isInvisible) {
@@ -115,7 +115,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 		}
 
 		// Track current amplifier
-		MobEffectInstance currentEffect = entity.getEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		StatusEffectInstance currentEffect = entity.getStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 		if (currentEffect != null) {
 			lastAmplifier = currentEffect.getAmplifier();
 		}
@@ -125,16 +125,16 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 			gracePeriodTicks--;
 			// Update previous states to prevent immediate break after grace period
 			wasUsingItem = entity.isUsingItem();
-			wasHandSwinging = entity.swinging;
+			wasHandSwinging = entity.handSwinging;
 			wasInvisible = isInvisible;
 			return;
 		}
 
 		// Particles while invisible
 		if (entity.getRandom().nextFloat() < 0.07f) {
-			ServerLevel serverWorld = (ServerLevel) entity.level();
-			net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld, net.minecraft.core.particles.ParticleTypes.SQUID_INK,
-					entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
+			ServerWorld serverWorld = (ServerWorld) entity.getWorld();
+			net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld, net.minecraft.particle.ParticleTypes.SQUID_INK,
+					entity.getX(), entity.getY() + entity.getHeight() * 0.5, entity.getZ(),
 					1, 0.3, 0.5, 0.3, 0.05);
 		}
 
@@ -147,7 +147,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 		wasUsingItem = isUsingItem;
 
 		// 2. Hand swinging
-		boolean isHandSwinging = entity.swinging;
+		boolean isHandSwinging = entity.handSwinging;
 		if (isHandSwinging && !wasHandSwinging) shouldBreak = true;
 		wasHandSwinging = isHandSwinging;
 
@@ -164,7 +164,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	 * 使用服务端tick，保证多人一致性
 	 */
 	public boolean isInternalCooldownReady() {
-		return entity.level().getGameTime() >= internalCooldownEndTime;
+		return entity.getWorld().getTime() >= internalCooldownEndTime;
 	}
 
 	/**
@@ -176,10 +176,10 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 		if (hasInvisibilityCloak()) {
 			cooldownTicks += 40; // Add 2 seconds to cooldown (from 12s to 14s)
 		}
-		internalCooldownEndTime = entity.level().getGameTime() + cooldownTicks; // tick-based, multiplayer-safe
+		internalCooldownEndTime = entity.getWorld().getTime() + cooldownTicks; // tick-based, multiplayer-safe
 
 		// 设置CD显示资源（主要和次要技能共享CD）
-		if (entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+		if (entity instanceof net.minecraft.server.network.ServerPlayerEntity serverPlayer) {
 			PowerUtils.setResourceValueAndSync(serverPlayer, FormIdentifiers.SP_PRIMARY_CD, cooldownTicks);
 			PowerUtils.setResourceValueAndSync(serverPlayer, FormIdentifiers.SP_SECONDARY_CD, cooldownTicks);
 		}
@@ -195,7 +195,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	 * Get remaining cooldown in seconds for display
 	 */
 	public int getRemainingCooldownSeconds() {
-		long remaining = internalCooldownEndTime - entity.level().getGameTime();
+		long remaining = internalCooldownEndTime - entity.getWorld().getTime();
 		if (remaining <= 0) return 0;
 		return (int) Math.ceil(remaining / 20.0); // 20 ticks per second
 	}
@@ -206,35 +206,35 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 	 * @param byKey true if broken by pressing the key again (cat hiss), false if broken by action (glass break)
 	 */
 	public void breakInvisibility(boolean byKey) {
-		if (entity == null || entity.level().isClientSide) return;
+		if (entity == null || entity.getWorld().isClient) return;
 
-		if (!entity.hasEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) return;
+		if (!entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY)) return;
 
 		// Check amplifier before removing
-		MobEffectInstance currentEffect = entity.getEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		StatusEffectInstance currentEffect = entity.getStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
 		int currentAmp = (currentEffect != null) ? currentEffect.getAmplifier() : 0;
 
 		// Remove invisibility effect
-		entity.removeEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
-		entity.removeEffect(MobEffects.INVISIBILITY);
+		entity.removeStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		entity.removeStatusEffect(StatusEffects.INVISIBILITY);
 		wasInvisible = false;
 
-		ServerLevel serverWorld = (ServerLevel) entity.level();
+		ServerWorld serverWorld = (ServerWorld) entity.getWorld();
 
 		// player.sendMessage(Text.of("§c隐身被打破!"), true);
 		if (byKey) {
 			// Key Cancel: Cat Hiss
 			serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-					SoundEvents.CAT_HISS, SoundSource.PLAYERS, 1.0f, 1.0f);
+					SoundEvents.ENTITY_CAT_HISS, SoundCategory.PLAYERS, 1.0f, 1.0f);
 
 			// Add Buffs: Guaranteed Crit & Speed II for 5 seconds
-			entity.addEffect(new MobEffectInstance(SscAddon.GUARANTEED_CRIT_ENTRY, 100, 0, false, false, true));
-			entity.addEffect(new MobEffectInstance(net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED, 100, 1, false, false, true));
+			entity.addStatusEffect(new StatusEffectInstance(SscAddon.GUARANTEED_CRIT_ENTRY, 100, 0, false, false, true));
+			entity.addStatusEffect(new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SPEED, 100, 1, false, false, true));
 
 		} else {
 			// Action Break: Glass Break
 			serverWorld.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
-					SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
+					SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0f, 1.0f);
 		}
 
 		// Apply universal 12s cooldown ONLY when breaking invisibility AND it was the main ability (Amp 0)
@@ -251,10 +251,10 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 
 	@Override
 	public void onUse() {
-		if (entity == null || entity.level().isClientSide) return;
+		if (entity == null || entity.getWorld().isClient) return;
 
-		boolean isInvisible = entity.hasEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
-		boolean isPrecasting = entity.hasEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
+		boolean isInvisible = entity.hasStatusEffect(SscAddon.TRUE_INVISIBILITY_ENTRY);
+		boolean isPrecasting = entity.hasStatusEffect(SscAddon.PRE_INVISIBILITY_ENTRY);
 
 		if (isInvisible) {
 			// Already invisible - pressing key again cancels with cat hiss
@@ -265,7 +265,7 @@ public class TrueInvisibilityAbilityPower extends ActiveCooldownPower {
 			// Not invisible - try to cast
 			if (isInternalCooldownReady()) {
 				// Apply pre-invisibility (casting phase)
-				entity.addEffect(new MobEffectInstance(SscAddon.PRE_INVISIBILITY_ENTRY, 20, 0, false, false, true));
+				entity.addStatusEffect(new StatusEffectInstance(SscAddon.PRE_INVISIBILITY_ENTRY, 20, 0, false, false, true));
 			}
 		}
 	}

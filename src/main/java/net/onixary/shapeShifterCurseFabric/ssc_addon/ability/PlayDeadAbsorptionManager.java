@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 
 import java.util.Map;
@@ -29,17 +29,17 @@ public class PlayDeadAbsorptionManager {
 	}
 
 	/** 装死期间每次给黄心时调用，累加「装死黄心」预算；并把衰减计时清零（结束后再重新计 30s）。 */
-	public static void addAbsorption(Player player, float delta) {
+	public static void addAbsorption(PlayerEntity player, float delta) {
 		if (delta <= 0f) {
 			return;
 		}
-		UUID id = player.getUUID();
+		UUID id = player.getUuid();
 		BUDGET.merge(id, delta, Float::sum);
 		DECAY_START.remove(id);
 	}
 
-	public static void tick(ServerPlayer player) {
-		UUID id = player.getUUID();
+	public static void tick(ServerPlayerEntity player) {
+		UUID id = player.getUuid();
 		Float budgetObj = BUDGET.get(id);
 		if (budgetObj == null) {
 			return;
@@ -55,14 +55,14 @@ public class PlayDeadAbsorptionManager {
 		}
 
 		// 仍在装死 → 还在累积，不衰减；计时起点留到结束后再设
-		if (player.hasEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
+		if (player.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
 			BUDGET.put(id, budget);
 			DECAY_START.remove(id);
 			return;
 		}
 
 		// 装死已结束 → 确保衰减起点已设（结束那刻 + 30s）
-		long now = player.getServer().getTickCount();
+		long now = player.getServer().getTicks();
 		long decayStart = DECAY_START.computeIfAbsent(id, k -> now + RETAIN_TICKS);
 
 		// 到点后每秒减 2 HP（代码直接扣，无受击特效）

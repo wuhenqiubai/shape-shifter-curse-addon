@@ -33,9 +33,9 @@ public class BlueFireRingEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
 		World world = entity.getWorld();
-		if (world.isClient()) return;
+		if (world.isClient()) return false;
 
 		BlockPos center = entity.getBlockPos();
 		ServerWorld serverWorld = (ServerWorld) world;
@@ -70,6 +70,7 @@ public class BlueFireRingEffect extends StatusEffect {
 				}
 			}
 		}
+		return false;
 	}
 
 	/** 检测玩家是否佩戴蓝火护符（与 ssc_addon:has_blue_fire_amulet 条件判断一致；框架无关）。 */

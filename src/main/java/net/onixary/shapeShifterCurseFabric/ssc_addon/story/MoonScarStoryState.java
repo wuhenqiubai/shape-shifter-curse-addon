@@ -1,13 +1,13 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.story;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.datafixer.DataFixTypes;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.datafix.DataFixTypes;
-import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.PersistentState;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -19,33 +19,33 @@ import java.util.UUID;
  *     <li>tippedPlayers：已收到过"月痕之力"低语提示的玩家（每名玩家仅提示一次）。</li>
  * </ul>
  */
-public final class MoonScarStoryState extends SavedData {
+public final class MoonScarStoryState extends PersistentState {
 	public static final String KEY = "ssc_addon_moon_scar_story";
 
 	public final Set<UUID> storyRedPlayers = new HashSet<>();
 	public final Set<UUID> tippedPlayers = new HashSet<>();
 
 	public static MoonScarStoryState get(MinecraftServer server) {
-		return server.overworld().getDataStorage().computeIfAbsent(
-				new SavedData.Factory<>(
+		return server.getOverworld().getPersistentStateManager().getOrCreate(
+				new PersistentState.Type<>(
 						MoonScarStoryState::new,
 						MoonScarStoryState::fromNbt,
 						DataFixTypes.LEVEL),
 				KEY);
 	}
 
-	public static MoonScarStoryState fromNbt(CompoundTag nbt, HolderLookup.Provider lookup) {
+	public static MoonScarStoryState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
 		MoonScarStoryState s = new MoonScarStoryState();
 		readUuidList(nbt, "story_red", s.storyRedPlayers);
 		readUuidList(nbt, "tipped", s.tippedPlayers);
 		return s;
 	}
 
-	private static void readUuidList(CompoundTag nbt, String key, Set<UUID> out) {
-		ListTag list = nbt.getList(key, Tag.TAG_STRING);
-		for (Tag e : list) {
+	private static void readUuidList(NbtCompound nbt, String key, Set<UUID> out) {
+		NbtList list = nbt.getList(key, NbtElement.STRING_TYPE);
+		for (NbtElement e : list) {
 			try {
-				out.add(UUID.fromString(e.getAsString()));
+				out.add(UUID.fromString(e.asString()));
 			} catch (IllegalArgumentException ignored) {
 				// 跳过非法 UUID 字符串，避免存档损坏导致加载失败
 			}
@@ -53,16 +53,16 @@ public final class MoonScarStoryState extends SavedData {
 	}
 
 	@Override
-	public CompoundTag save(CompoundTag nbt, HolderLookup.Provider registryLookup) {
+	public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		nbt.put("story_red", writeUuidList(storyRedPlayers));
 		nbt.put("tipped", writeUuidList(tippedPlayers));
 		return nbt;
 	}
 
-	private static ListTag writeUuidList(Set<UUID> set) {
-		ListTag list = new ListTag();
+	private static NbtList writeUuidList(Set<UUID> set) {
+		NbtList list = new NbtList();
 		for (UUID id : set) {
-			list.add(StringTag.valueOf(id.toString()));
+			list.add(NbtString.of(id.toString()));
 		}
 		return list;
 	}

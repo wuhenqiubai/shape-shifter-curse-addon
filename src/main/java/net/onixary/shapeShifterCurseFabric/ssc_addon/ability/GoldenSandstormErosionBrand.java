@@ -5,9 +5,11 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -18,6 +20,7 @@ import net.minecraft.entity.damage.DamageType;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.math.Vec3d;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.ErosionSandPrismItem;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitheredSandRingItem;
@@ -89,13 +92,13 @@ public class GoldenSandstormErosionBrand {
 
 	// ==================== 自定义伤害类型 ====================
 	/** 被动爆发伤害类型（绕过近战攻击的伤害免疫帧） */
-	private static final RegistryKey<DamageType> CURSED_BURST_KEY = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("my_addon", "cursed_burst"));
+	private static final RegistryKey<DamageType> CURSED_BURST_KEY = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("my_addon", "cursed_burst"));
 	/** 引爆伤害类型（绕过被动爆发的伤害免疫帧） */
-	private static final RegistryKey<DamageType> CURSED_EROSION_KEY = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("my_addon", "cursed_erosion"));
+	private static final RegistryKey<DamageType> CURSED_EROSION_KEY = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("my_addon", "cursed_erosion"));
 
 	// ==================== 网络同步 ====================
 	/** S2C 包ID：同步烙印颜色数据到客户端 */
-	public static final Identifier PACKET_BRAND_SYNC = new Identifier("ssc_addon", "erosion_brand_sync");
+	public static final Identifier PACKET_BRAND_SYNC = Identifier.of("ssc_addon", "erosion_brand_sync");
 	/** 需要同步的玩家标记集合 */
 	private static final Set<UUID> DIRTY_PLAYERS = ConcurrentHashMap.newKeySet();
 
@@ -511,7 +514,7 @@ public class GoldenSandstormErosionBrand {
 			try {
 				PacketByteBuf buf = PacketByteBufs.create();
 				buf.writeInt(0);
-				ServerPlayNetworking.send(player, PACKET_BRAND_SYNC, buf);
+				ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_BRAND_SYNC), buf));
 			} catch (Exception ignored) {
 				// 发送失败时忽略
 			}
@@ -565,7 +568,7 @@ public class GoldenSandstormErosionBrand {
 		try {
 			PacketByteBuf buf = PacketByteBufs.create();
 			buf.writeInt(0);
-			ServerPlayNetworking.send(player, PACKET_BRAND_SYNC, buf);
+			ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_BRAND_SYNC), buf));
 		} catch (Exception ignored) {
 			// 玩家可能已断线，忽略发送失败
 		}
@@ -598,7 +601,7 @@ public class GoldenSandstormErosionBrand {
 			}
 		}
 		try {
-			ServerPlayNetworking.send(player, PACKET_BRAND_SYNC, buf);
+			ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_BRAND_SYNC), buf));
 		} catch (Exception ignored) {}
 		DIRTY_PLAYERS.remove(player.getUuid());
 	}
@@ -640,7 +643,7 @@ public class GoldenSandstormErosionBrand {
 			}
 		}
 
-		ServerPlayNetworking.send(player, PACKET_BRAND_SYNC, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_BRAND_SYNC), buf));
 	}
 
 	/**
@@ -682,10 +685,10 @@ public class GoldenSandstormErosionBrand {
 		}
 		// 先移除所有旧标记，再施加当前层数对应的标记
 		removeAllBrandMarkers(target);
-		net.minecraft.entity.effect.StatusEffect markerEffect = switch (state.stacks) {
-			case 1 -> SscAddon.EROSION_BRAND_MARKER_1;
-			case 2 -> SscAddon.EROSION_BRAND_MARKER_2;
-			case 3 -> SscAddon.EROSION_BRAND_MARKER_3;
+		RegistryEntry<StatusEffect> markerEffect = switch (state.stacks) {
+			case 1 -> SscAddon.EROSION_BRAND_MARKER_1_ENTRY;
+			case 2 -> SscAddon.EROSION_BRAND_MARKER_2_ENTRY;
+			case 3 -> SscAddon.EROSION_BRAND_MARKER_3_ENTRY;
 			default -> null;
 		};
 		if (markerEffect != null) {
@@ -700,9 +703,9 @@ public class GoldenSandstormErosionBrand {
 	 * 移除目标上的所有烙印标记效果
 	 */
 	private static void removeAllBrandMarkers(LivingEntity target) {
-		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_1);
-		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_2);
-		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_3);
+		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_1_ENTRY);
+		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_2_ENTRY);
+		target.removeStatusEffect(SscAddon.EROSION_BRAND_MARKER_3_ENTRY);
 	}
 
 	/**

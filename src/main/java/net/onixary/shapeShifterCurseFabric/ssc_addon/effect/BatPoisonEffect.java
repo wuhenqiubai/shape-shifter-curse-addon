@@ -5,30 +5,30 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectCategory;
 
 /**
  * 寄生果蝠次要技能专属「中毒」buff。
  * 效果与原版中毒一致：周期性扣血（amplifier 越高越频繁，最低保留 1 血不致死），
  * 图标/名字复用原版中毒。
  */
-public class BatPoisonEffect extends MobEffect {
+public class BatPoisonEffect extends StatusEffect {
     public BatPoisonEffect() {
-        super(MobEffectCategory.HARMFUL, 0x4E9331);
+        super(StatusEffectCategory.HARMFUL, 0x4E9331);
     }
 
     @Override
-    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
         if (entity.getHealth() > 1.0f) {
-            entity.hurt(entity.damageSources().magic(), 1.0f);
+            entity.damage(entity.getDamageSources().magic(), 1.0f);
         }
         return false;
     }
 
     @Override
-    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
+    public boolean canApplyUpdateEffect(int duration, int amplifier) {
         int i = 25 >> amplifier;
         if (i > 0) {
             return duration % i == 0;

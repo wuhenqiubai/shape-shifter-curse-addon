@@ -14,12 +14,12 @@ import io.github.apace100.apoli.power.factory.PowerFactory;
 import io.github.apace100.apoli.util.HudRender;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.InfectionSporeBombEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -51,7 +51,7 @@ public class ParasiticSporeBombPower extends ActiveCooldownPower {
     }
 
     public static PowerFactory<Power> createFactory() {
-        return new PowerFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "parasitic_spore_bomb"),
+        return new PowerFactory<>(Identifier.of("my_addon", "parasitic_spore_bomb"),
                 new SerializableData()
                         .add("cooldown", SerializableDataTypes.INT, 400)
                         .add("hud_render", ApoliDataTypes.HUD_RENDER, HudRender.DONT_RENDER)
@@ -69,42 +69,42 @@ public class ParasiticSporeBombPower extends ActiveCooldownPower {
 
     @Override
     public boolean canUse() {
-        return super.canUse() && entity.level().getGameTime() >= internalCooldownEndTime;
+        return super.canUse() && entity.getWorld().getTime() >= internalCooldownEndTime;
     }
 
     @Override
     public void onUse() {
-        if (!(entity instanceof ServerPlayer caster)) return;
-        if (caster.level().isClientSide) return;
-        if (caster.hasEffect(SscAddon.PURIFIED_ENTRY)) return;
+        if (!(entity instanceof ServerPlayerEntity caster)) return;
+        if (caster.getWorld().isClient) return;
+        if (caster.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) return;
         // 双重保险：避免 Apoli 内部 use 状态异常时连按穿透
-        if (entity.level().getGameTime() < internalCooldownEndTime) return;
+        if (entity.getWorld().getTime() < internalCooldownEndTime) return;
 
         // 能量检查：不足则播放失败音效
         if (!PowerUtils.hasResource(caster, FormIdentifiers.BAT_PARASITIC_FRUIT_SEED_ENERGY, ENERGY_COST)) {
-            caster.level().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
-                    SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.4f, 1.7f);
+            caster.getWorld().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
+                    SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.4f, 1.7f);
             return;
         }
         PowerUtils.changeResourceValueAndSync(caster, FormIdentifiers.BAT_PARASITIC_FRUIT_SEED_ENERGY, -ENERGY_COST);
 
         // 生成投掷物（贴图改为史莱姆球）
-        InfectionSporeBombEntity bomb = new InfectionSporeBombEntity(caster.level(), caster);
-        bomb.setItem(net.minecraft.world.item.Items.SLIME_BALL.getDefaultInstance());
+        InfectionSporeBombEntity bomb = new InfectionSporeBombEntity(caster.getWorld(), caster);
+        bomb.setItem(net.minecraft.item.Items.SLIME_BALL.getDefaultStack());
         bomb.setOwner(caster);
         // 从眼部位置发射；速度向量与玩家视线一致
-        bomb.setPosRaw(caster.getX(), caster.getEyeY() - 0.1, caster.getZ());
-        bomb.shootFromRotation(caster, caster.getXRot(), caster.getYRot(), 0.0f, PROJECTILE_SPEED, PROJECTILE_DIVERGENCE);
+        bomb.setPos(caster.getX(), caster.getEyeY() - 0.1, caster.getZ());
+        bomb.setVelocity(caster, caster.getPitch(), caster.getYaw(), 0.0f, PROJECTILE_SPEED, PROJECTILE_DIVERGENCE);
         // 抵消投掷者的水平移动以保持初速一致
-        Vec3 ownerVel = caster.getDeltaMovement();
-        bomb.setDeltaMovement(bomb.getDeltaMovement().add(ownerVel.x, caster.onGround() ? 0.0 : ownerVel.y, ownerVel.z));
-        caster.level().addFreshEntity(bomb);
+        Vec3d ownerVel = caster.getVelocity();
+        bomb.setVelocity(bomb.getVelocity().add(ownerVel.x, caster.isOnGround() ? 0.0 : ownerVel.y, ownerVel.z));
+        caster.getWorld().spawnEntity(bomb);
 
-        caster.level().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
-                SoundEvents.SNOWBALL_THROW, SoundSource.PLAYERS, 0.6f, 1.6f);
+        caster.getWorld().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
+                SoundEvents.ENTITY_SNOWBALL_THROW, SoundCategory.PLAYERS, 0.6f, 1.6f);
 
         // 启动内部冷却 + 父类 ActiveCooldownPower 计时（双重保险）
-        internalCooldownEndTime = entity.level().getGameTime() + cooldownTicks;
+        internalCooldownEndTime = entity.getWorld().getTime() + cooldownTicks;
         this.use();
         // 同步 CD 资源，供 cd_tick power 倒计与 HUD 显示
         PowerUtils.setResourceValueAndSync(caster, FormIdentifiers.SP_SECONDARY_CD, cooldownTicks);

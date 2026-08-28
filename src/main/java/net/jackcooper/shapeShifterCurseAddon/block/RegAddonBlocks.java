@@ -1,21 +1,21 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
-import com.jcraft.jorbis.Block;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.layers.RenderLayer;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.material.MapColor;
-import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.block.AbstractBlock;
+import net.minecraft.block.Block;
+import net.minecraft.block.MapColor;
+import net.minecraft.block.piston.PistonBehavior;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.sound.BlockSoundGroup;
+import net.minecraft.util.Identifier;
 
 /**
  * SSCA 附属方块注册（jackcooper 署名）。
@@ -29,15 +29,15 @@ public final class RegAddonBlocks {
 
 	// 蛛网膜：多面薄层蛛网，减速陷阱，可燃蔓延、遇水冲毁
 	public static final Block WEB_MEMBRANE = new WebMembraneBlock(
-			BlockBehaviour.properties.create()
-					.mapColor(MapColor.WOOL)
+			AbstractBlock.Settings.create()
+					.mapColor(MapColor.WHITE_GRAY)
 					.strength(0.2f)
-					.sounds(SoundType.WOOL)
+					.sounds(BlockSoundGroup.WOOL)
 					.noCollision()
 					.nonOpaque()
 					.burnable()
 					.dropsNothing()
-					.pistonBehavior(PushReaction.DESTROY));
+					.pistonBehavior(PistonBehavior.DESTROY));
 
 	public static void init() {
 		register("web_membrane", WEB_MEMBRANE);
@@ -48,11 +48,11 @@ public final class RegAddonBlocks {
 	@Environment(EnvType.CLIENT)
 	public static void clientInit() {
 		// 贴图含大量真半透明像素（约 40%），用 translucent 层才能正确渲染 alpha 渐变；cutout 会把半透明二值化导致大片「不显示」
-		BlockRenderLayerMap.INSTANCE.putBlock(WEB_MEMBRANE, RenderType.translucent());
+		BlockRenderLayerMap.INSTANCE.putBlock(WEB_MEMBRANE, RenderLayer.getTranslucent());
 	}
 
 	private static void register(String path, Block block) {
-		ResourceLocation id = ResourceLocation.fromNamespaceAndPath(NAMESPACE, path);
+		Identifier id = Identifier.of(NAMESPACE, path);
 		Registry.register(Registries.BLOCK, id, block);
 		Registry.register(Registries.ITEM, id, new BlockItem(block, new Item.Settings()));
 	}

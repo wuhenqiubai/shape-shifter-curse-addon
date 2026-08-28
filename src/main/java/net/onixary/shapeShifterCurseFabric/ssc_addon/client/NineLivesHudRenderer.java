@@ -8,12 +8,12 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Tuple;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.Pair;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ClientResourceCache;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.ManaBarPos;
@@ -26,9 +26,9 @@ import net.onixary.shapeShifterCurseFabric.util.UIPositionUtils;
  */
 @Environment(EnvType.CLIENT)
 public final class NineLivesHudRenderer implements HudRenderCallback {
-    private static final Minecraft MC = Minecraft.getInstance();
-    private static final ResourceLocation TEX_EMPTY = ResourceLocation.fromNamespaceAndPath("my_addon", "textures/gui/form_ocelot_nova_nine_lives_empty.png");
-    private static final ResourceLocation TEX_FULL = ResourceLocation.fromNamespaceAndPath("my_addon", "textures/gui/form_ocelot_nova_nine_lives_full.png");
+    private static final MinecraftClient MC = MinecraftClient.getInstance();
+    private static final Identifier TEX_EMPTY = Identifier.of("my_addon", "textures/gui/form_ocelot_nova_nine_lives_empty.png");
+    private static final Identifier TEX_FULL = Identifier.of("my_addon", "textures/gui/form_ocelot_nova_nine_lives_full.png");
     /** 命数条尺寸：76 像素宽 × 5 像素高（与实际贴图一致，居中按此宽度计算）。 */
     private static final int TEX_WIDTH = 76;
     private static final int TEX_HEIGHT = 5;
@@ -38,9 +38,9 @@ public final class NineLivesHudRenderer implements HudRenderCallback {
     }
 
     @Override
-    public void onHudRender(GuiGraphics context, DeltaTracker tickCounter) {
-        if (MC.options.hideGui || MC.player == null) return;
-        Player player = MC.player;
+    public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
+        if (MC.options.hudHidden || MC.player == null) return;
+        PlayerEntity player = MC.player;
         if (!ClientResourceCache.has(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES)) return;
 
         int[] valMax = PowerUtils.getClientResourceValueAndMax(player, FormIdentifiers.OCELOT_NOVA_NINE_LIVES);
@@ -54,18 +54,18 @@ public final class NineLivesHudRenderer implements HudRenderCallback {
         int posType = mp[0];
         int offsetX = mp[1];
         int offsetY = mp[2];
-        Tuple<Integer, Integer> pos = UIPositionUtils.getCorrectPosition(posType, offsetX, offsetY);
-        int x = (MC.getWindow().getGuiScaledWidth() - TEX_WIDTH) / 2;
-        int y = pos.getB();
+        Pair<Integer, Integer> pos = UIPositionUtils.getCorrectPosition(posType, offsetX, offsetY);
+        int x = (MC.getWindow().getScaledWidth() - TEX_WIDTH) / 2;
+        int y = pos.getRight();
 
         // 底层：空条（9 格空圆点）
-        context.blit(TEX_EMPTY, x, y, 0, 0, TEX_WIDTH, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
+        context.drawTexture(TEX_EMPTY, x, y, 0, 0, TEX_WIDTH, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
         // 顶层：满条按 current/max 比例横向裁剪覆盖
         if (current > 0) {
             int filledWidth = (int) Math.ceil(TEX_WIDTH * percent);
             filledWidth = Math.max(0, Math.min(TEX_WIDTH, filledWidth));
             if (filledWidth > 0) {
-                context.blit(TEX_FULL, x, y, 0, 0, filledWidth, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
+                context.drawTexture(TEX_FULL, x, y, 0, 0, filledWidth, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
             }
         }
     }

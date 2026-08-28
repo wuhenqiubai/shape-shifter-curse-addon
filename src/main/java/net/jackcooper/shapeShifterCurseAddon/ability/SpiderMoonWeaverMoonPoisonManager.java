@@ -1,15 +1,17 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.Box;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.registry.Registries;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
+import net.onixary.shapeShifterCurseFabric.status_effects.RegOtherStatusEffects;
 
 import java.util.List;
 
@@ -57,7 +59,7 @@ public final class SpiderMoonWeaverMoonPoisonManager {
             // 仅对带有「蜘网缠身」或「裹茧」状态的生物生效
             boolean webBound = target.getStatusEffect(RegAddonEffects.SPIDER_WEB_BOUND) != null;
             boolean cocooned = target.getStatusEffect(
-                    net.onixary.shapeShifterCurseFabric.status_effects.RegOtherStatusEffects.ENTANGLED_FULL_EFFECT) != null;
+                    Registries.STATUS_EFFECT.getEntry(RegOtherStatusEffects.ENTANGLED_FULL_EFFECT)) != null;
             if (!webBound && !cocooned) continue;
             // 施加中毒 I（不显示粒子环境效果，显示粒子以让玩家可见）
             target.addStatusEffect(new StatusEffectInstance(

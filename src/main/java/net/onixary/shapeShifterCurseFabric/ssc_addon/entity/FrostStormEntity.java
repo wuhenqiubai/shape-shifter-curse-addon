@@ -1,22 +1,22 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.entity;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
-import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerEntity;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.data.DataTracker;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.listener.ClientPlayPacketListener;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.EntityTrackerEntry;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 
@@ -40,20 +40,20 @@ public class FrostStormEntity extends Entity {
 	private int ticksAlive = 0;
 	private UUID ownerUuid;
 
-	public FrostStormEntity(EntityType<?> entityType, Level world) {
+	public FrostStormEntity(EntityType<?> entityType, World world) {
 		super(entityType, world);
-		this.noPhysics = true;
+		this.noClip = true;
 	}
 
-	public FrostStormEntity(Level world, double x, double y, double z, Player owner) {
+	public FrostStormEntity(World world, double x, double y, double z, PlayerEntity owner) {
 		super(SscAddon.FROST_STORM_ENTITY, world);
-		this.setPos(x, y, z);
-		this.ownerUuid = owner.getUUID();
-		this.noPhysics = true;
+		this.setPosition(x, y, z);
+		this.ownerUuid = owner.getUuid();
+		this.noClip = true;
 	}
 
 	@Override
-	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+	protected void initDataTracker(DataTracker.Builder builder) {
 		// 暂时不需要初始化数据跟踪器
 	}
 
@@ -67,7 +67,7 @@ public class FrostStormEntity extends Entity {
 			return;
 		}
 
-		if (!this.level().isClientSide && this.level() instanceof ServerLevel serverWorld) {
+		if (!this.getWorld().isClient && this.getWorld() instanceof ServerWorld serverWorld) {
 			// 每0.5秒造成一次伤害（每10tick）
 			if (ticksAlive % 10 == 0) {
 				dealDamage(serverWorld);
@@ -81,54 +81,54 @@ public class FrostStormEntity extends Entity {
 
 			// 播放环境音效
 			if (ticksAlive % 40 == 0) {
-				this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-						SoundEvents.SNOW_GOLEM_AMBIENT, SoundSource.HOSTILE, 0.5f, 0.5f);
+				this.getWorld().playSound(null, this.getX(), this.getY(), this.getZ(),
+						SoundEvents.ENTITY_SNOW_GOLEM_AMBIENT, SoundCategory.HOSTILE, 0.5f, 0.5f);
 			}
 		}
 	}
 
-	private void dealDamage(ServerLevel world) {
-		AABB damageBox = new AABB(
+	private void dealDamage(ServerWorld world) {
+		Box damageBox = new Box(
 				this.getX() - DAMAGE_RADIUS, this.getY() - 1, this.getZ() - DAMAGE_RADIUS,
 				this.getX() + DAMAGE_RADIUS, this.getY() + 3, this.getZ() + DAMAGE_RADIUS
 		);
 
-		List<LivingEntity> targets = world.getEntitiesOfClass(
+		List<LivingEntity> targets = world.getEntitiesByClass(
 				LivingEntity.class, damageBox,
-				entity -> entity.getUUID() != ownerUuid && entity.isAlive()
+				entity -> entity.getUuid() != ownerUuid && entity.isAlive()
 		);
 
-		Player owner = ownerUuid != null ? world.getPlayerByUUID(ownerUuid) : null;
+		PlayerEntity owner = ownerUuid != null ? world.getPlayerByUuid(ownerUuid) : null;
 
 		for (LivingEntity target : targets) {
-			double dist = this.distanceToSqr(target.getX(), this.getY(), target.getZ());
+			double dist = this.squaredDistanceTo(target.getX(), this.getY(), target.getZ());
 			if (dist <= DAMAGE_RADIUS * DAMAGE_RADIUS) {
 				if (WhitelistUtils.isProtected(ownerUuid, world, target)) continue;
 				DamageSource source = owner != null
-						? target.damageSources().playerAttack(owner)
-						: target.damageSources().magic();
-				target.hurt(source, DAMAGE_PER_SECOND);
+						? target.getDamageSources().playerAttack(owner)
+						: target.getDamageSources().magic();
+				target.damage(source, DAMAGE_PER_SECOND);
 			}
 		}
 	}
 
 	private void pullEntities() {
-		AABB pullBox = new AABB(
+		Box pullBox = new Box(
 				this.getX() - PULL_RADIUS_WEAK, this.getY() - 2, this.getZ() - PULL_RADIUS_WEAK,
 				this.getX() + PULL_RADIUS_WEAK, this.getY() + 4, this.getZ() + PULL_RADIUS_WEAK
 		);
 
-		List<LivingEntity> targets = this.level().getEntitiesOfClass(
+		List<LivingEntity> targets = this.getWorld().getEntitiesByClass(
 				LivingEntity.class, pullBox,
-				entity -> entity.getUUID() != ownerUuid && entity.isAlive()
+				entity -> entity.getUuid() != ownerUuid && entity.isAlive()
 		);
 
-		Vec3 center = new Vec3(this.getX(), this.getY(), this.getZ());
-		ServerLevel pullWorld = this.level() instanceof ServerLevel sw ? sw : null;
+		Vec3d center = new Vec3d(this.getX(), this.getY(), this.getZ());
+		ServerWorld pullWorld = this.getWorld() instanceof ServerWorld sw ? sw : null;
 
 		for (LivingEntity target : targets) {
-			Vec3 targetPos = target.position();
-			double dist = Math.sqrt(target.distanceToSqr(this.getX(), this.getY(), this.getZ()));
+			Vec3d targetPos = target.getPos();
+			double dist = Math.sqrt(target.squaredDistanceTo(this.getX(), this.getY(), this.getZ()));
 
 			if (dist > PULL_RADIUS_WEAK || dist < 0.5) continue;
 			if (pullWorld != null && WhitelistUtils.isProtected(ownerUuid, pullWorld, target)) continue;
@@ -144,17 +144,17 @@ public class FrostStormEntity extends Entity {
 			}
 
 			// 计算吸附方向
-			Vec3 direction = center.subtract(targetPos).normalize();
-			Vec3 pullVelocity = direction.scale(pullStrength);
+			Vec3d direction = center.subtract(targetPos).normalize();
+			Vec3d pullVelocity = direction.multiply(pullStrength);
 
 			// 应用吸附
-			Vec3 newVelocity = target.getDeltaMovement().add(pullVelocity);
-			target.setDeltaMovement(newVelocity);
-			target.hurtMarked = true;
+			Vec3d newVelocity = target.getVelocity().add(pullVelocity);
+			target.setVelocity(newVelocity);
+			target.velocityModified = true;
 		}
 	}
 
-	private void spawnParticles(ServerLevel world) {
+	private void spawnParticles(ServerWorld world) {
 		// 风暴粒子
 		for (int i = 0; i < 5; i++) {
 			double angle = Math.random() * Math.PI * 2;
@@ -177,28 +177,28 @@ public class FrostStormEntity extends Entity {
 	}
 
 	@Override
-	public void readAdditionalSaveData(CompoundTag nbt) {
+	public void readCustomDataFromNbt(NbtCompound nbt) {
 		this.ticksAlive = nbt.getInt("TicksAlive");
-		if (nbt.hasUUID("Owner")) {
-			this.ownerUuid = nbt.getUUID("Owner");
+		if (nbt.containsUuid("Owner")) {
+			this.ownerUuid = nbt.getUuid("Owner");
 		}
 	}
 
 	@Override
-	public void addAdditionalSaveData(CompoundTag nbt) {
+	public void writeCustomDataToNbt(NbtCompound nbt) {
 		nbt.putInt("TicksAlive", this.ticksAlive);
 		if (ownerUuid != null) {
-			nbt.putUUID("Owner", ownerUuid);
+			nbt.putUuid("Owner", ownerUuid);
 		}
 	}
 
 	@Override
-	public Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entityTrackerEntry) {
-		return super.getAddEntityPacket(entityTrackerEntry);
+	public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+		return super.createSpawnPacket(entityTrackerEntry);
 	}
 
 	@Override
-	public boolean canBeCollidedWith() {
-		return super.canBeCollidedWith();
+	public boolean isCollidable() {
+		return super.isCollidable();
 	}
 }

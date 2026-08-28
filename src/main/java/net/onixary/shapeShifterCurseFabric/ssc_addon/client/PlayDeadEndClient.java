@@ -5,9 +5,9 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.network.PacketByteBuf;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
@@ -38,24 +38,24 @@ public final class PlayDeadEndClient {
 		ClientTickEvents.END_CLIENT_TICK.register(PlayDeadEndClient::onClientTick);
 	}
 
-	private static void onClientTick(Minecraft client) {
-		LocalPlayer player = client.player;
-		if (player == null || client.level == null) {
+	private static void onClientTick(MinecraftClient client) {
+		ClientPlayerEntity player = client.player;
+		if (player == null || client.world == null) {
 			wasKeyPressed = false;
 			wasPlayingDead = false;
 			return;
 		}
-		boolean isPlayingDead = player.hasEffect(SscAddon.PLAYING_DEAD_ENTRY);
+		boolean isPlayingDead = player.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY);
 		// 记录装死开始时刻（用于宽限期判定）
 		if (isPlayingDead && !wasPlayingDead) {
-			playDeadStartTime = client.level.getGameTime();
+			playDeadStartTime = client.world.getTime();
 		}
 		// 用裸 GLFW 物理检测（绕过 StunnedKeyBindingMixin 在装死期对 sp_secondary 的屏蔽）
 		boolean pressed = SscAddonKeybindings.isSecondaryRawPressed();
 		// 仅在装死已持续超过宽限期后，才允许“再按副技能键提前结束”，避免触发那一下被误判
 		if (isPlayingDead && pressed && !wasKeyPressed
-				&& (client.level.getGameTime() - playDeadStartTime) >= END_GRACE_TICKS) {
-			FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+				&& (client.world.getTime() - playDeadStartTime) >= END_GRACE_TICKS) {
+			PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_PLAY_DEAD_END), buf));
 		}
 		wasKeyPressed = pressed;

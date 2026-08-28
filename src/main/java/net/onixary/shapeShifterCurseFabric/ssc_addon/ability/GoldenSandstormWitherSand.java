@@ -1,19 +1,19 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.core.particles.BlockParticleOption;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.block.Blocks;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.particle.BlockStateParticleEffect;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -51,7 +51,7 @@ public class GoldenSandstormWitherSand {
 	/** 被打断CD时间（tick） */
 	private static final int INTERRUPT_CD_TICKS = 140; // 7秒
 	/** 蓄力减速修正器UUID */
-	private static final ResourceLocation CHARGE_SLOW_UUID = ResourceLocation.parse("b8c9d0e1-f2a3-4b5c-8d6e-7f8901234567");
+	private static final Identifier CHARGE_SLOW_UUID = Identifier.of("b8c9d0e1-f2a3-4b5c-8d6e-7f8901234567");
 	private static final String CHARGE_SLOW_NAME = "Wither Sand Charge Slow";
 
 	// ==================== 状态追踪 ====================
@@ -64,28 +64,28 @@ public class GoldenSandstormWitherSand {
 	/**
 	 * 玩家按下技能键 - 开始蓄力
 	 */
-	public static boolean execute(ServerPlayer player) {
+	public static boolean execute(ServerPlayerEntity player) {
 		// CD检查
 		int cd = PowerUtils.getResourceValue(player, FormIdentifiers.SP_PRIMARY_CD);
 		if (cd > 0) return false;
 
 		// 已经在蓄力中则忽略
-		if (CHARGING_PLAYERS.containsKey(player.getUUID())) return false;
+		if (CHARGING_PLAYERS.containsKey(player.getUuid())) return false;
 
-		if (!(player.level() instanceof ServerLevel serverWorld)) return false;
+		if (!(player.getWorld() instanceof ServerWorld serverWorld)) return false;
 
 		// 开始蓄力
 		ChargeState state = new ChargeState();
-		state.startTick = serverWorld.getGameTime();
+		state.startTick = serverWorld.getTime();
 		state.healthAtStart = player.getHealth();
-		CHARGING_PLAYERS.put(player.getUUID(), state);
+		CHARGING_PLAYERS.put(player.getUuid(), state);
 
 		// 施加减速50%
 		applyChargeSlow(player);
 
 		// 蓄力开始音效
 		serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.SAND_BREAK, SoundSource.PLAYERS, 1.0f, 0.5f);
+				SoundEvents.BLOCK_SAND_BREAK, SoundCategory.PLAYERS, 1.0f, 0.5f);
 
 		return true;
 	}
@@ -94,11 +94,11 @@ public class GoldenSandstormWitherSand {
 	 * 每tick更新蓄力状态
 	 * 需要在 SscAddon 的 tick handler 中调用
 	 */
-	public static void tick(ServerPlayer player) {
-		ChargeState state = CHARGING_PLAYERS.get(player.getUUID());
+	public static void tick(ServerPlayerEntity player) {
+		ChargeState state = CHARGING_PLAYERS.get(player.getUuid());
 		if (state == null) return;
 
-		if (!(player.level() instanceof ServerLevel serverWorld)) return;
+		if (!(player.getWorld() instanceof ServerWorld serverWorld)) return;
 
 		// 形态检查
 		if (!FormUtils.isGoldenSandstormSP(player)) {
@@ -106,7 +106,7 @@ public class GoldenSandstormWitherSand {
 			return;
 		}
 
-		long currentTick = serverWorld.getGameTime();
+		long currentTick = serverWorld.getTime();
 		long elapsed = currentTick - state.startTick;
 
 		// 检查是否被打断（生命值下降 = 受到伤害）
@@ -116,7 +116,7 @@ public class GoldenSandstormWitherSand {
 			PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_PRIMARY_CD, INTERRUPT_CD_TICKS);
 
 			serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.SAND_FALL, SoundSource.PLAYERS, 1.0f, 0.3f);
+					SoundEvents.BLOCK_SAND_FALL, SoundCategory.PLAYERS, 1.0f, 0.3f);
 			return;
 		}
 
@@ -125,15 +125,15 @@ public class GoldenSandstormWitherSand {
 			double angle = (elapsed * 0.3) % (Math.PI * 2);
 			double px = player.getX() + Math.cos(angle) * 1.5;
 			double pz = player.getZ() + Math.sin(angle) * 1.5;
-			serverWorld.sendParticles(
-					new BlockParticleOption(ParticleTypes.FALLING_DUST, Blocks.SAND.defaultBlockState()),
+			serverWorld.spawnParticles(
+					new BlockStateParticleEffect(ParticleTypes.FALLING_DUST, Blocks.SAND.getDefaultState()),
 					px, player.getY() + 1.0, pz, 3, 0.1, 0.3, 0.1, 0);
 		}
 
 		// 蓄力完成
 		if (elapsed >= CHARGE_TICKS) {
 			removeChargeSlow(player);
-			CHARGING_PLAYERS.remove(player.getUUID());
+			CHARGING_PLAYERS.remove(player.getUuid());
 			releaseSkill(player, serverWorld);
 		}
 	}
@@ -141,15 +141,15 @@ public class GoldenSandstormWitherSand {
 	/**
 	 * 释放技能 - 15格AoE
 	 */
-	private static void releaseSkill(ServerPlayer player, ServerLevel serverWorld) {
+	private static void releaseSkill(ServerPlayerEntity player, ServerWorld serverWorld) {
 		// 设置正常CD
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_PRIMARY_CD, COOLDOWN_TICKS);
 
 		// 释放音效
 		serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.WITHER_SHOOT, SoundSource.PLAYERS, 1.0f, 0.7f);
+				SoundEvents.ENTITY_WITHER_SHOOT, SoundCategory.PLAYERS, 1.0f, 0.7f);
 		serverWorld.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.SAND_BREAK, SoundSource.PLAYERS, 1.5f, 0.5f);
+				SoundEvents.BLOCK_SAND_BREAK, SoundCategory.PLAYERS, 1.5f, 0.5f);
 
 		// 大量粒子效果：金色沙尘风暴
 		for (int i = 0; i < 100; i++) {
@@ -158,8 +158,8 @@ public class GoldenSandstormWitherSand {
 			double px = player.getX() + Math.cos(angle) * dist;
 			double pz = player.getZ() + Math.sin(angle) * dist;
 			double py = player.getY() + Math.random() * 2.5;
-			serverWorld.sendParticles(
-					new BlockParticleOption(ParticleTypes.FALLING_DUST, Blocks.SAND.defaultBlockState()),
+			serverWorld.spawnParticles(
+					new BlockStateParticleEffect(ParticleTypes.FALLING_DUST, Blocks.SAND.getDefaultState()),
 					px, py, pz, 1, 0, 0, 0, 0);
 		}
 		ParticleUtils.spawnParticles(serverWorld, ParticleTypes.SOUL,
@@ -167,23 +167,23 @@ public class GoldenSandstormWitherSand {
 				40, RADIUS * 0.5, 1.0, RADIUS * 0.5, 0.02);
 
 		// 获取范围内生物
-		AABB box = player.getBoundingBox().inflate(RADIUS);
-		List<LivingEntity> targets = serverWorld.getEntitiesOfClass(LivingEntity.class, box,
-				e -> e != player && e.isAlive() && e.distanceToSqr(player) <= RADIUS * RADIUS);
+		Box box = player.getBoundingBox().expand(RADIUS);
+		List<LivingEntity> targets = serverWorld.getEntitiesByClass(LivingEntity.class, box,
+				e -> e != player && e.isAlive() && e.squaredDistanceTo(player) <= RADIUS * RADIUS);
 
 		for (LivingEntity target : targets) {
 			// 白名单检查
 			if (WhitelistUtils.isProtected(player, target)) continue;
 
 			// 施加致盲效果（3秒）
-			target.addEffect(new MobEffectInstance(SscAddon.SAND_BLIND_ENTRY, BLIND_DURATION, 0, false, true));
+			target.addStatusEffect(new StatusEffectInstance(SscAddon.SAND_BLIND_ENTRY, BLIND_DURATION, 0, false, true));
 
 			// 叠加1层侵蚀烙印
 			GoldenSandstormErosionBrand.onPlayerAttack(player, target);
 
 			// 命中粒子
 			ParticleUtils.spawnParticles(serverWorld, ParticleTypes.SOUL,
-					target.getX(), target.getY() + target.getBbHeight() * 0.5, target.getZ(),
+					target.getX(), target.getY() + target.getHeight() * 0.5, target.getZ(),
 					5, 0.3, 0.3, 0.3, 0.02);
 		}
 	}
@@ -192,29 +192,29 @@ public class GoldenSandstormWitherSand {
 	 * 取消蓄力
 	 * @param interrupted 是否被打断（受到伤害）
 	 */
-	private static void cancelCharge(ServerPlayer player, boolean interrupted) {
+	private static void cancelCharge(ServerPlayerEntity player, boolean interrupted) {
 		removeChargeSlow(player);
-		CHARGING_PLAYERS.remove(player.getUUID());
+		CHARGING_PLAYERS.remove(player.getUuid());
 	}
 
 	/**
 	 * 施加蓄力减速
 	 */
-	private static void applyChargeSlow(ServerPlayer player) {
-		AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
+	private static void applyChargeSlow(ServerPlayerEntity player) {
+		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(CHARGE_SLOW_UUID);
-			speedAttr.addTransientModifier(new AttributeModifier(
+			speedAttr.addTemporaryModifier(new EntityAttributeModifier(
 					CHARGE_SLOW_UUID, -0.50,
-					AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 
 	/**
 	 * 移除蓄力减速
 	 */
-	private static void removeChargeSlow(ServerPlayer player) {
-		AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
+	private static void removeChargeSlow(ServerPlayerEntity player) {
+		EntityAttributeInstance speedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 		if (speedAttr != null) {
 			speedAttr.removeModifier(CHARGE_SLOW_UUID);
 		}
@@ -230,10 +230,10 @@ public class GoldenSandstormWitherSand {
 	/**
 	 * 玩家断线/变形时清理
 	 */
-	public static void clearPlayer(ServerPlayer player) {
-		if (CHARGING_PLAYERS.containsKey(player.getUUID())) {
+	public static void clearPlayer(ServerPlayerEntity player) {
+		if (CHARGING_PLAYERS.containsKey(player.getUuid())) {
 			removeChargeSlow(player);
-			CHARGING_PLAYERS.remove(player.getUUID());
+			CHARGING_PLAYERS.remove(player.getUuid());
 		}
 	}
 
@@ -245,10 +245,10 @@ public class GoldenSandstormWitherSand {
 	public static void clearAll(net.minecraft.server.MinecraftServer server) {
 		// SERVER_STARTING 阶段 getPlayerManager() 可能尚未初始化，必须做空值检查
 		if (server != null) {
-			net.minecraft.server.players.PlayerList pm = server.getPlayerList();
+			net.minecraft.server.PlayerManager pm = server.getPlayerManager();
 			if (pm != null) {
-				for (ServerPlayer player : pm.getPlayers()) {
-					if (CHARGING_PLAYERS.containsKey(player.getUUID())) {
+				for (ServerPlayerEntity player : pm.getPlayerList()) {
+					if (CHARGING_PLAYERS.containsKey(player.getUuid())) {
 						removeChargeSlow(player);
 					}
 				}

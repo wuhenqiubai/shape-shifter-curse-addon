@@ -95,22 +95,21 @@ repositories {
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-//    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    mappings loom.officialMojangMappings()
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+//    mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     // Fabric API
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    // Shape Shifter Curse Unofficial Port
-    modImplementation "com.github.wuhenqiubai:Shape-Shifter-Curse_Unofficial-Port:ver~1.21.1_main-SNAPSHOT"
-//    include "com.github.wuhenqiubai:Shape-Shifter-Curse_Unofficial-Port:ver~1.21.1_main-SNAPSHOT"
+    // Shape Shifter Curse-Unofficial Port
+    modImplementation "maven.modrinth:shape-shifter-curse-unofficial-port:1.10.0-dev-hf3+build.24+1.21.1"
     
     // Player Animation Library
     modImplementation "com.zigythebird.playeranim:PlayerAnimationLibFabric:${project.pal_version}"
 
     // Apoli & Dependencies
-    modImplementation "io.github.apace100:apoli:${project.apoli_version}"
+    modImplementation "io.github.apace100:Apoli-Legacy:${project.apoli_version}"
     modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolib_version}"
     modImplementation "dev.emi:trinkets:${project.trinkets_version}"
 

@@ -1,26 +1,26 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.ThrownPotion;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.UseAnim;
-import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionContents;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.Level;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.component.type.PotionContentsComponent;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.thrown.PotionEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.potion.Potion;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.util.UseAction;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
 import net.onixary.shapeShifterCurseFabric.status_effects.RegOtherStatusEffects;
 import org.jetbrains.annotations.Nullable;
@@ -57,7 +57,7 @@ public class InfiniteEnergyPotionItem extends Item {
 
 	private final Type type;
 
-	public InfiniteEnergyPotionItem(Properties settings, Type type) {
+	public InfiniteEnergyPotionItem(net.minecraft.item.Item.Settings settings, Type type) {
 		super(settings);
 		this.type = type;
 	}
@@ -67,79 +67,79 @@ public class InfiniteEnergyPotionItem extends Item {
 	}
 
 	/** 是否处于空瓶充能中（基于世界游戏时间戳，任意位置自动充能，无需 tick）。 */
-	public static boolean isRecharging(ItemStack stack, @Nullable Level world) {
+	public static boolean isRecharging(ItemStack stack, @Nullable World world) {
 		if (world == null) {
 			return false;
 		}
-		CustomData nbt = stack.get(DataComponents.CUSTOM_DATA);
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
 		if (nbt == null || !nbt.contains(NBT_FULL_AT)) {
 			return false;
 		}
-		return world.getGameTime() < nbt.getUnsafe().getLong(NBT_FULL_AT);
+		return world.getTime() < nbt.getNbt().getLong(NBT_FULL_AT);
 	}
 
 	/** 仅凭 NBT 判断是否标记为空瓶（无世界对象时用于命名/物品栏显示；充满后由 inventoryTick 清除标记）。 */
 	public static boolean isEmptyByNbt(ItemStack stack) {
-		CustomData nbt = stack.get(DataComponents.CUSTOM_DATA);
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
 		return nbt != null && nbt.contains(NBT_FULL_AT);
 	}
 
 	/** 返回充能结束的世界游戏时间（无标记返回 0）。供药水袋把剩余充能时间同步到冷却遮罩使用。 */
 	public static long getRechargeEndTime(ItemStack stack) {
-		CustomData nbt = stack.get(DataComponents.CUSTOM_DATA);
-		return (nbt != null && nbt.contains(NBT_FULL_AT)) ? nbt.getUnsafe().getLong(NBT_FULL_AT) : 0L;
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
+		return (nbt != null && nbt.contains(NBT_FULL_AT)) ? nbt.getNbt().getLong(NBT_FULL_AT) : 0L;
 	}
 
 	/** 标记一次使用：写入充满时刻 = 当前世界时间 + 充能时长（进入空瓶状态）。供本类与药水袋调用。 */
-	public void markUsed(ItemStack stack, Level world) {
-		CustomData.update(DataComponents.CUSTOM_DATA, stack, nbt -> nbt.putLong(NBT_FULL_AT, world.getGameTime() + type.rechargeTicks));
+	public void markUsed(ItemStack stack, World world) {
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putLong(NBT_FULL_AT, world.getTime() + type.rechargeTicks));
 	}
 
 	/** 生成原版投掷药水弹射物并携带压缩能量药水(feed_potion)，复用原版喷溅/滞留范围效果。仅服务端调用。 */
-	public void spawnThrownPotion(Level world, Player user) {
-		ItemStack thrown = PotionContents.createItemStack(
+	public void spawnThrownPotion(World world, PlayerEntity user) {
+		ItemStack thrown = PotionContentsComponent.createStack(
 				type == Type.LINGERING ? Items.LINGERING_POTION : Items.SPLASH_POTION,
-				(Holder<Potion>) RegCustomPotions.FEED_POTION);
-		ThrownPotion entity = new ThrownPotion(world, user);
+				(RegistryEntry<Potion>) RegCustomPotions.FEED_POTION);
+		PotionEntity entity = new PotionEntity(world, user);
 		entity.setItem(thrown);
-		entity.shootFromRotation(user, user.getXRot(), user.getYRot(), -20.0F, 0.5F, 1.0F);
-		world.addFreshEntity(entity);
+		entity.setVelocity(user, user.getPitch(), user.getYaw(), -20.0F, 0.5F, 1.0F);
+		world.spawnEntity(entity);
 	}
 
 	/** 投掷音效（喷溅/滞留通用）。 */
-	public static void playThrowSound(Level world, Player user) {
+	public static void playThrowSound(World world, PlayerEntity user) {
 		world.playSound(null, user.getX(), user.getY(), user.getZ(),
-				SoundEvents.SPLASH_POTION_THROW, SoundSource.PLAYERS,
+				SoundEvents.ENTITY_SPLASH_POTION_THROW, SoundCategory.PLAYERS,
 				0.5F, 0.4F / (world.getRandom().nextFloat() * 0.4F + 0.8F));
 	}
 
 	@Override
-	public InteractionResultHolder<ItemStack> use(Level world, Player user, InteractionHand hand) {
-		ItemStack stack = user.getItemInHand(hand);
+	public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
+		ItemStack stack = user.getStackInHand(hand);
 		// 空瓶充能中：不可使用
 		if (isRecharging(stack, world)) {
-			return InteractionResultHolder.pass(stack);
+			return TypedActionResult.pass(stack);
 		}
 		if (type == Type.DRINK) {
 			// 开始饮用读条
-			user.startUsingItem(hand);
-			return InteractionResultHolder.consume(stack);
+			user.setCurrentHand(hand);
+			return TypedActionResult.consume(stack);
 		}
 		// 投掷型（喷溅/滞留）
-		if (!world.isClientSide) {
+		if (!world.isClient) {
 			spawnThrownPotion(world, user);
 		}
 		// 双端均标记空瓶（world.getTime 双端同步），客户端即时显示空瓶材质
 		markUsed(stack, world);
 		playThrowSound(world, user);
-		return InteractionResultHolder.success(stack);
+		return TypedActionResult.success(stack);
 	}
 
 	@Override
-	public ItemStack finishUsingItem(ItemStack stack, Level world, LivingEntity user) {
-		if (!world.isClientSide && user instanceof Player player) {
+	public ItemStack finishUsing(ItemStack stack, World world, LivingEntity user) {
+		if (!world.isClient && user instanceof PlayerEntity player) {
 			// 施加与压缩能量药水一致的效果（瞬时：+8 饱食 +0.6 饱和，使魔额外 +25 魔力）
-			RegOtherStatusEffects.FEED_EFFECT.applyInstantenousEffect(player, player, player, 0, 1.0);
+			RegOtherStatusEffects.FEED_EFFECT.applyInstantEffect(player, player, player, 0, 1.0);
 		}
 		// 双端均标记空瓶，确保客户端立即显示空瓶材质与名称
 		markUsed(stack, world);
@@ -147,13 +147,13 @@ public class InfiniteEnergyPotionItem extends Item {
 	}
 
 	@Override
-	public int getUseDuration(ItemStack stack, LivingEntity user) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity user) {
 		return type == Type.DRINK ? DRINK_TIME : 0;
 	}
 
 	@Override
-	public UseAnim getUseAnimation(ItemStack stack) {
-		return type == Type.DRINK ? UseAnim.DRINK : UseAnim.NONE;
+	public UseAction getUseAction(ItemStack stack) {
+		return type == Type.DRINK ? UseAction.DRINK : UseAction.NONE;
 	}
 
 	/**
@@ -162,14 +162,14 @@ public class InfiniteEnergyPotionItem extends Item {
 	 *
 	 * @return 是否发生了清除
 	 */
-	public static boolean clearRechargeMarkIfDone(ItemStack stack, Level world) {
+	public static boolean clearRechargeMarkIfDone(ItemStack stack, World world) {
 		if (world == null) {
 			return false;
 		}
-		CustomData nbt = stack.get(DataComponents.CUSTOM_DATA);
-		if (nbt != null && nbt.contains(NBT_FULL_AT) && world.getGameTime() >= nbt.getUnsafe().getLong(NBT_FULL_AT)) {
+		NbtComponent nbt = stack.get(DataComponentTypes.CUSTOM_DATA);
+		if (nbt != null && nbt.contains(NBT_FULL_AT) && world.getTime() >= nbt.getNbt().getLong(NBT_FULL_AT)) {
 			if (nbt.isEmpty()) {
-				stack.remove(DataComponents.CUSTOM_DATA);
+				stack.remove(DataComponentTypes.CUSTOM_DATA);
 			}
 			return true;
 		}
@@ -178,8 +178,8 @@ public class InfiniteEnergyPotionItem extends Item {
 
 	/** 充满后清除空瓶标记，使物品栏内名称/材质恢复满瓶（任意位置自动充能由 isRecharging 时间戳保证）。 */
 	@Override
-	public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean selected) {
-		if (!world.isClientSide) {
+	public void inventoryTick(ItemStack stack, World world, Entity entity, int slot, boolean selected) {
+		if (!world.isClient) {
 			clearRechargeMarkIfDone(stack, world);
 		}
 		super.inventoryTick(stack, world, entity, slot, selected);
@@ -187,25 +187,25 @@ public class InfiniteEnergyPotionItem extends Item {
 
 	/** 附魔光效。 */
 	@Override
-	public boolean isFoil(ItemStack stack) {
+	public boolean hasGlint(ItemStack stack) {
 		return true;
 	}
 
 	/** 满/空显示不同名称（自定义命名由 ItemStack#getName 在调用本方法前拦截）。 */
 	@Override
-	public Component getName(ItemStack stack) {
-		return Component.translatable(this.getDescriptionId() + (isEmptyByNbt(stack) ? ".empty" : ""));
+	public Text getName(ItemStack stack) {
+		return Text.translatable(this.getTranslationKey() + (isEmptyByNbt(stack) ? ".empty" : ""));
 	}
 
 	@Override
-	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag type) {
-		tooltip.add(Component.translatable("item.ssc_addon.infinite_energy_potion.tooltip").withStyle(ChatFormatting.GRAY));
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+		tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip").formatted(Formatting.GRAY));
 		if (isEmptyByNbt(stack)) {
-			tooltip.add(Component.translatable("item.ssc_addon.infinite_energy_potion.tooltip.recharging")
-					.withStyle(ChatFormatting.AQUA));
+			tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip.recharging")
+					.formatted(Formatting.AQUA));
 		} else {
-			tooltip.add(Component.translatable("item.ssc_addon.infinite_energy_potion.tooltip.ready")
-					.withStyle(ChatFormatting.GREEN));
+			tooltip.add(Text.translatable("item.ssc_addon.infinite_energy_potion.tooltip.ready")
+					.formatted(Formatting.GREEN));
 		}
 	}
 }

@@ -2,19 +2,19 @@ package net.jackcooper.shapeShifterCurseAddon.client;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.MultiLineLabel;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.MultilineText;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -40,12 +40,12 @@ public class JobChangeSelectScreen extends Screen {
 
     /** 一个可转职进入的进化形态条目。 */
     private static final class FormEntry {
-        final ResourceLocation formId;
+        final Identifier formId;
         final Item icon;
         final String nameKey;
         final String descKey;
 
-        FormEntry(ResourceLocation formId, Item icon, String nameKey, String descKey) {
+        FormEntry(Identifier formId, Item icon, String nameKey, String descKey) {
             this.formId = formId;
             this.icon = icon;
             this.nameKey = nameKey;
@@ -78,7 +78,7 @@ public class JobChangeSelectScreen extends Screen {
         ordered.addAll(remain.values());
 
         for (EvolutionRoute route : ordered) {
-            ResourceLocation fid = route.startForm;
+            Identifier fid = route.startForm;
             String ns = fid.getNamespace();
             String path = fid.getPath();
             Item icon = Items.NETHER_STAR;
@@ -101,10 +101,10 @@ public class JobChangeSelectScreen extends Screen {
 
     private int page = 0;
     /** 「选择此形态」按钮引用，翻到当前所处形态那页时置灰。 */
-    private Button chooseButton;
+    private ButtonWidget chooseButton;
 
     public JobChangeSelectScreen() {
-        super(Component.translatable("evolution.my_addon.job_change.select.title"));
+        super(Text.translatable("evolution.my_addon.job_change.select.title"));
     }
 
     private int panelX() {
@@ -122,26 +122,26 @@ public class JobChangeSelectScreen extends Screen {
         int py = panelY();
         boolean multiPage = forms.size() > 1;
 
-        Button prev = Button.builder(Component.literal("<"), b -> prevPage())
-                .bounds(px + 6, py + PANEL_H / 2 - 10, 20, 20).build();
+        ButtonWidget prev = ButtonWidget.builder(Text.literal("<"), b -> prevPage())
+                .dimensions(px + 6, py + PANEL_H / 2 - 10, 20, 20).build();
         prev.active = multiPage;
-        this.addRenderableWidget(prev);
+        this.addDrawableChild(prev);
 
-        Button next = Button.builder(Component.literal(">"), b -> nextPage())
-                .bounds(px + PANEL_W - 26, py + PANEL_H / 2 - 10, 20, 20).build();
+        ButtonWidget next = ButtonWidget.builder(Text.literal(">"), b -> nextPage())
+                .dimensions(px + PANEL_W - 26, py + PANEL_H / 2 - 10, 20, 20).build();
         next.active = multiPage;
-        this.addRenderableWidget(next);
+        this.addDrawableChild(next);
 
-        this.chooseButton = Button.builder(
-                Component.translatable("evolution.my_addon.start.select.choose"),
+        this.chooseButton = ButtonWidget.builder(
+                Text.translatable("evolution.my_addon.start.select.choose"),
                 b -> chooseCurrentForm()
-        ).bounds(this.width / 2 - 80, py + PANEL_H - 54, 160, 20).build();
-        this.addRenderableWidget(this.chooseButton);
+        ).dimensions(this.width / 2 - 80, py + PANEL_H - 54, 160, 20).build();
+        this.addDrawableChild(this.chooseButton);
 
-        this.addRenderableWidget(Button.builder(
-                Component.translatable("gui.back"),
-                b -> this.onClose()
-        ).bounds(this.width / 2 - 60, py + PANEL_H - 30, 120, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.translatable("gui.back"),
+                b -> this.close()
+        ).dimensions(this.width / 2 - 60, py + PANEL_H - 30, 120, 20).build());
     }
 
     private void prevPage() {
@@ -170,12 +170,12 @@ public class JobChangeSelectScreen extends Screen {
         if (page < 0 || page >= forms.size()) {
             return false;
         }
-        LocalPlayer p = Minecraft.getInstance().player;
+        ClientPlayerEntity p = MinecraftClient.getInstance().player;
         if (p == null) {
             return false;
         }
         IForm nowForm = RegPlayerFormComponent.PLAYER_FORM.get(p).nowForm;
-        ResourceLocation nowFormId = (nowForm == null) ? null : nowForm.getFormID();
+        Identifier nowFormId = (nowForm == null) ? null : nowForm.getFormID();
         return forms.get(page).formId.equals(nowFormId);
     }
 
@@ -187,14 +187,14 @@ public class JobChangeSelectScreen extends Screen {
             return; // 当前所处形态不可选（双保险，按钮本已置灰）
         }
         FormEntry form = forms.get(page);
-        FriendlyByteBuf buf = PacketByteBufs.create();
-        buf.writeUtf(form.formId.toString());
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(form.formId.toString());
         ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_JOB_CHANGE_CONFIRM), buf));
-        Minecraft.getInstance().setScreen(null); // 关界面看变身动画
+        MinecraftClient.getInstance().setScreen(null); // 关界面看变身动画
     }
 
     @Override
-    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         updateChooseButtonState();
         this.renderBackground(ctx, mouseX, mouseY,  delta);
 
@@ -203,40 +203,40 @@ public class JobChangeSelectScreen extends Screen {
         ctx.fill(px, py, px + PANEL_W, py + PANEL_H, 0xE0140C08);
         drawBorder(ctx, px, py, PANEL_W, PANEL_H, 0xFFB8893A);
 
-        ctx.drawCenteredString(this.font, this.title, this.width / 2, py + 10, 0xFFE8C66A);
+        ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, py + 10, 0xFFE8C66A);
 
         if (!forms.isEmpty()) {
-            Component pageInfo = Component.translatable("evolution.my_addon.start.select.page", page + 1, forms.size());
-            ctx.drawCenteredString(this.font, pageInfo, this.width / 2, py + 24, 0xFFAAAAAA);
+            Text pageInfo = Text.translatable("evolution.my_addon.start.select.page", page + 1, forms.size());
+            ctx.drawCenteredTextWithShadow(this.textRenderer, pageInfo, this.width / 2, py + 24, 0xFFAAAAAA);
 
             FormEntry form = forms.get(page);
 
             int iconCenterX = this.width / 2;
             int iconTopY = py + 44;
-            ctx.pose().pushPose();
-            ctx.pose().translate(iconCenterX - 8 * ICON_SCALE, iconTopY, 0);
-            ctx.pose().scale(ICON_SCALE, ICON_SCALE, 1);
-            ctx.renderItem(new ItemStack(form.icon), 0, 0);
-            ctx.pose().popPose();
+            ctx.getMatrices().push();
+            ctx.getMatrices().translate(iconCenterX - 8 * ICON_SCALE, iconTopY, 0);
+            ctx.getMatrices().scale(ICON_SCALE, ICON_SCALE, 1);
+            ctx.drawItem(new ItemStack(form.icon), 0, 0);
+            ctx.getMatrices().pop();
 
-            Component name = Component.translatable(form.nameKey).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
-            ctx.drawCenteredString(this.font, name, this.width / 2, iconTopY + 16 * ICON_SCALE + 8, 0xFFFFFFFF);
+            Text name = Text.translatable(form.nameKey).formatted(Formatting.GOLD, Formatting.BOLD);
+            ctx.drawCenteredTextWithShadow(this.textRenderer, name, this.width / 2, iconTopY + 16 * ICON_SCALE + 8, 0xFFFFFFFF);
 
-            MultiLineLabel desc = MultiLineLabel.create(this.font,
-                    Component.translatable(form.descKey).withStyle(ChatFormatting.GRAY), PANEL_W - 40);
-            desc.renderCentered(ctx, this.width / 2, iconTopY + 16 * ICON_SCALE + 26);
+            MultilineText desc = MultilineText.create(this.textRenderer,
+                    Text.translatable(form.descKey).formatted(Formatting.GRAY), PANEL_W - 40);
+            desc.drawCenterWithShadow(ctx, this.width / 2, iconTopY + 16 * ICON_SCALE + 26);
 
             // 当前所处形态不可选，提示玩家
             if (isCurrentPageOwnForm()) {
-                Component cur = Component.translatable("evolution.my_addon.job_change.current").withStyle(ChatFormatting.RED, ChatFormatting.ITALIC);
-                ctx.drawCenteredString(this.font, cur, this.width / 2, py + PANEL_H - 68, 0xFFFF6666);
+                Text cur = Text.translatable("evolution.my_addon.job_change.current").formatted(Formatting.RED, Formatting.ITALIC);
+                ctx.drawCenteredTextWithShadow(this.textRenderer, cur, this.width / 2, py + PANEL_H - 68, 0xFFFF6666);
             }
         }
 
         super.render(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawBorder(GuiGraphics ctx, int x, int y, int w, int h, int color) {
+    private void drawBorder(DrawContext ctx, int x, int y, int w, int h, int color) {
         ctx.fill(x, y, x + w, y + 1, color);
         ctx.fill(x, y + h - 1, x + w, y + h, color);
         ctx.fill(x, y, x + 1, y + h, color);
@@ -244,7 +244,7 @@ public class JobChangeSelectScreen extends Screen {
     }
 
     @Override
-    public boolean isPauseScreen() {
+    public boolean shouldPause() {
         return false;
     }
 }

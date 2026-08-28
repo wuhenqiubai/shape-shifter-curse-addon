@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.AxolotlTree;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -47,8 +47,8 @@ public final class AxolotlWaterSpurtHandler {
 	}
 
 	/** 每服务端 tick 对每个在线玩家调用。 */
-	public static void tick(ServerPlayer player) {
-		UUID id = player.getUUID();
+	public static void tick(ServerPlayerEntity player) {
+		UUID id = player.getUuid();
 		int wcd = WATER_CD.getOrDefault(id, 0);
 		if (wcd > 0) WATER_CD.put(id, wcd - 1);
 		int lcd = LAND_CD.getOrDefault(id, 0);
@@ -74,7 +74,7 @@ public final class AxolotlWaterSpurtHandler {
 			return;
 		}
 
-		boolean inWater = player.isInWater();
+		boolean inWater = player.isTouchingWater();
 
 		if (inWater) {
 			// ===== 水下冲刺：水里 + 按下真正疾跑键（上升沿）→ 前冲，免费（双击 W/游泳自动疾跑不触发）=====
@@ -91,26 +91,26 @@ public final class AxolotlWaterSpurtHandler {
 			if (player.getAir() < LAND_MOISTURE_COST) {
 				return; // 湿润度不足，不触发
 			}
-			player.setAirSupply(player.getAirSupply() - LAND_MOISTURE_COST);
+			player.setAir(player.getAir() - LAND_MOISTURE_COST);
 			doDash(player);
 			LAND_CD.put(id, CD_TICKS);
 		}
 	}
 
 	/** 沿视线前冲一次（水陆一致的位移与视听反馈）。 */
-	private static void doDash(ServerPlayer player) {
-		Vec3 look = player.getLookAngle();
-		player.push(look.x * BURST, look.y * BURST, look.z * BURST);
-		player.hurtMarked = true;
+	private static void doDash(ServerPlayerEntity player) {
+		Vec3d look = player.getRotationVector();
+		player.addVelocity(look.x * BURST, look.y * BURST, look.z * BURST);
+		player.velocityModified = true;
 
-		ServerLevel sw = (ServerLevel) player.level();
+		ServerWorld sw = (ServerWorld) player.getWorld();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.PLAYER_SPLASH_HIGH_SPEED, SoundSource.PLAYERS, 1.2f, 1.0f);
+				SoundEvents.ENTITY_PLAYER_SPLASH_HIGH_SPEED, SoundCategory.PLAYERS, 1.2f, 1.0f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.AXOLOTL_SPLASH, SoundSource.PLAYERS, 1.3f, 0.7f);
-		sw.sendParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 0.6, player.getZ(),
+				SoundEvents.ENTITY_AXOLOTL_SPLASH, SoundCategory.PLAYERS, 1.3f, 0.7f);
+		sw.spawnParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 0.6, player.getZ(),
 				60, 0.6, 0.4, 0.6, 0.6);
-		sw.sendParticles(ParticleTypes.BUBBLE, player.getX(), player.getY() + 0.5, player.getZ(),
+		sw.spawnParticles(ParticleTypes.BUBBLE, player.getX(), player.getY() + 0.5, player.getZ(),
 				40, 0.5, 0.4, 0.5, 0.5);
 		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnWaterBurst(
 				sw, player.getX(), player.getY() + 0.6, player.getZ(), 1.2);

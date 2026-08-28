@@ -1,22 +1,22 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
 
 public class FormUtils {
 	// 通过实体类型ID判断，避免在Mixin类中直接引用原版模组类导致类加载级联
-	private static final ResourceLocation TRANSFORMATIVE_WOLF_TYPE_ID = ResourceLocation.fromNamespaceAndPath("shape-shifter-curse", "t_wolf");
+	private static final Identifier TRANSFORMATIVE_WOLF_TYPE_ID = Identifier.of("shape-shifter-curse", "t_wolf");
 
 	private FormUtils() {
 	}
 
 	public static IForm getCurrentForm(LivingEntity entity) {
-		if (entity instanceof Player player) {
+		if (entity instanceof PlayerEntity player) {
 			PlayerFormComponent component = RegPlayerFormComponent.PLAYER_FORM.get(player);
 			if (component != null) {
 				return component.nowForm;
@@ -30,17 +30,17 @@ public class FormUtils {
 		return currentForm != null && currentForm.getFormID() != null;
 	}
 
-	public static boolean isForm(LivingEntity entity, ResourceLocation formId) {
+	public static boolean isForm(LivingEntity entity, Identifier formId) {
 		IForm currentForm = getCurrentForm(entity);
 		return currentForm != null && currentForm.getFormID() != null && currentForm.getFormID().equals(formId);
 	}
 
-	public static boolean isAnyForm(LivingEntity entity, ResourceLocation... formIds) {
+	public static boolean isAnyForm(LivingEntity entity, Identifier... formIds) {
 		IForm currentForm = getCurrentForm(entity);
 		if (currentForm == null || currentForm.getFormID() == null) {
 			return false;
 		}
-		for (ResourceLocation formId : formIds) {
+		for (Identifier formId : formIds) {
 			if (currentForm.getFormID().equals(formId)) {
 				return true;
 			}
@@ -121,6 +121,6 @@ public class FormUtils {
 	 * 判断实体是否为咒文胡狼（通过注册表ID判断，避免直接引用原版类）
 	 */
 	public static boolean isTransformativeWolf(LivingEntity entity) {
-		return BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).equals(TRANSFORMATIVE_WOLF_TYPE_ID);
+		return Registries.ENTITY_TYPE.getId(entity.getType()).equals(TRANSFORMATIVE_WOLF_TYPE_ID);
 	}
 }

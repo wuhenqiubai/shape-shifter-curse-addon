@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageTypes;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SscIgnitedEntityAccessor;
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,30 +34,30 @@ public abstract class SscAddonEntityIgnitionMixin implements SscIgnitedEntityAcc
 		return this.sscAddon$igniterUuid;
 	}
 
-	@Inject(method = "saveWithoutId", at = @At("HEAD"))
-	private void injectWriteNbt(CompoundTag nbt, CallbackInfoReturnable<CompoundTag> cir) {
+	@Inject(method = "writeNbt", at = @At("HEAD"))
+	private void injectWriteNbt(NbtCompound nbt, CallbackInfoReturnable<NbtCompound> cir) {
 		if (this.sscAddon$igniterUuid != null) {
-			nbt.putUUID("SscAddonIgniter", this.sscAddon$igniterUuid);
+			nbt.putUuid("SscAddonIgniter", this.sscAddon$igniterUuid);
 		}
 	}
 
-	@Inject(method = "load", at = @At("HEAD"))
-	private void injectReadNbt(CompoundTag nbt, CallbackInfo ci) {
+	@Inject(method = "readNbt", at = @At("HEAD"))
+	private void injectReadNbt(NbtCompound nbt, CallbackInfo ci) {
 		if (nbt.contains("SscAddonIgniter")) {
-			this.sscAddon$igniterUuid = nbt.getUUID("SscAddonIgniter");
+			this.sscAddon$igniterUuid = nbt.getUuid("SscAddonIgniter");
 		}
 	}
 
-	@ModifyArg(method = "baseTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;hurt(Lnet/minecraft/world/damagesource/DamageSource;F)Z"), index = 0)
+	@ModifyArg(method = "baseTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;damage(Lnet/minecraft/entity/damage/DamageSource;F)Z"), index = 0)
 	private DamageSource modifyFireDamageSource(DamageSource source) {
-		if (source.is(DamageTypes.ON_FIRE)) {
+		if (source.isOf(DamageTypes.ON_FIRE)) {
 			UUID igniter = this.sscAddon$getIgniterUuid();
 			if (igniter != null) {
 				Entity entity = (Entity) (Object) this;
-				if (!entity.level().isClientSide) {
-					Player player = entity.level().getPlayerByUUID(igniter);
+				if (!entity.getWorld().isClient) {
+					PlayerEntity player = entity.getWorld().getPlayerByUuid(igniter);
 					if (player != null) {
-						return new DamageSource(source.typeHolder(), null, player);
+						return new DamageSource(source.getTypeRegistryEntry(), null, player);
 					}
 				}
 			}
@@ -68,9 +68,9 @@ public abstract class SscAddonEntityIgnitionMixin implements SscIgnitedEntityAcc
 	/**
 	 * 装死（PLAYING_DEAD）期间锁定视角，取消视角输入。（原 SscAddonEntityMixin 合并至此；行为不变。）
 	 */
-	@Inject(method = "turn", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "changeLookDirection", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$onChangeLookDirectionPlayDead(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
-		if ((Object) this instanceof LivingEntity entity && entity.hasEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
+		if ((Object) this instanceof LivingEntity entity && entity.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) {
 			ci.cancel();
 		}
 	}

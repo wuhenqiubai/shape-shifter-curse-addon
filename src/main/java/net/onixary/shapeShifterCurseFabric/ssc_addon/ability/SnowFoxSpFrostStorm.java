@@ -1,15 +1,15 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FrostStormEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -38,21 +38,21 @@ public class SnowFoxSpFrostStorm {
     private static final int MANA_COST = 30; // 霜寒值消耗
     //未使用: private static final int COOLDOWN = 600;  30秒CD = 600tick
     
-    private static final ResourceLocation RESOURCE_ID = ResourceLocation.fromNamespaceAndPath("my_addon", "form_snow_fox_sp_resource");
-    private static final ResourceLocation REGEN_COOLDOWN_ID = ResourceLocation.fromNamespaceAndPath("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
+    private static final Identifier RESOURCE_ID = Identifier.of("my_addon", "form_snow_fox_sp_resource");
+    private static final Identifier REGEN_COOLDOWN_ID = Identifier.of("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
     
     /**
      * 开始蓄力（点按技能键时调用）
      */
-    public static boolean startCharging(ServerPlayer player) {
+    public static boolean startCharging(ServerPlayerEntity player) {
         // 检查是否已经在蓄力
-        if (CHARGING_PLAYERS.containsKey(player.getUUID())) {
+        if (CHARGING_PLAYERS.containsKey(player.getUuid())) {
             return false;
         }
         
         // 检查自定义CD是否结束（使用服务端tick，多人环境一致）
-        long currentTick = player.level().getGameTime();
-        Long cdEndTick = COOLDOWN_PLAYERS.get(player.getUUID());
+        long currentTick = player.getWorld().getTime();
+        Long cdEndTick = COOLDOWN_PLAYERS.get(player.getUuid());
         if (cdEndTick != null && currentTick < cdEndTick) {
             return false;
         }
@@ -60,7 +60,7 @@ public class SnowFoxSpFrostStorm {
         // 检查霜寒值
         int currentMana = getResourceValue(player);
         if (currentMana < MANA_COST) {
-            player.playSound(SoundEvents.FIRE_EXTINGUISH, 0.5f, 1.0f);
+            player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
             return false;
         }
         
@@ -69,16 +69,16 @@ public class SnowFoxSpFrostStorm {
         // 设置回复冷却（5秒）
         setRegenCooldown(player, 100);
         // 设置技能CD（30秒 = 600tick，使用服务端tick保证多人一致性）
-        COOLDOWN_PLAYERS.put(player.getUUID(), currentTick + 600L);
+        COOLDOWN_PLAYERS.put(player.getUuid(), currentTick + 600L);
         // 设置CD显示资源（30秒 = 600tick）
         PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SNOW_FOX_RANGED_SECONDARY_CD, 600);
         
         // 开始蓄力
-        CHARGING_PLAYERS.put(player.getUUID(), new ChargingData(0));
+        CHARGING_PLAYERS.put(player.getUuid(), new ChargingData(0));
         
         // 播放蓄力开始音效
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-            SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.5f, 1.5f);
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+            SoundEvents.BLOCK_BEACON_ACTIVATE, SoundCategory.PLAYERS, 0.5f, 1.5f);
         
         return true;
     }
@@ -86,11 +86,11 @@ public class SnowFoxSpFrostStorm {
     /**
      * 取消蓄力（被净化时调用）
      */
-    public static void cancelCharging(ServerPlayer player) {
-        if (CHARGING_PLAYERS.remove(player.getUUID()) != null) {
+    public static void cancelCharging(ServerPlayerEntity player) {
+        if (CHARGING_PLAYERS.remove(player.getUuid()) != null) {
             // 播放打断音效
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.BEACON_DEACTIVATE, SoundSource.PLAYERS, 0.5f, 1.5f);
+            player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.BLOCK_BEACON_DEACTIVATE, SoundCategory.PLAYERS, 0.5f, 1.5f);
         }
     }
 
@@ -114,12 +114,12 @@ public class SnowFoxSpFrostStorm {
     /**
      * 每tick更新蓄力状态
      */
-    public static void tick(ServerPlayer player) {
-        ChargingData data = CHARGING_PLAYERS.get(player.getUUID());
+    public static void tick(ServerPlayerEntity player) {
+        ChargingData data = CHARGING_PLAYERS.get(player.getUuid());
         if (data == null) return;
         
         // 检查是否被净化 - 如果有purified效果则取消蓄力
-        if (player.hasEffect(SscAddon.PURIFIED_ENTRY)) {
+        if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
             cancelCharging(player);
             return;
         }
@@ -127,8 +127,8 @@ public class SnowFoxSpFrostStorm {
         data.chargeTicks++;
         
         // 生成蓄力粒子效果
-        if (player.level() instanceof ServerLevel serverWorld) {
-            Vec3 pos = player.position();
+        if (player.getWorld() instanceof ServerWorld serverWorld) {
+            Vec3d pos = player.getPos();
             double angle = (data.chargeTicks * 0.3) % (Math.PI * 2);
             double radius = 0.8;
             double x = pos.x + Math.cos(angle) * radius;
@@ -140,46 +140,46 @@ public class SnowFoxSpFrostStorm {
         // 蓄力完成
         if (data.chargeTicks >= CHARGE_TICKS) {
             releaseStorm(player);
-            CHARGING_PLAYERS.remove(player.getUUID());
+            CHARGING_PLAYERS.remove(player.getUuid());
         }
     }
     
     /**
      * 释放冰风暴
      */
-    private static void releaseStorm(ServerPlayer player) {
+    private static void releaseStorm(ServerPlayerEntity player) {
         // 霜寒值已在startCharging时消耗，CD也已设置
 
         // 计算准星位置（射线检测）
-        Vec3 start = player.getEyePosition();
-        Vec3 look = player.getViewVector(1.0f);
-        Vec3 end = start.add(look.scale(MAX_RANGE));
+        Vec3d start = player.getEyePos();
+        Vec3d look = player.getRotationVec(1.0f);
+        Vec3d end = start.add(look.multiply(MAX_RANGE));
         
-        BlockHitResult hitResult = player.level().clip(new ClipContext(
-            start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player
+        BlockHitResult hitResult = player.getWorld().raycast(new RaycastContext(
+            start, end, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, player
         ));
         
-        Vec3 targetPos;
+        Vec3d targetPos;
         if (hitResult.getType() == HitResult.Type.BLOCK) {
-            targetPos = hitResult.getLocation();
+            targetPos = hitResult.getPos();
         } else {
             targetPos = end;
         }
         
         // 创建冰风暴实体
         FrostStormEntity storm = new FrostStormEntity(
-            player.level(),
+            player.getWorld(),
             targetPos.x, targetPos.y, targetPos.z,
             player
         );
-        player.level().addFreshEntity(storm);
+        player.getWorld().spawnEntity(storm);
         
         // 播放释放音效
-        player.level().playSound(null, targetPos.x, targetPos.y, targetPos.z,
-            SoundEvents.EVOKER_PREPARE_SUMMON, SoundSource.PLAYERS, 1.0f, 0.8f);
+        player.getWorld().playSound(null, targetPos.x, targetPos.y, targetPos.z,
+            SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.PLAYERS, 1.0f, 0.8f);
         
         // 生成释放粒子
-        if (player.level() instanceof ServerLevel serverWorld) {
+        if (player.getWorld() instanceof ServerWorld serverWorld) {
             ParticleUtils.spawnParticles(serverWorld, ParticleTypes.CLOUD,
                 targetPos.x, targetPos.y + 1, targetPos.z,
                 30, 1.5, 1.0, 1.5, 0.05);
@@ -189,21 +189,21 @@ public class SnowFoxSpFrostStorm {
     /**
      * 获取霜寒值
      */
-    private static int getResourceValue(ServerPlayer player) {
+    private static int getResourceValue(ServerPlayerEntity player) {
         return PowerUtils.getResourceValue(player, RESOURCE_ID);
     }
 
     /**
      * 修改霜寒值
      */
-    private static void changeResourceValue(ServerPlayer player, int change) {
+    private static void changeResourceValue(ServerPlayerEntity player, int change) {
         PowerUtils.changeResourceValueAndSync(player, RESOURCE_ID, change);
     }
 
     /**
      * 设置回复冷却（使用后5秒内无法自然回复霜寒值）
      */
-    private static void setRegenCooldown(ServerPlayer player, int value) {
+    private static void setRegenCooldown(ServerPlayerEntity player, int value) {
         PowerUtils.setResourceValueAndSync(player, REGEN_COOLDOWN_ID, value);
     }
 

@@ -1,36 +1,36 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.entity;
 
-import net.minecraft.core.particles.DustColorTransitionOptions;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
-import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
-import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerEntity;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.ItemSupplier;
-import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.FlyingItemEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.data.DataTracker;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.listener.ClientPlayPacketListener;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
+import net.minecraft.particle.DustColorTransitionParticleEffect;
+import net.minecraft.particle.DustParticleEffect;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.EntityTrackerEntry;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.random.Random;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import org.joml.Vector3f;
@@ -43,7 +43,7 @@ import java.util.List;
  * 12 格后固定 2 格/s 飞行至多 3 秒（达 18 格上限）；撞墙立即爆炸，12 格后碍生物也爆炸，未命中则泡泡裂开消散。
  * 爆炸：6 格球范围 6 物理（不穿墙） + 仅直接碰到火球者腰部火环向 2 格内连锁 4 物理（不再二次连锁）。
  */
-public class FoxFireballEntity extends Projectile implements ItemSupplier {
+public class FoxFireballEntity extends ProjectileEntity implements FlyingItemEntity {
 
     private static final double ARM_DISTANCE = 12.0;   // 12 格后才进入杀伤（碰墙/生物爆炸）
     private static final double HIT_RADIUS = 2.0;      // 命中/穿透判定球半径
@@ -56,7 +56,7 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
     private static final double PHASE2_SPEED = 2.0;    // 12 格后固定 2 格/s
     private static final int PHASE2_DURATION = 60;     // 12 格后最多飞 3 秒（60 tick → 18 格上限）
 
-    private Vec3 direction = new Vec3(0, 0, 1);
+    private Vec3d direction = new Vec3d(0, 0, 1);
     private double distanceTraveled = 0;
     private int ticksAlive = 0;
     private int phase2Tick = 0;                  // 12 格后已飞 tick 数
@@ -65,19 +65,19 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
     private final java.util.List<float[]> activeRings = new java.util.ArrayList<>();   // 活跃火环 [cx,cy,cz,已播放tick]
     private final java.util.Set<java.util.UUID> piercedEntities = new java.util.HashSet<>();
 
-    public FoxFireballEntity(EntityType<? extends FoxFireballEntity> type, Level world) {
+    public FoxFireballEntity(EntityType<? extends FoxFireballEntity> type, World world) {
         super(type, world);
     }
 
-    public FoxFireballEntity(Level world, LivingEntity owner) {
+    public FoxFireballEntity(World world, LivingEntity owner) {
         super(SscAddon.FOX_FIREBALL_ENTITY, world);
         this.setOwner(owner);
-        this.setPos(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
+        this.setPosition(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
     }
 
-    public void setDirection(Vec3 dir) {
+    public void setDirection(Vec3d dir) {
         this.direction = dir.normalize();
-        this.setDeltaMovement(this.direction);   // 用速度把方向编进 spawn 包，供客户端预测移动
+        this.setVelocity(this.direction);   // 用速度把方向编进 spawn 包，供客户端预测移动
     }
 
     /** 速度曲线（格/tick = b/s ÷ 20）：0~12 格按距离 20→2 线性递减（约 1.5 秒走完），12 格后固定 2 格/s。 */
@@ -92,23 +92,23 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+    protected void initDataTracker(DataTracker.Builder builder) {
     }
 
     @Override
     public void tick() {
         super.tick();
         ticksAlive++;
-        if (this.level().isClientSide) {
+        if (this.getWorld().isClient) {
             // 客户端确定性预测移动（与服务端同一速度曲线），渲染插值平滑，避免只靠 tracker 同步的卡顿
-            Vec3 v = this.getDeltaMovement();
-            Vec3 dir = v.lengthSqr() > 1.0e-6 ? v.normalize() : direction;
+            Vec3d v = this.getVelocity();
+            Vec3d dir = v.lengthSquared() > 1.0e-6 ? v.normalize() : direction;
             double speed = speedPerTick(distanceTraveled);
-            this.setPos(this.getX() + dir.x * speed, this.getY() + dir.y * speed, this.getZ() + dir.z * speed);
+            this.setPosition(this.getX() + dir.x * speed, this.getY() + dir.y * speed, this.getZ() + dir.z * speed);
             distanceTraveled += speed;
             return;
         }
-        if (!(this.level() instanceof ServerLevel sw)) return;
+        if (!(this.getWorld() instanceof ServerWorld sw)) return;
 
         // 每帧推进并绘制所有活跃火环（穿透/爆炸触发的额外爆炸动画）
         updateActiveRings(sw);
@@ -121,21 +121,21 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
 
         boolean armed = distanceTraveled >= ARM_DISTANCE;  // 12 格后才有杀伤
         double speed = speedPerTick(distanceTraveled);
-        Vec3 velocity = direction.scale(speed);
-        Vec3 from = this.position();
-        Vec3 to = from.add(velocity);
+        Vec3d velocity = direction.multiply(speed);
+        Vec3d from = this.getPos();
+        Vec3d to = from.add(velocity);
 
         // 墙壁碰撞：火球不穿墙，撞墙立即触发爆破（任何距离）
-        BlockHitResult blockHit = sw.clip(new ClipContext(
-                from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+        BlockHitResult blockHit = sw.raycast(new RaycastContext(
+                from, to, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, this));
         if (blockHit.getType() != HitResult.Type.MISS) {
-            Vec3 hp = blockHit.getLocation();
-            this.setPos(hp.x, hp.y, hp.z);
+            Vec3d hp = blockHit.getPos();
+            this.setPosition(hp.x, hp.y, hp.z);
             explode(sw, null);
             return;
         }
 
-        this.setPos(to.x, to.y, to.z);
+        this.setPosition(to.x, to.y, to.z);
         distanceTraveled += speed;
 
         if (armed) {
@@ -162,73 +162,73 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
         if (ticksAlive > 200) this.discard();
     }
 
-    private LivingEntity findTarget(ServerLevel world) {
-        AABB box = this.getBoundingBox().inflate(HIT_RADIUS);
-        Vec3 c = this.position();
-        List<LivingEntity> list = world.getEntitiesOfClass(LivingEntity.class, box,
+    private LivingEntity findTarget(ServerWorld world) {
+        Box box = this.getBoundingBox().expand(HIT_RADIUS);
+        Vec3d c = this.getPos();
+        List<LivingEntity> list = world.getEntitiesByClass(LivingEntity.class, box,
                 e -> e != this.getOwner() && e.isAlive() && !e.isSpectator()
-                        && e.distanceToSqr(c.x, c.y, c.z) <= HIT_RADIUS * HIT_RADIUS);
+                        && e.squaredDistanceTo(c.x, c.y, c.z) <= HIT_RADIUS * HIT_RADIUS);
         for (LivingEntity e : list) {
-            if (this.getOwner() instanceof ServerPlayer op && WhitelistUtils.isProtected(op, e)) continue;
+            if (this.getOwner() instanceof ServerPlayerEntity op && WhitelistUtils.isProtected(op, e)) continue;
             return e;
         }
         return null;
     }
 
     /** 前 12 格穿透：对 2 格球内每个非白名单生物造成一次 8 魔法穿透伤害（去重，火球不灭）。 */
-    private void pierceTargets(ServerLevel world) {
-        AABB box = this.getBoundingBox().inflate(HIT_RADIUS);
-        Vec3 c = this.position();
+    private void pierceTargets(ServerWorld world) {
+        Box box = this.getBoundingBox().expand(HIT_RADIUS);
+        Vec3d c = this.getPos();
         LivingEntity owner = this.getOwner() instanceof LivingEntity le ? le : null;
-        List<LivingEntity> list = world.getEntitiesOfClass(LivingEntity.class, box,
+        List<LivingEntity> list = world.getEntitiesByClass(LivingEntity.class, box,
                 e -> e != this.getOwner() && e.isAlive() && !e.isSpectator()
-                        && e.distanceToSqr(c.x, c.y, c.z) <= HIT_RADIUS * HIT_RADIUS
-                        && !piercedEntities.contains(e.getUUID()));
+                        && e.squaredDistanceTo(c.x, c.y, c.z) <= HIT_RADIUS * HIT_RADIUS
+                        && !piercedEntities.contains(e.getUuid()));
         for (LivingEntity e : list) {
-            if (this.getOwner() instanceof ServerPlayer op && WhitelistUtils.isProtected(op, e)) continue;
-            e.hurt(magicSource(e, owner), PIERCE_DAMAGE);
-            piercedEntities.add(e.getUUID());
+            if (this.getOwner() instanceof ServerPlayerEntity op && WhitelistUtils.isProtected(op, e)) continue;
+            e.damage(magicSource(e, owner), PIERCE_DAMAGE);
+            piercedEntities.add(e.getUuid());
             applyFoxFireBurn(e);
-            double ex = e.getX(), ey = e.getY() + e.getBbHeight() * 0.5, ez = e.getZ();
-            world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, ex, ey, ez, 8, 0.3, 0.3, 0.3, 0.02);
-            world.sendParticles(ParticleTypes.FLAME, ex, ey, ez, 6, 0.25, 0.25, 0.25, 0.02);
-            world.playSound(null, ex, ey, ez, SoundEvents.BLAZE_HURT, SoundSource.PLAYERS, 0.4f, 1.6f);
+            double ex = e.getX(), ey = e.getY() + e.getHeight() * 0.5, ez = e.getZ();
+            world.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME, ex, ey, ez, 8, 0.3, 0.3, 0.3, 0.02);
+            world.spawnParticles(ParticleTypes.FLAME, ex, ey, ez, 6, 0.25, 0.25, 0.25, 0.02);
+            world.playSound(null, ex, ey, ez, SoundEvents.ENTITY_BLAZE_HURT, SoundCategory.PLAYERS, 0.4f, 1.6f);
             triggerExtraExplosion(world, owner, e);   // 穿透段也触发额外爆炸（腰部火环 + 连锁）
         }
     }
 
     /** 火球本体：2 格直径（半径 1）火焰球 + 短拖尾（双火焰 + 稀疏烟雾）+ 岩浆火星 + 熔岩滴落。 */
-    private void spawnTrail(ServerLevel w) {
+    private void spawnTrail(ServerWorld w) {
         double x = this.getX(), y = this.getY(), z = this.getZ();
-        RandomSource rnd = this.random;
+        Random rnd = this.random;
         for (int i = 0; i < 10; i++) {
-            Vec3 p = randomInSphere(1.0, rnd);
-            w.sendParticles(ParticleTypes.FLAME, x + p.x, y + p.y, z + p.z, 1, 0, 0, 0, 0.01);
+            Vec3d p = randomInSphere(1.0, rnd);
+            w.spawnParticles(ParticleTypes.FLAME, x + p.x, y + p.y, z + p.z, 1, 0, 0, 0, 0.01);
         }
         for (int i = 0; i < 7; i++) {
-            Vec3 p = randomInSphere(1.0, rnd);
-            w.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, x + p.x, y + p.y, z + p.z, 1, 0, 0, 0, 0.01);
+            Vec3d p = randomInSphere(1.0, rnd);
+            w.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME, x + p.x, y + p.y, z + p.z, 1, 0, 0, 0, 0.01);
         }
         // 岩浆火星：从火球表面随机迸出的小火花。
         if (rnd.nextFloat() < 0.3f) {
-            Vec3 p = randomInSphere(0.4, rnd);
-            w.sendParticles(ParticleTypes.LAVA, x + p.x, y + p.y, z + p.z, 1, 0.003, 0.008, 0.003, 0.0);
+            Vec3d p = randomInSphere(0.4, rnd);
+            w.spawnParticles(ParticleTypes.LAVA, x + p.x, y + p.y, z + p.z, 1, 0.003, 0.008, 0.003, 0.0);
         }
         // 熔岩往下滴落：火球下方零星滴落的熔岩粒子。
         if (rnd.nextFloat() < 0.07f) {
-            w.sendParticles(ParticleTypes.FALLING_LAVA,
+            w.spawnParticles(ParticleTypes.FALLING_LAVA,
                     x + (rnd.nextDouble() - 0.5) * 1.0,
                     y - 0.6 + (rnd.nextDouble() - 0.5) * 0.8,
                     z + (rnd.nextDouble() - 0.5) * 1.0,
                     1, 0, -0.1, 0, 0.01);
         }
-        Vec3 back = direction.scale(-0.5);
-        w.sendParticles(ParticleTypes.FLAME, x + back.x, y + back.y, z + back.z, 2, 0.15, 0.15, 0.15, 0.0);
-        w.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, x + back.x, y + back.y, z + back.z, 1, 0.12, 0.12, 0.12, 0.0);
-        w.sendParticles(ParticleTypes.SMOKE, x + back.x * 1.5, y + back.y * 1.5, z + back.z * 1.5, 1, 0.1, 0.1, 0.1, 0.0);
+        Vec3d back = direction.multiply(-0.5);
+        w.spawnParticles(ParticleTypes.FLAME, x + back.x, y + back.y, z + back.z, 2, 0.15, 0.15, 0.15, 0.0);
+        w.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME, x + back.x, y + back.y, z + back.z, 1, 0.12, 0.12, 0.12, 0.0);
+        w.spawnParticles(ParticleTypes.SMOKE, x + back.x * 1.5, y + back.y * 1.5, z + back.z * 1.5, 1, 0.1, 0.1, 0.1, 0.0);
     }
 
-    private void explode(ServerLevel w, LivingEntity directTarget) {
+    private void explode(ServerWorld w, LivingEntity directTarget) {
         if (exploded) return;
         exploded = true;
         double x = this.getX(), y = this.getY(), z = this.getZ();
@@ -236,19 +236,19 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
 
         // 爆炸粒子 + 音效
         spawnExplosionParticles(w, x, y, z);
-        w.playSound(null, x, y, z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.8f, 1.4f);
+        w.playSound(null, x, y, z, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 0.8f, 1.4f);
 
         // 6 格球范围物理伤害；视线被方块阻挡的目标不受伤（爆炸不穿墙）
-        AABB box = new AABB(x - EXPLODE_RADIUS, y - EXPLODE_RADIUS, z - EXPLODE_RADIUS,
+        Box box = new Box(x - EXPLODE_RADIUS, y - EXPLODE_RADIUS, z - EXPLODE_RADIUS,
                 x + EXPLODE_RADIUS, y + EXPLODE_RADIUS, z + EXPLODE_RADIUS);
-        List<LivingEntity> affected = w.getEntitiesOfClass(LivingEntity.class, box,
+        List<LivingEntity> affected = w.getEntitiesByClass(LivingEntity.class, box,
                 e -> e != owner && e.isAlive() && !e.isSpectator()
-                        && e.distanceToSqr(x, y, z) <= EXPLODE_RADIUS * EXPLODE_RADIUS
-                        && !(owner instanceof ServerPlayer op && WhitelistUtils.isProtected(op, e))
+                        && e.squaredDistanceTo(x, y, z) <= EXPLODE_RADIUS * EXPLODE_RADIUS
+                        && !(owner instanceof ServerPlayerEntity op && WhitelistUtils.isProtected(op, e))
                         && hasLineOfSight(w, x, y, z, e));
         for (LivingEntity e : affected) {
             // 爆破伤害按距离衰减：≤2 格全额，2~6 格线性衰减至最低 1
-            double dist = Math.sqrt(e.distanceToSqr(x, y, z));
+            double dist = Math.sqrt(e.squaredDistanceTo(x, y, z));
             float dmg;
             if (dist <= 2.0) {
                 dmg = EXPLODE_DAMAGE;
@@ -256,7 +256,7 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
                 dmg = (float) (EXPLODE_DAMAGE - (EXPLODE_DAMAGE - 1.0) * (dist - 2.0) / (EXPLODE_RADIUS - 2.0));
                 if (dmg < 1.0f) dmg = 1.0f;
             }
-            e.hurt(physicalSource(e, owner), dmg);
+            e.damage(physicalSource(e, owner), dmg);
             applyFoxFireBurn(e);
         }
         // 仅“直接碰到火球”的生物触发额外爆破（腰部火环 + 2 格连锁）；主爆炸范围内其他生物不触发；碰墙无直接目标则不触发
@@ -268,40 +268,40 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
     }
 
     /** 爆炸视线检测：爆炸中心（略沿来向回退避免贴墙误判）到目标若被方块碰撞箱阻挡则不可达（爆炸不穿墙）。 */
-    private boolean hasLineOfSight(ServerLevel w, double x, double y, double z, LivingEntity e) {
-        Vec3 from = new Vec3(x, y, z).subtract(direction.scale(0.3));
-        Vec3 to = new Vec3(e.getX(), e.getY() + e.getBbHeight() * 0.5, e.getZ());
-        BlockHitResult hit = w.clip(new ClipContext(from, to,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+    private boolean hasLineOfSight(ServerWorld w, double x, double y, double z, LivingEntity e) {
+        Vec3d from = new Vec3d(x, y, z).subtract(direction.multiply(0.3));
+        Vec3d to = new Vec3d(e.getX(), e.getY() + e.getHeight() * 0.5, e.getZ());
+        BlockHitResult hit = w.raycast(new RaycastContext(from, to,
+                RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, this));
         return hit.getType() == HitResult.Type.MISS;
     }
 
     /** 额外爆炸：被影响者腰部火环扩散 + 2 格内连锁伤害（不再二次连锁）；穿透段与爆炸段共用。 */
-    private void triggerExtraExplosion(ServerLevel w, LivingEntity owner, LivingEntity center) {
-        double cx = center.getX(), cy = center.getY() + center.getBbHeight() * 0.5, cz = center.getZ();
+    private void triggerExtraExplosion(ServerWorld w, LivingEntity owner, LivingEntity center) {
+        double cx = center.getX(), cy = center.getY() + center.getHeight() * 0.5, cz = center.getZ();
         activeRings.add(new float[]{(float) cx, (float) cy, (float) cz, 0f});   // 腰部火环，由 tick 逐帧播放
-        AABB box = new AABB(cx - CHAIN_RADIUS, cy - CHAIN_RADIUS, cz - CHAIN_RADIUS,
+        Box box = new Box(cx - CHAIN_RADIUS, cy - CHAIN_RADIUS, cz - CHAIN_RADIUS,
                 cx + CHAIN_RADIUS, cy + CHAIN_RADIUS, cz + CHAIN_RADIUS);
-        List<LivingEntity> chained = w.getEntitiesOfClass(LivingEntity.class, box,
+        List<LivingEntity> chained = w.getEntitiesByClass(LivingEntity.class, box,
                 e -> e != owner && e != center && e.isAlive() && !e.isSpectator()
-                        && e.distanceToSqr(cx, cy, cz) <= CHAIN_RADIUS * CHAIN_RADIUS
-                        && !(owner instanceof ServerPlayer op && WhitelistUtils.isProtected(op, e)));
+                        && e.squaredDistanceTo(cx, cy, cz) <= CHAIN_RADIUS * CHAIN_RADIUS
+                        && !(owner instanceof ServerPlayerEntity op && WhitelistUtils.isProtected(op, e)));
         for (LivingEntity e : chained) {
-            e.hurt(physicalSource(e, owner), CHAIN_DAMAGE);
+            e.damage(physicalSource(e, owner), CHAIN_DAMAGE);
             applyFoxFireBurn(e);
         }
     }
 
     /** 火球命中附加狐火灼烧 5 秒（每秒掉血），并打上施法者归属 tag。 */
     private void applyFoxFireBurn(LivingEntity target) {
-        target.addEffect(new MobEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, 100, 0, false, true, true));
+        target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, 100, 0, false, true, true));
         if (this.getOwner() != null) {
-            target.addTag("ssc_owner:" + this.getOwner().getUUID());
+            target.addCommandTag("ssc_owner:" + this.getOwner().getUuid());
         }
     }
 
     /** 推进并绘制所有活跃火环（穿透/爆炸触发），播完移除。 */
-    private void updateActiveRings(ServerLevel w) {
+    private void updateActiveRings(ServerWorld w) {
         java.util.Iterator<float[]> it = activeRings.iterator();
         while (it.hasNext()) {
             float[] r = it.next();
@@ -313,36 +313,36 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
     }
 
     /** 6 格球爆炸粒子：80% 红 dust + 20% 狐火，附加少量 lava 黑渣。 */
-    private void spawnExplosionParticles(ServerLevel w, double x, double y, double z) {
-        RandomSource rnd = this.random;
-        DustParticleOptions red = new DustParticleOptions(new Vector3f(0.85f, 0.1f, 0.05f), 1.3f);
+    private void spawnExplosionParticles(ServerWorld w, double x, double y, double z) {
+        Random rnd = this.random;
+        DustParticleEffect red = new DustParticleEffect(new Vector3f(0.85f, 0.1f, 0.05f), 1.3f);
         for (int i = 0; i < 130; i++) {
-            Vec3 p = randomInSphere(EXPLODE_RADIUS, rnd);
+            Vec3d p = randomInSphere(EXPLODE_RADIUS, rnd);
             double px = x + p.x, py = y + p.y, pz = z + p.z;
             if (rnd.nextDouble() < 0.8) {
-                w.sendParticles(red, px, py, pz, 1, 0, 0, 0, 0);
+                w.spawnParticles(red, px, py, pz, 1, 0, 0, 0, 0);
             } else {
-                w.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, px, py, pz, 1, 0, 0, 0, 0.01);
+                w.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME, px, py, pz, 1, 0, 0, 0, 0.01);
             }
         }
         for (int i = 0; i < 16; i++) {
-            Vec3 p = randomInSphere(EXPLODE_RADIUS * 0.6, rnd);
-            w.sendParticles(ParticleTypes.LAVA, x + p.x, y + p.y + 1.0, z + p.z, 1, 0, 0, 0, 0);
+            Vec3d p = randomInSphere(EXPLODE_RADIUS * 0.6, rnd);
+            w.spawnParticles(ParticleTypes.LAVA, x + p.x, y + p.y + 1.0, z + p.z, 1, 0, 0, 0, 0);
         }
         // === RC4 奥术手雷爆炸特效（放大 1.5 倍版：扩散范围与 dust 尺寸 ×1.5，数量与速度不变） ===
-        w.sendParticles(ParticleTypes.EXPLOSION, x, y + 0.3, z, 3, 0.3, 0.3, 0.3, 1.0);
-        w.sendParticles(ParticleTypes.LAVA, x, y + 0.8, z, 20, 0.45, 0.45, 0.45, 0.2);
+        w.spawnParticles(ParticleTypes.EXPLOSION, x, y + 0.3, z, 3, 0.3, 0.3, 0.3, 1.0);
+        w.spawnParticles(ParticleTypes.LAVA, x, y + 0.8, z, 20, 0.45, 0.45, 0.45, 0.2);
         // 紫红→暗红渐变粉尘（dust 尺寸 1→1.5）
-        DustColorTransitionOptions arcaneDust = new DustColorTransitionOptions(
+        DustColorTransitionParticleEffect arcaneDust = new DustColorTransitionParticleEffect(
                 new Vector3f(0.322f, 0.0f, 0.149f), new Vector3f(0.149f, 0.012f, 0.039f), 1.5f);
-        w.sendParticles(arcaneDust, x, y + 0.3, z, 300, 1.05, 1.8, 1.05, 0.01);
-        w.sendParticles(ParticleTypes.FLAME, x, y + 0.3, z, 80, 0.75, 1.2, 0.75, 0.1);
-        w.sendParticles(ParticleTypes.SQUID_INK, x, y + 0.3, z, 5, 0.45, 0.45, 0.45, 0.1);
-        w.sendParticles(ParticleTypes.FALLING_LAVA, x, y + 0.1, z, 125, 1.5, 0.75, 1.5, 0.2);
+        w.spawnParticles(arcaneDust, x, y + 0.3, z, 300, 1.05, 1.8, 1.05, 0.01);
+        w.spawnParticles(ParticleTypes.FLAME, x, y + 0.3, z, 80, 0.75, 1.2, 0.75, 0.1);
+        w.spawnParticles(ParticleTypes.SQUID_INK, x, y + 0.3, z, 5, 0.45, 0.45, 0.45, 0.1);
+        w.spawnParticles(ParticleTypes.FALLING_LAVA, x, y + 0.1, z, 125, 1.5, 0.75, 1.5, 0.2);
     }
 
     /** 腰部火环扩散动画：每帧画半径递增的环（0→CHAIN_RADIUS），仅火焰 + 灵魂火粒子（无红色粉尘）。 */
-    private void spawnWaistRing(ServerLevel w, double x, double y, double z, float progress) {
+    private void spawnWaistRing(ServerWorld w, double x, double y, double z, float progress) {
         double radius = Math.max(0.1, CHAIN_RADIUS * progress);
         int pts = Math.max(2, (int) ((12 + 26 * progress) * 0.2));  // 粒子量减至原 20%
         double rot = progress * 0.6;                                // 轻微旋转更灵动
@@ -351,49 +351,49 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
             double a = 2 * Math.PI * i / pts + rot;
             double px = x + radius * Math.cos(a);
             double pz = z + radius * Math.sin(a);
-            w.sendParticles(ParticleTypes.FLAME, px, y, pz, 1, 0, upward, 0, 0.0);
+            w.spawnParticles(ParticleTypes.FLAME, px, y, pz, 1, 0, upward, 0, 0.0);
             if (i % 2 == 0) {
-                w.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, px, y + 0.05, pz, 1, 0, upward, 0, 0.01);
+                w.spawnParticles(ParticleTypes.SOUL_FIRE_FLAME, px, y + 0.05, pz, 1, 0, upward, 0, 0.01);
             }
         }
     }
 
-    private Vec3 randomInSphere(double r, RandomSource rnd) {
+    private Vec3d randomInSphere(double r, Random rnd) {
         double rr = r * Math.cbrt(rnd.nextDouble());
         double theta = rnd.nextDouble() * 2 * Math.PI;
         double phi = Math.acos(2 * rnd.nextDouble() - 1);
         double sinPhi = Math.sin(phi);
-        return new Vec3(rr * sinPhi * Math.cos(theta), rr * Math.cos(phi), rr * sinPhi * Math.sin(theta));
+        return new Vec3d(rr * sinPhi * Math.cos(theta), rr * Math.cos(phi), rr * sinPhi * Math.sin(theta));
     }
 
     private DamageSource magicSource(LivingEntity target, LivingEntity owner) {
-        ResourceKey<DamageType> key = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("minecraft", "magic"));
-        return target.damageSources().source(key, owner, owner);
+        RegistryKey<DamageType> key = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "magic"));
+        return target.getDamageSources().create(key, owner, owner);
     }
 
     private DamageSource physicalSource(LivingEntity target, LivingEntity owner) {
-        ResourceKey<DamageType> key = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("minecraft", "mob_attack"));
-        return target.damageSources().source(key, owner, owner);
+        RegistryKey<DamageType> key = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "mob_attack"));
+        return target.getDamageSources().create(key, owner, owner);
     }
 
     @Override
-    protected boolean canHitEntity(Entity entity) {
-        return super.canHitEntity(entity) && entity != this.getOwner() && entity instanceof LivingEntity;
+    protected boolean canHit(Entity entity) {
+        return super.canHit(entity) && entity != this.getOwner() && entity instanceof LivingEntity;
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag nbt) {
-        super.readAdditionalSaveData(nbt);
+    public void readCustomDataFromNbt(NbtCompound nbt) {
+        super.readCustomDataFromNbt(nbt);
         if (nbt.contains("DirX")) {
-            this.direction = new Vec3(nbt.getDouble("DirX"), nbt.getDouble("DirY"), nbt.getDouble("DirZ"));
+            this.direction = new Vec3d(nbt.getDouble("DirX"), nbt.getDouble("DirY"), nbt.getDouble("DirZ"));
         }
         this.distanceTraveled = nbt.getDouble("Dist");
         this.exploded = nbt.getBoolean("Exploded");
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag nbt) {
-        super.addAdditionalSaveData(nbt);
+    public void writeCustomDataToNbt(NbtCompound nbt) {
+        super.writeCustomDataToNbt(nbt);
         nbt.putDouble("DirX", direction.x);
         nbt.putDouble("DirY", direction.y);
         nbt.putDouble("DirZ", direction.z);
@@ -402,12 +402,12 @@ public class FoxFireballEntity extends Projectile implements ItemSupplier {
     }
 
     @Override
-    public net.minecraft.world.item.ItemStack getItem() {
-        return new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FIRE_CHARGE);
+    public net.minecraft.item.ItemStack getStack() {
+        return new net.minecraft.item.ItemStack(net.minecraft.item.Items.FIRE_CHARGE);
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entityTrackerEntry) {
-        return new ClientboundAddEntityPacket(this, entityTrackerEntry);
+    public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+        return new EntitySpawnS2CPacket(this, entityTrackerEntry);
     }
 }

@@ -1,8 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.render;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -25,8 +25,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class InstinctBarRendererMixin {
 
 	@Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
-	private void ssc_addon$hideInstinctBarForSP(GuiGraphics context, float tickDelta, CallbackInfo ci) {
-		Minecraft mc = Minecraft.getInstance();
+	private void ssc_addon$hideInstinctBarForSP(DrawContext context, float tickDelta, CallbackInfo ci) {
+		MinecraftClient mc = MinecraftClient.getInstance();
 		if (mc.player == null) {
 			return;
 		}
@@ -39,7 +39,7 @@ public class InstinctBarRendererMixin {
 		}
 		// 兜底：按当前形态ID判断荧光幼灵系（荧光幼灵 / 阿澪），
 		// 防客户端 form 对象 flag 因同步异常丢失导致本能值条误显示
-		ResourceLocation id = comp.nowFormID;
+		Identifier id = comp.nowFormID;
 		if (id != null && (id.equals(FormIdentifiers.AXOLOTL_FLUORESCENT) || id.equals(FormIdentifiers.AXOLOTL_ALING))) {
 			ci.cancel();
 		}

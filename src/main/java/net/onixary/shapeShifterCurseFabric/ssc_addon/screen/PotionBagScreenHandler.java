@@ -1,45 +1,45 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.screen;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.world.Container;
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.LingeringPotionItem;
-import net.minecraft.world.item.PotionItem;
-import net.minecraft.world.item.SplashPotionItem;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.LingeringPotionItem;
+import net.minecraft.item.PotionItem;
+import net.minecraft.item.SplashPotionItem;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.slot.Slot;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.InfiniteEnergyPotionItem;
 
-public class PotionBagScreenHandler extends AbstractContainerMenu {
-	private final Container inventory;
+public class PotionBagScreenHandler extends ScreenHandler {
+	private final Inventory inventory;
 	private final ItemStack bagStack;
-	private final Player player;
+	private final PlayerEntity player;
 
-	public PotionBagScreenHandler(int syncId, Inventory playerInventory, ItemStack bagStack) {
+	public PotionBagScreenHandler(int syncId, PlayerInventory playerInventory, ItemStack bagStack) {
 		super(SscAddon.POTION_BAG_SCREEN_HANDLER, syncId);
 		this.bagStack = bagStack;
 		this.player = playerInventory.player;
 		// 1 Row x 9 Columns (Standard Single Chest Layout) = 9 Slots
-		this.inventory = new SimpleContainer(9) {
+		this.inventory = new SimpleInventory(9) {
 			@Override
-			public void setChanged() {
-				super.setChanged();
+			public void markDirty() {
+				super.markDirty();
 				PotionBagScreenHandler.this.saveToNbt();
 			}
 
 			@Override
-			public int getMaxStackSize() {
+			public int getMaxCountPerStack() {
 				return 8; // Max stack size: 8
 			}
 
 			@Override
-			public boolean canPlaceItem(int slot, ItemStack stack) {
+			public boolean isValid(int slot, ItemStack stack) {
 				return stack.getItem() instanceof PotionItem ||
 						stack.getItem() instanceof SplashPotionItem ||
 						stack.getItem() instanceof LingeringPotionItem ||
@@ -48,18 +48,18 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 		};
 
 		// Load NBT
-		loadFromNbt(bagStack.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).getUnsafe());
+		loadFromNbt(bagStack.getOrDefault(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.DEFAULT).getNbt());
 		// 清理已充满的无限药水空瓶标记，使打开时袋内显示正常名称
 		cleanRechargedInfinitePotions();
 
-		inventory.startOpen(playerInventory.player);
+		inventory.onOpen(playerInventory.player);
 
 		// 1 Row x 9 Columns for Potion Bag
 		// Standard start X=8, Y=18
 		for (int col = 0; col < 9; ++col) {
 			this.addSlot(new Slot(inventory, col, 8 + col * 18, 18) {
 				@Override
-				public boolean mayPlace(ItemStack stack) {
+				public boolean canInsert(ItemStack stack) {
 					return stack.getItem() instanceof PotionItem ||
 							stack.getItem() instanceof SplashPotionItem ||
 							stack.getItem() instanceof LingeringPotionItem ||
@@ -67,7 +67,7 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 				}
 
 				@Override
-				public int getMaxStackSize(ItemStack stack) {
+				public int getMaxItemCount(ItemStack stack) {
 					// 无限压缩能量药水每瓶独立自充能，不可叠加（每格仅 1 个）
 					if (stack.getItem() instanceof InfiniteEnergyPotionItem) {
 						return 1;
@@ -77,7 +77,7 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 							stack.getItem() instanceof LingeringPotionItem) {
 						return 8;
 					}
-					return super.getMaxStackSize(stack);
+					return super.getMaxItemCount(stack);
 				}
 			});
 		}
@@ -100,49 +100,49 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 	}
 
 	// Client Constructor
-	public PotionBagScreenHandler(int syncId, Inventory playerInventory) {
+	public PotionBagScreenHandler(int syncId, PlayerInventory playerInventory) {
 		this(syncId, playerInventory, ItemStack.EMPTY);
 	}
 
 
 	@Override
-	public boolean stillValid(Player player) {
-		return this.inventory.stillValid(player); // Simple close if too far
+	public boolean canUse(PlayerEntity player) {
+		return this.inventory.canPlayerUse(player); // Simple close if too far
 	}
 
 	@Override
-	public ItemStack quickMoveStack(Player player, int index) {
+	public ItemStack quickMove(PlayerEntity player, int index) {
 		ItemStack newStack = ItemStack.EMPTY;
 		Slot slot = this.slots.get(index);
-		if (slot != null && slot.hasItem()) {
-			ItemStack originalStack = slot.getItem();
+		if (slot != null && slot.hasStack()) {
+			ItemStack originalStack = slot.getStack();
 			newStack = originalStack.copy();
-			if (index < this.inventory.getContainerSize()) {
-				if (!this.moveItemStackTo(originalStack, this.inventory.getContainerSize(), this.slots.size(), true)) {
+			if (index < this.inventory.size()) {
+				if (!this.insertItem(originalStack, this.inventory.size(), this.slots.size(), true)) {
 					return ItemStack.EMPTY;
 				}
-			} else if (!this.moveItemStackTo(originalStack, 0, this.inventory.getContainerSize(), false)) {
+			} else if (!this.insertItem(originalStack, 0, this.inventory.size(), false)) {
 				return ItemStack.EMPTY;
 			}
 
 			if (originalStack.isEmpty()) {
-				slot.setByPlayer(ItemStack.EMPTY);
+				slot.setStack(ItemStack.EMPTY);
 			} else {
-				slot.setChanged();
+				slot.markDirty();
 			}
 		}
 		return newStack;
 	}
 
-	private void loadFromNbt(CompoundTag nbt) {
+	private void loadFromNbt(NbtCompound nbt) {
 		if (nbt != null && nbt.contains("Items", 9)) {
-			net.minecraft.core.RegistryAccess registries = player.level().registryAccess();
-			ListTag list = nbt.getList("Items", 10);
+			net.minecraft.registry.DynamicRegistryManager registries = player.getWorld().getRegistryManager();
+			NbtList list = nbt.getList("Items", 10);
 			for (int i = 0; i < list.size(); ++i) {
-				CompoundTag itemTag = list.getCompound(i);
+				NbtCompound itemTag = list.getCompound(i);
 				int slot = itemTag.getByte("Slot") & 255;
-				if (slot >= 0 && slot < inventory.getContainerSize()) {
-					ItemStack.parse(registries, itemTag).ifPresent(s -> inventory.setItem(slot, s));
+				if (slot >= 0 && slot < inventory.size()) {
+					ItemStack.fromNbt(registries, itemTag).ifPresent(s -> inventory.setStack(slot, s));
 				}
 			}
 		}
@@ -150,24 +150,24 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 
 	private void saveToNbt() {
 		if (!bagStack.isEmpty()) {
-			net.minecraft.core.RegistryAccess registries = player.level().registryAccess();
-			ListTag list = new ListTag();
-			for (int i = 0; i < inventory.getContainerSize(); ++i) {
-				ItemStack s = inventory.getItem(i);
+			net.minecraft.registry.DynamicRegistryManager registries = player.getWorld().getRegistryManager();
+			NbtList list = new NbtList();
+			for (int i = 0; i < inventory.size(); ++i) {
+				ItemStack s = inventory.getStack(i);
 				if (!s.isEmpty()) {
-					CompoundTag itemTag = new CompoundTag();
+					NbtCompound itemTag = new NbtCompound();
 					itemTag.putByte("Slot", (byte) i);
-					itemTag = (CompoundTag) s.save(registries, itemTag);
+					itemTag = (NbtCompound) s.encode(registries, itemTag);
 					list.add(itemTag);
 				}
 			}
-			net.minecraft.world.item.component.CustomData.update(net.minecraft.core.component.DataComponents.CUSTOM_DATA, bagStack, bn -> bn.put("Items", list));
+			net.minecraft.component.type.NbtComponent.set(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, bagStack, bn -> bn.put("Items", list));
 		}
 	}
 
 	@Override
-	public void removed(Player player) {
-		super.removed(player);
+	public void onClosed(PlayerEntity player) {
+		super.onClosed(player);
 		saveToNbt(); // Ensure save on close
 	}
 
@@ -175,9 +175,9 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 	 * 同步内容前先清理已充满的无限药水空瓶标记，使打开期间充满的药水实时恢复正常名称（仅服务端）。
 	 */
 	@Override
-	public void broadcastChanges() {
+	public void sendContentUpdates() {
 		cleanRechargedInfinitePotions();
-		super.broadcastChanges();
+		super.sendContentUpdates();
 	}
 
 	/**
@@ -185,15 +185,15 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 	 * 药水袋存储物不走物品 inventoryTick，需在此主动清理，否则充满后仍显示「（空）」。
 	 */
 	private void cleanRechargedInfinitePotions() {
-		if (player == null || player.level() == null || player.level().isClientSide) {
+		if (player == null || player.getWorld() == null || player.getWorld().isClient) {
 			return;
 		}
-		net.minecraft.world.level.Level world = player.level();
-		for (int i = 0; i < inventory.getContainerSize(); ++i) {
-			ItemStack s = inventory.getItem(i);
+		net.minecraft.world.World world = player.getWorld();
+		for (int i = 0; i < inventory.size(); ++i) {
+			ItemStack s = inventory.getStack(i);
 			if (s.getItem() instanceof InfiniteEnergyPotionItem
 					&& InfiniteEnergyPotionItem.clearRechargeMarkIfDone(s, world)) {
-				inventory.setChanged(); // 触发写回药水袋 NBT
+				inventory.markDirty(); // 触发写回药水袋 NBT
 			}
 		}
 	}
@@ -204,16 +204,16 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 	 *
 	 * @return 该槽位物品；不存在时返回 {@link ItemStack#EMPTY}
 	 */
-	public static ItemStack getStoredStack(ItemStack bagStack, int slot, HolderLookup.Provider registries) {
-		net.minecraft.world.item.component.CustomData nbt = bagStack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+	public static ItemStack getStoredStack(ItemStack bagStack, int slot, RegistryWrapper.WrapperLookup registries) {
+		net.minecraft.component.type.NbtComponent nbt = bagStack.get(net.minecraft.component.DataComponentTypes.CUSTOM_DATA);
 		if (nbt == null) return ItemStack.EMPTY;
-		CompoundTag nbtCompound = nbt.getUnsafe();
+		NbtCompound nbtCompound = nbt.getNbt();
 		if (!nbtCompound.contains("Items", 9)) return ItemStack.EMPTY;
-		ListTag list = nbtCompound.getList("Items", 10);
+		NbtList list = nbtCompound.getList("Items", 10);
 		for (int i = 0; i < list.size(); ++i) {
-			CompoundTag itemTag = list.getCompound(i);
+			NbtCompound itemTag = list.getCompound(i);
 			if ((itemTag.getByte("Slot") & 255) == slot) {
-				return ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY);
+				return ItemStack.fromNbt(registries, itemTag).orElse(ItemStack.EMPTY);
 			}
 		}
 		return ItemStack.EMPTY;
@@ -223,21 +223,21 @@ public class PotionBagScreenHandler extends AbstractContainerMenu {
 	 * 写回药水包指定槽位的物品（{@code stack} 为空则移除该槽位条目）。
 	 * 供快捷投放栏消耗药水后更新存储，与 GUI 的 {@link #saveToNbt} 使用同一 NBT 结构。
 	 */
-	public static void setStoredStack(ItemStack bagStack, int slot, ItemStack stack, HolderLookup.Provider registries) {
-		net.minecraft.world.item.component.CustomData nbt = bagStack.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY);
-		net.minecraft.nbt.ListTag list = nbt.getUnsafe().contains("Items", 9) ? nbt.getUnsafe().getList("Items", 10) : new net.minecraft.nbt.ListTag();
+	public static void setStoredStack(ItemStack bagStack, int slot, ItemStack stack, RegistryWrapper.WrapperLookup registries) {
+		net.minecraft.component.type.NbtComponent nbt = bagStack.getOrDefault(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.DEFAULT);
+		net.minecraft.nbt.NbtList list = nbt.getNbt().contains("Items", 9) ? nbt.getNbt().getList("Items", 10) : new net.minecraft.nbt.NbtList();
 		for (int i = list.size() - 1; i >= 0; --i) {
 			if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
 				list.remove(i);
 			}
 		}
 		if (!stack.isEmpty()) {
-			CompoundTag itemTag = new CompoundTag();
+			NbtCompound itemTag = new NbtCompound();
 			itemTag.putByte("Slot", (byte) slot);
-			itemTag = (CompoundTag) stack.save(registries, itemTag);
+			itemTag = (NbtCompound) stack.encode(registries, itemTag);
 			list.add(itemTag);
 		}
-		net.minecraft.world.item.component.CustomData.update(net.minecraft.core.component.DataComponents.CUSTOM_DATA, bagStack, bn -> bn.put("Items", list));
+		net.minecraft.component.type.NbtComponent.set(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, bagStack, bn -> bn.put("Items", list));
 	}
 
 }

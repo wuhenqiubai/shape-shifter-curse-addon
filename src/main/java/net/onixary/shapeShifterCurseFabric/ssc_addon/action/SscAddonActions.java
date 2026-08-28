@@ -10,27 +10,27 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormWith
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormCounterBurst;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormDetonate;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
-import net.minecraft.util.Tuple;
-import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.block.Blocks;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityPose;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.Pair;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpFrostStorm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpMeleeAbility;
@@ -64,56 +64,56 @@ public class SscAddonActions {
 	}
 
 	public static void register() {
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "fallen_allay_scream"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "fallen_allay_scream"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
-						net.minecraft.server.level.ServerLevel world = (net.minecraft.server.level.ServerLevel) player.level();
+					if (entity instanceof ServerPlayerEntity player) {
+						net.minecraft.server.world.ServerWorld world = (net.minecraft.server.world.ServerWorld) player.getWorld();
 
 						// Particle and sound
-						world.playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.ENDER_DRAGON_GROWL, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.2f);
-						net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.core.particles.ParticleTypes.SONIC_BOOM, player.getX(), player.getY() + 1.0, player.getZ(), 10, 0.5, 0.5, 0.5, 0.1);
+						world.playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sound.SoundEvents.ENTITY_ENDER_DRAGON_GROWL, net.minecraft.sound.SoundCategory.PLAYERS, 1.0f, 1.2f);
+						net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.particle.ParticleTypes.SONIC_BOOM, player.getX(), player.getY() + 1.0, player.getZ(), 10, 0.5, 0.5, 0.5, 0.1);
 
-						AABB box = player.getBoundingBox().inflate(25.0);
+						Box box = player.getBoundingBox().expand(25.0);
 
 						// Glow non-whitelisted
-						java.util.List<LivingEntity> entities = world.getEntitiesOfClass(LivingEntity.class, box, e -> e != player && e.isAlive());
+						java.util.List<LivingEntity> entities = world.getEntitiesByClass(LivingEntity.class, box, e -> e != player && e.isAlive());
 						for (LivingEntity e : entities) {
 							// 始终跳过：自己的驯服动物、自己的恕魔、劫掠阵营
-							if (e instanceof net.minecraft.world.entity.TamableAnimal tameable && player.getUUID().equals(tameable.getOwnerUUID())) {
+							if (e instanceof net.minecraft.entity.passive.TameableEntity tameable && player.getUuid().equals(tameable.getOwnerUuid())) {
 								continue;
 							}
-							if (e instanceof net.minecraft.world.entity.monster.Vex vex && vex.getTags().contains("owner:" + player.getStringUUID())) {
+							if (e instanceof net.minecraft.entity.mob.VexEntity vex && vex.getCommandTags().contains("owner:" + player.getUuidAsString())) {
 								continue;
 							}
-							if (e instanceof net.minecraft.world.entity.raid.Raider) {
+							if (e instanceof net.minecraft.entity.raid.RaiderEntity) {
 								continue;
 							}
 							// 统一白名单判定：受服务端总开关控制
 							if (WhitelistUtils.isProtected(player, e)) continue;
-							e.addEffect(new MobEffectInstance(MobEffects.GLOWING, 160, 0)); // 8s
+							e.addStatusEffect(new StatusEffectInstance(StatusEffects.GLOWING, 160, 0)); // 8s
 						}
 
 						// Kill projectiles
-						java.util.List<Entity> projectiles = world.getEntities(player, box, e -> e instanceof net.minecraft.world.entity.projectile.Projectile);
+						java.util.List<Entity> projectiles = world.getOtherEntities(player, box, e -> e instanceof net.minecraft.entity.projectile.ProjectileEntity);
 						for (Entity p : projectiles) {
-							net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.core.particles.ParticleTypes.SMOKE, p.getX(), p.getY(), p.getZ(), 5, 0.1, 0.1, 0.1, 0.05);
+							net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(world, net.minecraft.particle.ParticleTypes.SMOKE, p.getX(), p.getY(), p.getZ(), 5, 0.1, 0.1, 0.1, 0.05);
 							p.discard();
 						}
 					}
 				}
 		));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "summon_fallen_allay_vex"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "summon_fallen_allay_vex"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
-						net.minecraft.server.level.ServerLevel world = (net.minecraft.server.level.ServerLevel) player.level();
+					if (entity instanceof ServerPlayerEntity player) {
+						net.minecraft.server.world.ServerWorld world = (net.minecraft.server.world.ServerWorld) player.getWorld();
 
 						// Check if player already has vex
 						boolean hasVex = false;
-						for (Entity e : world.getEntitiesOfClass(net.minecraft.world.entity.monster.Vex.class, player.getBoundingBox().inflate(128.0), v -> true)) {
-							if (e.getTags().contains("owner:" + player.getStringUUID()) && e.getTags().contains("ssc_fallen_allay_vex")) {
+						for (Entity e : world.getEntitiesByClass(net.minecraft.entity.mob.VexEntity.class, player.getBoundingBox().expand(128.0), v -> true)) {
+							if (e.getCommandTags().contains("owner:" + player.getUuidAsString()) && e.getCommandTags().contains("ssc_fallen_allay_vex")) {
 								hasVex = true;
 								break;
 							}
@@ -121,16 +121,16 @@ public class SscAddonActions {
 
 						if (!hasVex) {
 							for (int i = 0; i < 2; i++) {
-								net.minecraft.world.entity.monster.Vex vex = net.minecraft.world.entity.EntityType.VEX.create(world);
+								net.minecraft.entity.mob.VexEntity vex = net.minecraft.entity.EntityType.VEX.create(world);
 								if (vex != null) {
-									vex.moveTo(player.getX(), player.getEyeY(), player.getZ(), player.getYRot(), player.getXRot());
+									vex.refreshPositionAndAngles(player.getX(), player.getEyeY(), player.getZ(), player.getYaw(), player.getPitch());
 									// Spawn two vexes 180° apart with small velocity so they don't overlap
 									double angle = i * Math.PI;
-									vex.setDeltaMovement(Math.cos(angle) * 0.3, 0.3, Math.sin(angle) * 0.3);
-									vex.addTag("ssc_fallen_allay_vex");
-									vex.addTag("owner:" + player.getStringUUID());
-									vex.setLimitedLife(700); // 35s * 20 ticks
-									world.addFreshEntity(vex);
+									vex.setVelocity(Math.cos(angle) * 0.3, 0.3, Math.sin(angle) * 0.3);
+									vex.addCommandTag("ssc_fallen_allay_vex");
+									vex.addCommandTag("owner:" + player.getUuidAsString());
+									vex.setLifeTicks(700); // 35s * 20 ticks
+									world.spawnEntity(vex);
 								}
 							}
 						}
@@ -140,25 +140,25 @@ public class SscAddonActions {
 		registerEntity(PhantomBellTeleportAction.getFactory());
 
 		// SP Allay Portable Beacon toggle
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "allay_sp_beacon_toggle"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "allay_sp_beacon_toggle"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
+					if (entity instanceof ServerPlayerEntity player) {
 						AllaySPPortableBeacon.toggleBeacon(player);
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "item_cooldown"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "item_cooldown"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM)
 						.add("duration", SerializableDataTypes.INT),
 				(data, entity) -> {
-					if (entity instanceof Player player) {
-						player.getCooldowns().addCooldown(data.get("item"), data.getInt("duration"));
+					if (entity instanceof PlayerEntity player) {
+						player.getItemCooldownManager().set(data.get("item"), data.getInt("duration"));
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "fire_breath"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "fire_breath"),
 				new SerializableData()
 						.add("distance", SerializableDataTypes.FLOAT)
 						.add("damage", SerializableDataTypes.FLOAT)
@@ -170,88 +170,88 @@ public class SscAddonActions {
 					float damageAmount = data.getFloat("damage");
 					int duration = data.getInt("duration");
 
-					Vec3 eyePos = living.getEyePosition();
-					Vec3 lookVec = living.getViewVector(1.0F);
-					AABB box = living.getBoundingBox().inflate(distance).expandTowards(lookVec.scale(distance));
-					living.level().getEntitiesOfClass(LivingEntity.class, box, target -> target != living).forEach(target -> {
-						if (living instanceof ServerPlayer sPlayer && WhitelistUtils.isProtected(sPlayer, target))
+					Vec3d eyePos = living.getEyePos();
+					Vec3d lookVec = living.getRotationVec(1.0F);
+					Box box = living.getBoundingBox().expand(distance).stretch(lookVec.multiply(distance));
+					living.getWorld().getEntitiesByClass(LivingEntity.class, box, target -> target != living).forEach(target -> {
+						if (living instanceof ServerPlayerEntity sPlayer && WhitelistUtils.isProtected(sPlayer, target))
 							return;
-						Vec3 targetVec = target.position().add(0, target.getBbHeight() / 2, 0).subtract(eyePos).normalize();
-						double dot = lookVec.dot(targetVec);
-						double distSq = living.distanceToSqr(target);
+						Vec3d targetVec = target.getPos().add(0, target.getHeight() / 2, 0).subtract(eyePos).normalize();
+						double dot = lookVec.dotProduct(targetVec);
+						double distSq = living.squaredDistanceTo(target);
 
 						if (dot > 0.8 && distSq < distance * distance) {
-							Vec3 oldVelocity = target.getDeltaMovement();
-							ResourceKey<DamageType> magicKey = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("minecraft", "magic"));
-							if (target.hurt(target.damageSources().source(magicKey, living, living), damageAmount)) {
-								target.setDeltaMovement(oldVelocity);
+							Vec3d oldVelocity = target.getVelocity();
+							RegistryKey<DamageType> magicKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "magic"));
+							if (target.damage(target.getDamageSources().create(magicKey, living, living), damageAmount)) {
+								target.setVelocity(oldVelocity);
 							}
 
-							target.addEffect(new MobEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration, 0)); // Duration from data
+							target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration, 0)); // Duration from data
 
-							if (living instanceof Player player && target instanceof SscIgnitedEntityAccessor accessor) {
-								accessor.sscAddon$setIgniterUuid(player.getUUID());
+							if (living instanceof PlayerEntity player && target instanceof SscIgnitedEntityAccessor accessor) {
+								accessor.sscAddon$setIgniterUuid(player.getUuid());
 							}
 						}
 					});
 
 					// 火焰吐息路径上的水有15%概率变为冰霜行者冰
-					if (!living.level().isClientSide() && living.level() instanceof ServerLevel serverWorld) {
+					if (!living.getWorld().isClient() && living.getWorld() instanceof ServerWorld serverWorld) {
 						freezeWaterInCone(serverWorld, eyePos, lookVec, distance, 0.15f);
 					}
 				}));
 
-		registerBiEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "set_on_fire_attributed"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("my_addon", "set_on_fire_attributed"),
 				new SerializableData()
 						.add("duration", SerializableDataTypes.INT),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
 					if (actor == null || target == null) return;
-					if (target.level().isClientSide()) return;
+					if (target.getWorld().isClient()) return;
 
 					int duration = data.getInt("duration");
 					// target.setOnFireFor(duration); // Replaced with custom effect
 
 					if (target instanceof LivingEntity livingTarget) {
-						livingTarget.addEffect(new MobEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration * 20, 0));
+						livingTarget.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration * 20, 0));
 					}
 
-					if (actor instanceof Player player && target instanceof SscIgnitedEntityAccessor accessor) {
-						accessor.sscAddon$setIgniterUuid(player.getUUID());
+					if (actor instanceof PlayerEntity player && target instanceof SscIgnitedEntityAccessor accessor) {
+						accessor.sscAddon$setIgniterUuid(player.getUuid());
 					}
 				}));
 
-		registerBiEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "damage_target_from_actor"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("my_addon", "damage_target_from_actor"),
 				new SerializableData()
 						.add("amount", SerializableDataTypes.FLOAT)
 						.add("damage_type", SerializableDataTypes.IDENTIFIER),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
 					if (actor == null || target == null) return;
 
 					float amount = data.getFloat("amount");
-					ResourceLocation damageTypeId = data.getId("damage_type");
+					Identifier damageTypeId = data.getId("damage_type");
 
 					if (target instanceof LivingEntity) {
-						ResourceKey<DamageType> damageTypeKey = ResourceKey.create(Registries.DAMAGE_TYPE, damageTypeId);
-						Vec3 oldVelocity = target.getDeltaMovement();
-						if (target.hurt(target.damageSources().source(damageTypeKey, null, actor), amount)) {
-							target.setDeltaMovement(oldVelocity);
+						RegistryKey<DamageType> damageTypeKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, damageTypeId);
+						Vec3d oldVelocity = target.getVelocity();
+						if (target.damage(target.getDamageSources().create(damageTypeKey, null, actor), amount)) {
+							target.setVelocity(oldVelocity);
 						}
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "force_pose"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "force_pose"),
 				new SerializableData()
 						.add("pose", SerializableDataTypes.STRING),
 				(data, entity) -> {
 					String poseName = data.getString("pose");
 					try {
-						Pose pose = Pose.valueOf(poseName.toUpperCase());
+						EntityPose pose = EntityPose.valueOf(poseName.toUpperCase());
 						entity.setPose(pose);
-						if (pose == Pose.SWIMMING) {
+						if (pose == EntityPose.SWIMMING) {
 							entity.setSwimming(true);
 						}
 					} catch (IllegalArgumentException ignored) {
@@ -259,7 +259,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "adaptive_water_jump"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "adaptive_water_jump"),
 				new SerializableData()
 						.add("base_y", SerializableDataTypes.FLOAT, 0.4f)
 						.add("horizontal_momentum", SerializableDataTypes.FLOAT, 1.2f)
@@ -270,7 +270,7 @@ public class SscAddonActions {
 						float hMom = data.getFloat("horizontal_momentum");
 						float vConv = data.getFloat("vertical_conversion");
 
-						Vec3 velocity = living.getDeltaMovement();
+						Vec3d velocity = living.getVelocity();
 						double hSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
 
 						// New Y: Base jump + portion of horizontal speed converted to lift + existing vertical velocity
@@ -280,29 +280,29 @@ public class SscAddonActions {
 						double newX = velocity.x * hMom;
 						double newZ = velocity.z * hMom;
 
-						living.setDeltaMovement(newX, newY, newZ);
-						living.hurtMarked = true;
+						living.setVelocity(newX, newY, newZ);
+						living.velocityModified = true;
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "clear_aggro"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "clear_aggro"),
 				new SerializableData()
 						.add("radius", SerializableDataTypes.DOUBLE, 64.0),
 				(data, entity) -> {
 
 					double radius = data.getDouble("radius");
-					AABB box = entity.getBoundingBox().inflate(radius);
-					entity.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box, mob -> mob.getTarget() == entity).forEach(mob -> {
+					Box box = entity.getBoundingBox().expand(radius);
+					entity.getWorld().getEntitiesByClass(net.minecraft.entity.mob.MobEntity.class, box, mob -> mob.getTarget() == entity).forEach(mob -> {
 						mob.setTarget(null);
-						mob.setLastHurtByMob(null);
+						mob.setAttacker(null);
 					});
 				}));
 
 		// SP雪狐 - 雪刺冲刺技能
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "snow_fox_sp_dash"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_dash"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
+					if (entity instanceof ServerPlayerEntity player) {
 						if (SkillBlocker.isSkillBlocked(player, "snow_fox", "melee_primary")) {
 							return;
 						}
@@ -311,10 +311,10 @@ public class SscAddonActions {
 				}));
 
 		// SP雪狐 - 瞬移攻击技能
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "snow_fox_sp_teleport_attack"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_teleport_attack"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
+					if (entity instanceof ServerPlayerEntity player) {
 						if (SkillBlocker.isSkillBlocked(player, "snow_fox", "melee_secondary")) {
 							return;
 						}
@@ -323,10 +323,10 @@ public class SscAddonActions {
 				}));
 
 		// SP雪狐 - 法术冰球技能
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "snow_fox_sp_frost_ball"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_frost_ball"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
+					if (entity instanceof ServerPlayerEntity player) {
 						if (SkillBlocker.isSkillBlocked(player, "snow_fox", "ranged_primary")) {
 							return;
 						}
@@ -340,7 +340,7 @@ public class SscAddonActions {
 						int currentMana = PowerUtils.getResourceValue(player, FormIdentifiers.SNOW_FOX_RESOURCE);
 						int manaCost = 15;
 						if (currentMana < manaCost) {
-							player.playSound(SoundEvents.FIRE_EXTINGUISH, 0.5f, 1.0f);
+							player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
 							return;
 						}
 						PowerUtils.changeResourceValueAndSync(player, FormIdentifiers.SNOW_FOX_RESOURCE, -manaCost);
@@ -350,22 +350,22 @@ public class SscAddonActions {
 						PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SNOW_FOX_RANGED_PRIMARY_CD, 100);
 
 						// 创建并发射冰球
-						FrostBallEntity frostBall = new FrostBallEntity(player.level(), player);
-						Vec3 lookVec = player.getViewVector(1.0F);
+						FrostBallEntity frostBall = new FrostBallEntity(player.getWorld(), player);
+						Vec3d lookVec = player.getRotationVec(1.0F);
 						frostBall.setDirection(lookVec);
-						player.level().addFreshEntity(frostBall);
+						player.getWorld().spawnEntity(frostBall);
 
 						// 播放发射音效
-						player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-								SoundEvents.SNOWBALL_THROW, SoundSource.PLAYERS, 1.0f, 0.8f);
+						player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+								SoundEvents.ENTITY_SNOWBALL_THROW, SoundCategory.PLAYERS, 1.0f, 0.8f);
 					}
 				}));
 
 		// SP雪狐 - 冰风暴技能（点按开始蓄力）
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "snow_fox_sp_frost_storm"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "snow_fox_sp_frost_storm"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer player) {
+					if (entity instanceof ServerPlayerEntity player) {
 						if (SkillBlocker.isSkillBlocked(player, "snow_fox", "ranged_secondary")) {
 							return;
 						}
@@ -373,7 +373,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "trigger_play_dead"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "trigger_play_dead"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof LivingEntity living) {
@@ -384,35 +384,35 @@ public class SscAddonActions {
 						// 项链黄心改由 PlayingDeadEffect 每10tick累积，不再用 Absorption 效果
 
 						// visible=false to hide icon（回血改由 PlayingDeadEffect 每10tick结算）
-						living.addEffect(new MobEffectInstance(SscAddon.PLAYING_DEAD_ENTRY, duration, 0, false, false, false));
-						living.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, duration, 0, false, false));
-						living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, 10, false, false));
+						living.addStatusEffect(new StatusEffectInstance(SscAddon.PLAYING_DEAD_ENTRY, duration, 0, false, false, false));
+						living.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, duration, 0, false, false));
+						living.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, duration, 10, false, false));
 
 						// 2. Clear Aggro
 						double radius = 64.0;
-						AABB box = living.getBoundingBox().inflate(radius);
-						living.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box, mob -> mob.getTarget() == living).forEach(mob -> {
+						Box box = living.getBoundingBox().expand(radius);
+						living.getWorld().getEntitiesByClass(net.minecraft.entity.mob.MobEntity.class, box, mob -> mob.getTarget() == living).forEach(mob -> {
 							mob.setTarget(null);
-							mob.setLastHurtByMob(null);
+							mob.setAttacker(null);
 						});
 
 						// 3. Force Pose
-						living.setPose(Pose.SLEEPING);
+						living.setPose(EntityPose.SLEEPING);
 
 						// 4. 设置CD显示资源
-						if (living instanceof ServerPlayer sp) {
+						if (living instanceof ServerPlayerEntity sp) {
 							PowerUtils.setResourceValueAndSync(sp, FormIdentifiers.SP_SECONDARY_CD, 620);
 						}
 
 					}
 				}));
 
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "swim_jump_out"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "swim_jump_out"),
 				new SerializableData().add("multiplier", SerializableDataTypes.FLOAT, 2.0F),
 				(data, entity) -> {
 					// Must be in swimming pose (sprinting in water) to trigger
 					if (entity.isSwimming()) {
-						Vec3 velocity = entity.getDeltaMovement();
+						Vec3d velocity = entity.getVelocity();
 						double vy = velocity.y;
 
 						// Only boost if moving upwards
@@ -424,7 +424,7 @@ public class SscAddonActions {
 
 							// Special Jump Boost: Only when looking up (Pitch < -20)
 							// Triggers explosive jump out of water
-							if (entity.getXRot() < -20.0f) {
+							if (entity.getPitch() < -20.0f) {
 								newVy = vy * data.getFloat("multiplier");
 
 								// Height limit constraints (Considering Air Resistance 0.98 and Gravity 0.08)
@@ -448,17 +448,17 @@ public class SscAddonActions {
 
 							// Always apply velocity to preserve momentum against water exit drag
 							// This ensures smooth transition for both cases
-							entity.setDeltaMovement(newVx, newVy, newVz);
-							entity.hurtMarked = true;
+							entity.setVelocity(newVx, newVy, newVz);
+							entity.velocityModified = true;
 						}
 					}
 				}));
 
 		// ==== SP阿努比斯之狼 - 死亡领域 ====
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "anubis_wolf_sp_death_domain"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "anubis_wolf_sp_death_domain"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer sp) {
+					if (entity instanceof ServerPlayerEntity sp) {
 						if (SkillBlocker.isSkillBlocked(sp, "anubis_wolf", "death_domain")) {
 							return;
 						}
@@ -467,10 +467,10 @@ public class SscAddonActions {
 				}));
 
 		// ==== SP阿努比斯之狼 - 冥狼裁庭 ====
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "anubis_wolf_sp_summon_wolves"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "anubis_wolf_sp_summon_wolves"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer sp) {
+					if (entity instanceof ServerPlayerEntity sp) {
 						if (SkillBlocker.isSkillBlocked(sp, "anubis_wolf", "summon_wolves")) {
 							return;
 						}
@@ -479,39 +479,39 @@ public class SscAddonActions {
 				}));
 
 		// ==== 金沙岚SP - 侵蚀烙印命中处理 ====
-		registerBiEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "golden_sandstorm_erosion_brand_hit"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_erosion_brand_hit"),
 				new SerializableData(),
 				(data, pair) -> {
-					Entity actor = pair.getA();
-					Entity target = pair.getB();
-					if (actor instanceof ServerPlayer sp && target instanceof LivingEntity living) {
+					Entity actor = pair.getLeft();
+					Entity target = pair.getRight();
+					if (actor instanceof ServerPlayerEntity sp && target instanceof LivingEntity living) {
 						GoldenSandstormErosionBrand.onPlayerAttack(sp, living);
 					}
 				}));
 
 		// ==== 金沙岚SP - 凋零金沙 ====
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "golden_sandstorm_wither_sand"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_wither_sand"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer sp) {
+					if (entity instanceof ServerPlayerEntity sp) {
 						GoldenSandstormWitherSand.execute(sp);
 					}
 				}));
 
 		// ==== 金沙岚SP - 引爆烙印 ====
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "golden_sandstorm_detonate"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_detonate"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer sp) {
+					if (entity instanceof ServerPlayerEntity sp) {
 						GoldenSandstormDetonate.execute(sp);
 					}
 				}));
 
 		// ==== 金沙岚SP - 反噬冲击（被动） ====
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("ssc_addon", "golden_sandstorm_counter_burst"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "golden_sandstorm_counter_burst"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (entity instanceof ServerPlayer sp) {
+					if (entity instanceof ServerPlayerEntity sp) {
 						GoldenSandstormCounterBurst.execute(sp);
 					}
 				}));
@@ -523,41 +523,41 @@ public class SscAddonActions {
 		registerEntity(SpawnForwardBurstAction.getFactory());
 
 		// ==== red 狐火火球：发射火球投射物 + 近身 60°×4格 锥形霰击（5 魔法伤害，附属专用，只作用 red） ====
-		registerEntity(new ActionFactory<>(ResourceLocation.fromNamespaceAndPath("my_addon", "fox_fireball"),
+		registerEntity(new ActionFactory<>(Identifier.of("my_addon", "fox_fireball"),
 				new SerializableData(),
 				(data, entity) -> {
-					if (!(entity instanceof ServerPlayer player)) return;
-					if (!(player.level() instanceof ServerLevel world)) return;
-					Vec3 look = player.getViewVector(1.0F);
+					if (!(entity instanceof ServerPlayerEntity player)) return;
+					if (!(player.getWorld() instanceof ServerWorld world)) return;
+					Vec3d look = player.getRotationVec(1.0F);
 					// 发射火球投射物
 					net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity ball =
 							new net.onixary.shapeShifterCurseFabric.ssc_addon.entity.FoxFireballEntity(world, player);
 					ball.setDirection(look);
-					world.addFreshEntity(ball);
+					world.spawnEntity(ball);
 					// 近身 60°、4 格锥形霰击：5 点魔法伤害，跳过白名单
-					Vec3 eye = player.getEyePosition();
-					ResourceKey<DamageType> magicKey = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("minecraft", "magic"));
-					AABB box = player.getBoundingBox().inflate(4.0);
-					world.getEntitiesOfClass(LivingEntity.class, box,
+					Vec3d eye = player.getEyePos();
+					RegistryKey<DamageType> magicKey = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("minecraft", "magic"));
+					Box box = player.getBoundingBox().expand(4.0);
+					world.getEntitiesByClass(LivingEntity.class, box,
 							e -> e != player && e.isAlive() && !e.isSpectator()).forEach(t -> {
 						if (WhitelistUtils.isProtected(player, t)) return;
-						Vec3 toT = t.position().add(0, t.getBbHeight() / 2.0, 0).subtract(eye).normalize();
-						double dot = look.dot(toT);
-						if (dot > 0.5 && player.distanceToSqr(t) < 16.0) {
-							t.hurt(t.damageSources().source(magicKey, player, player), 5.0f);
+						Vec3d toT = t.getPos().add(0, t.getHeight() / 2.0, 0).subtract(eye).normalize();
+						double dot = look.dotProduct(toT);
+						if (dot > 0.5 && player.squaredDistanceTo(t) < 16.0) {
+							t.damage(t.getDamageSources().create(magicKey, player, player), 5.0f);
 						}
 					});
 				}));
 	}
 
-	private static void registerBiEntity(ActionFactory<Tuple<Entity, Entity>> actionFactory) {
-		if (!ApoliRegistries.BIENTITY_ACTION.containsKey(actionFactory.getSerializerId())) {
+	private static void registerBiEntity(ActionFactory<Pair<Entity, Entity>> actionFactory) {
+		if (!ApoliRegistries.BIENTITY_ACTION.containsId(actionFactory.getSerializerId())) {
 			Registry.register(ApoliRegistries.BIENTITY_ACTION, actionFactory.getSerializerId(), actionFactory);
 		}
 	}
 
 	private static void registerEntity(ActionFactory<Entity> actionFactory) {
-		if (!ApoliRegistries.ENTITY_ACTION.containsKey(actionFactory.getSerializerId())) {
+		if (!ApoliRegistries.ENTITY_ACTION.containsId(actionFactory.getSerializerId())) {
 			Registry.register(ApoliRegistries.ENTITY_ACTION, actionFactory.getSerializerId(), actionFactory);
 		}
 	}
@@ -571,16 +571,16 @@ public class SscAddonActions {
 	 * @param distance  最大距离
 	 * @param chance    每个水方块被冻结的概率
 	 */
-	private static void freezeWaterInCone(ServerLevel world, Vec3 origin, Vec3 direction, float distance, float chance) {
+	private static void freezeWaterInCone(ServerWorld world, Vec3d origin, Vec3d direction, float distance, float chance) {
 		// 沿视线方向每格取样，锥形扩散与吐息粒子范围一致
 		for (float d = 1.0f; d <= distance; d += 1.0f) {
-			Vec3 center = origin.add(direction.scale(d));
+			Vec3d center = origin.add(direction.multiply(d));
 			// 锥形扩散半径：与吐息粒子效果一致（最远处约3格宽）
 			int radius = Math.max(1, (int) (d * 0.375f));
 
-			int cx = Mth.floor(center.x);
-			int cy = Mth.floor(center.y);
-			int cz = Mth.floor(center.z);
+			int cx = MathHelper.floor(center.x);
+			int cy = MathHelper.floor(center.y);
+			int cz = MathHelper.floor(center.z);
 
 			for (int x = -radius; x <= radius; x++) {
 				for (int y = -1; y <= 1; y++) {
@@ -588,15 +588,15 @@ public class SscAddonActions {
 						if (x * x + z * z > radius * radius) continue;
 
 						BlockPos pos = new BlockPos(cx + x, cy + y, cz + z);
-						if (world.getBlockState(pos).is(Blocks.WATER)
-								&& world.getFluidState(pos).isSource()
-								&& world.getBlockState(pos.above()).isAir()) {
+						if (world.getBlockState(pos).isOf(Blocks.WATER)
+								&& world.getFluidState(pos).isStill()
+								&& world.getBlockState(pos.up()).isAir()) {
 
 							if (world.getRandom().nextFloat() < chance) {
-								world.setBlockAndUpdate(pos, Blocks.FROSTED_ICE.defaultBlockState());
-								world.scheduleTick(
+								world.setBlockState(pos, Blocks.FROSTED_ICE.getDefaultState());
+								world.scheduleBlockTick(
 										pos, Blocks.FROSTED_ICE,
-										Mth.nextInt(world.getRandom(), 60, 120));
+										MathHelper.nextInt(world.getRandom(), 60, 120));
 							}
 						}
 					}

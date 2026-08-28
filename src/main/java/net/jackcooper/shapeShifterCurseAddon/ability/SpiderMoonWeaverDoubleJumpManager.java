@@ -1,10 +1,10 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -20,25 +20,25 @@ public final class SpiderMoonWeaverDoubleJumpManager {
 	private SpiderMoonWeaverDoubleJumpManager() {}
 
 	/** 收到客户端二段跳发包：校验形态 + 空中后广播音效粒子（跳跃速度已由客户端原版 jump() 施加）。 */
-	public static void onDoubleJump(ServerPlayer player) {
+	public static void onDoubleJump(ServerPlayerEntity player) {
 		if (!FormUtils.isForm(player, FormIdentifiers.SPIDER_MOON_WEAVER)) return;
-		if (player.onGround()) return; // 地面首跳走 vanilla，不处理
+		if (player.isOnGround()) return; // 地面首跳走 vanilla，不处理
 		boolean lunge = player.isSprinting(); // 疾跑跳对应原版 jump() 的水平前冲，用更多粒子表现
 		playEffects(player, lunge);
 	}
 
-	private static void playEffects(ServerPlayer player, boolean lunge) {
-		ServerLevel sw = (ServerLevel) player.level();
+	private static void playEffects(ServerPlayerEntity player, boolean lunge) {
+		ServerWorld sw = (ServerWorld) player.getWorld();
 		// 音效：沿用原版蜘蛛跳跃广播声（山羊长跳 + 青蛙长跳，与 form_spider_3 一致）
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.GOAT_LONG_JUMP, SoundSource.PLAYERS, 0.6f, 1.0f);
+				SoundEvents.ENTITY_GOAT_LONG_JUMP, SoundCategory.PLAYERS, 0.6f, 1.0f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.GOAT_LONG_JUMP, SoundSource.PLAYERS, 0.6f, 0.8f);
+				SoundEvents.ENTITY_GOAT_LONG_JUMP, SoundCategory.PLAYERS, 0.6f, 0.8f);
 		// 粒子：跑跳前扑用更多云雾（对齐原版蜘蛛 16 个）；月织蛛额外加紫色魔法粒子
 		int cloudCount = lunge ? 20 : 12;
-		sw.sendParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.2, player.getZ(),
+		sw.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.2, player.getZ(),
 				cloudCount, 0.3, 0.3, 0.3, 0.01);
-		sw.sendParticles(ParticleTypes.WITCH, player.getX(), player.getY() + 0.2, player.getZ(),
+		sw.spawnParticles(ParticleTypes.WITCH, player.getX(), player.getY() + 0.2, player.getZ(),
 				8, 0.4, 0.3, 0.4, 0.01);
 	}
 }

@@ -26,9 +26,9 @@ public class PlayingDeadEffect extends StatusEffect {
 	}
 
 	@Override
-	public void applyUpdateEffect(LivingEntity entity, int amplifier) {
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
 		if (entity == null || entity.isDead()) {
-			return;
+			return false;
 		}
 		// Use SWIMMING pose which forces the model to lie flat (crawl animation) on client side
 		entity.setPose(EntityPose.SWIMMING);
@@ -38,7 +38,7 @@ public class PlayingDeadEffect extends StatusEffect {
 
 		// 回血结算（仅服务端，每 10 tick）
 		if (entity.getWorld().isClient() || entity.age % 10 != 0) {
-			return;
+			return false;
 		}
 		boolean hasNecklace = false;
 		if (entity instanceof PlayerEntity) {
@@ -57,5 +57,6 @@ public class PlayingDeadEffect extends StatusEffect {
 		} else {
 			entity.heal(DEFAULT_HEAL_PER_TICK);
 		}
+		return hasNecklace;
 	}
 }

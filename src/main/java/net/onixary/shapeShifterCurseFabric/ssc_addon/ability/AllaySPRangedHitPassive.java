@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -23,16 +23,16 @@ public final class AllaySPRangedHitPassive {
 	}
 
 	public static void onDamageApplied(LivingEntity target, DamageSource source) {
-		if (target.level().isClientSide()) return;
-		if (!(source.getEntity() instanceof ServerPlayer player)) return;
-		if (!(source.getDirectEntity() instanceof Projectile)) return;
+		if (target.getWorld().isClient()) return;
+		if (!(source.getAttacker() instanceof ServerPlayerEntity player)) return;
+		if (!(source.getSource() instanceof ProjectileEntity)) return;
 		if (!FormUtils.isAllaySP(player)) return;
 
 		// 集成服关服瞬间 getServer() 可能为 null —— 防御性判空，避免 NPE
 		var srv = player.getServer();
 		if (srv == null) return;
-		long currentTick = srv.overworld().getGameTime();
-		UUID playerUuid = player.getUUID();
+		long currentTick = srv.getOverworld().getTime();
+		UUID playerUuid = player.getUuid();
 		Long lastTick = LAST_TRIGGER_TICK.get(playerUuid);
 		if (lastTick != null && currentTick - lastTick < COOLDOWN_TICKS) return;
 

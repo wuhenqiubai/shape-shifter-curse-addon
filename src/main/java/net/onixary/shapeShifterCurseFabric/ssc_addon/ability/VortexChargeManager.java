@@ -1,22 +1,22 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.tag.TagKey;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
@@ -37,8 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 0 = 未蓄力，>0 = 蓄力中（值=已蓄力 tick 数）。客户端据此决定按键是"开始"还是"释放"。
  */
 public final class VortexChargeManager {
-	public static final ResourceLocation VORTEX_STATE =
-			ResourceLocation.fromNamespaceAndPath("my_addon", "form_axolotl_sp_vortex_impact_vortex_state");
+	public static final Identifier VORTEX_STATE =
+			Identifier.of("my_addon", "form_axolotl_sp_vortex_impact_vortex_state");
 
 	/**
 	 * 涡流「移动免疫」实体类型 tag：命中的实体不被涡流吸附 / 击退（仍正常受伤）。
@@ -47,7 +47,7 @@ public final class VortexChargeManager {
 	 * 其它数据包 / 模组把自家 boss 追加进来，无需改代码即可扩展兼容。
 	 */
 	private static final TagKey<EntityType<?>> VORTEX_IMMUNE =
-			TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("my_addon", "vortex_immune"));
+			TagKey.of(RegistryKeys.ENTITY_TYPE, Identifier.of("my_addon", "vortex_immune"));
 
 	private static final int AIR_PER_HIT = 8;
 	private static final int MAX_AIR_SPENT = 60;
@@ -64,11 +64,11 @@ public final class VortexChargeManager {
 
 	// ===== 动态粒子（青蓝/白：蓄力吸附 + 释放抛物线，全部服务端生成并广播给所有客户端） =====
 	/** 青蓝色尘埃（漂浮，吸附与扩散着色用） */
-	private static final net.minecraft.core.particles.DustParticleOptions CYAN_DUST =
-			new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(0.20f, 0.62f, 0.92f), 1.6f);
+	private static final net.minecraft.particle.DustParticleEffect CYAN_DUST =
+			new net.minecraft.particle.DustParticleEffect(new org.joml.Vector3f(0.20f, 0.62f, 0.92f), 1.6f);
 	/** 白色尘埃（漂浮，吸附用） */
-	private static final net.minecraft.core.particles.DustParticleOptions WHITE_DUST =
-			new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(0.92f, 0.96f, 1.0f), 1.3f);
+	private static final net.minecraft.particle.DustParticleEffect WHITE_DUST =
+			new net.minecraft.particle.DustParticleEffect(new org.joml.Vector3f(0.92f, 0.96f, 1.0f), 1.3f);
 
 	private static final Map<UUID, ChargeState> CHARGING = new ConcurrentHashMap<>();
 
@@ -81,8 +81,8 @@ public final class VortexChargeManager {
 	private VortexChargeManager() {
 	}
 
-	public static boolean isCharging(ServerPlayer player) {
-		return CHARGING.containsKey(player.getUUID());
+	public static boolean isCharging(ServerPlayerEntity player) {
+		return CHARGING.containsKey(player.getUuid());
 	}
 
 	/**
@@ -103,51 +103,51 @@ public final class VortexChargeManager {
 	}
 
 	/** 客户端发「开始蓄力」包时调用。 */
-	public static void start(ServerPlayer player) {
-		if (CHARGING.containsKey(player.getUUID())) return;
+	public static void start(ServerPlayerEntity player) {
+		if (CHARGING.containsKey(player.getUuid())) return;
 		if (!FormUtils.isAxolotlSP(player)) return;
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_PRIMARY_CD) > 0) return; // CD 中
-		if (player.getAirSupply() < AIR_PER_HIT) return; // 至少够扣一次
-		CHARGING.put(player.getUUID(), new ChargeState());
+		if (player.getAir() < AIR_PER_HIT) return; // 至少够扣一次
+		CHARGING.put(player.getUuid(), new ChargeState());
 		PowerUtils.setResourceValueAndSync(player, VORTEX_STATE, 1); // 标记蓄力中（客户端读 >0）
-		ServerLevel sw = (ServerLevel) player.level();
+		ServerWorld sw = (ServerWorld) player.getWorld();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.PLAYER_SPLASH_HIGH_SPEED, SoundSource.PLAYERS, 1.5f, 0.5f);
+				SoundEvents.ENTITY_PLAYER_SPLASH_HIGH_SPEED, SoundCategory.PLAYERS, 1.5f, 0.5f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.ELDER_GUARDIAN_CURSE, SoundSource.PLAYERS, 0.6f, 1.5f);
-		sw.sendParticles(ParticleTypes.BUBBLE, player.getX(), player.getY() + 1, player.getZ(), 40, 0.6, 0.6, 0.6, 0.6);
-		sw.sendParticles(ParticleTypes.BUBBLE_POP, player.getX(), player.getY() + 1, player.getZ(), 5, 0.3, 0.3, 0.3, 0.1);
+				SoundEvents.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.PLAYERS, 0.6f, 1.5f);
+		sw.spawnParticles(ParticleTypes.BUBBLE, player.getX(), player.getY() + 1, player.getZ(), 40, 0.6, 0.6, 0.6, 0.6);
+		sw.spawnParticles(ParticleTypes.BUBBLE_POP, player.getX(), player.getY() + 1, player.getZ(), 5, 0.3, 0.3, 0.3, 0.1);
 		// 青/白粒子向中心吸附（漩涡起手）
 		spawnAbsorbRing(sw, player.getX(), player.getY() + 1, player.getZ(), 16, 0.0);
 	}
 
 	/** 每服务端 tick 对每个在线玩家调用。 */
-	public static void tick(ServerPlayer player) {
-		ChargeState s = CHARGING.get(player.getUUID());
+	public static void tick(ServerPlayerEntity player) {
+		ChargeState s = CHARGING.get(player.getUuid());
 		if (s == null) return;
-		if (player.isDeadOrDying() || !FormUtils.isAxolotlSP(player)) {
+		if (player.isDead() || !FormUtils.isAxolotlSP(player)) {
 			cancel(player); // 形态丢失/死亡 → 取消，不结算
 			return;
 		}
 		s.ticks++;
 		// 持续吸附漩涡（每 2 tick 一圈，相位随时间旋转 → 动态收束）
 		if (s.ticks % 2 == 0) {
-			spawnAbsorbRing((ServerLevel) player.level(),
+			spawnAbsorbRing((ServerWorld) player.getWorld(),
 					player.getX(), player.getY() + 1, player.getZ(), 8, s.ticks * 0.35);
 			// 蓄力期实体吸附：把范围内怪物朝玩家牵引，力度随击退抗性衰减（每级 -20%，免疫的吸不动）
-			pullEntitiesDuringCharge((ServerLevel) player.level(), player);
+			pullEntitiesDuringCharge((ServerWorld) player.getWorld(), player);
 		}
 		if (s.ticks % HIT_INTERVAL == 0) {
-			if (s.airSpent < MAX_AIR_SPENT && player.getAirSupply() >= AIR_PER_HIT) {
+			if (s.airSpent < MAX_AIR_SPENT && player.getAir() >= AIR_PER_HIT) {
 				int spend = Math.min(AIR_PER_HIT, MAX_AIR_SPENT - s.airSpent);
-				player.setAirSupply(player.getAirSupply() - spend);
+				player.setAir(player.getAir() - spend);
 				s.airSpent += spend;
 				s.hits++;
-				ServerLevel sw = (ServerLevel) player.level();
-				sw.sendParticles(ParticleTypes.BUBBLE,
+				ServerWorld sw = (ServerWorld) player.getWorld();
+				sw.spawnParticles(ParticleTypes.BUBBLE,
 						player.getX(), player.getY() + 1, player.getZ(), 40, 0.6, 0.6, 0.6, 0.6);
 				sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.FISHING_BOBBER_SPLASH, SoundSource.PLAYERS, 0.8f, 0.6f);
+						SoundEvents.ENTITY_FISHING_BOBBER_SPLASH, SoundCategory.PLAYERS, 0.8f, 0.6f);
 			} else {
 				release(player); // air 不足或已扣满 60 → 自动释放
 				return;
@@ -160,48 +160,48 @@ public final class VortexChargeManager {
 	}
 
 	/** 客户端发「释放」包 或 自动释放时调用。 */
-	public static void release(ServerPlayer player) {
-		ChargeState s = CHARGING.remove(player.getUUID());
+	public static void release(ServerPlayerEntity player) {
+		ChargeState s = CHARGING.remove(player.getUuid());
 		PowerUtils.setResourceValueAndSync(player, VORTEX_STATE, 0);
 		if (s == null) return;
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_PRIMARY_CD, CD_TICKS); // CD 释放后起算
 		int damage = s.hits * DAMAGE_PER_HIT;
-		ServerLevel sw = (ServerLevel) player.level();
+		ServerWorld sw = (ServerWorld) player.getWorld();
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0f, 1.2f);
+				SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 1.0f, 1.2f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.AXOLOTL_SPLASH, SoundSource.PLAYERS, 1.5f, 0.5f);
-		sw.sendParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 1, player.getZ(),
+				SoundEvents.ENTITY_AXOLOTL_SPLASH, SoundCategory.PLAYERS, 1.5f, 0.5f);
+		sw.spawnParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 1, player.getZ(),
 				150, RADIUS, 1.0, RADIUS, 1.0);
-		sw.sendParticles(ParticleTypes.EXPLOSION, player.getX(), player.getY() + 1, player.getZ(),
+		sw.spawnParticles(ParticleTypes.EXPLOSION, player.getX(), player.getY() + 1, player.getZ(),
 				8, RADIUS * 0.5, 0.5, RADIUS * 0.5, 0.1);
 		// 仿 RC-4 药水破碎的水花爆开（与水矛落地同款）
 		net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnWaterBurst(sw, player.getX(), player.getY() + 1, player.getZ(), 1.3);
 		if (damage <= 0) return; // 一次都没蓄到，仅取消
-		AABB box = player.getBoundingBox().inflate(RADIUS);
-		for (Entity e : sw.getEntities(player, box)) {
+		Box box = player.getBoundingBox().expand(RADIUS);
+		for (Entity e : sw.getOtherEntities(player, box)) {
 			if (!(e instanceof LivingEntity living)) continue;
 			// 默认白名单：豁免玩家/宠物/白名单个体，不受涡流冲击伤害与控制
 			if (net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils.isProtected(player, living)) continue;
 
 			// 伤害：所有受影响生物一律满额（用户定稿「伤害正常」，boss 也照常受伤）
-			living.hurt(player.damageSources().mobAttack(player), (float) damage);
+			living.damage(player.getDamageSources().mobAttack(player), (float) damage);
 
 			// 击退力度 = f(击退抗性等级, 是否为boss)：boss → 0（不击退不缓慢），普通怪按抗性分档
 			double scale = getMovementForceScale(living);
 			if (scale <= 0.0) continue;              // boss / 极高抗性：只受伤，不被移动
-			living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 80, 2));
-			Vec3 push = living.position().subtract(player.position());
-			if (push.lengthSqr() < 1.0e-4) push = new Vec3(0, 1, 0);
-			push = push.normalize().scale(0.8 * scale);
-			living.setDeltaMovement(push.x, 0.6 * scale, push.z);
-			living.hurtMarked = true;
+			living.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 80, 2));
+			Vec3d push = living.getPos().subtract(player.getPos());
+			if (push.lengthSquared() < 1.0e-4) push = new Vec3d(0, 1, 0);
+			push = push.normalize().multiply(0.8 * scale);
+			living.setVelocity(push.x, 0.6 * scale, push.z);
+			living.velocityModified = true;
 		}
 	}
 
 	/** 取消蓄力（不结算伤害、不进 CD）。 */
-	public static void cancel(ServerPlayer player) {
-		if (CHARGING.remove(player.getUUID()) != null) {
+	public static void cancel(ServerPlayerEntity player) {
+		if (CHARGING.remove(player.getUuid()) != null) {
 			PowerUtils.setResourceValueAndSync(player, VORTEX_STATE, 0);
 		}
 	}
@@ -218,7 +218,7 @@ public final class VortexChargeManager {
 	 * </ol>
 	 */
 	private static boolean isVortexImmune(LivingEntity living) {
-		return getKnockbackResistance(living) >= 0.99 || living.getType().is(VORTEX_IMMUNE);
+		return getKnockbackResistance(living) >= 0.99 || living.getType().isIn(VORTEX_IMMUNE);
 	}
 
 	/**
@@ -251,10 +251,10 @@ public final class VortexChargeManager {
 	 * </ul>
 	 * 每 2 tick 施加一次朝向玩家的水平速度，贴脸阈值内不再拉近（防震荡）。
 	 */
-	private static void pullEntitiesDuringCharge(ServerLevel sw, ServerPlayer player) {
-		AABB box = player.getBoundingBox().inflate(PULL_RADIUS);
-		Vec3 playerPos = player.position();
-		for (Entity e : sw.getEntities(player, box)) {
+	private static void pullEntitiesDuringCharge(ServerWorld sw, ServerPlayerEntity player) {
+		Box box = player.getBoundingBox().expand(PULL_RADIUS);
+		Vec3d playerPos = player.getPos();
+		for (Entity e : sw.getOtherEntities(player, box)) {
 			if (!(e instanceof LivingEntity living)) continue;
 			// 白名单 / 玩家 / 宠物豁免
 			if (WhitelistUtils.isProtected(player, living)) continue;
@@ -263,16 +263,16 @@ public final class VortexChargeManager {
 			double scale = getMovementForceScale(living);
 			if (scale <= 0.0) continue;              // 力度归零：boss 或极高抗性，吸不动
 
-			Vec3 toPlayer = playerPos.subtract(living.position());
+			Vec3d toPlayer = playerPos.subtract(living.getPos());
 			// 不设贴脸阈值：允许怪物被吸到玩家身上后反复震荡（特色效果，用户定稿保留）
 			// 朝向玩家的水平方向（忽略 Y，避免把怪吸到天上 / 地下）；normalize 对零向量返回 ZERO，无 NaN 风险
-			Vec3 dir = new Vec3(toPlayer.x, 0, toPlayer.z).normalize();
+			Vec3d dir = new Vec3d(toPlayer.x, 0, toPlayer.z).normalize();
 			double force = PULL_FORCE * scale;
 			// 叠加朝向玩家的水平速度（不覆盖原有 Y，保留重力 / 跳跃）
-			living.setDeltaMovement(living.getDeltaMovement().x * 0.5 + dir.x * force,
-					living.getDeltaMovement().y,
-					living.getDeltaMovement().z * 0.5 + dir.z * force);
-			living.hurtMarked = true;
+			living.setVelocity(living.getVelocity().x * 0.5 + dir.x * force,
+					living.getVelocity().y,
+					living.getVelocity().z * 0.5 + dir.z * force);
+			living.velocityModified = true;
 		}
 	}
 
@@ -288,9 +288,9 @@ public final class VortexChargeManager {
 	 * 实体未注册该属性时返回 0.0（可正常被击退/吸附）。
 	 */
 	private static double getKnockbackResistance(LivingEntity living) {
-		if (living.getAttributes().hasAttribute(Attributes.KNOCKBACK_RESISTANCE)) {
-			AttributeInstance krInst =
-					living.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
+		if (living.getAttributes().hasAttribute(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE)) {
+			EntityAttributeInstance krInst =
+					living.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
 			if (krInst != null) return krInst.getValue();
 		}
 		return 0.0;
@@ -299,13 +299,13 @@ public final class VortexChargeManager {
 	// ==================== 粒子辅助 ====================
 
 	/** 生成一个带速度的有向粒子（count=0 时 delta 即为速度向量，speed=1）。 */
-	private static void spawnDirected(ServerLevel sw, net.minecraft.core.particles.ParticleOptions particle,
+	private static void spawnDirected(ServerWorld sw, net.minecraft.particle.ParticleEffect particle,
 			double x, double y, double z, double vx, double vy, double vz) {
-		sw.sendParticles(particle, x, y, z, 0, vx, vy, vz, 1.0);
+		sw.spawnParticles(particle, x, y, z, 0, vx, vy, vz, 1.0);
 	}
 
 	/** 蓄力期：在外圈生成青/白粒子，速度指向中心并带切向分量 → 向内吸附 + 旋转漩涡。 */
-	private static void spawnAbsorbRing(ServerLevel sw, double cx, double cy, double cz, int count, double phase) {
+	private static void spawnAbsorbRing(ServerWorld sw, double cx, double cy, double cz, int count, double phase) {
 		double r = 2.6;
 		for (int i = 0; i < count; i++) {
 			double ang = (Math.PI * 2 / count) * i + phase;

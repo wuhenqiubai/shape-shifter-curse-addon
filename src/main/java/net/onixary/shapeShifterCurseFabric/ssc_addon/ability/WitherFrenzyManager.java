@@ -1,9 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -53,12 +53,12 @@ public final class WitherFrenzyManager {
 	}
 
 	/** 每服务端 tick 对每个在线 SP阿努比斯玩家调用。 */
-	public static void tick(ServerPlayer player) {
-		UUID id = player.getUUID();
-		boolean hasWither = player.hasEffect(MobEffects.WITHER);
+	public static void tick(ServerPlayerEntity player) {
+		UUID id = player.getUuid();
+		boolean hasWither = player.hasStatusEffect(StatusEffects.WITHER);
 		if (hasWither) {
 			// 从无到有 → 记录起点；持续中不重置（elapsed 累积）
-			WITHER_START.computeIfAbsent(id, k -> Long.valueOf(player.getServer().getTickCount()));
+			WITHER_START.computeIfAbsent(id, k -> Long.valueOf(player.getServer().getTicks()));
 		} else {
 			// 凋零结束 → 清零，下次重新从 T1 起
 			WITHER_START.remove(id);
@@ -70,19 +70,19 @@ public final class WitherFrenzyManager {
 	 * 取当前凋零阶梯下的伤害倍率（1.0 / 1.1 / 1.2 / 1.3）。
 	 * 非 SP阿努比斯或无凋零返回 1.0。
 	 */
-	public static float getDamageMultiplier(ServerPlayer player) {
+	public static float getDamageMultiplier(ServerPlayerEntity player) {
 		if (!FormUtils.isForm(player, FormIdentifiers.ANUBIS_WOLF_SP)) return 1.0f;
-		if (!player.hasEffect(MobEffects.WITHER)) return 1.0f;
-		Long start = WITHER_START.get(player.getUUID());
+		if (!player.hasStatusEffect(StatusEffects.WITHER)) return 1.0f;
+		Long start = WITHER_START.get(player.getUuid());
 		if (start == null) return MULT_T1; // 有凋零但起点未记录（首 tick 前），按 T1
-		long elapsed = player.getServer().getTickCount() - start;
+		long elapsed = player.getServer().getTicks() - start;
 		if (elapsed < T1_MAX) return MULT_T1;
 		if (elapsed < T2_MAX) return MULT_T2;
 		return MULT_T3;
 	}
 
 	/** 当前阶梯编号（1/2/3），用于客户端 HUD / 调试。 */
-	public static int getTier(ServerPlayer player) {
+	public static int getTier(ServerPlayerEntity player) {
 		float m = getDamageMultiplier(player);
 		if (m >= MULT_T3) return 3;
 		if (m >= MULT_T2) return 2;
@@ -103,10 +103,10 @@ public final class WitherFrenzyManager {
 	 * 返回 0 表示本次凋零 tick 伤害完全取消。
 	 * 非 SP阿努比斯返回 1.0（不改）。
 	 */
-	public static float getWitherDamageScale(ServerPlayer player) {
+	public static float getWitherDamageScale(ServerPlayerEntity player) {
 		if (!FormUtils.isForm(player, FormIdentifiers.ANUBIS_WOLF_SP)) return 1.0f;
-		if (!player.hasEffect(MobEffects.WITHER)) return 1.0f;
-		UUID id = player.getUUID();
+		if (!player.hasStatusEffect(StatusEffects.WITHER)) return 1.0f;
+		UUID id = player.getUuid();
 		int count = WITHER_TICK_COUNT.merge(id, 1, Integer::sum);
 		// 跳过周期内最后 SKIP_COUNT 次（实现间隔延长）
 		if (count > SKIP_PERIOD - SKIP_COUNT) {
@@ -145,11 +145,11 @@ public final class WitherFrenzyManager {
 	 * @param target 被攻击的目标
 	 * @return 实际转移的凋零 tick 数（0 表示未传染）
 	 */
-	public static int tryWitherInfect(ServerPlayer source, LivingEntity target) {
+	public static int tryWitherInfect(ServerPlayerEntity source, LivingEntity target) {
 		if (source == null || target == null) return 0;
-		if (source.level().isClientSide()) return 0;
+		if (source.getWorld().isClient()) return 0;
 		if (!FormUtils.isForm(source, FormIdentifiers.ANUBIS_WOLF_SP)) return 0;
-		MobEffectInstance srcWither = source.getEffect(MobEffects.WITHER);
+		StatusEffectInstance srcWither = source.getStatusEffect(StatusEffects.WITHER);
 		if (srcWither == null) return 0; // 自身无凋零 → 不传染
 		if (!(target instanceof LivingEntity)) return 0;
 
@@ -162,20 +162,20 @@ public final class WitherFrenzyManager {
 		// 扣减自身凋零 duration：用新实例覆盖（vanilla StatusEffectInstance 不可变 duration）
 		int newSrcDuration = Math.max(0, srcDuration - cost);
 		if (newSrcDuration <= 0) {
-			source.removeEffect(MobEffects.WITHER);
+			source.removeStatusEffect(StatusEffects.WITHER);
 		} else {
-			source.forceAddEffect(
-					new MobEffectInstance(MobEffects.WITHER, newSrcDuration, srcAmplifier,
-							srcWither.isAmbient(), srcWither.isVisible(), srcWither.showIcon()),
+			source.setStatusEffect(
+					new StatusEffectInstance(StatusEffects.WITHER, newSrcDuration, srcAmplifier,
+							srcWither.isAmbient(), srcWither.shouldShowParticles(), srcWither.shouldShowIcon()),
 					source);
 		}
 
 		// 给目标附加凋零：累加 duration，上限 300t；等级取较高
-		MobEffectInstance tgtWither = target.getEffect(MobEffects.WITHER);
+		StatusEffectInstance tgtWither = target.getStatusEffect(StatusEffects.WITHER);
 		int tgtBase = tgtWither != null ? tgtWither.getDuration() : 0;
 		int tgtAmp = tgtWither != null ? Math.max(tgtWither.getAmplifier(), srcAmplifier) : srcAmplifier;
 		int tgtNew = Math.min(tgtBase + cost, INFECT_TARGET_CAP);
-		target.addEffect(new MobEffectInstance(MobEffects.WITHER, tgtNew, tgtAmp));
+		target.addStatusEffect(new StatusEffectInstance(StatusEffects.WITHER, tgtNew, tgtAmp));
 		return cost;
 	}
 }

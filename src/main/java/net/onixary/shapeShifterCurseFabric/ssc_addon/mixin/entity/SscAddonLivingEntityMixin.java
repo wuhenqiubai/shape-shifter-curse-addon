@@ -1,28 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityGroup;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.damage.DamageTypes;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.mob.HuskEntity;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Husk;
-import net.minecraft.world.entity.player.Player;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPRangedHitPassive;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst;
@@ -34,6 +13,20 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.damage.DamageTypes;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.mob.HuskEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.FrostFreezeEffect;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -58,7 +51,7 @@ public abstract class SscAddonLivingEntityMixin {
 	/** 月织蛛拴友军分担伤害致拴主牺牲时的伤害源（死亡消息 death.attack.tether_sacrifice）。 */
 	@org.spongepowered.asm.mixin.Unique
 	private static final RegistryKey<DamageType> ssca$TETHER_SACRIFICE_KEY =
-			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("my_addon", "tether_sacrifice"));
+			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("my_addon", "tether_sacrifice"));
 
 	/**
 	 * 定身(STUN)的核心拦截：让 isImmobile() 在 STUN 期间返回 true。
@@ -71,7 +64,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 */
 	@Inject(method = "isImmobile", at = @At("RETURN"), cancellable = true)
 	private void ssca$stunImmobile(CallbackInfoReturnable<Boolean> cir) {
-		if (!cir.getReturnValueZ() && ((LivingEntity) (Object) this).hasStatusEffect(SscAddon.STUN)) {
+		if (!cir.getReturnValueZ() && ((LivingEntity) (Object) this).hasStatusEffect(SscAddon.STUN_ENTRY)) {
 			cir.setReturnValue(true);
 		}
 	}
@@ -81,7 +74,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 只要推挤双方任一是「蓄力中的玩家」就整体取消，玩家站得住、怪仍被吸附/震荡但推不动玩家。
 	 * 服务端用 {@link VortexChargeManager#isCharging} 快速查表；客户端用每 tick 缓存标记，避免每次碰撞读 Apoli 资源。
 	 */
-	@Inject(method = "push", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "pushAwayFrom", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$vortexChargingNoPush(Entity entity, CallbackInfo ci) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (ssc_addon$isVortexChargingPlayer(self) || ssc_addon$isVortexChargingPlayer(entity)) {
@@ -90,12 +83,12 @@ public abstract class SscAddonLivingEntityMixin {
 	}
 
 	private static boolean ssc_addon$isVortexChargingPlayer(Entity e) {
-		if (!(e instanceof Player)) return false;
-		if (e instanceof ServerPlayer sp) {
+		if (!(e instanceof PlayerEntity)) return false;
+		if (e instanceof ServerPlayerEntity sp) {
 			return VortexChargeManager.isCharging(sp);
 		}
 		// 客户端本地玩家：用每 tick 缓存标记（避免每次碰撞读 Apoli 资源）
-		return e.level().isClientSide() && VortexChargeManager.isClientLocalCharging();
+		return e.getWorld().isClient() && VortexChargeManager.isClientLocalCharging();
 	}
 
 	/**
@@ -107,11 +100,11 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyVariable(method = "heal", at = @At("HEAD"), argsOnly = true)
 	private float ssc_addon$reduceHealWhenParasitized(float amount) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide() || amount <= 0.0f) {
+		if (self.getWorld().isClient() || amount <= 0.0f) {
 			return amount;
 		}
 		if (net.onixary.shapeShifterCurseFabric.ssc_addon.power.ParasiticFruitSeedPower
-				.isParasitizedByEnemyFruit(self.getUUID(), self.level().getGameTime())) {
+				.isParasitizedByEnemyFruit(self.getUuid(), self.getWorld().getTime())) {
 			return amount * 0.5f;
 		}
 		return amount;
@@ -121,10 +114,10 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 契灵·绑定脚环灵气：被劫掠阵营 NPC 攻击、且攻击者 16 格内有装备绑定脚环的契灵玩家时，本次伤害 ×1.2。
 	 * （原 BindingAnkletAuraMixin 合并至此，减少 mixin 文件数；行为不变。）
 	 */
-	@ModifyVariable(method = "hurt", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private float ssc_addon$bindingAnkletBoost(float amount, DamageSource source) {
 		if (amount <= 0.0F) return amount;
-		Entity raw = source.getEntity();
+		Entity raw = source.getAttacker();
 		if (!(raw instanceof LivingEntity attacker)) return amount;
 		if (!BindingAnkletItem.isRaiderFaction(attacker)) return amount;
 		if (!BindingAnkletItem.hasAnkletAuraNearby(attacker)) return amount;
@@ -137,7 +130,7 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private float ssc_addon$moisturizerLevel3DamageBoost(float amount, DamageSource source) {
 		if (amount <= 0.0F) return amount;
-		if (!(source.getAttacker() instanceof net.minecraft.entity.player.PlayerEntity attacker)) return amount;
+		if (!(source.getAttacker() instanceof PlayerEntity attacker)) return amount;
 		if (!FormUtils.isMoistureDependent(attacker)) return amount;
 		if (!net.onixary.shapeShifterCurseFabric.ssc_addon.item.PortableMoisturizerItem.isLevel3Equipped(attacker)) return amount;
 		return amount * 1.15F;
@@ -198,19 +191,19 @@ public abstract class SscAddonLivingEntityMixin {
 	/**
 	 * 冰霜冻结受伤 +35% / 传送攻击期间受伤 -65%。（原 FrostFreezeDamageMixin 合并至此；行为不变。）
 	 */
-	@ModifyVariable(method = "hurt", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private float ssc_addon$modifyDamageForFrostEffects(float amount, DamageSource source) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		float modifiedAmount = amount;
 		// 1. 传送攻击期间减伤 65%
-		if (self instanceof ServerPlayer serverPlayer) {
+		if (self instanceof ServerPlayerEntity serverPlayer) {
 			float reduction = SnowFoxSpTeleportAttack.getDamageReduction(serverPlayer);
 			if (reduction > 0) {
 				modifiedAmount = modifiedAmount * (1.0f - reduction);
 			}
 		}
 		// 2. 冰霜冻结效果（物理/魔法伤害）+35%
-		MobEffectInstance frostFreezeEffect = self.getEffect(SscAddon.FROST_FREEZE_ENTRY);
+		StatusEffectInstance frostFreezeEffect = self.getStatusEffect(SscAddon.FROST_FREEZE_ENTRY);
 		if (frostFreezeEffect != null && FrostFreezeEffect.isPhysicalOrMagicDamage(source)) {
 			modifiedAmount = modifiedAmount * 1.35f;
 		}
@@ -220,11 +213,11 @@ public abstract class SscAddonLivingEntityMixin {
 	/**
 	 * 风灵徒手近战伤害缩放（过热期弱普攻 / 副技能 ×1.5；拿武器不吃）。（原 ClawDamageBoostMixin 合并至此；行为不变。）
 	 */
-	@ModifyVariable(method = "hurt", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "damage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private float ssc_addon$scaleWindSpiritMelee(float value, DamageSource source, float amount) {
 		if (source != null
-				&& source.getEntity() instanceof ServerPlayer p
-				&& source.is(DamageTypes.PLAYER_ATTACK)
+				&& source.getAttacker() instanceof ServerPlayerEntity p
+				&& source.isOf(DamageTypes.PLAYER_ATTACK)
 				&& FormUtils.isOcelotSP(p)
 				&& !WindSpiritClawManager.isHoldingWeapon(p)) {
 			float mult = WindSpiritClawManager.getNormalMeleeMultiplier(p);
@@ -240,11 +233,11 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 裁决者: 攻击任何亡灵触发挑衅
 	 * 金沙岚: 攻击尸壳或咒文胡狼触发挑衅
 	 */
-	@Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "damage", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$onUndeadDamaged(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {		LivingEntity self = (LivingEntity) (Object) this;
 		// 朔望九命：被动死亡触发复活 + 复活后 1s 无敌 + 攻击/受伤标记战斗
-		if (!self.level().isClientSide()) {
-			if (self instanceof ServerPlayer nova && FormUtils.isForm(nova, FormIdentifiers.OCELOT_NOVA)) {
+		if (!self.getWorld().isClient()) {
+			if (self instanceof ServerPlayerEntity nova && FormUtils.isForm(nova, FormIdentifiers.OCELOT_NOVA)) {
 				if (NineLivesManager.isInvulnerable(nova)) {
 					cir.setReturnValue(false);
 					return;
@@ -254,55 +247,55 @@ public abstract class SscAddonLivingEntityMixin {
 					return; // 闪避：概率免疫本次伤害（不受伤、不击退）
 				}
 				NineLivesManager.markCombat(nova);
-				if (!source.is(DamageTypes.FELL_OUT_OF_WORLD) && amount >= nova.getHealth() + nova.getAbsorptionAmount()) {
+				if (!source.isOf(DamageTypes.OUT_OF_WORLD) && amount >= nova.getHealth() + nova.getAbsorptionAmount()) {
 					if (NineLivesManager.tryRevive(nova)) {
 						// 复活仍正常受到本次攻击的击退
-						Entity kbSource = source.getDirectEntity();
+						Entity kbSource = source.getSource();
 						if (kbSource != null) {
-							nova.knockback(0.4, kbSource.getX() - nova.getX(), kbSource.getZ() - nova.getZ());
-							nova.hurtMarked = true;
+							nova.takeKnockback(0.4, kbSource.getX() - nova.getX(), kbSource.getZ() - nova.getZ());
+							nova.velocityModified = true;
 						}
 						cir.setReturnValue(false);
 						return;
 					}
 				}
 			}
-			if (source.getEntity() instanceof ServerPlayer attacker && FormUtils.isForm(attacker, FormIdentifiers.OCELOT_NOVA)) {
+			if (source.getAttacker() instanceof ServerPlayerEntity attacker && FormUtils.isForm(attacker, FormIdentifiers.OCELOT_NOVA)) {
 				NineLivesManager.markCombat(attacker);
 			}
 		}
-		if (self instanceof Mob mob
-				&& source.getEntity() instanceof Player player) {
+		if (self instanceof MobEntity mob
+				&& source.getAttacker() instanceof PlayerEntity player) {
 			// 裁决者: 所有亡灵触发挑衅
-			if (mob.getType().is(net.minecraft.tags.EntityTypeTags.UNDEAD)
+			if (mob.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD)
 					&& FormUtils.isForm(player, FormIdentifiers.ANUBIS_WOLF_SP)) {
-				UndeadNeutralState.PROVOKE_TIMESTAMPS.put(player.getUUID(), mob.level().getGameTime());
+				UndeadNeutralState.PROVOKE_TIMESTAMPS.put(player.getUuid(), mob.getWorld().getTime());
 			}
 			// 金沙岚: 仅尸壳和咒文胡狼触发挑衅
-			if ((mob instanceof Husk || FormUtils.isTransformativeWolf(mob))
+			if ((mob instanceof HuskEntity || FormUtils.isTransformativeWolf(mob))
 					&& FormUtils.isForm(player, FormIdentifiers.GOLDEN_SANDSTORM_SP)) {
-				UndeadNeutralState.PROVOKE_TIMESTAMPS.put(player.getUUID(), mob.level().getGameTime());
+				UndeadNeutralState.PROVOKE_TIMESTAMPS.put(player.getUuid(), mob.getWorld().getTime());
 			}
 		}
 
 		// ==== 金沙岚回血系统 ====
-		if (!self.level().isClientSide()) {
+		if (!self.getWorld().isClient()) {
 			// 凋零 tick 伤害 → 为已注册的金沙岚来源回血
-			if (source.is(DamageTypes.WITHER)) {
+			if (source.isOf(DamageTypes.WITHER)) {
 				GoldenSandstormRegen.onWitherTickDamage(self);
 			}
 			// 金沙岚玩家亲手造成伤害 → 标记战斗状态
-			if (source.getEntity() instanceof ServerPlayer attacker
+			if (source.getAttacker() instanceof ServerPlayerEntity attacker
 					&& FormUtils.isForm(attacker, FormIdentifiers.GOLDEN_SANDSTORM_SP)) {
 				GoldenSandstormRegen.markCombat(attacker);
 			}
 			// 冥狼造成伤害 → 为主人（金沙岚）标记战斗状态
-			if (source.getEntity() instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf
-					&& self.level() instanceof net.minecraft.server.level.ServerLevel serverWorld) {
+			if (source.getAttacker() instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf
+					&& self.getWorld() instanceof net.minecraft.server.world.ServerWorld serverWorld) {
 				java.util.UUID ownerUuid = wolf.getMinionOwnerUUID();
 				if (ownerUuid != null) {
-					net.minecraft.world.entity.player.Player owner = serverWorld.getPlayerByUUID(ownerUuid);
-					if (owner instanceof ServerPlayer ownerPlayer
+					net.minecraft.entity.player.PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
+					if (owner instanceof ServerPlayerEntity ownerPlayer
 							&& FormUtils.isForm(ownerPlayer, FormIdentifiers.GOLDEN_SANDSTORM_SP)) {
 						GoldenSandstormRegen.markCombat(ownerPlayer);
 					}
@@ -311,39 +304,40 @@ public abstract class SscAddonLivingEntityMixin {
 		}
 	}
 
-	/**
+	// TODO(Ravel): target method addEffect with the signature not found
+/**
 	 * 拦截带源的 addStatusEffect：当金沙岚玩家给受害者施加凋零时，注册凋零来源用于回血。
 	 */
-	@Inject(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at = @At("HEAD"))
-	private void ssc_addon$registerGoldenSandstormWitherSource(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> cir) {
-		if (effect.getEffect() != MobEffects.WITHER) return;
-		if (!(source instanceof ServerPlayer sp)) return;
+	@Inject(method = "addStatusEffect(Lnet/minecraft/entity/effect/StatusEffectInstance;Lnet/minecraft/entity/Entity;)Z", at = @At("HEAD"))
+	private void ssc_addon$registerGoldenSandstormWitherSource(StatusEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> cir) {
+		if (effect.getEffectType() != StatusEffects.WITHER) return;
+		if (!(source instanceof ServerPlayerEntity sp)) return;
 		if (!FormUtils.isForm(sp, FormIdentifiers.GOLDEN_SANDSTORM_SP)) return;
 		LivingEntity self = (LivingEntity) (Object) this;
 		GoldenSandstormRegen.registerWitherSource(self, sp, effect.getDuration());
 	}
 
-	@Inject(method = "hurt", at = @At("RETURN"))
+	@Inject(method = "damage", at = @At("RETURN"))
 	private void ssc_addon$onAllayRangedHit(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
 		if (!cir.getReturnValue()) return;
 		LivingEntity self = (LivingEntity) (Object) this;
 		AllaySPRangedHitPassive.onDamageApplied(self, source);
 		// 冥裁者「凋零传染」：玩家本人或其冥狼攻击命中时，消耗自身凋零时间转移给目标。
 		// 玩家本人攻击
-		if (!self.level().isClientSide()
-				&& source.getEntity() instanceof ServerPlayer attacker
+		if (!self.getWorld().isClient()
+				&& source.getAttacker() instanceof ServerPlayerEntity attacker
 				&& FormUtils.isForm(attacker, FormIdentifiers.ANUBIS_WOLF_SP)) {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.tryWitherInfect(attacker, self);
 			return;
 		}
 		// 冥狼攻击 → 找主人，以主人的凋零状态传染
-		if (!self.level().isClientSide()
-				&& source.getEntity() instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf
-				&& self.level() instanceof net.minecraft.server.level.ServerLevel serverWorld) {
+		if (!self.getWorld().isClient()
+				&& source.getAttacker() instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf
+				&& self.getWorld() instanceof net.minecraft.server.world.ServerWorld serverWorld) {
 			java.util.UUID ownerUuid = wolf.getMinionOwnerUUID();
 			if (ownerUuid != null) {
-				net.minecraft.world.entity.player.Player owner = serverWorld.getPlayerByUUID(ownerUuid);
-				if (owner instanceof ServerPlayer ownerPlayer
+				net.minecraft.entity.player.PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
+				if (owner instanceof ServerPlayerEntity ownerPlayer
 						&& FormUtils.isForm(ownerPlayer, FormIdentifiers.ANUBIS_WOLF_SP)) {
 					net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.tryWitherInfect(ownerPlayer, self);
 				}
@@ -354,9 +348,9 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
 	private void ssc_addon$capAllayIncomingDamage(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide() || !FormUtils.isAllaySP(self)) return;
+		if (self.getWorld().isClient() || !FormUtils.isAllaySP(self)) return;
 		DamageSource source = args.get(0);
-		if (source.is(DamageTypes.FELL_OUT_OF_WORLD) || source.is(DamageTypes.GENERIC_KILL)) return;
+		if (source.isOf(DamageTypes.OUT_OF_WORLD) || source.isOf(DamageTypes.GENERIC_KILL)) return;
 
 		float amount = args.get(1);
 		float maxDamage = self.getMaxHealth() * 0.25F;
@@ -372,11 +366,11 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
 	private void ssc_addon$infectionAttackerDamageReduction(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
+		if (self.getWorld().isClient()) return;
 		DamageSource source = args.get(0);
-		Entity attacker = source.getEntity();
+		Entity attacker = source.getAttacker();
 		if (!(attacker instanceof LivingEntity living)) return;
-		if (!InfectionSporeManager.isInfected(living.getUUID())) return;
+		if (!InfectionSporeManager.isInfected(living.getUuid())) return;
 		float amount = args.get(1);
 		args.set(1, InfectionSporeManager.reduceDamageIfInfected(living, amount));
 	}
@@ -391,13 +385,13 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
 	private void ssc_addon$anubisWolfWitherFrenzy(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
+		if (self.getWorld().isClient()) return;
 		DamageSource source = args.get(0);
-		Entity attacker = source.getEntity();
+		Entity attacker = source.getAttacker();
 		float amount = args.get(1);
 
 		// 1) 玩家本人攻击
-		if (attacker instanceof ServerPlayer sp
+		if (attacker instanceof ServerPlayerEntity sp
 				&& FormUtils.isForm(sp, FormIdentifiers.ANUBIS_WOLF_SP)) {
 			args.set(1, amount * net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.getDamageMultiplier(sp));
 			return;
@@ -406,9 +400,9 @@ public abstract class SscAddonLivingEntityMixin {
 		if (attacker instanceof net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity wolf) {
 			java.util.UUID ownerUuid = wolf.getMinionOwnerUUID();
 			if (ownerUuid == null) return;
-			if (!(self.level() instanceof net.minecraft.server.level.ServerLevel serverWorld)) return;
-			net.minecraft.world.entity.player.Player owner = serverWorld.getPlayerByUUID(ownerUuid);
-			if (owner instanceof ServerPlayer ownerPlayer
+			if (!(self.getWorld() instanceof net.minecraft.server.world.ServerWorld serverWorld)) return;
+			net.minecraft.entity.player.PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
+			if (owner instanceof ServerPlayerEntity ownerPlayer
 					&& FormUtils.isForm(ownerPlayer, FormIdentifiers.ANUBIS_WOLF_SP)) {
 				args.set(1, amount * net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.getDamageMultiplier(ownerPlayer));
 			}
@@ -423,11 +417,11 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
 	private void ssc_addon$anubisWolfWitherResistance(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
-		if (!(self instanceof ServerPlayer sp)) return;
+		if (self.getWorld().isClient()) return;
+		if (!(self instanceof ServerPlayerEntity sp)) return;
 		if (!FormUtils.isForm(sp, FormIdentifiers.ANUBIS_WOLF_SP)) return;
 		DamageSource source = args.get(0);
-		if (!source.is(DamageTypes.WITHER)) return;
+		if (!source.isOf(DamageTypes.WITHER)) return;
 		float scale = net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager.getWitherDamageScale(sp);
 		if (scale <= 0f) {
 			// 本次凋零 tick 跳过（间隔延长）
@@ -437,9 +431,10 @@ public abstract class SscAddonLivingEntityMixin {
 		}
 	}
 
-	@ModifyVariable(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at = @At("HEAD"), argsOnly = true)
-	private MobEffectInstance modifyStatusEffect(MobEffectInstance effect) {
-		if (!effect.getEffect().value().isInstantenous() && PowerHolderComponent.hasPower((LivingEntity) (Object) this, EffectEfficiencyReductionPower.class)) {
+	// TODO(Ravel): target method addEffect with the signature not found
+	@ModifyVariable(method = "addStatusEffect(Lnet/minecraft/entity/effect/StatusEffectInstance;Lnet/minecraft/entity/Entity;)Z", at = @At("HEAD"), argsOnly = true)
+	private StatusEffectInstance modifyStatusEffect(StatusEffectInstance effect) {
+		if (!effect.getEffectType().value().isInstant() && PowerHolderComponent.hasPower((LivingEntity) (Object) this, EffectEfficiencyReductionPower.class)) {
 			int originalAmp = effect.getAmplifier();
 			int newDuration;
 
@@ -463,13 +458,13 @@ public abstract class SscAddonLivingEntityMixin {
 				newDuration = effect.getDuration();
 			}
 
-			return new MobEffectInstance(
-					effect.getEffect(),
+			return new StatusEffectInstance(
+					effect.getEffectType(),
 					newDuration,
 					0, // Always force to Level 1 (amplifier 0)
 					effect.isAmbient(),
-					effect.isVisible(),
-					effect.showIcon(),
+					effect.shouldShowParticles(),
+					effect.shouldShowIcon(),
 				null
 			);
 		}
@@ -483,19 +478,19 @@ public abstract class SscAddonLivingEntityMixin {
 	 * - 受害者是契灵 + iframes>0 → 取消伤害（不消耗抗伤）
 	 * - 受害者是契灵 + resistance>0 → 取消伤害+取消击退，消耗1抗伤，置iframes=4tick(0.2s)
 	 */
-	@Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "damage", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$mancianimaResistance(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (!(self instanceof ServerPlayer sp)) return;
+		if (!(self instanceof ServerPlayerEntity sp)) return;
 		if (!FormUtils.isForm(sp, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) return;
 		// 跳过虚空/直接击杀，避免BUG
-		if (source.is(DamageTypes.FELL_OUT_OF_WORLD) || source.is(DamageTypes.GENERIC_KILL)) return;
+		if (source.isOf(DamageTypes.OUT_OF_WORLD) || source.isOf(DamageTypes.GENERIC_KILL)) return;
 		// 仅处理"由其它玩家/生物造成的伤害"（近战、远程、魔法）。
 		// 环境伤害（坠落、溺水、岩浆、火焰、窒息、仙人掌、饥饿等）的 attacker 为 null，将不抵挡也不进入战斗。
-		Entity attacker = source.getEntity();
+		Entity attacker = source.getAttacker();
 		if (!(attacker instanceof LivingEntity) || attacker == sp) return;
 		// 受击 → 进入战斗状态（用于 15s 抗伤回复门槛）
-		MancianimaMarkManager.markCombat(sp.getUUID(), sp.serverLevel().getGameTime());
+		MancianimaMarkManager.markCombat(sp.getUuid(), sp.getServerWorld().getTime());
 		int iframes = PowerUtils.getResourceValue(sp, FormIdentifiers.MANCIANIMA_IFRAMES);
 		if (iframes > 0) {
 			cir.setReturnValue(false);
@@ -506,9 +501,9 @@ public abstract class SscAddonLivingEntityMixin {
 			PowerUtils.setResourceValueAndSync(sp, FormIdentifiers.MANCIANIMA_RESISTANCE, resist - 1);
 			PowerUtils.setResourceValueAndSync(sp, FormIdentifiers.MANCIANIMA_IFRAMES, 4);
 			// 抵抗触发音效：铁砧落地（全场可听见，提示周围玩家）
-			sp.serverLevel().playSound(null, sp.getX(), sp.getY(), sp.getZ(),
-					net.minecraft.sounds.SoundEvents.ANVIL_LAND,
-					net.minecraft.sounds.SoundSource.PLAYERS, 0.6f, 1.6f);
+			sp.getServerWorld().playSound(null, sp.getX(), sp.getY(), sp.getZ(),
+					net.minecraft.sound.SoundEvents.BLOCK_ANVIL_LAND,
+					net.minecraft.sound.SoundCategory.PLAYERS, 0.6f, 1.6f);
 			cir.setReturnValue(false);
 		}
 	}
@@ -522,20 +517,20 @@ public abstract class SscAddonLivingEntityMixin {
 		LivingEntity self = (LivingEntity) (Object) this;
 		DamageSource source = args.get(0);
 		float amount = args.get(1);
-		Entity attacker = source.getEntity();
+		Entity attacker = source.getAttacker();
 		// 攻击发生在契灵玩家身上 → 进入战斗（攻击方为契灵也算）
-		if (attacker instanceof ServerPlayer ap && FormUtils.isForm(ap, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) {
-			MancianimaMarkManager.markCombat(ap.getUUID(), ap.serverLevel().getGameTime());
+		if (attacker instanceof ServerPlayerEntity ap && FormUtils.isForm(ap, FormIdentifiers.FAMILIAR_FOX_MANCIANIMA)) {
+			MancianimaMarkManager.markCombat(ap.getUuid(), ap.getServerWorld().getTime());
 		}
-		if (attacker instanceof ServerPlayer ap
-				&& MancianimaMarkManager.isRedMarkedBy(ap.getUUID(), self.getUUID())) {
+		if (attacker instanceof ServerPlayerEntity ap
+				&& MancianimaMarkManager.isRedMarkedBy(ap.getUuid(), self.getUuid())) {
 			args.set(1, amount * 1.25f);
 			return;
 		}
-		if (self instanceof ServerPlayer sp && attacker != null) {
-			java.util.UUID markerOf = MancianimaMarkManager.getMarkerOf(attacker.getUUID());
-			if (markerOf != null && markerOf.equals(sp.getUUID())) {
-				MancianimaMarkManager.Mark m = MancianimaMarkManager.getMark(sp.getUUID());
+		if (self instanceof ServerPlayerEntity sp && attacker != null) {
+			java.util.UUID markerOf = MancianimaMarkManager.getMarkerOf(attacker.getUuid());
+			if (markerOf != null && markerOf.equals(sp.getUuid())) {
+				MancianimaMarkManager.Mark m = MancianimaMarkManager.getMark(sp.getUuid());
 				if (m != null && m.color == MancianimaMarkManager.MarkColor.RED) {
 					args.set(1, amount * 0.75f);
 				}
@@ -554,28 +549,28 @@ public abstract class SscAddonLivingEntityMixin {
 	 * - 受害方为蝙蝠玩家：标记战斗
 	 * 实际命中累计 +8 走 RETURN 分支（保证伤害真正生效）。
 	 */
-	@Inject(method = "hurt", at = @At("HEAD"))
+	@Inject(method = "damage", at = @At("HEAD"))
 	private void ssc_addon$batDesmodusCombatHead(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
-		if (source.getEntity() instanceof ServerPlayer attacker
+		if (self.getWorld().isClient()) return;
+		if (source.getAttacker() instanceof ServerPlayerEntity attacker
 				&& FormUtils.isForm(attacker, FormIdentifiers.BAT_DESMODUS)) {
 			BatDesmodusBloodThirst.markCombat(attacker);
 		}
-		if (self instanceof ServerPlayer sp
-				&& source.getEntity() != null && source.getEntity() != sp
+		if (self instanceof ServerPlayerEntity sp
+				&& source.getAttacker() != null && source.getAttacker() != sp
 				&& FormUtils.isForm(sp, FormIdentifiers.BAT_DESMODUS)) {
 			BatDesmodusBloodThirst.markCombat(sp);
 		}
 		// 进化使魔战斗打点（受击或主动伤敌）：用于脱战 mana 回复判定，复用契灵的 LAST_COMBAT 计时
-		if (source.getEntity() instanceof ServerPlayer atkFox
+		if (source.getAttacker() instanceof ServerPlayerEntity atkFox
 				&& FormUtils.isForm(atkFox, FormIdentifiers.UPGRADE_FAMILIAR_FOX)) {
-			MancianimaMarkManager.markCombat(atkFox.getUUID(), atkFox.serverLevel().getGameTime());
+			MancianimaMarkManager.markCombat(atkFox.getUuid(), atkFox.getServerWorld().getTime());
 		}
-		if (self instanceof ServerPlayer defFox
-				&& source.getEntity() != null && source.getEntity() != defFox
+		if (self instanceof ServerPlayerEntity defFox
+				&& source.getAttacker() != null && source.getAttacker() != defFox
 				&& FormUtils.isForm(defFox, FormIdentifiers.UPGRADE_FAMILIAR_FOX)) {
-			MancianimaMarkManager.markCombat(defFox.getUUID(), defFox.serverLevel().getGameTime());
+			MancianimaMarkManager.markCombat(defFox.getUuid(), defFox.getServerWorld().getTime());
 		}
 	}
 
@@ -583,27 +578,27 @@ public abstract class SscAddonLivingEntityMixin {
 	 * 蝙蝠玩家普攻命中其它生物（伤害真正生效）→ 累计 +8（受白名单与 0.3s 内CD约束）。
 	 * 同时承担「造成伤害的吸血效果」：50-75 → 30%、75-100 → 52.5%（原 20%/35%，强化 +50%）。
 	 */
-	@Inject(method = "hurt", at = @At("RETURN"))
+	@Inject(method = "damage", at = @At("RETURN"))
 	private void ssc_addon$batDesmodusOnHit(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
 		if (!cir.getReturnValue()) return;
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
-		if (!(source.getEntity() instanceof ServerPlayer attacker)) return;
+		if (self.getWorld().isClient()) return;
+		if (!(source.getAttacker() instanceof ServerPlayerEntity attacker)) return;
 		if (!FormUtils.isForm(attacker, FormIdentifiers.BAT_DESMODUS)) return;
 		if (self == attacker) return;
 
 		// 普攻命中：仅近战玩家攻击算（排除魔法 / 间接魔法 / 起爆 AOE 等）
 		// 标准玩家近战伤害 source 类型为 player_attack
-		boolean isMeleeAttack = source.is(net.minecraft.world.damagesource.DamageTypes.PLAYER_ATTACK);
+		boolean isMeleeAttack = source.isOf(net.minecraft.entity.damage.DamageTypes.PLAYER_ATTACK);
 		if (isMeleeAttack) {
 			BatDesmodusBloodThirst.onAttackHit(attacker, self);
 		}
 
 		// 吸血：玩家亲手造成的近战 / 起爆 AOE 都吸血（魔法源 + 玩家发起，但排除环境 / 间接伤害）
-		if (isMeleeAttack || (source.getDirectEntity() == attacker
-				&& !source.is(net.minecraft.world.damagesource.DamageTypes.INDIRECT_MAGIC)
-				&& !source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)
-				&& !source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL))) {
+		if (isMeleeAttack || (source.getSource() == attacker
+				&& !source.isOf(net.minecraft.entity.damage.DamageTypes.INDIRECT_MAGIC)
+				&& !source.isOf(net.minecraft.entity.damage.DamageTypes.OUT_OF_WORLD)
+				&& !source.isOf(net.minecraft.entity.damage.DamageTypes.GENERIC_KILL))) {
 			int stage = BatDesmodusBloodThirst.getStage(attacker);
 			float lifestealRate = 0f;
 			if (stage == 2) lifestealRate = 0.30f;    // 原为 0.20f，强化 +50%
@@ -626,17 +621,17 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
 	private void ssc_addon$batDesmodusDamageScaling(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
+		if (self.getWorld().isClient()) return;
 		DamageSource source = args.get(0);
 		float amount = args.get(1);
-		Entity attacker = source.getEntity();
+		Entity attacker = source.getAttacker();
 
 		// 0-25 阶段：受害方为蝙蝠玩家 → -15%
-		if (self instanceof ServerPlayer sp
+		if (self instanceof ServerPlayerEntity sp
 				&& FormUtils.isForm(sp, FormIdentifiers.BAT_DESMODUS)
-				&& !source.is(DamageTypes.FELL_OUT_OF_WORLD)
-				&& !source.is(DamageTypes.GENERIC_KILL)
-				&& !source.is(DamageTypes.INDIRECT_MAGIC)) {
+				&& !source.isOf(DamageTypes.OUT_OF_WORLD)
+				&& !source.isOf(DamageTypes.GENERIC_KILL)
+				&& !source.isOf(DamageTypes.INDIRECT_MAGIC)) {
 			if (BatDesmodusBloodThirst.getStage(sp) == 0) {
 				amount *= 0.85f;
 				args.set(1, amount);
@@ -644,7 +639,7 @@ public abstract class SscAddonLivingEntityMixin {
 		}
 
 		// 75-100 阶段：攻击方为蝙蝠玩家 → +15%（血雾光环等被动伤害不受加成）
-		if (attacker instanceof ServerPlayer ap
+		if (attacker instanceof ServerPlayerEntity ap
 				&& attacker != self
 				&& !BatDesmodusBloodThirst.SUPPRESS_OUTGOING_BUFF.get()
 				&& FormUtils.isForm(ap, FormIdentifiers.BAT_DESMODUS)) {
@@ -666,12 +661,12 @@ public abstract class SscAddonLivingEntityMixin {
 	@ModifyArgs(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
 	private void ssc_addon$upgradeFoxPotionResist(Args args) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		if (self.level().isClientSide()) return;
-		if (!(self instanceof ServerPlayer sp)) return;
+		if (self.getWorld().isClient()) return;
+		if (!(self instanceof ServerPlayerEntity sp)) return;
 		if (!FormUtils.isForm(sp, FormIdentifiers.UPGRADE_FAMILIAR_FOX)) return;
 		DamageSource source = args.get(0);
 		// 仅对魔法伤害（含伤害药水）生效
-		if (!source.is(DamageTypes.MAGIC) && !source.is(DamageTypes.INDIRECT_MAGIC)) return;
+		if (!source.isOf(DamageTypes.MAGIC) && !source.isOf(DamageTypes.INDIRECT_MAGIC)) return;
 		net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionComponent comp = RegEvolutionComponent.EVOLUTION.get(sp);
 		// 门控：仅当玩家已正式走上 SSCA 进化路线（route 非空 + 已真正变身进入过进化形态）才生效，
 		// 避免异常状态（如 route 未设置或尚未完成初始变身）下误判。

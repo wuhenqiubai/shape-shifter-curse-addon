@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity;
 
-import net.minecraft.world.entity.monster.PatrollingMonster;
+import net.minecraft.entity.mob.PatrolEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
  * 仅供契灵袭击逻辑（MancianimaPassive#spawnRaiders）激活劫掠队的巡逻 AI，
  * 让劫掠者真正朝 setPatrolTarget 设定的村庄中心移动，而不是仅在出生点徘徊。
  */
-@Mixin(PatrollingMonster.class)
+@Mixin(PatrolEntity.class)
 public interface PatrolEntityAccessor {
 	@Invoker("setPatrolling")
 	void invokeSetPatrolling(boolean patrolling);

@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.render;
 
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.client.render.entity.LivingEntityRenderer;
+import net.minecraft.entity.LivingEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.IrisShadowPassDetector;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,8 +24,8 @@ public class LivingEntityRendererShadowFixMixin {
 
     @Inject(method = "render", at = @At("HEAD"))
     private void sscAddon$markShadowSuppressionStart(LivingEntity entity, float f, float g,
-                                                     com.mojang.blaze3d.vertex.PoseStack matrixStack,
-                                                     net.minecraft.client.renderer.MultiBufferSource vertexConsumerProvider,
+                                                     net.minecraft.client.util.math.MatrixStack matrixStack,
+                                                     net.minecraft.client.render.VertexConsumerProvider vertexConsumerProvider,
                                                      int i, CallbackInfo ci) {
         if (IrisShadowPassDetector.isRenderingShadowPass()) {
             IrisShadowPassDetector.enterSuppressScope();
@@ -34,8 +34,8 @@ public class LivingEntityRendererShadowFixMixin {
 
     @Inject(method = "render", at = @At("RETURN"))
     private void sscAddon$markShadowSuppressionEnd(LivingEntity entity, float f, float g,
-                                                   com.mojang.blaze3d.vertex.PoseStack matrixStack,
-                                                   net.minecraft.client.renderer.MultiBufferSource vertexConsumerProvider,
+                                                   net.minecraft.client.util.math.MatrixStack matrixStack,
+                                                   net.minecraft.client.render.VertexConsumerProvider vertexConsumerProvider,
                                                    int i, CallbackInfo ci) {
         if (IrisShadowPassDetector.shouldSuppressPowerQuery()) {
             IrisShadowPassDetector.exitSuppressScope();

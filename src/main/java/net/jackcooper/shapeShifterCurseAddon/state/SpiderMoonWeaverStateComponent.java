@@ -1,7 +1,8 @@
 package net.jackcooper.shapeShifterCurseAddon.state;
 
-import dev.onyxstudios.cca.api.v3.component.sync.AutoSyncedComponent;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.RegistryWrapper;
+import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 
 /**
  * 月织蛛「织网术」模式开关持久化组件（服务端权威，自动同步到客户端）。
@@ -26,12 +27,12 @@ public class SpiderMoonWeaverStateComponent implements AutoSyncedComponent {
 	}
 
 	@Override
-	public void readFromNbt(NbtCompound nbt) {
+	public void readFromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		this.mode = nbt.contains("mode") ? nbt.getInt("mode") : MODE_BRIDGE;
 	}
 
 	@Override
-	public void writeToNbt(NbtCompound nbt) {
+	public void writeToNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		nbt.putInt("mode", this.mode);
 	}
 }

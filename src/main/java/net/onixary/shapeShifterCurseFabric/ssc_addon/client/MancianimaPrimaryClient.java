@@ -5,11 +5,11 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -31,25 +31,25 @@ public final class MancianimaPrimaryClient {
 		ClientTickEvents.END_CLIENT_TICK.register(MancianimaPrimaryClient::onClientTick);
 	}
 
-	private static void onClientTick(Minecraft client) {
-		LocalPlayer player = client.player;
-		if (player == null || client.level == null) { wasKeyPressed = false; return; }
+	private static void onClientTick(MinecraftClient client) {
+		ClientPlayerEntity player = client.player;
+		if (player == null || client.world == null) { wasKeyPressed = false; return; }
 		if (!isMancianima(player)) { wasKeyPressed = false; return; }
-		KeyMapping key = SscAddonKeybindings.getPrimaryKey();
+		KeyBinding key = SscAddonKeybindings.getPrimaryKey();
 		if (key == null) return;
-		boolean pressed = key.isDown();
+		boolean pressed = key.isPressed();
 		if (pressed && !wasKeyPressed) {
-			FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+			PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_MANCIANIMA_PRIMARY), buf));
 		}
 		wasKeyPressed = pressed;
 	}
 
-	private static boolean isMancianima(LocalPlayer player) {
+	private static boolean isMancianima(ClientPlayerEntity player) {
 		try {
 			IForm form = player.getComponent(RegPlayerFormComponent.PLAYER_FORM).nowForm;
 			if (form == null) return false;
-			ResourceLocation id = form.getFormID();
+			Identifier id = form.getFormID();
 			return id != null && FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(id);
 		} catch (Exception e) {
 			return false;

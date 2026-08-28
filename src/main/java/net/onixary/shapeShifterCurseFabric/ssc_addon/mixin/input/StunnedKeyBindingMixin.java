@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.input;
 
-import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.TransformManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,14 +12,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(KeyMapping.class)
+@Mixin(KeyBinding.class)
 public class StunnedKeyBindingMixin {
 
 	@Shadow
-	private int clickCount;
+	private int timesPressed;
 
 	@Shadow
-	private boolean isDown;
+	private boolean pressed;
 
 	@Unique
 	private boolean isTargetKey(String key) {
@@ -54,7 +54,7 @@ public class StunnedKeyBindingMixin {
 
 	@Unique
 	private boolean isPlayerStunned() {
-		Minecraft client = Minecraft.getInstance();
+		MinecraftClient client = MinecraftClient.getInstance();
 		if (client == null || client.player == null) {
 			return false;
 		}
@@ -65,8 +65,8 @@ public class StunnedKeyBindingMixin {
 		// 并消除客户端预测性滑步（装死场景尤其需要）。两层互不冲突。
 		// TransformManager.transformTimer 是客户端 public 字段，黑屏过渡期间 >=0
 		// （receiveTransformState 收到 isTransforming=true 时置 0、结束置 -1），用它统一冻结所有变身（含原版触发）。
-		return client.player.hasEffect(SscAddon.STUN_ENTRY)
-				|| client.player.hasEffect(SscAddon.PLAYING_DEAD_ENTRY)
+		return client.player.hasStatusEffect(SscAddon.STUN_ENTRY)
+				|| client.player.hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)
 				|| TransformManager.transformTimer >= 0;
 	}
 
@@ -80,8 +80,8 @@ public class StunnedKeyBindingMixin {
 	@Unique
 	private boolean isPlayerRooted() {
 		// ROOTED：只锁移动/跳跃（不锁视角/技能键），荧光幼灵法阵激光蓄力/释放期使用
-		Minecraft client = Minecraft.getInstance();
-		return client != null && client.player != null && client.player.hasEffect(SscAddon.ROOTED_ENTRY);
+		MinecraftClient client = MinecraftClient.getInstance();
+		return client != null && client.player != null && client.player.hasStatusEffect(SscAddon.ROOTED_ENTRY);
 	}
 
 	@Unique
@@ -89,47 +89,47 @@ public class StunnedKeyBindingMixin {
 		return (isTargetKey(key) && isPlayerStunned()) || (isMovementKey(key) && isPlayerRooted());
 	}
 
-	@Inject(method = "consumeClick", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "wasPressed", at = @At("HEAD"), cancellable = true)
 	private void onWasPressed(CallbackInfoReturnable<Boolean> cir) {
-		KeyMapping binding = (KeyMapping) (Object) this;
-		String key = binding.getName();
+		KeyBinding binding = (KeyBinding) (Object) this;
+		String key = binding.getTranslationKey();
 
 		if (isTargetKey(key) && isPlayerStunned()) {
 			// Clear any buffered input so it doesn't trigger later
-			this.clickCount = 0;
+			this.timesPressed = 0;
 			cir.setReturnValue(false);
 		} else if (isMovementKey(key) && isPlayerRooted()) {
-			this.clickCount = 0;
+			this.timesPressed = 0;
 			cir.setReturnValue(false);
 		}
 	}
 
-	@Inject(method = "isDown", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "isPressed", at = @At("HEAD"), cancellable = true)
 	private void onIsPressed(CallbackInfoReturnable<Boolean> cir) {
-		KeyMapping binding = (KeyMapping) (Object) this;
-		String key = binding.getName();
+		KeyBinding binding = (KeyBinding) (Object) this;
+		String key = binding.getTranslationKey();
 
 		if (shouldBlock(key)) {
 			cir.setReturnValue(false);
 		}
 	}
 
-	@Inject(method = "setDown", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "setPressed", at = @At("HEAD"), cancellable = true)
 	private void onSetPressed(boolean pressed, CallbackInfo ci) {
-		KeyMapping binding = (KeyMapping) (Object) this;
-		String key = binding.getName();
+		KeyBinding binding = (KeyBinding) (Object) this;
+		String key = binding.getTranslationKey();
 
 		// If trying to press the key (pressed=true) while stunned, block it AND ensure internal state is false
 		if (pressed && shouldBlock(key)) {
-			this.isDown = false;
+			this.pressed = false;
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "matches", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "matchesKey", at = @At("HEAD"), cancellable = true)
 	private void onMatchesKey(int key, int scancode, CallbackInfoReturnable<Boolean> cir) {
-		KeyMapping binding = (KeyMapping) (Object) this;
-		String translationKey = binding.getName();
+		KeyBinding binding = (KeyBinding) (Object) this;
+		String translationKey = binding.getTranslationKey();
 
 		if (shouldBlock(translationKey)) {
 			cir.setReturnValue(false);
@@ -138,8 +138,8 @@ public class StunnedKeyBindingMixin {
 
 	@Inject(method = "matchesMouse", at = @At("HEAD"), cancellable = true)
 	private void onMatchesMouse(int button, CallbackInfoReturnable<Boolean> cir) {
-		KeyMapping binding = (KeyMapping) (Object) this;
-		String translationKey = binding.getName();
+		KeyBinding binding = (KeyBinding) (Object) this;
+		String translationKey = binding.getTranslationKey();
 
 		if (shouldBlock(translationKey)) {
 			cir.setReturnValue(false);

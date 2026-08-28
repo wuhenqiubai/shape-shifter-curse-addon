@@ -7,34 +7,34 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.jackcooper.shapeShifterCurseAddon.event.*;
+import net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks;
 import net.jackcooper.shapeShifterCurseAddon.item.PsionicOrbItem;
 import net.jackcooper.shapeShifterCurseAddon.item.SeaCrystalPendantItem;
 import net.jackcooper.shapeShifterCurseAddon.loot.EvolutionItemsLoot;
-import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.PackType;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityDimensions;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.flag.FeatureFlagSet;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.JukeboxSong;
-import net.minecraft.world.item.SpawnEggItem;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.*;
+import net.minecraft.block.jukebox.JukeboxSong;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityDimensions;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.SpawnGroup;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemGroup;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.SpawnEggItem;
+import net.minecraft.recipe.RecipeSerializer;
+import net.minecraft.recipe.SpecialRecipeSerializer;
+import net.minecraft.recipe.book.CraftingRecipeCategory;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.resource.ResourceType;
+import net.minecraft.resource.featuretoggle.FeatureSet;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.command.SscAddonCommands;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.condition.SscAddonConditions;
@@ -65,9 +65,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPTotem;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSoulEnergy;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.story.MoonScarStoryManager;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.story.TideSpiritStoryManager;
 import org.slf4j.Logger;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager;
@@ -88,136 +87,137 @@ import net.jackcooper.shapeShifterCurseAddon.event.CursedMoonSpMessageHandler;
 import net.jackcooper.shapeShifterCurseAddon.event.FluorescentDodgeHandler;
 import net.jackcooper.shapeShifterCurseAddon.event.StorySleepTimeGuardHandler;
 import net.jackcooper.shapeShifterCurseAddon.event.VillagerTradeGuardHandler;
+import org.slf4j.LoggerFactory;
 
 public class SscAddon implements ModInitializer {
 
-	public static final Holder<MobEffect> FOX_FIRE_BURN_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "fox_fire_burn"), new FoxFireBurnEffect());
-	public static final Holder<MobEffect> BLUE_FIRE_RING_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "blue_fire_ring"), new BlueFireRingEffect());
-	public static final Holder<MobEffect> PLAYING_DEAD_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "playing_dead"), new PlayingDeadEffect());
-	public static final Holder<MobEffect> TRUE_INVISIBILITY_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "true_invisibility"), new TrueInvisibilityEffect());
-	public static final Holder<MobEffect> PRE_INVISIBILITY_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "pre_invisibility"), new PreInvisibilityEffect());
-	public static final Holder<MobEffect> STUN_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "stun"), new StunEffect());
-	public static final Holder<MobEffect> ROOTED_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "rooted"), new RootedEffect());
-	public static final Holder<MobEffect> GUARANTEED_CRIT_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "guaranteed_crit"), new GuaranteedCritEffect());
-	public static final Holder<MobEffect> FROST_FREEZE_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "frost_freeze"), new FrostFreezeEffect());
-	public static final Holder<MobEffect> FROST_FALL_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "frost_fall"), new FrostFallEffect());
-	public static final Holder<MobEffect> PURIFIED_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "purified"), new PurifiedEffect());
-	public static final Holder<MobEffect> BAT_REGEN_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "bat_regen"), new BatRegenEffect());
-	public static final Holder<MobEffect> BAT_POISON_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "bat_poison"), new BatPoisonEffect());
-	public static final Holder<MobEffect> BAT_ABSORPTION_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "bat_absorption"), new BatAbsorptionEffect());
-	public static final Holder<MobEffect> MIST_FORM_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "mist_form"), new MistFormEffect());
-	public static final Holder<MobEffect> MIST_CHARGING_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "mist_charging"), new MistChargingEffect());
-	public static final Holder<MobEffect> SAND_BLIND_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "sand_blind"), new SandBlindEffect());
-	public static final Holder<MobEffect> DEAFEN_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "deafen"), new DeafenEffect());
-	public static final Holder<MobEffect> TIDAL_SLOW_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "tidal_slow"), new TidalSlowEffect());
-	public static final Holder<MobEffect> EROSION_BRAND_MARKER_1_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "erosion_brand_marker_1"), new ErosionBrandMarkerEffect(0xFFD700));
-	public static final Holder<MobEffect> EROSION_BRAND_MARKER_2_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "erosion_brand_marker_2"), new ErosionBrandMarkerEffect(0xFF8C00));
-	public static final Holder<MobEffect> EROSION_BRAND_MARKER_3_ENTRY =
-			Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", "erosion_brand_marker_3"), new ErosionBrandMarkerEffect(0xDC143C));
-	public static final ResourceKey<JukeboxSong> SHAPE_SHIFTERS_DREAM_SONG_KEY =
-			ResourceKey.create(Registries.JUKEBOX_SONG, ResourceLocation.fromNamespaceAndPath("ssc_addon", "shape_shifters_dream"));
+	public static final RegistryEntry<StatusEffect> FOX_FIRE_BURN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "fox_fire_burn"), new FoxFireBurnEffect());
+	public static final RegistryEntry<StatusEffect> BLUE_FIRE_RING_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "blue_fire_ring"), new BlueFireRingEffect());
+	public static final RegistryEntry<StatusEffect> PLAYING_DEAD_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "playing_dead"), new PlayingDeadEffect());
+	public static final RegistryEntry<StatusEffect> TRUE_INVISIBILITY_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "true_invisibility"), new TrueInvisibilityEffect());
+	public static final RegistryEntry<StatusEffect> PRE_INVISIBILITY_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "pre_invisibility"), new PreInvisibilityEffect());
+	public static final RegistryEntry<StatusEffect> STUN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "stun"), new StunEffect());
+	public static final RegistryEntry<StatusEffect> ROOTED_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "rooted"), new RootedEffect());
+	public static final RegistryEntry<StatusEffect> GUARANTEED_CRIT_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "guaranteed_crit"), new GuaranteedCritEffect());
+	public static final RegistryEntry<StatusEffect> FROST_FREEZE_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_freeze"), new FrostFreezeEffect());
+	public static final RegistryEntry<StatusEffect> FROST_FALL_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "frost_fall"), new FrostFallEffect());
+	public static final RegistryEntry<StatusEffect> PURIFIED_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "purified"), new PurifiedEffect());
+	public static final RegistryEntry<StatusEffect> BAT_REGEN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_regen"), new BatRegenEffect());
+	public static final RegistryEntry<StatusEffect> BAT_POISON_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_poison"), new BatPoisonEffect());
+	public static final RegistryEntry<StatusEffect> BAT_ABSORPTION_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "bat_absorption"), new BatAbsorptionEffect());
+	public static final RegistryEntry<StatusEffect> MIST_FORM_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_form"), new MistFormEffect());
+	public static final RegistryEntry<StatusEffect> MIST_CHARGING_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "mist_charging"), new MistChargingEffect());
+	public static final RegistryEntry<StatusEffect> SAND_BLIND_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "sand_blind"), new SandBlindEffect());
+	public static final RegistryEntry<StatusEffect> DEAFEN_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "deafen"), new DeafenEffect());
+	public static final RegistryEntry<StatusEffect> TIDAL_SLOW_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "tidal_slow"), new TidalSlowEffect());
+	public static final RegistryEntry<StatusEffect> EROSION_BRAND_MARKER_1_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_1"), new ErosionBrandMarkerEffect(0xFFD700));
+	public static final RegistryEntry<StatusEffect> EROSION_BRAND_MARKER_2_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_2"), new ErosionBrandMarkerEffect(0xFF8C00));
+	public static final RegistryEntry<StatusEffect> EROSION_BRAND_MARKER_3_ENTRY =
+			Registry.registerReference(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", "erosion_brand_marker_3"), new ErosionBrandMarkerEffect(0xDC143C));
+	public static final RegistryKey<JukeboxSong> SHAPE_SHIFTERS_DREAM_SONG_KEY =
+			RegistryKey.of(RegistryKeys.JUKEBOX_SONG, Identifier.of("ssc_addon", "shape_shifters_dream"));
 
 
 	// 存储玩家客户端语言设置，用于发送正确语言的消息
 	public static final ConcurrentHashMap<UUID, String> PLAYER_LANGUAGES = new ConcurrentHashMap<>();
 
-	public static final MobEffect FOX_FIRE_BURN = FOX_FIRE_BURN_ENTRY.value();
-	public static final MobEffect BLUE_FIRE_RING = BLUE_FIRE_RING_ENTRY.value();
-	public static final MobEffect PLAYING_DEAD = PLAYING_DEAD_ENTRY.value();
-	public static final MobEffect TRUE_INVISIBILITY = TRUE_INVISIBILITY_ENTRY.value();
-	public static final MobEffect PRE_INVISIBILITY = PRE_INVISIBILITY_ENTRY.value();
-	public static final MobEffect STUN = STUN_ENTRY.value();
-	public static final MobEffect ROOTED = ROOTED_ENTRY.value();
-	public static final MobEffect GUARANTEED_CRIT = GUARANTEED_CRIT_ENTRY.value();
-	public static final MobEffect FROST_FREEZE = FROST_FREEZE_ENTRY.value();
-	public static final MobEffect FROST_FALL = FROST_FALL_ENTRY.value();
-	public static final MobEffect PURIFIED = PURIFIED_ENTRY.value();
-	public static final MobEffect BAT_REGEN = BAT_REGEN_ENTRY.value();
-	public static final MobEffect BAT_POISON = BAT_POISON_ENTRY.value();
-	public static final MobEffect BAT_ABSORPTION = BAT_ABSORPTION_ENTRY.value();
+	public static final StatusEffect FOX_FIRE_BURN = FOX_FIRE_BURN_ENTRY.value();
+	public static final StatusEffect BLUE_FIRE_RING = BLUE_FIRE_RING_ENTRY.value();
+	public static final StatusEffect PLAYING_DEAD = PLAYING_DEAD_ENTRY.value();
+	public static final StatusEffect TRUE_INVISIBILITY = TRUE_INVISIBILITY_ENTRY.value();
+	public static final StatusEffect PRE_INVISIBILITY = PRE_INVISIBILITY_ENTRY.value();
+	public static final StatusEffect STUN = STUN_ENTRY.value();
+	public static final StatusEffect ROOTED = ROOTED_ENTRY.value();
+	public static final StatusEffect GUARANTEED_CRIT = GUARANTEED_CRIT_ENTRY.value();
+	public static final StatusEffect FROST_FREEZE = FROST_FREEZE_ENTRY.value();
+	public static final StatusEffect FROST_FALL = FROST_FALL_ENTRY.value();
+	public static final StatusEffect PURIFIED = PURIFIED_ENTRY.value();
+	public static final StatusEffect BAT_REGEN = BAT_REGEN_ENTRY.value();
+	public static final StatusEffect BAT_POISON = BAT_POISON_ENTRY.value();
+	public static final StatusEffect BAT_ABSORPTION = BAT_ABSORPTION_ENTRY.value();
 	// 幽雾化形 - 雾化状态标记效果
-	public static final MobEffect MIST_FORM = MIST_FORM_ENTRY.value();
+	public static final StatusEffect MIST_FORM = MIST_FORM_ENTRY.value();
 	// 幽雾化形 - 凝聚爆破蓄力标记效果（客户端据此减速 50%）
-	public static final MobEffect MIST_CHARGING = MIST_CHARGING_ENTRY.value();
-	public static final MobEffect SAND_BLIND = SAND_BLIND_ENTRY.value();
+	public static final StatusEffect MIST_CHARGING = MIST_CHARGING_ENTRY.value();
+	public static final StatusEffect SAND_BLIND = SAND_BLIND_ENTRY.value();
 	// 失聪：客机 SoundManagerDeafenMixin 据此静音受影响玩家自身的所有声音
-	public static final MobEffect DEAFEN = DEAFEN_ENTRY.value();
+	public static final StatusEffect DEAFEN = DEAFEN_ENTRY.value();
 	// 潮汐波动吸附减速（荧光幼灵）- 15% 移速降低
-	public static final MobEffect TIDAL_SLOW = TIDAL_SLOW_ENTRY.value();
+	public static final StatusEffect TIDAL_SLOW = TIDAL_SLOW_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 1层(黄色) */
-	public static final MobEffect EROSION_BRAND_MARKER_1 = EROSION_BRAND_MARKER_1_ENTRY.value();
+	public static final StatusEffect EROSION_BRAND_MARKER_1 = EROSION_BRAND_MARKER_1_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 2层(橙色) */
-	public static final MobEffect EROSION_BRAND_MARKER_2 = EROSION_BRAND_MARKER_2_ENTRY.value();
+	public static final StatusEffect EROSION_BRAND_MARKER_2 = EROSION_BRAND_MARKER_2_ENTRY.value();
 	/** 侵蚀烙印标记效果 - 3层(红色) */
-	public static final MobEffect EROSION_BRAND_MARKER_3 = new ErosionBrandMarkerEffect(0xDC143C);
-	public static final Item POTION_BAG = new PotionBagItem(new Item.Properties().stacksTo(1));
+	public static final StatusEffect EROSION_BRAND_MARKER_3 = new ErosionBrandMarkerEffect(0xDC143C);
+	public static final Item POTION_BAG = new PotionBagItem(new Item.Settings().maxCount(1));
 	public static final EntityType<FrostBallEntity> FROST_BALL_ENTITY =
-			registerEntity("frost_ball", MobCategory.MISC, FrostBallEntity::new, 0.25f, 0.25f, 64, 10);
+			registerEntity("frost_ball", SpawnGroup.MISC, FrostBallEntity::new, 0.25f, 0.25f, 64, 10);
 	// 进化美西螈「投掷水矛」直线水矛投射物（无重力匀速）
 	public static final EntityType<ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY =
-			registerEntity("thrown_water_spear", MobCategory.MISC, ThrownWaterSpearEntity::new, 0.4f, 0.4f, 64, 10);
+			registerEntity("thrown_water_spear", SpawnGroup.MISC, ThrownWaterSpearEntity::new, 0.4f, 0.4f, 64, 10);
 	// red 狐火火球投射物
 	public static final EntityType<FoxFireballEntity> FOX_FIREBALL_ENTITY =
-			registerEntity("fox_fireball", MobCategory.MISC, FoxFireballEntity::new, 0.25f, 0.25f, 64, 2);
+			registerEntity("fox_fireball", SpawnGroup.MISC, FoxFireballEntity::new, 0.25f, 0.25f, 64, 2);
 	// 寄生果蝠「感染孢子炸弹」投掷物
 	public static final EntityType<InfectionSporeBombEntity> INFECTION_SPORE_BOMB_ENTITY =
-			registerEntity("infection_spore_bomb", MobCategory.MISC, InfectionSporeBombEntity::new, 0.25f, 0.25f, 64, 10);
+			registerEntity("infection_spore_bomb", SpawnGroup.MISC, InfectionSporeBombEntity::new, 0.25f, 0.25f, 64, 10);
 	// 寄生果蝠主技能「灵果寄生」投掷物
 	public static final EntityType<ParasiticSeedProjectile> PARASITIC_SEED_ENTITY =
-			registerEntity("parasitic_seed", MobCategory.MISC, ParasiticSeedProjectile::new, 0.25f, 0.25f, 64, 10);
-	public static final MenuType<PotionBagScreenHandler> POTION_BAG_SCREEN_HANDLER = new MenuType<>(PotionBagScreenHandler::new, FeatureFlagSet.of());
+			registerEntity("parasitic_seed", SpawnGroup.MISC, ParasiticSeedProjectile::new, 0.25f, 0.25f, 64, 10);
+	public static final ScreenHandlerType<PotionBagScreenHandler> POTION_BAG_SCREEN_HANDLER = new ScreenHandlerType<>(PotionBagScreenHandler::new, FeatureSet.empty());
 	public static final EntityType<FrostStormEntity> FROST_STORM_ENTITY =
-			registerEntity("frost_storm", MobCategory.MISC, FrostStormEntity::new, 1.0f, 2.0f, 64, 10);
+			registerEntity("frost_storm", SpawnGroup.MISC, FrostStormEntity::new, 1.0f, 2.0f, 64, 10);
 	// 荧光幼灵 - 潮汐波动粒子球实体
 	public static final EntityType<TidalOrbEntity> TIDAL_ORB_ENTITY =
-			registerEntity("tidal_orb", MobCategory.MISC, TidalOrbEntity::new, 0.5f, 0.5f, 64, 1);
+			registerEntity("tidal_orb", SpawnGroup.MISC, TidalOrbEntity::new, 0.5f, 0.5f, 64, 1);
 	// 荧光幼灵 - 法阵激光实体
 	public static final EntityType<LaserBeamEntity> LASER_BEAM_ENTITY =
-			registerEntity("laser_beam", MobCategory.MISC, LaserBeamEntity::new, 0.5f, 0.5f, 96, 1);
-	public static final Item SP_UPGRADE_THING = new SpUpgradeItem(new Item.Properties().stacksTo(1));
-	public static final Item PORTABLE_MOISTURIZER = new PortableMoisturizerItem(new Item.Properties().stacksTo(1));
+			registerEntity("laser_beam", SpawnGroup.MISC, LaserBeamEntity::new, 0.5f, 0.5f, 96, 1);
+	public static final Item SP_UPGRADE_THING = new SpUpgradeItem(new Item.Settings().maxCount(1));
+	public static final Item PORTABLE_MOISTURIZER = new PortableMoisturizerItem(new Item.Settings().maxCount(1));
 	public static final EntityType<WaterSpearEntity> WATER_SPEAR_ENTITY =
-			registerEntity("water_spear", MobCategory.MISC, WaterSpearEntity::new, 0.5f, 0.5f, 4, 20);
-	public static final Item SNOWBALL_LAUNCHER = new SnowballLauncherItem(new Item.Properties().stacksTo(1));
-	public static final Item PORTABLE_FRIDGE = new PortableFridgeItem(new Item.Properties().stacksTo(1));
-	public static final Item BLUE_FIRE_AMULET = new BlueFireAmuletItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item INVISIBILITY_CLOAK = new InvisibilityCloakItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item LIFESAVING_CAT_TAIL = new LifesavingCatTailItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item PHANTOM_BELL = new PhantomBellItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item FROST_AMULET = new FrostAmuletItem(new Item.Properties().stacksTo(1).fireResistant());
+			registerEntity("water_spear", SpawnGroup.MISC, WaterSpearEntity::new, 0.5f, 0.5f, 4, 20);
+	public static final Item SNOWBALL_LAUNCHER = new SnowballLauncherItem(new Item.Settings().maxCount(1));
+	public static final Item PORTABLE_FRIDGE = new PortableFridgeItem(new Item.Settings().maxCount(1));
+	public static final Item BLUE_FIRE_AMULET = new BlueFireAmuletItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item INVISIBILITY_CLOAK = new InvisibilityCloakItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item LIFESAVING_CAT_TAIL = new LifesavingCatTailItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item PHANTOM_BELL = new PhantomBellItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item FROST_AMULET = new FrostAmuletItem(new Item.Settings().maxCount(1).fireproof());
 	// 吸血蝙蝠 / 果蝠 专属饰品（半好半坏）
-	public static final Item BLOOD_GARNET = new BloodGarnetItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item BLOODLUST_RING = new BloodlustRingItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item HUMUS_RING = new HumusRingItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item TWIN_POD = new TwinPodItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final RecipeSerializer<RefillMoisturizerRecipe> REFILL_MOISTURIZER_SERIALIZER = new SimpleCraftingRecipeSerializer<>(RefillMoisturizerRecipe::new);
+	public static final Item BLOOD_GARNET = new BloodGarnetItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item BLOODLUST_RING = new BloodlustRingItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item HUMUS_RING = new HumusRingItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item TWIN_POD = new TwinPodItem(new Item.Settings().maxCount(1).fireproof());
+	public static final RecipeSerializer<RefillMoisturizerRecipe> REFILL_MOISTURIZER_SERIALIZER = new SpecialRecipeSerializer<>(RefillMoisturizerRecipe::new);
 	public static final RecipeSerializer<UpgradeMoisturizerRecipe> UPGRADE_MOISTURIZER_SERIALIZER = new SpecialRecipeSerializer<>(UpgradeMoisturizerRecipe::new);
-	public static final RecipeSerializer<ReloadSnowballLauncherRecipe> RELOAD_SNOWBALL_LAUNCHER_SERIALIZER = new SimpleCraftingRecipeSerializer<>(ReloadSnowballLauncherRecipe::new);
-	public static final RecipeSerializer<BlizzardTankRechargeRecipe> BLIZZARD_TANK_RECHARGE_SERIALIZER = new SimpleCraftingRecipeSerializer<>(BlizzardTankRechargeRecipe::new);
-	public static final RecipeSerializer<SpUpgradeRecipe> SP_UPGRADE_SERIALIZER = new SimpleCraftingRecipeSerializer<>(SpUpgradeRecipe::new);
+	public static final RecipeSerializer<ReloadSnowballLauncherRecipe> RELOAD_SNOWBALL_LAUNCHER_SERIALIZER = new SpecialRecipeSerializer<>(ReloadSnowballLauncherRecipe::new);
+	public static final RecipeSerializer<BlizzardTankRechargeRecipe> BLIZZARD_TANK_RECHARGE_SERIALIZER = new SpecialRecipeSerializer<>(BlizzardTankRechargeRecipe::new);
+	public static final RecipeSerializer<SpUpgradeRecipe> SP_UPGRADE_SERIALIZER = new SpecialRecipeSerializer<>(SpUpgradeRecipe::new);
 	// 60 durability like wooden sword, auto-consumed over 60 seconds
-	public static final Item WATER_SPEAR = new WaterSpearItem(new Item.Properties().stacksTo(1).durability(60));
+	public static final Item WATER_SPEAR = new WaterSpearItem(new Item.Settings().maxCount(1).maxDamage(60));
 	// SP美西螈水矛合成内部冷却（服务端权威）：UUID -> 冷却结束的服务器 tick；与箭冷却条显示同步
 	// 注：以下 4 个水矛调试/冷却字段为 public，供拆分出去的事件类（水矛监测/合成逻辑）跨类访问
 	public static final Map<UUID, Long> WATER_SPEAR_CRAFT_CD = new ConcurrentHashMap<>();
@@ -227,118 +227,118 @@ public class SscAddon implements ModInitializer {
 	// [DEBUG] 每玩家上次水矛数（用于监测水矛出现时刻）
 	public static final Map<UUID, Integer> WS_LAST_SPEAR_COUNT = new ConcurrentHashMap<>();
 	// Evolution Stone
-	public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Properties().stacksTo(1).fireResistant());
+	public static final Item EVOLUTION_STONE = new EvolutionStoneItem(new Item.Settings().maxCount(1).fireproof());
 	// 灵能宝珠：进化形态专用转职道具（右键长按开界面选形态转职，扣 3 点、倒退 3 个里程碑）
-	public static final Item PSIONIC_ORB = new PsionicOrbItem(new Item.Properties().stacksTo(16).fireResistant());
-	public static final Item CORAL_BALL = new Item(new Item.Properties().stacksTo(64));
-	public static final Item ACTIVE_CORAL_NECKLACE = new ActiveCoralNecklaceItem(new Item.Properties().stacksTo(1));
+	public static final Item PSIONIC_ORB = new PsionicOrbItem(new Item.Settings().maxCount(16).fireproof());
+	public static final Item CORAL_BALL = new Item(new Item.Settings().maxCount(64));
+	public static final Item ACTIVE_CORAL_NECKLACE = new ActiveCoralNecklaceItem(new Item.Settings().maxCount(1));
 	// 荧光幼灵专属：海晶荧光坠（装备后强化潮汐球与法阵激光）
-	public static final Item SEA_CRYSTAL_PENDANT = new SeaCrystalPendantItem(new Item.Properties().stacksTo(1));
+	public static final Item SEA_CRYSTAL_PENDANT = new SeaCrystalPendantItem(new Item.Settings().maxCount(1));
 	// 风灵专属项链：加快疾风连爪耐力回复；朔望专属项链：强化九命复活
-	public static final Item WIND_SPIRIT_STAMINA_NECKLACE = new WindSpiritStaminaNecklaceItem(new Item.Properties().stacksTo(1));
-	public static final Item NOVA_REVIVE_NECKLACE = new NovaReviveNecklaceItem(new Item.Properties().stacksTo(1));
-	public static final Item ANUBIS_CRYSTAL = new AnubisCrystalItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item ANKH_STONE = new AnkhStoneItem(new Item.Properties().stacksTo(1).fireResistant());
+	public static final Item WIND_SPIRIT_STAMINA_NECKLACE = new WindSpiritStaminaNecklaceItem(new Item.Settings().maxCount(1));
+	public static final Item NOVA_REVIVE_NECKLACE = new NovaReviveNecklaceItem(new Item.Settings().maxCount(1));
+	public static final Item ANUBIS_CRYSTAL = new AnubisCrystalItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item ANKH_STONE = new AnkhStoneItem(new Item.Settings().maxCount(1).fireproof());
 	// 契灵专属：绑定脚环（feet/aglet 槽，与守御脚环互斥）
-	public static final Item BINDING_ANKLET = new BindingAnkletItem(new Item.Properties().stacksTo(1).fireResistant());
+	public static final Item BINDING_ANKLET = new BindingAnkletItem(new Item.Settings().maxCount(1).fireproof());
 	// SP Golden Sandstorm items
-	public static final Item EROSION_SAND_PRISM = new ErosionSandPrismItem(new Item.Properties().stacksTo(1).fireResistant());
-	public static final Item WITHERED_SAND_RING = new WitheredSandRingItem(new Item.Properties().stacksTo(1).fireResistant());
+	public static final Item EROSION_SAND_PRISM = new ErosionSandPrismItem(new Item.Settings().maxCount(1).fireproof());
+	public static final Item WITHERED_SAND_RING = new WitheredSandRingItem(new Item.Settings().maxCount(1).fireproof());
 	// SP Allay items
-	public static final Item ALLAY_HEAL_WAND = new AllayHealWandItem(new Item.Properties().stacksTo(1));
-	public static final Item ALLAY_JUKEBOX = new AllayJukeboxItem(new Item.Properties().stacksTo(1));
-	public static final Item FRIEND_MARKER = new AllayFriendMarkerItem(new Item.Properties().stacksTo(64));
-	public static final Item CLEAR_FRIEND_MARKER = new AllayClearMarkerItem(new Item.Properties().stacksTo(64));
+	public static final Item ALLAY_HEAL_WAND = new AllayHealWandItem(new Item.Settings().maxCount(1));
+	public static final Item ALLAY_JUKEBOX = new AllayJukeboxItem(new Item.Settings().maxCount(1));
+	public static final Item FRIEND_MARKER = new AllayFriendMarkerItem(new Item.Settings().maxCount(64));
+	public static final Item CLEAR_FRIEND_MARKER = new AllayClearMarkerItem(new Item.Settings().maxCount(64));
 	// Entities
 	public static final EntityType<AllayFriendMarkerEntity> FRIEND_MARKER_ENTITY_TYPE =
-			registerEntity("friend_marker", MobCategory.MISC, AllayFriendMarkerEntity::new, 0.25f, 0.25f, 4, 10);
+			registerEntity("friend_marker", SpawnGroup.MISC, AllayFriendMarkerEntity::new, 0.25f, 0.25f, 4, 10);
 	public static final EntityType<AllayClearMarkerEntity> CLEAR_MARKER_ENTITY_TYPE =
-			registerEntity("clear_friend_marker", MobCategory.MISC, AllayClearMarkerEntity::new, 0.25f, 0.25f, 4, 10);
+			registerEntity("clear_friend_marker", SpawnGroup.MISC, AllayClearMarkerEntity::new, 0.25f, 0.25f, 4, 10);
 	// 女巫使魔实体
 	public static final EntityType<WitchFamiliarEntity> WITCH_FAMILIAR_ENTITY =
-			registerEntity("witch_familiar", MobCategory.MONSTER, WitchFamiliarEntity::new, 0.5f, 0.7f, 64, 3);
+			registerEntity("witch_familiar", SpawnGroup.MONSTER, WitchFamiliarEntity::new, 0.5f, 0.7f, 64, 3);
 	// 女巫使魔怪物蛋（主色狐狸沙棕 #D5B48F，次色青蓝 #31C8CC）
-	public static final Item WITCH_FAMILIAR_SPAWN_EGG = new SpawnEggItem(WITCH_FAMILIAR_ENTITY, 0xD5B48F, 0x31C8CC, new Item.Properties());
+	public static final Item WITCH_FAMILIAR_SPAWN_EGG = new SpawnEggItem(WITCH_FAMILIAR_ENTITY, 0xD5B48F, 0x31C8CC, new Item.Settings());
 	// 无限压缩能量药水（饮用/喷溅/滞留三型；使用后空瓶自充能，效果同压缩能量药水 feed_potion）
 	public static final Item INFINITE_ENERGY_POTION = new InfiniteEnergyPotionItem(
-			new Item.Properties().stacksTo(1), InfiniteEnergyPotionItem.Type.DRINK);
+			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.DRINK);
 	public static final Item INFINITE_ENERGY_POTION_SPLASH = new InfiniteEnergyPotionItem(
-			new Item.Properties().stacksTo(1), InfiniteEnergyPotionItem.Type.SPLASH);
+			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.SPLASH);
 	public static final Item INFINITE_ENERGY_POTION_LINGERING = new InfiniteEnergyPotionItem(
-			new Item.Properties().stacksTo(1), InfiniteEnergyPotionItem.Type.LINGERING);
+			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.LINGERING);
 	// 凋零药水（饮用/喷溅/滞留三型，任何人可用，凋零II 20秒；瓶身附魔光效）
 	// 堆叠：默认不可叠(maxCount 1)；使魔系叠8 / SP阿努比斯叠3（由 WitherPotionStackMixin 按形态抬高）
 	public static final Item WITHER_POTION = new WitherPotionItem(
-			new Item.Properties().stacksTo(1), WitherPotionItem.Type.DRINK);
+			new Item.Settings().maxCount(1), WitherPotionItem.Type.DRINK);
 	public static final Item WITHER_POTION_SPLASH = new WitherPotionItem(
-			new Item.Properties().stacksTo(1), WitherPotionItem.Type.SPLASH);
+			new Item.Settings().maxCount(1), WitherPotionItem.Type.SPLASH);
 	public static final Item WITHER_POTION_LINGERING = new WitherPotionItem(
-			new Item.Properties().stacksTo(1), WitherPotionItem.Type.LINGERING);
-	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SimpleCraftingRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
+			new Item.Settings().maxCount(1), WitherPotionItem.Type.LINGERING);
+	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SpecialRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
 	// 幻形之梦 音乐唱片（Shape Shifter's Dream）：流式音效 + vanilla 唱片物品，145 秒
-	public static final ResourceLocation SHAPE_SHIFTERS_DREAM_ID = ResourceLocation.fromNamespaceAndPath("ssc_addon", "shape_shifters_dream");
-	public static final SoundEvent SHAPE_SHIFTERS_DREAM_EVENT = SoundEvent.createVariableRangeEvent(SHAPE_SHIFTERS_DREAM_ID);
+	public static final Identifier SHAPE_SHIFTERS_DREAM_ID = Identifier.of("ssc_addon", "shape_shifters_dream");
+	public static final SoundEvent SHAPE_SHIFTERS_DREAM_EVENT = SoundEvent.of(SHAPE_SHIFTERS_DREAM_ID);
 	public static final Item MUSIC_DISC_SHAPE_SHIFTERS_DREAM =
-			new Item(new Item.Properties().stacksTo(1).rarity(net.minecraft.world.item.Rarity.RARE)
+			new Item(new Item.Settings().maxCount(1).rarity(net.minecraft.util.Rarity.RARE)
 					.jukeboxPlayable(SHAPE_SHIFTERS_DREAM_SONG_KEY));
-	public static final CreativeModeTab SSC_ADDON_GROUP = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB,
-			ResourceLocation.fromNamespaceAndPath("ssc_addon", "group"),
+	public static final ItemGroup SSC_ADDON_GROUP = Registry.register(Registries.ITEM_GROUP,
+			Identifier.of("ssc_addon", "group"),
 			FabricItemGroup.builder()
-					.title(Component.translatable("itemGroup.ssc_addon.group"))
+					.displayName(Text.translatable("itemGroup.ssc_addon.group"))
 					.icon(() -> new ItemStack(SP_UPGRADE_THING))
-					.displayItems((displayContext, entries) -> {
-						entries.accept(SP_UPGRADE_THING);
-						entries.accept(EVOLUTION_STONE);
-						entries.accept(PSIONIC_ORB);
-						entries.accept(LIFESAVING_CAT_TAIL);
-						entries.accept(PHANTOM_BELL);
-						entries.accept(FROST_AMULET);
-						entries.accept(BLUE_FIRE_AMULET);
-						entries.accept(INVISIBILITY_CLOAK);
-						entries.accept(PORTABLE_MOISTURIZER);
-						entries.accept(PORTABLE_FRIDGE);
-						entries.accept(SNOWBALL_LAUNCHER);
-						entries.accept(WATER_SPEAR);
-						entries.accept(CORAL_BALL);
-						entries.accept(ACTIVE_CORAL_NECKLACE);
-						entries.accept(SEA_CRYSTAL_PENDANT);
-						entries.accept(WIND_SPIRIT_STAMINA_NECKLACE);
-						entries.accept(NOVA_REVIVE_NECKLACE);
-						entries.accept(ANUBIS_CRYSTAL);
-						entries.accept(ANKH_STONE);
-						entries.accept(BINDING_ANKLET);
-						entries.accept(EROSION_SAND_PRISM);
-						entries.accept(WITHERED_SAND_RING);
-						entries.accept(BLOOD_GARNET);
-						entries.accept(BLOODLUST_RING);
-						entries.accept(HUMUS_RING);
-						entries.accept(TWIN_POD);
-						entries.accept(ALLAY_HEAL_WAND);
-						entries.accept(ALLAY_JUKEBOX);
-						entries.accept(MUSIC_DISC_SHAPE_SHIFTERS_DREAM);
-						entries.accept(FRIEND_MARKER);
-						entries.accept(CLEAR_FRIEND_MARKER);
-						entries.accept(WITCH_FAMILIAR_SPAWN_EGG);
-						entries.accept(INFINITE_ENERGY_POTION);
-						entries.accept(INFINITE_ENERGY_POTION_SPLASH);
-						entries.accept(INFINITE_ENERGY_POTION_LINGERING);
+					.entries((displayContext, entries) -> {
+						entries.add(SP_UPGRADE_THING);
+						entries.add(EVOLUTION_STONE);
+						entries.add(PSIONIC_ORB);
+						entries.add(LIFESAVING_CAT_TAIL);
+						entries.add(PHANTOM_BELL);
+						entries.add(FROST_AMULET);
+						entries.add(BLUE_FIRE_AMULET);
+						entries.add(INVISIBILITY_CLOAK);
+						entries.add(PORTABLE_MOISTURIZER);
+						entries.add(PORTABLE_FRIDGE);
+						entries.add(SNOWBALL_LAUNCHER);
+						entries.add(WATER_SPEAR);
+						entries.add(CORAL_BALL);
+						entries.add(ACTIVE_CORAL_NECKLACE);
+						entries.add(SEA_CRYSTAL_PENDANT);
+						entries.add(WIND_SPIRIT_STAMINA_NECKLACE);
+						entries.add(NOVA_REVIVE_NECKLACE);
+						entries.add(ANUBIS_CRYSTAL);
+						entries.add(ANKH_STONE);
+						entries.add(BINDING_ANKLET);
+						entries.add(EROSION_SAND_PRISM);
+						entries.add(WITHERED_SAND_RING);
+						entries.add(BLOOD_GARNET);
+						entries.add(BLOODLUST_RING);
+						entries.add(HUMUS_RING);
+						entries.add(TWIN_POD);
+						entries.add(ALLAY_HEAL_WAND);
+						entries.add(ALLAY_JUKEBOX);
+						entries.add(MUSIC_DISC_SHAPE_SHIFTERS_DREAM);
+						entries.add(FRIEND_MARKER);
+						entries.add(CLEAR_FRIEND_MARKER);
+						entries.add(WITCH_FAMILIAR_SPAWN_EGG);
+						entries.add(INFINITE_ENERGY_POTION);
+						entries.add(INFINITE_ENERGY_POTION_SPLASH);
+						entries.add(INFINITE_ENERGY_POTION_LINGERING);
 						// 凋零药水（饮用/喷溅/滞留）
-						entries.accept(WITHER_POTION);
-						entries.accept(WITHER_POTION_SPLASH);
-						entries.accept(WITHER_POTION_LINGERING);
+						entries.add(WITHER_POTION);
+						entries.add(WITHER_POTION_SPLASH);
+						entries.add(WITHER_POTION_LINGERING);
 						// 蛛网膜（多面薄层蛛网方块）
-						entries.add(net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks.WEB_MEMBRANE);
+						entries.add(RegAddonBlocks.WEB_MEMBRANE);
 					})
 					.build());
 	// SP Allay sound events
-	public static final ResourceLocation ALLAY_HEAL_MUSIC_ID = ResourceLocation.fromNamespaceAndPath("ssc_addon", "allay_heal_music");
-	public static final ResourceLocation ALLAY_SPEED_MUSIC_ID = ResourceLocation.fromNamespaceAndPath("ssc_addon", "allay_speed_music");
-	public static final SoundEvent ALLAY_HEAL_MUSIC_EVENT = SoundEvent.createVariableRangeEvent(ALLAY_HEAL_MUSIC_ID);
-	public static final SoundEvent ALLAY_SPEED_MUSIC_EVENT = SoundEvent.createVariableRangeEvent(ALLAY_SPEED_MUSIC_ID);
+	public static final Identifier ALLAY_HEAL_MUSIC_ID = Identifier.of("ssc_addon", "allay_heal_music");
+	public static final Identifier ALLAY_SPEED_MUSIC_ID = Identifier.of("ssc_addon", "allay_speed_music");
+	public static final SoundEvent ALLAY_HEAL_MUSIC_EVENT = SoundEvent.of(ALLAY_HEAL_MUSIC_ID);
+	public static final SoundEvent ALLAY_SPEED_MUSIC_EVENT = SoundEvent.of(ALLAY_SPEED_MUSIC_ID);
 
 	// 附属形态切换成就触发器（统一一个 Criterion，不同 advancement JSON 用 form_id 条件区分）
 	public static final OnTransformAddonForm ON_TRANSFORM_ADDON_FORM =
-			Registry.register(BuiltInRegistries.TRIGGER_TYPES, OnTransformAddonForm.ID, new OnTransformAddonForm());
+			Registry.register(Registries.CRITERION, OnTransformAddonForm.ID, new OnTransformAddonForm());
 
 
 	@Override
@@ -379,7 +379,7 @@ public class SscAddon implements ModInitializer {
 		FluorescentDodgeHandler.register();
 		StorySleepTimeGuardHandler.register();
 		// SSCA 进化路线数据驱动加载器（datapack reload，扫描 data/<ns>/ssca_evolution/routes/*.json）
-		ResourceManagerHelper.get(PackType.SERVER_DATA)
+		ResourceManagerHelper.get(ResourceType.SERVER_DATA)
 				.registerReloadListener(EvolutionRegistry.INSTANCE);
 	}
 
@@ -431,7 +431,7 @@ public class SscAddon implements ModInitializer {
 		registerItem("phantom_bell", PHANTOM_BELL);
 		registerItem("water_spear", WATER_SPEAR);
 		registerItem("potion_bag", POTION_BAG);
-		Registry.register(BuiltInRegistries.MENU, ResourceLocation.fromNamespaceAndPath("ssc_addon", "potion_bag"), POTION_BAG_SCREEN_HANDLER);
+		Registry.register(Registries.SCREEN_HANDLER, Identifier.of("ssc_addon", "potion_bag"), POTION_BAG_SCREEN_HANDLER);
 		registerItem("evolution_stone", EVOLUTION_STONE);
 		registerItem("psionic_orb", PSIONIC_ORB);
 		registerItem("coral_ball", CORAL_BALL);
@@ -463,20 +463,20 @@ public class SscAddon implements ModInitializer {
 	}
 
 	private void registerRecipeSerializers() {
-		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "refill_moisturizer"), REFILL_MOISTURIZER_SERIALIZER);
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "upgrade_moisturizer"), UPGRADE_MOISTURIZER_SERIALIZER);
-		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "reload_snowball_launcher"), RELOAD_SNOWBALL_LAUNCHER_SERIALIZER);
-		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
-		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
-		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, ResourceLocation.fromNamespaceAndPath("ssc_addon", "infinite_energy_potion_crafting"), INFINITE_ENERGY_POTION_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "refill_moisturizer"), REFILL_MOISTURIZER_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "upgrade_moisturizer"), UPGRADE_MOISTURIZER_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "reload_snowball_launcher"), RELOAD_SNOWBALL_LAUNCHER_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "infinite_energy_potion_crafting"), INFINITE_ENERGY_POTION_SERIALIZER);
 	}
 
 	// 拆分的私有方法
 
 	private void registerSoundEvents() {
-		Registry.register(BuiltInRegistries.SOUND_EVENT, ALLAY_HEAL_MUSIC_ID, ALLAY_HEAL_MUSIC_EVENT);
-		Registry.register(BuiltInRegistries.SOUND_EVENT, ALLAY_SPEED_MUSIC_ID, ALLAY_SPEED_MUSIC_EVENT);
-		Registry.register(BuiltInRegistries.SOUND_EVENT, SHAPE_SHIFTERS_DREAM_ID, SHAPE_SHIFTERS_DREAM_EVENT);
+		Registry.register(Registries.SOUND_EVENT, ALLAY_HEAL_MUSIC_ID, ALLAY_HEAL_MUSIC_EVENT);
+		Registry.register(Registries.SOUND_EVENT, ALLAY_SPEED_MUSIC_ID, ALLAY_SPEED_MUSIC_EVENT);
+		Registry.register(Registries.SOUND_EVENT, SHAPE_SHIFTERS_DREAM_ID, SHAPE_SHIFTERS_DREAM_EVENT);
 	}
 
 	private void registerEntityAttributes() {
@@ -484,9 +484,9 @@ public class SscAddon implements ModInitializer {
 	}
 
 	// 注册辅助方法（消除重复的 Registry.register 样板）
-	private static <T extends Entity> EntityType<T> registerEntity(String id, MobCategory group,
+	private static <T extends Entity> EntityType<T> registerEntity(String id, SpawnGroup group,
 	                                                               EntityType.EntityFactory<T> factory, float width, float height, int trackRange, int updateRate) {
-		return Registry.register(BuiltInRegistries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("ssc_addon", id),
+		return Registry.register(Registries.ENTITY_TYPE, Identifier.of("ssc_addon", id),
 				FabricEntityTypeBuilder.<T>create(group, factory)
 						.dimensions(EntityDimensions.fixed(width, height))
 						.trackRangeBlocks(trackRange).trackedUpdateRate(updateRate)
@@ -494,11 +494,11 @@ public class SscAddon implements ModInitializer {
 	}
 
 	private static void registerItem(String id, Item item) {
-		Registry.register(BuiltInRegistries.ITEM, ResourceLocation.fromNamespaceAndPath("ssc_addon", id), item);
+		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", id), item);
 	}
 
-	private static void registerEffect(String id, MobEffect effect) {
-		Registry.register(BuiltInRegistries.MOB_EFFECT, ResourceLocation.fromNamespaceAndPath("ssc_addon", id), effect);
+	private static void registerEffect(String id, StatusEffect effect) {
+		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", id), effect);
 	}
 
 	private void registerApoliSystems() {

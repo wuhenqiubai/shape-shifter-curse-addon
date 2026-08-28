@@ -5,21 +5,21 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.game.ClientboundSoundPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
@@ -60,7 +60,7 @@ public final class MancianimaMarkManager {
 	public static final int STAGE_GATE_TICKS = 60;            // 3s
 
 	/** S2C 包：将本地玩家持有的标记同步到客户端，用于 entity_glow */
-	public static final ResourceLocation PACKET_MARK_SYNC = ResourceLocation.fromNamespaceAndPath("ssc_addon", "mancianima_mark_sync");
+	public static final Identifier PACKET_MARK_SYNC = Identifier.of("ssc_addon", "mancianima_mark_sync");
 
 	public static final class Mark {
 		public final UUID targetUuid;
@@ -120,7 +120,7 @@ public final class MancianimaMarkManager {
 		});
 		ServerTickEvents.END_SERVER_TICK.register(MancianimaMarkManager::onTick);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-			UUID id = handler.player.getUUID();
+			UUID id = handler.player.getUuid();
 			clearMark(server, id);
 			CHANNELING.remove(id);
 			DIRTY.remove(id);
@@ -150,40 +150,40 @@ public final class MancianimaMarkManager {
 	}
 
 	/** 设置或替换标记（YELLOW 起始）。如果替换会先清理上一个目标的副作用。 */
-	public static void setMark(ServerPlayer marker, LivingEntity target, MarkColor color) {
-		UUID markerId = marker.getUUID();
+	public static void setMark(ServerPlayerEntity marker, LivingEntity target, MarkColor color) {
+		UUID markerId = marker.getUuid();
 		Mark old = MARKS.get(markerId);
-		if (old != null && (target == null || !old.targetUuid.equals(target.getUUID()))) {
+		if (old != null && (target == null || !old.targetUuid.equals(target.getUuid()))) {
 			clearTargetSideEffects(marker.getServer(), old.targetUuid);
 		}
 		if (target == null) { MARKS.remove(markerId); DIRTY.add(markerId); return; }
-		long now = ((ServerLevel) marker.level()).getGameTime();
-		long expire = (old != null && old.targetUuid.equals(target.getUUID())) ? old.expireTick : (now + MARK_DURATION_TICKS);
+		long now = ((ServerWorld) marker.getWorld()).getTime();
+		long expire = (old != null && old.targetUuid.equals(target.getUuid())) ? old.expireTick : (now + MARK_DURATION_TICKS);
 		// 全新 YELLOW 标记 → 重置该 marker+target 的红标重锁 CD（允许立刻升红）
 		boolean isFreshYellow = color == MarkColor.YELLOW
-				&& (old == null || !old.targetUuid.equals(target.getUUID()));
+				&& (old == null || !old.targetUuid.equals(target.getUuid()));
 		if (isFreshYellow) {
-			RED_LOCKOUT.remove(markerId + ":" + target.getUUID());
+			RED_LOCKOUT.remove(markerId + ":" + target.getUuid());
 		}
 		// 全新标记（不同目标）→ colorSetTick 取 now；同目标延续 → 保留旧的 colorSetTick
-		long setTick = (old != null && old.targetUuid.equals(target.getUUID())) ? old.colorSetTick : now;
-		MARKS.put(markerId, new Mark(target.getUUID(), color, expire, setTick));
+		long setTick = (old != null && old.targetUuid.equals(target.getUuid())) ? old.colorSetTick : now;
+		MARKS.put(markerId, new Mark(target.getUuid(), color, expire, setTick));
 		DIRTY.add(markerId);
 	}
 
 	/** 升级到红色（必须当前是 ORANGE、过黄标 3s 阶段冷却且未在锁定期内）。 */
-	public static boolean upgradeToRed(ServerPlayer marker, LivingEntity target) {
-		Mark m = MARKS.get(marker.getUUID());
-		if (m == null || !m.targetUuid.equals(target.getUUID())) return false;
+	public static boolean upgradeToRed(ServerPlayerEntity marker, LivingEntity target) {
+		Mark m = MARKS.get(marker.getUuid());
+		if (m == null || !m.targetUuid.equals(target.getUuid())) return false;
 		if (m.color != MarkColor.ORANGE) return false;
-		long now = ((ServerLevel) marker.level()).getGameTime();
+		long now = ((ServerWorld) marker.getWorld()).getTime();
 		if (now - m.colorSetTick < STAGE_GATE_TICKS) return false;
-		if (!canRedRelock(marker.getUUID(), target.getUUID(), now)) return false;
+		if (!canRedRelock(marker.getUuid(), target.getUuid(), now)) return false;
 		m.color = MarkColor.RED;
 		m.expireTick = now + MARK_DURATION_TICKS;
 		m.colorSetTick = now; // 重置阶段计时，红标→引爆需再等 3s
-		RED_LOCKOUT.put(marker.getUUID() + ":" + target.getUUID(), now + RED_RELOCK_COOLDOWN_TICKS);
-		DIRTY.add(marker.getUUID());
+		RED_LOCKOUT.put(marker.getUuid() + ":" + target.getUuid(), now + RED_RELOCK_COOLDOWN_TICKS);
+		DIRTY.add(marker.getUuid());
 		return true;
 	}
 
@@ -207,7 +207,7 @@ public final class MancianimaMarkManager {
 
 	// ============== Tick ==============
 	private static void onTick(MinecraftServer server) {
-		long now = server.overworld().getGameTime();
+		long now = server.getOverworld().getTime();
 		RED_LOCKOUT.entrySet().removeIf(e -> e.getValue() <= now);
 
 		Iterator<Map.Entry<UUID, Mark>> it = MARKS.entrySet().iterator();
@@ -215,7 +215,7 @@ public final class MancianimaMarkManager {
 			Map.Entry<UUID, Mark> e = it.next();
 			UUID markerId = e.getKey();
 			Mark m = e.getValue();
-			ServerPlayer marker = server.getPlayerList().getPlayer(markerId);
+			ServerPlayerEntity marker = server.getPlayerManager().getPlayer(markerId);
 			if (marker == null) { removeAndCleanup(server, it, m, markerId); continue; }
 			IForm form = FormUtils.getCurrentForm(marker);
 			if (form == null || !FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(form.getFormID())) {
@@ -237,13 +237,13 @@ public final class MancianimaMarkManager {
 			if (newColor != m.color) {
 				m.color = newColor;
 				DIRTY.add(markerId);
-				if (newColor == MarkColor.YELLOW && living instanceof ServerPlayer sp) {
-					playSoundToPlayer(sp, SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+				if (newColor == MarkColor.YELLOW && living instanceof ServerPlayerEntity sp) {
+					playSoundToPlayer(sp, SoundEvents.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
 				}
 			}
 			// 持续辅助效果：仅 SLOWNESS（颜色高亮由 entity_glow 提供）
 			if (now % 20 == 0) {
-				living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 25, 0, false, false, false));
+				living.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 25, 0, false, false, false));
 			}
 		}
 
@@ -253,7 +253,7 @@ public final class MancianimaMarkManager {
 			Map.Entry<UUID, ChannelState> e = cit.next();
 			UUID markerId = e.getKey();
 			ChannelState cs = e.getValue();
-			ServerPlayer marker = server.getPlayerList().getPlayer(markerId);
+			ServerPlayerEntity marker = server.getPlayerManager().getPlayer(markerId);
 			if (marker == null) { cit.remove(); continue; }
 			Mark m = MARKS.get(markerId);
 			boolean valid = m != null && m.color == MarkColor.RED && m.targetUuid.equals(cs.targetUuid);
@@ -261,28 +261,28 @@ public final class MancianimaMarkManager {
 			boolean targetAlive = tgt instanceof LivingEntity le && le.isAlive();
 			if (!valid || !targetAlive) {
 				cit.remove();
-				marker.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.ssc_addon.mancianima.channel_fail"), true);
+				marker.sendMessage(net.minecraft.text.Text.translatable("message.ssc_addon.mancianima.channel_fail"), true);
 				continue;
 			}
-			marker.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 5, 3, false, false, false));
+			marker.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 5, 3, false, false, false));
 			// 蓄力期间第三人称特效：marker 周围 + target 周围 + 中间路径
-			ServerLevel sw = (ServerLevel) marker.level();
+			ServerWorld sw = (ServerWorld) marker.getWorld();
 			LivingEntity le = (LivingEntity) tgt;
-			double mx = marker.getX(), my = marker.getY() + marker.getEyeHeight() * 0.6, mz = marker.getZ();
-			double tx = le.getX(), ty = le.getY() + le.getBbHeight() * 0.5, tz = le.getZ();
+			double mx = marker.getX(), my = marker.getY() + marker.getStandingEyeHeight() * 0.6, mz = marker.getZ();
+			double tx = le.getX(), ty = le.getY() + le.getHeight() * 0.5, tz = le.getZ();
 			// marker 周围旋转粒子环（紫色魅力）
 			for (int i = 0; i < 4; i++) {
 				double angle = (now * 0.3 + i * Math.PI / 2.0);
 				double rx = mx + Math.cos(angle) * 0.8;
 				double rz = mz + Math.sin(angle) * 0.8;
-				sw.sendParticles(net.minecraft.core.particles.ParticleTypes.WITCH, rx, my, rz, 1, 0, 0, 0, 0);
+				sw.spawnParticles(net.minecraft.particle.ParticleTypes.WITCH, rx, my, rz, 1, 0, 0, 0, 0);
 			}
 			// target 周围旋转粒子环（红色危险）
 			for (int i = 0; i < 4; i++) {
 				double angle = (-now * 0.3 + i * Math.PI / 2.0);
 				double rx = tx + Math.cos(angle) * 1.0;
 				double rz = tz + Math.sin(angle) * 1.0;
-				sw.sendParticles(net.minecraft.core.particles.ParticleTypes.SCULK_SOUL, rx, ty, rz, 1, 0, 0, 0, 0);
+				sw.spawnParticles(net.minecraft.particle.ParticleTypes.SCULK_SOUL, rx, ty, rz, 1, 0, 0, 0, 0);
 			}
 			// marker → target 路径上每 4 tick 撒一颗灵魂火光
 			if (now % 4 == 0) {
@@ -292,7 +292,7 @@ public final class MancianimaMarkManager {
 					double px = mx + (tx - mx) * t;
 					double py = my + (ty - my) * t;
 					double pz = mz + (tz - mz) * t;
-					sw.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME, px, py, pz, 1, 0.05, 0.05, 0.05, 0.0);
+					sw.spawnParticles(net.minecraft.particle.ParticleTypes.SOUL_FIRE_FLAME, px, py, pz, 1, 0.05, 0.05, 0.05, 0.0);
 				}
 			}
 			if (now >= cs.endTick) {
@@ -310,16 +310,16 @@ public final class MancianimaMarkManager {
 			Set<UUID> snapshot = new HashSet<>(DIRTY);
 			DIRTY.clear();
 			for (UUID id : snapshot) {
-				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				ServerPlayerEntity p = server.getPlayerManager().getPlayer(id);
 				if (p != null) sendSyncPacket(p);
 			}
 		}
 
 		// 抗伤回复：契灵玩家非战斗 5s 后，每 15s 回 1 抗伤
-		for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+		for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
 			IForm form = FormUtils.getCurrentForm(sp);
 			if (form == null || !FormIdentifiers.FAMILIAR_FOX_MANCIANIMA.equals(form.getFormID())) continue;
-			UUID id = sp.getUUID();
+			UUID id = sp.getUuid();
 			long lastCombat = LAST_COMBAT.getOrDefault(id, 0L);
 			if (now - lastCombat < OUT_OF_COMBAT_TICKS) continue;
 			long lastRegen = LAST_REGEN.getOrDefault(id, 0L);
@@ -333,17 +333,17 @@ public final class MancianimaMarkManager {
 		}
 
 		// 进化使魔脱战 mana 回复：脱战 5s 后每 1s 回 1 点 mana（需已解锁 mana_system 节点）
-		for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+		for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
 			IForm form = FormUtils.getCurrentForm(sp);
 			if (form == null || !FormIdentifiers.UPGRADE_FAMILIAR_FOX.equals(form.getFormID())) continue;
 			// 仅在已解锁 mana_system 节点时生效（mana 条显示门控一致）
 			if (!net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent.EVOLUTION
 					.get(sp).isUnlocked(net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.FamiliarFoxTree.NODE_MANA)) continue;
-			UUID id = sp.getUUID();
+			UUID id = sp.getUuid();
 			long lastCombat = LAST_COMBAT.getOrDefault(id, 0L);
 			if (now - lastCombat < OUT_OF_COMBAT_TICKS) continue;
 			// 消耗 mana 后 5s 内暂停自动回复（regen_pause_timer 资源 > 0 表示在暂停窗口）
-			int pauseTimer = PowerUtils.getResourceValue(sp, ResourceLocation.fromNamespaceAndPath("my_addon", "form_upgrade_familiar_fox_mana_regen_pause_pause_timer"));
+			int pauseTimer = PowerUtils.getResourceValue(sp, Identifier.of("my_addon", "form_upgrade_familiar_fox_mana_regen_pause_pause_timer"));
 			if (pauseTimer > 0) continue;
 			long lastRegen = LAST_MANA_REGEN.getOrDefault(id, 0L);
 			if (now - lastRegen < UPGRADE_FOX_MANA_REGEN_INTERVAL_TICKS) continue;
@@ -376,28 +376,28 @@ public final class MancianimaMarkManager {
 		if (server == null) return;
 		Entity ent = findEntity(server, targetUuid);
 		if (ent instanceof LivingEntity le) {
-			le.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
+			le.removeStatusEffect(StatusEffects.SLOWNESS);
 		}
 	}
 
 	// ============== Helpers ==============
 	private static Entity findEntity(MinecraftServer server, UUID uuid) {
-		for (ServerLevel w : server.getAllLevels()) {
+		for (ServerWorld w : server.getWorlds()) {
 			Entity e = w.getEntity(uuid);
 			if (e != null) return e;
 		}
 		return null;
 	}
 
-	private static void sendSyncPacket(ServerPlayer player) {
-		Mark m = MARKS.get(player.getUUID());
-		FriendlyByteBuf buf = PacketByteBufs.create();
+	private static void sendSyncPacket(ServerPlayerEntity player) {
+		Mark m = MARKS.get(player.getUuid());
+		PacketByteBuf buf = PacketByteBufs.create();
 		if (m == null) {
 			buf.writeInt(0);
 		} else {
 			buf.writeInt(1);
-			buf.writeUUID(m.targetUuid);
-			buf.writeUtf(colorString(m.color));
+			buf.writeUuid(m.targetUuid);
+			buf.writeString(colorString(m.color));
 		}
 		try {
 			ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_MARK_SYNC), buf));
@@ -405,19 +405,19 @@ public final class MancianimaMarkManager {
 	}
 
 	/** 重连/换维度后强制把当前 mark 状态同步给该玩家，保证客户端 HUD/标记正确 */
-	public static void resyncToPlayer(ServerPlayer player) {
+	public static void resyncToPlayer(ServerPlayerEntity player) {
 		sendSyncPacket(player);
 	}
 
-	public static void playSoundToPlayer(ServerPlayer player, SoundEvent sound, float volume, float pitch) {
-		Holder<SoundEvent> entry = BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound);
-		player.connection.send(new ClientboundSoundPacket(
-				entry, SoundSource.PLAYERS,
+	public static void playSoundToPlayer(ServerPlayerEntity player, SoundEvent sound, float volume, float pitch) {
+		RegistryEntry<SoundEvent> entry = Registries.SOUND_EVENT.getEntry(sound);
+		player.networkHandler.sendPacket(new PlaySoundS2CPacket(
+				entry, SoundCategory.PLAYERS,
 				player.getX(), player.getY(), player.getZ(),
 				volume, pitch, player.getRandom().nextLong()));
 	}
 
-	public static void broadcastSoundAtEntity(ServerLevel world, Entity entity, SoundEvent sound, float volume, float pitch) {
-		world.playSound(null, entity.getX(), entity.getY(), entity.getZ(), sound, SoundSource.PLAYERS, volume, pitch);
+	public static void broadcastSoundAtEntity(ServerWorld world, Entity entity, SoundEvent sound, float volume, float pitch) {
+		world.playSound(null, entity.getX(), entity.getY(), entity.getZ(), sound, SoundCategory.PLAYERS, volume, pitch);
 	}
 }

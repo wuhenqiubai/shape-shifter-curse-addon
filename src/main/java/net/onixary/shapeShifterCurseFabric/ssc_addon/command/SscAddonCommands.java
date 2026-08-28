@@ -5,22 +5,22 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.argument.EntityArgumentType;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.mana.ManaComponent;
 import net.onixary.shapeShifterCurseFabric.mana.ManaUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.config.ConfigChangeManager;
@@ -60,207 +60,207 @@ public class SscAddonCommands {
 		// This utility class should not be instantiated
 	}
 
-	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-		dispatcher.register(Commands.literal("ssc_addon")
-				.then(Commands.literal("set_mana")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.argument("targets", EntityArgument.players())
-								.then(Commands.argument("amount", IntegerArgumentType.integer(0))
-										.executes(context -> setMana(context, EntityArgument.getPlayers(context, "targets"), IntegerArgumentType.getInteger(context, "amount")))
+	public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+		dispatcher.register(CommandManager.literal("ssc_addon")
+				.then(CommandManager.literal("set_mana")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.argument("targets", EntityArgumentType.players())
+								.then(CommandManager.argument("amount", IntegerArgumentType.integer(0))
+										.executes(context -> setMana(context, EntityArgumentType.getPlayers(context, "targets"), IntegerArgumentType.getInteger(context, "amount")))
 								)
 						)
 				)
-				.then(Commands.literal("mark_owner")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.argument("targets", EntityArgument.entities())
+				.then(CommandManager.literal("mark_owner")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.argument("targets", EntityArgumentType.entities())
 								.executes(SscAddonCommands::markOwner)
 						)
 				)
-				.then(Commands.literal("debug")
-						.then(Commands.literal("form")
+				.then(CommandManager.literal("debug")
+						.then(CommandManager.literal("form")
 								.executes(SscAddonCommands::debugFormInfo)
 						)
-						.then(Commands.literal("mana")
+						.then(CommandManager.literal("mana")
 								.executes(SscAddonCommands::debugMana)
 						)
 						.then(CommandManager.literal("anim")
 								.executes(SscAddonCommands::debugAnim)
 						)
 				)
-				.then(Commands.literal("get_book")
-						.requires(source -> source.hasPermission(2))
+				.then(CommandManager.literal("get_book")
+						.requires(source -> source.hasPermissionLevel(2))
 						// 使用字符串ID参数，支持任意书籍ID（不仅仅是数字）
-						.then(Commands.argument("book_id", StringArgumentType.string())
+						.then(CommandManager.argument("book_id", StringArgumentType.string())
 								.suggests((context, builder) -> {
 									// 自动补全：显示所有可用的书籍ID
-									return SharedSuggestionProvider.suggest(
+									return CommandSource.suggestMatching(
 											net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.getBookIds(),
 											builder
 									);
 								})
 								.executes(SscAddonCommands::giveStoryBookById)
-								.then(Commands.argument("language", StringArgumentType.string())
-										.suggests((context, builder) -> SharedSuggestionProvider.suggest(new String[]{"zh_cn", "en_us"}, builder))
+								.then(CommandManager.argument("language", StringArgumentType.string())
+										.suggests((context, builder) -> CommandSource.suggestMatching(new String[]{"zh_cn", "en_us"}, builder))
 										.executes(SscAddonCommands::giveStoryBookByIdWithLang)
 								)
 						)
 				)
-				.then(Commands.literal("list_books")
-						.requires(source -> source.hasPermission(2))
+				.then(CommandManager.literal("list_books")
+						.requires(source -> source.hasPermissionLevel(2))
 						.executes(SscAddonCommands::listBooks)
-						.then(Commands.argument("language", StringArgumentType.string())
-								.suggests((context, builder) -> SharedSuggestionProvider.suggest(new String[]{"zh_cn", "en_us"}, builder))
+						.then(CommandManager.argument("language", StringArgumentType.string())
+								.suggests((context, builder) -> CommandSource.suggestMatching(new String[]{"zh_cn", "en_us"}, builder))
 								.executes(SscAddonCommands::listBooksWithLang)
 						)
 				)
-				.then(Commands.literal("reload_books")
-						.requires(source -> source.hasPermission(2))
+				.then(CommandManager.literal("reload_books")
+						.requires(source -> source.hasPermissionLevel(2))
 						.executes(SscAddonCommands::reloadBooks)
 				)
-				.then(Commands.literal("reload")
-						.requires(source -> source.hasPermission(2))
+				.then(CommandManager.literal("reload")
+						.requires(source -> source.hasPermissionLevel(2))
 						.executes(SscAddonCommands::reloadConfig)
 				)
 				// 玩家自助白名单 GUI（无 OP 限制，仅作用于调用者自己）
-				.then(Commands.literal("my_whitelist")
+				.then(CommandManager.literal("my_whitelist")
 						.executes(SscAddonCommands::openWhitelistGui)
 				)
 				// 朔望主/次技能触发（仅作用执行者本人、无 OP 限制，由 power 按键 execute_command 调用）
-				.then(Commands.literal("nova")
-						.then(Commands.literal("primary")
-								.executes(ctx -> { ServerPlayer p = ctx.getSource().getPlayer(); if (p != null) NovaSkillManager.startCharge(p); return 1; }))
-						.then(Commands.literal("secondary")
-								.executes(ctx -> { ServerPlayer p = ctx.getSource().getPlayer(); if (p != null) NovaSkillManager.tryLeap(p); return 1; }))
+				.then(CommandManager.literal("nova")
+						.then(CommandManager.literal("primary")
+								.executes(ctx -> { ServerPlayerEntity p = ctx.getSource().getPlayer(); if (p != null) NovaSkillManager.startCharge(p); return 1; }))
+						.then(CommandManager.literal("secondary")
+								.executes(ctx -> { ServerPlayerEntity p = ctx.getSource().getPlayer(); if (p != null) NovaSkillManager.tryLeap(p); return 1; }))
 				)
-				.then(Commands.literal("skill")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.argument("form", StringArgumentType.word())
-								.suggests((context, builder) -> SharedSuggestionProvider.suggest(
+				.then(CommandManager.literal("skill")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.argument("form", StringArgumentType.word())
+								.suggests((context, builder) -> CommandSource.suggestMatching(
 										Arrays.asList("snow_fox", "anubis_wolf", "allay", "axolotl", "wild_cat", "familiar_fox", "familiar_fox_red"), builder))
-								.then(Commands.argument("skill", StringArgumentType.word())
+								.then(CommandManager.argument("skill", StringArgumentType.word())
 										.suggests((context, builder) -> {
 											String form = StringArgumentType.getString(context, "form");
-											return SharedSuggestionProvider.suggest(getSkillsForForm(form), builder);
+											return CommandSource.suggestMatching(getSkillsForForm(form), builder);
 										})
-										.then(Commands.argument("player", EntityArgument.player())
+										.then(CommandManager.argument("player", EntityArgumentType.player())
 												.executes(SscAddonCommands::invokeSkillOnPlayer)
 										)
 										.executes(SscAddonCommands::invokeSkillOnSelf)
 								)
 						)
 				)
-				.then(Commands.literal("block")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.argument("player", EntityArgument.player())
-								.then(Commands.argument("form", StringArgumentType.word())
-										.suggests((context, builder) -> SharedSuggestionProvider.suggest(
+				.then(CommandManager.literal("block")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.argument("player", EntityArgumentType.player())
+								.then(CommandManager.argument("form", StringArgumentType.word())
+										.suggests((context, builder) -> CommandSource.suggestMatching(
 												Arrays.asList("snow_fox", "anubis_wolf", "allay", "axolotl", "wild_cat", "familiar_fox", "familiar_fox_red"), builder))
-										.then(Commands.argument("skill", StringArgumentType.word())
+										.then(CommandManager.argument("skill", StringArgumentType.word())
 												.suggests((context, builder) -> {
 													String form = StringArgumentType.getString(context, "form");
-													return SharedSuggestionProvider.suggest(getSkillsForForm(form), builder);
+													return CommandSource.suggestMatching(getSkillsForForm(form), builder);
 												})
 												.executes(SscAddonCommands::blockSkill)
 										)
 								)
 						)
 				)
-				.then(Commands.literal("unblock")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.argument("player", EntityArgument.player())
-								.then(Commands.argument("form", StringArgumentType.word())
-										.suggests((context, builder) -> SharedSuggestionProvider.suggest(
+				.then(CommandManager.literal("unblock")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.argument("player", EntityArgumentType.player())
+								.then(CommandManager.argument("form", StringArgumentType.word())
+										.suggests((context, builder) -> CommandSource.suggestMatching(
 												Arrays.asList("snow_fox", "anubis_wolf", "allay", "axolotl", "wild_cat", "familiar_fox", "familiar_fox_red"), builder))
-										.then(Commands.argument("skill", StringArgumentType.word())
+										.then(CommandManager.argument("skill", StringArgumentType.word())
 												.suggests((context, builder) -> {
 													String form = StringArgumentType.getString(context, "form");
-													return SharedSuggestionProvider.suggest(getSkillsForForm(form), builder);
+													return CommandSource.suggestMatching(getSkillsForForm(form), builder);
 												})
 												.executes(SscAddonCommands::unblockSkill)
 										)
 								)
 						)
 				)
-				.then(Commands.literal("list_blocks")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.argument("player", EntityArgument.player())
+				.then(CommandManager.literal("list_blocks")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.argument("player", EntityArgumentType.player())
 								.executes(SscAddonCommands::listBlockedSkills)
 						)
 				)
-				.then(Commands.literal("resistance")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.literal("get")
+				.then(CommandManager.literal("resistance")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.literal("get")
 								.executes(ctx -> resistanceGet(ctx, ctx.getSource().getPlayer()))
-								.then(Commands.argument("player", EntityArgument.player())
-										.executes(ctx -> resistanceGet(ctx, EntityArgument.getPlayer(ctx, "player")))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> resistanceGet(ctx, EntityArgumentType.getPlayer(ctx, "player")))
 								)
 						)
-						.then(Commands.literal("set")
-								.then(Commands.argument("value", IntegerArgumentType.integer(0))
+						.then(CommandManager.literal("set")
+								.then(CommandManager.argument("value", IntegerArgumentType.integer(0))
 										.executes(ctx -> resistanceSet(ctx, ctx.getSource().getPlayer(), IntegerArgumentType.getInteger(ctx, "value")))
-										.then(Commands.argument("player", EntityArgument.player())
-												.executes(ctx -> resistanceSet(ctx, EntityArgument.getPlayer(ctx, "player"), IntegerArgumentType.getInteger(ctx, "value")))
+										.then(CommandManager.argument("player", EntityArgumentType.player())
+												.executes(ctx -> resistanceSet(ctx, EntityArgumentType.getPlayer(ctx, "player"), IntegerArgumentType.getInteger(ctx, "value")))
 										)
 								)
 						)
-						.then(Commands.literal("add")
-								.then(Commands.argument("delta", IntegerArgumentType.integer())
+						.then(CommandManager.literal("add")
+								.then(CommandManager.argument("delta", IntegerArgumentType.integer())
 										.executes(ctx -> resistanceAdd(ctx, ctx.getSource().getPlayer(), IntegerArgumentType.getInteger(ctx, "delta")))
-										.then(Commands.argument("player", EntityArgument.player())
-												.executes(ctx -> resistanceAdd(ctx, EntityArgument.getPlayer(ctx, "player"), IntegerArgumentType.getInteger(ctx, "delta")))
+										.then(CommandManager.argument("player", EntityArgumentType.player())
+												.executes(ctx -> resistanceAdd(ctx, EntityArgumentType.getPlayer(ctx, "player"), IntegerArgumentType.getInteger(ctx, "delta")))
 										)
 								)
 						)
 				)
 				// ============== /ssc_addon mancianima_assault ==============
 				// 控制玩家"今日是否可触发契灵敲钟袭击"的每日冷却（持久化）
-				.then(Commands.literal("mancianima_assault")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.literal("reset")
+				.then(CommandManager.literal("mancianima_assault")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.literal("reset")
 								.executes(ctx -> mancianimaAssaultReset(ctx, ctx.getSource().getPlayer()))
-								.then(Commands.argument("player", EntityArgument.player())
-										.executes(ctx -> mancianimaAssaultReset(ctx, EntityArgument.getPlayer(ctx, "player")))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> mancianimaAssaultReset(ctx, EntityArgumentType.getPlayer(ctx, "player")))
 								)
 						)
-						.then(Commands.literal("lock")
+						.then(CommandManager.literal("lock")
 								.executes(ctx -> mancianimaAssaultLock(ctx, ctx.getSource().getPlayer()))
-								.then(Commands.argument("player", EntityArgument.player())
-										.executes(ctx -> mancianimaAssaultLock(ctx, EntityArgument.getPlayer(ctx, "player")))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> mancianimaAssaultLock(ctx, EntityArgumentType.getPlayer(ctx, "player")))
 								)
 						)
-						.then(Commands.literal("status")
+						.then(CommandManager.literal("status")
 								.executes(ctx -> mancianimaAssaultStatus(ctx, ctx.getSource().getPlayer()))
-								.then(Commands.argument("player", EntityArgument.player())
-										.executes(ctx -> mancianimaAssaultStatus(ctx, EntityArgument.getPlayer(ctx, "player")))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> mancianimaAssaultStatus(ctx, EntityArgumentType.getPlayer(ctx, "player")))
 								)
 						)
 				)
 				// ============== /ssc_addon evolution ==============
 				// SSCA 进化加点系统管理指令（框架）：unlock_all 全解锁 / reset 重置
-				.then(Commands.literal("evolution")
-						.requires(source -> source.hasPermission(2))
-						.then(Commands.literal("unlock_all")
+				.then(CommandManager.literal("evolution")
+						.requires(source -> source.hasPermissionLevel(2))
+						.then(CommandManager.literal("unlock_all")
 								.executes(ctx -> evolutionUnlockAll(ctx, ctx.getSource().getPlayer()))
-								.then(Commands.argument("player", EntityArgument.player())
-										.executes(ctx -> evolutionUnlockAll(ctx, EntityArgument.getPlayer(ctx, "player")))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> evolutionUnlockAll(ctx, EntityArgumentType.getPlayer(ctx, "player")))
 								)
 						)
-						.then(Commands.literal("reset")
+						.then(CommandManager.literal("reset")
 								.executes(ctx -> evolutionReset(ctx, ctx.getSource().getPlayer()))
-								.then(Commands.argument("player", EntityArgument.player())
-										.executes(ctx -> evolutionReset(ctx, EntityArgument.getPlayer(ctx, "player")))
+								.then(CommandManager.argument("player", EntityArgumentType.player())
+										.executes(ctx -> evolutionReset(ctx, EntityArgumentType.getPlayer(ctx, "player")))
 								)
 						)
 				)
 				// ============== /ssc_addon palette ==============
 				// 形态配色「分享码」：导出当前配色为分享文本；apply 一键应用
 				// 不加 .requires(permissionLevel) — 关闭作弊的存档/服务器内普通玩家也能使用；只对执行者本人生效（规则 #49）
-				.then(Commands.literal("palette")
-						.then(Commands.literal("export")
+				.then(CommandManager.literal("palette")
+						.then(CommandManager.literal("export")
 								.executes(ctx -> paletteExport(ctx, ctx.getSource().getPlayer()))
 						)
-						.then(Commands.literal("apply")
-								.then(Commands.argument("code", StringArgumentType.greedyString())
+						.then(CommandManager.literal("apply")
+								.then(CommandManager.argument("code", StringArgumentType.greedyString())
 										.executes(ctx -> paletteApply(ctx, ctx.getSource().getPlayer(), StringArgumentType.getString(ctx, "code")))
 								)
 						)
@@ -270,8 +270,8 @@ public class SscAddonCommands {
 
 	// ============== /ssc_addon palette ==============
 	// 仅对执行者本人生效，禁止 target 参数；反馈消息全部走 lang key
-	private static int paletteExport(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("ssc_addon.palette.only_self")); return 0; }
+	private static int paletteExport(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("ssc_addon.palette.only_self")); return 0; }
 		PlayerSkinComponent skin = RegPlayerSkinComponent.SKIN_SETTINGS.get(player);
 		FormTextureUtils.ColorSetting cs = skin.getFormColor();
 		// 主包内部存 ABGR，导出转回 RGBA 让 apply 那边解析后能直接喂给 setFormColor(int RGBA, ...)
@@ -283,23 +283,23 @@ public class SscAddonCommands {
 		String code = PaletteCodec.encode(primary, accent1, accent2, eyeA, eyeB,
 				cs.getPrimaryGreyReverse(), cs.getAccent1GreyReverse(), cs.getAccent2GreyReverse());
 
-		MutableComponent codeText = Component.literal(code).setStyle(Style.EMPTY
-				.withColor(ChatFormatting.AQUA)
+		MutableText codeText = Text.literal(code).setStyle(Style.EMPTY
+				.withColor(Formatting.AQUA)
 				.withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, code))
-				.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("ssc_addon.palette.export.copy_hover"))));
-		ctx.getSource().sendSuccess(() -> Component.translatable("ssc_addon.palette.export.header").append(codeText), false);
-		ctx.getSource().sendSuccess(() -> Component.translatable("ssc_addon.palette.export.hint"), false);
+				.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("ssc_addon.palette.export.copy_hover"))));
+		ctx.getSource().sendFeedback(() -> Text.translatable("ssc_addon.palette.export.header").append(codeText), false);
+		ctx.getSource().sendFeedback(() -> Text.translatable("ssc_addon.palette.export.hint"), false);
 		return 1;
 	}
 
-	private static int paletteApply(CommandContext<CommandSourceStack> ctx, ServerPlayer player, String rawCode) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("ssc_addon.palette.only_self")); return 0; }
+	private static int paletteApply(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player, String rawCode) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("ssc_addon.palette.only_self")); return 0; }
 		PaletteCodec.PaletteData data;
 		try {
 			data = PaletteCodec.decode(rawCode);
 		} catch (PaletteCodec.DecodeException e) {
-			ctx.getSource().sendFailure(Component.translatable("ssc_addon.palette.apply.failed",
-					Component.translatable(e.langKey, e.args)));
+			ctx.getSource().sendError(Text.translatable("ssc_addon.palette.apply.failed",
+					Text.translatable(e.langKey, e.args)));
 			return 0;
 		}
 		PlayerSkinComponent skin = RegPlayerSkinComponent.SKIN_SETTINGS.get(player);
@@ -310,100 +310,100 @@ public class SscAddonCommands {
 		skin.setEnableFormColor(true);
 		// 触发 AutoSyncedComponent 同步，让其它客户端立即看到新配色
 		RegPlayerSkinComponent.SKIN_SETTINGS.sync(player);
-		ctx.getSource().sendSuccess(() -> Component.translatable("ssc_addon.palette.apply.success"), false);
+		ctx.getSource().sendFeedback(() -> Text.translatable("ssc_addon.palette.apply.success"), false);
 		return 1;
 	}
 
 	// ============== /ssc_addon evolution ==============
-	private static int evolutionUnlockAll(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.literal("目标玩家无效")); return 0; }
+	private static int evolutionUnlockAll(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("目标玩家无效")); return 0; }
 		EvolutionManager.unlockAll(player);
-		ctx.getSource().sendSuccess(() -> Component.literal("已将 " + player.getName().getString() + " 的 SSCA 进化路线设为全解锁"), true);
+		ctx.getSource().sendFeedback(() -> Text.literal("已将 " + player.getName().getString() + " 的 SSCA 进化路线设为全解锁"), true);
 		return 1;
 	}
 
-	private static int evolutionReset(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.literal("目标玩家无效")); return 0; }
+	private static int evolutionReset(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.literal("目标玩家无效")); return 0; }
 		EvolutionManager.reset(player);
-		ctx.getSource().sendSuccess(() -> Component.literal("已重置 " + player.getName().getString() + " 的 SSCA 进化数据"), true);
+		ctx.getSource().sendFeedback(() -> Text.literal("已重置 " + player.getName().getString() + " 的 SSCA 进化数据"), true);
 		return 1;
 	}
 
 	// ============== /ssc_addon mancianima_assault ==============
 	private static final long MANCIANIMA_ASSAULT_COOLDOWN_TICKS = 24000L;
 
-	private static int mancianimaAssaultReset(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.common.no_target_player")); return 0; }
+	private static int mancianimaAssaultReset(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.common.no_target_player")); return 0; }
 		net.minecraft.server.MinecraftServer srv = ctx.getSource().getServer();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState state =
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState.get(srv);
-		if (state.lastRoll.remove(player.getUUID()) != null) {
-			state.setDirty();
+		if (state.lastRoll.remove(player.getUuid()) != null) {
+			state.markDirty();
 		}
-		ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.assault.reset", player.getName().getString()), true);
+		ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.assault.reset", player.getName().getString()), true);
 		return 1;
 	}
 
-	private static int mancianimaAssaultLock(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.common.no_target_player")); return 0; }
+	private static int mancianimaAssaultLock(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.common.no_target_player")); return 0; }
 		net.minecraft.server.MinecraftServer srv = ctx.getSource().getServer();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState state =
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState.get(srv);
-		state.lastRoll.put(player.getUUID(), srv.overworld().getGameTime());
-		state.setDirty();
-		ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.assault.lock", player.getName().getString()), true);
+		state.lastRoll.put(player.getUuid(), srv.getOverworld().getTime());
+		state.markDirty();
+		ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.assault.lock", player.getName().getString()), true);
 		return 1;
 	}
 
-	private static int mancianimaAssaultStatus(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.common.no_target_player")); return 0; }
+	private static int mancianimaAssaultStatus(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.common.no_target_player")); return 0; }
 		net.minecraft.server.MinecraftServer srv = ctx.getSource().getServer();
 		net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState state =
 				net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaAssaultState.get(srv);
-		Long last = state.lastRoll.get(player.getUUID());
-		long now = srv.overworld().getGameTime();
+		Long last = state.lastRoll.get(player.getUuid());
+		long now = srv.getOverworld().getTime();
 		if (last == null || now - last >= MANCIANIMA_ASSAULT_COOLDOWN_TICKS) {
-			ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.assault.status.available", player.getName().getString()), false);
+			ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.assault.status.available", player.getName().getString()), false);
 		} else {
 			long remain = MANCIANIMA_ASSAULT_COOLDOWN_TICKS - (now - last);
-			ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.assault.status.cooldown", player.getName().getString(), remain, remain / 20), false);
+			ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.assault.status.cooldown", player.getName().getString(), remain, remain / 20), false);
 		}
 		return 1;
 	}
 
 	// ============== /ssc_addon resistance ==============
-	private static int resistanceGet(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.common.no_target_player")); return 0; }
+	private static int resistanceGet(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.common.no_target_player")); return 0; }
 		int cur = PowerUtils.getResourceValue(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
 		int max = PowerUtils.getResourceMax(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
-		ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.resistance.get", player.getName().getString(), cur, max), false);
+		ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.resistance.get", player.getName().getString(), cur, max), false);
 		return 1;
 	}
 
-	private static int resistanceSet(CommandContext<CommandSourceStack> ctx, ServerPlayer player, int value) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.common.no_target_player")); return 0; }
+	private static int resistanceSet(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player, int value) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.common.no_target_player")); return 0; }
 		int max = PowerUtils.getResourceMax(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
-		if (max <= 0) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.resistance.no_power")); return 0; }
+		if (max <= 0) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.resistance.no_power")); return 0; }
 		int clamped = Math.max(0, Math.min(value, max));
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.MANCIANIMA_RESISTANCE, clamped);
-		ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.resistance.set", player.getName().getString(), clamped, max), true);
+		ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.resistance.set", player.getName().getString(), clamped, max), true);
 		return 1;
 	}
 
-	private static int resistanceAdd(CommandContext<CommandSourceStack> ctx, ServerPlayer player, int delta) {
-		if (player == null) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.common.no_target_player")); return 0; }
+	private static int resistanceAdd(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity player, int delta) {
+		if (player == null) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.common.no_target_player")); return 0; }
 		int max = PowerUtils.getResourceMax(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
-		if (max <= 0) { ctx.getSource().sendFailure(Component.translatable("command.ssc_addon.resistance.no_power")); return 0; }
+		if (max <= 0) { ctx.getSource().sendError(Text.translatable("command.ssc_addon.resistance.no_power")); return 0; }
 		int cur = PowerUtils.getResourceValue(player, FormIdentifiers.MANCIANIMA_RESISTANCE);
 		int next = Math.max(0, Math.min(cur + delta, max));
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.MANCIANIMA_RESISTANCE, next);
-		ctx.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.resistance.add", player.getName().getString(), cur, next, max), true);
+		ctx.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.resistance.add", player.getName().getString(), cur, next, max), true);
 		return 1;
 	}
 
-	private static int setMana(CommandContext<CommandSourceStack> context, Collection<ServerPlayer> targets, int amount) {
+	private static int setMana(CommandContext<ServerCommandSource> context, Collection<ServerPlayerEntity> targets, int amount) {
 		int count = 0;
-		for (ServerPlayer player : targets) {
+		for (ServerPlayerEntity player : targets) {
 			boolean updated = false;
 
 			int snowFoxMax = PowerUtils.getResourceMax(player, FormIdentifiers.SNOW_FOX_RESOURCE);
@@ -443,22 +443,22 @@ public class SscAddonCommands {
 			}
 		}
 		final int finalCount = count;
-		context.getSource().sendSuccess(() -> Component.translatable("command.ssc_addon.set_mana.result", finalCount, amount), true);
+		context.getSource().sendFeedback(() -> Text.translatable("command.ssc_addon.set_mana.result", finalCount, amount), true);
 		return count;
 	}
 
-	private static int markOwner(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		Collection<? extends Entity> targets = EntityArgument.getEntities(context, "targets");
-		CommandSourceStack source = context.getSource();
+	private static int markOwner(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		Collection<? extends Entity> targets = EntityArgumentType.getEntities(context, "targets");
+		ServerCommandSource source = context.getSource();
 		Entity attacker = source.getEntity();
 
-		if (attacker instanceof ServerPlayer player) {
-			UUID playerUUID = player.getUUID();
+		if (attacker instanceof ServerPlayerEntity player) {
+			UUID playerUUID = player.getUuid();
 			for (Entity target : targets) {
 				if (target instanceof LivingEntity livingTarget) {
 					// Update ownership tag: remove old owner, set new owner
-					livingTarget.getTags().removeIf(tag -> tag.startsWith("ssc_owner:"));
-					livingTarget.addTag("ssc_owner:" + playerUUID.toString());
+					livingTarget.getCommandTags().removeIf(tag -> tag.startsWith("ssc_owner:"));
+					livingTarget.addCommandTag("ssc_owner:" + playerUUID.toString());
 				}
 			}
 			return targets.size();
@@ -466,8 +466,8 @@ public class SscAddonCommands {
 		return 0;
 	}
 
-	private static int debugFormInfo(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int debugFormInfo(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 
 		// 获取玩家形态组件（getPlayerOrThrow 保证非空）
 		PlayerFormComponent component = RegPlayerFormComponent.PLAYER_FORM.get(java.util.Objects.requireNonNull(player));
@@ -475,29 +475,29 @@ public class SscAddonCommands {
 		// 准备调试信息（服务器日志保留原始英文，玩家聘天用可翻译版本）
 		StringBuilder debugInfo = new StringBuilder();
 		debugInfo.append("===== SSC_ADDON FORM DEBUG =====\n");
-		player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.header").withStyle(ChatFormatting.AQUA), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.debug_form.header").formatted(Formatting.AQUA), false);
 
 		if (component == null) {
 			debugInfo.append("PlayerFormComponent: NULL\n");
-			player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.no_component").withStyle(ChatFormatting.AQUA), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.debug_form.no_component").formatted(Formatting.AQUA), false);
 		} else {
 			IForm currentForm = component.nowForm;
 			if (currentForm == null) {
 				debugInfo.append("Current Form: NULL (no form active)\n");
-				player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.no_form").withStyle(ChatFormatting.AQUA), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.debug_form.no_form").formatted(Formatting.AQUA), false);
 			} else {
 				debugInfo.append("Form ID: ").append(currentForm.getFormID()).append("\n");
-				player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.form_id", String.valueOf(currentForm.getFormID())).withStyle(ChatFormatting.AQUA), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.debug_form.form_id", String.valueOf(currentForm.getFormID())).formatted(Formatting.AQUA), false);
 				debugInfo.append("Form Class: ").append(currentForm.getClass().getName()).append("\n");
-				player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.form_class", currentForm.getClass().getName()).withStyle(ChatFormatting.AQUA), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.debug_form.form_class", currentForm.getClass().getName()).formatted(Formatting.AQUA), false);
 				debugInfo.append("Phase: ").append(currentForm.getFormTier()).append("\n");
-				player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.phase", String.valueOf(currentForm.getFormTier())).withStyle(ChatFormatting.AQUA), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.debug_form.phase", String.valueOf(currentForm.getFormTier())).formatted(Formatting.AQUA), false);
 				debugInfo.append("Body Type: ").append(currentForm.getBodyType()).append("\n");
-				player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.body_type", String.valueOf(currentForm.getBodyType())).withStyle(ChatFormatting.AQUA), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.debug_form.body_type", String.valueOf(currentForm.getBodyType())).formatted(Formatting.AQUA), false);
 			}
 		}
 		debugInfo.append("================================");
-		player.displayClientMessage(Component.translatable("command.ssc_addon.debug_form.footer").withStyle(ChatFormatting.AQUA), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.debug_form.footer").formatted(Formatting.AQUA), false);
 
 		// 记录到服务器日志
 		if (LOGGER.isInfoEnabled()) {
@@ -507,28 +507,28 @@ public class SscAddonCommands {
 		return 1;
 	}
 
-	private static int debugMana(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int debugMana(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 		boolean foundMana = false;
 
 		int snowFoxVal = PowerUtils.getResourceValue(player, FormIdentifiers.SNOW_FOX_RESOURCE);
 		int snowFoxMax = PowerUtils.getResourceMax(player, FormIdentifiers.SNOW_FOX_RESOURCE);
 		if (snowFoxMax > 0) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.snow_fox", snowFoxVal, snowFoxMax).withStyle(ChatFormatting.AQUA), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.snow_fox", snowFoxVal, snowFoxMax).formatted(Formatting.AQUA), false);
 			foundMana = true;
 		}
 
 		int allayVal = PowerUtils.getResourceValue(player, FormIdentifiers.ALLAY_MANA_RESOURCE);
 		int allayMax = PowerUtils.getResourceMax(player, FormIdentifiers.ALLAY_MANA_RESOURCE);
 		if (allayMax > 0) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.allay", allayVal, allayMax).withStyle(ChatFormatting.AQUA), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.allay", allayVal, allayMax).formatted(Formatting.AQUA), false);
 			foundMana = true;
 		}
 
 		int soulVal = PowerUtils.getResourceValue(player, FormIdentifiers.ANUBIS_WOLF_SP_SOUL_ENERGY);
 		int soulMax = PowerUtils.getResourceMax(player, FormIdentifiers.ANUBIS_WOLF_SP_SOUL_ENERGY);
 		if (soulMax > 0) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.anubis_wolf", soulVal, soulMax).withStyle(ChatFormatting.AQUA), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.anubis_wolf", soulVal, soulMax).formatted(Formatting.AQUA), false);
 			foundMana = true;
 		}
 
@@ -536,11 +536,11 @@ public class SscAddonCommands {
 			ManaComponent manaComponent = ManaUtils.getManaComponent(player);
 			if (manaComponent != null) {
 				if (manaComponent.getManaTypeID() != null) {
-					player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.mana_type", manaComponent.getManaTypeID().toString()).withStyle(ChatFormatting.AQUA), false);
-					player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.mana", manaComponent.getMana(), manaComponent.getMaxMana()).withStyle(ChatFormatting.AQUA), false);
+					player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.mana_type", manaComponent.getManaTypeID().toString()).formatted(Formatting.AQUA), false);
+					player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.mana", manaComponent.getMana(), manaComponent.getMaxMana()).formatted(Formatting.AQUA), false);
 					foundMana = true;
 				} else if (manaComponent.getMaxMana() > 0) {
-					player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.mana_notype", manaComponent.getMana(), manaComponent.getMaxMana()).withStyle(ChatFormatting.AQUA), false);
+					player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.mana_notype", manaComponent.getMana(), manaComponent.getMaxMana()).formatted(Formatting.AQUA), false);
 					foundMana = true;
 				}
 			}
@@ -549,7 +549,7 @@ public class SscAddonCommands {
 		}
 
 		if (!foundMana) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.debug_mana.no_mana").withStyle(ChatFormatting.YELLOW), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.debug_mana.no_mana").formatted(Formatting.YELLOW), false);
 		}
 		return 1;
 	}
@@ -571,14 +571,14 @@ public class SscAddonCommands {
 	/**
 	 * 通过书籍ID获取书籍（使用配置的默认语言）
 	 */
-	private static int giveStoryBookById(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int giveStoryBookById(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		return giveStoryBookByIdInternal(context, null);
 	}
 
 	/**
 	 * 通过书籍ID和指定语言获取书籍
 	 */
-	private static int giveStoryBookByIdWithLang(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int giveStoryBookByIdWithLang(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		String lang = StringArgumentType.getString(context, "language");
 		return giveStoryBookByIdInternal(context, lang);
 	}
@@ -586,14 +586,14 @@ public class SscAddonCommands {
 	/**
 	 * 内部方法：通过书籍ID获取书籍
 	 */
-	private static int giveStoryBookByIdInternal(CommandContext<CommandSourceStack> context, String language) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int giveStoryBookByIdInternal(CommandContext<ServerCommandSource> context, String language) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 		String bookId = StringArgumentType.getString(context, "book_id");
 
-		net.minecraft.world.item.ItemStack book = net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.getStoryBookById(bookId, language);
+		net.minecraft.item.ItemStack book = net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.getStoryBookById(bookId, language);
 
 		if (book.isEmpty()) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.book.not_found", bookId).withStyle(ChatFormatting.RED), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.book.not_found", bookId).formatted(Formatting.RED), false);
 			return 0;
 		}
 
@@ -601,26 +601,26 @@ public class SscAddonCommands {
 		net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.BookData bookData =
 				net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.getBookDataById(bookId, language);
 
-		if (!player.getInventory().add(book)) {
-			player.drop(book, false);
+		if (!player.getInventory().insertStack(book)) {
+			player.dropItem(book, false);
 		}
 
 		String bookTitle = bookData != null ? bookData.title : bookId;
-		player.displayClientMessage(Component.translatable("command.ssc_addon.book.obtained", bookTitle).withStyle(ChatFormatting.GREEN), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.book.obtained", bookTitle).formatted(Formatting.GREEN), false);
 		return 1;
 	}
 
 	/**
 	 * 列出所有可用书籍（使用配置的默认语言）
 	 */
-	private static int listBooks(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int listBooks(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		return listBooksInternal(context, null);
 	}
 
 	/**
 	 * 列出所有可用书籍（指定语言）
 	 */
-	private static int listBooksWithLang(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int listBooksWithLang(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		String lang = StringArgumentType.getString(context, "language");
 		return listBooksInternal(context, lang);
 	}
@@ -628,8 +628,8 @@ public class SscAddonCommands {
 	/**
 	 * 内部方法：列出所有可用书籍
 	 */
-	private static int listBooksInternal(CommandContext<CommandSourceStack> context, String language) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int listBooksInternal(CommandContext<ServerCommandSource> context, String language) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 
 		java.util.List<String> bookIds;
 		if (language != null && !language.isEmpty()) {
@@ -639,12 +639,12 @@ public class SscAddonCommands {
 		}
 
 		if (bookIds.isEmpty()) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.empty").withStyle(ChatFormatting.YELLOW), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.book.list.empty").formatted(Formatting.YELLOW), false);
 			return 0;
 		}
 
-		player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.header").withStyle(ChatFormatting.GOLD), false);
-		player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.count", bookIds.size()).withStyle(ChatFormatting.AQUA), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.book.list.header").formatted(Formatting.GOLD), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.book.list.count", bookIds.size()).formatted(Formatting.AQUA), false);
 
 		for (String bookId : bookIds) {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.BookData bookData =
@@ -656,14 +656,14 @@ public class SscAddonCommands {
 				if (displayTitle.length() > 30) {
 					displayTitle = displayTitle.substring(0, 27) + "...";
 				}
-				player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.entry", bookId, displayTitle, bookData.author).withStyle(ChatFormatting.WHITE), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.book.list.entry", bookId, displayTitle, bookData.author).formatted(Formatting.WHITE), false);
 			} else {
-				player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.entry_failed", bookId).withStyle(ChatFormatting.RED), false);
+				player.sendMessage(Text.translatable("command.ssc_addon.book.list.entry_failed", bookId).formatted(Formatting.RED), false);
 			}
 		}
 
-		player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.footer").withStyle(ChatFormatting.GOLD), false);
-		player.displayClientMessage(Component.translatable("command.ssc_addon.book.list.hint").withStyle(ChatFormatting.GRAY), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.book.list.footer").formatted(Formatting.GOLD), false);
+		player.sendMessage(Text.translatable("command.ssc_addon.book.list.hint").formatted(Formatting.GRAY), false);
 
 		return bookIds.size();
 	}
@@ -671,16 +671,16 @@ public class SscAddonCommands {
 	/**
 	 * 重新加载书籍配置
 	 */
-	private static int reloadBooks(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int reloadBooks(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 
 		try {
 			net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.reloadBooks();
 			int bookCount = net.onixary.shapeShifterCurseFabric.ssc_addon.loot.StoryBookLoot.getBookCount();
-			player.displayClientMessage(Component.translatable("command.ssc_addon.reload.books.success", bookCount).withStyle(ChatFormatting.GREEN), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.reload.books.success", bookCount).formatted(Formatting.GREEN), false);
 			return 1;
 		} catch (Exception e) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.reload.books.fail", e.getMessage()).withStyle(ChatFormatting.RED), false);
+			player.sendMessage(Text.translatable("command.ssc_addon.reload.books.fail", e.getMessage()).formatted(Formatting.RED), false);
 			LOGGER.error("Failed to reload books", e);
 			return 0;
 		}
@@ -689,15 +689,15 @@ public class SscAddonCommands {
 	/**
 	 * 重新加载模组配置
 	 */
-	private static int reloadConfig(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int reloadConfig(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 
 		try {
 			ConfigChangeManager.notifyChange();
-			player.displayClientMessage(Component.translatable("command.ssc_addon.reload.config.success").withStyle(ChatFormatting.GREEN), true);
+			player.sendMessage(Text.translatable("command.ssc_addon.reload.config.success").formatted(Formatting.GREEN), true);
 			return 1;
 		} catch (Exception e) {
-			player.displayClientMessage(Component.translatable("command.ssc_addon.reload.config.fail", e.getMessage()).withStyle(ChatFormatting.RED), true);
+			player.sendMessage(Text.translatable("command.ssc_addon.reload.config.fail", e.getMessage()).formatted(Formatting.RED), true);
 			LOGGER.error("Failed to reload config", e);
 			return 0;
 		}
@@ -712,10 +712,10 @@ public class SscAddonCommands {
 	 * 服务端通过 S2C 包推送当前白名单数据给客户端，由客户端打开 WhitelistManageScreen。
 	 * 控制台 / 命令方块调用会返回错误。
 	 */
-	private static int openWhitelistGui(CommandContext<CommandSourceStack> context) {
-		ServerPlayer player = context.getSource().getPlayer();
+	private static int openWhitelistGui(CommandContext<ServerCommandSource> context) {
+		ServerPlayerEntity player = context.getSource().getPlayer();
 		if (player == null) {
-			context.getSource().sendFailure(Component.translatable("command.ssc_addon.whitelist.gui.console_only"));
+			context.getSource().sendError(Text.translatable("command.ssc_addon.whitelist.gui.console_only"));
 			return 0;
 		}
 		net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking.sendWhitelistSync(player);
@@ -735,113 +735,113 @@ public class SscAddonCommands {
 		};
 	}
 
-	private static boolean isSkillBlocked(ServerPlayer player, String form, String skill) {
+	private static boolean isSkillBlocked(ServerPlayerEntity player, String form, String skill) {
 		String tag = SKILL_BLOCKED_PREFIX + form + ":" + skill;
-		return player.getTags().contains(tag);
+		return player.getCommandTags().contains(tag);
 	}
 
-	private static void blockSkill(ServerPlayer player, String form, String skill) {
+	private static void blockSkill(ServerPlayerEntity player, String form, String skill) {
 		String tag = SKILL_BLOCKED_PREFIX + form + ":" + skill;
-		player.addTag(tag);
+		player.addCommandTag(tag);
 	}
 
-	private static void unblockSkill(ServerPlayer player, String form, String skill) {
+	private static void unblockSkill(ServerPlayerEntity player, String form, String skill) {
 		String tag = SKILL_BLOCKED_PREFIX + form + ":" + skill;
-		player.getTags().remove(tag);
+		player.getCommandTags().remove(tag);
 	}
 
-	private static List<String> getBlockedSkills(ServerPlayer player) {
-		return player.getTags().stream()
+	private static List<String> getBlockedSkills(ServerPlayerEntity player) {
+		return player.getCommandTags().stream()
 				.filter(tag -> tag.startsWith(SKILL_BLOCKED_PREFIX))
 				.map(tag -> tag.substring(SKILL_BLOCKED_PREFIX.length()))
 				.toList();
 	}
 
-	private static int invokeSkillOnSelf(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer player = context.getSource().getPlayerOrException();
+	private static int invokeSkillOnSelf(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
 		String form = StringArgumentType.getString(context, "form");
 		String skill = StringArgumentType.getString(context, "skill");
 		return invokeSkill(context, player, form, skill);
 	}
 
-	private static int invokeSkillOnPlayer(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int invokeSkillOnPlayer(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String form = StringArgumentType.getString(context, "form");
 		String skill = StringArgumentType.getString(context, "skill");
 		return invokeSkill(context, target, form, skill);
 	}
 
-	private static int blockSkill(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int blockSkill(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String form = StringArgumentType.getString(context, "form");
 		String skill = StringArgumentType.getString(context, "skill");
 
 		if (isSkillBlocked(target, form, skill)) {
-			context.getSource().sendSuccess(() -> Component.translatable(
+			context.getSource().sendFeedback(() -> Text.translatable(
 					"command.ssc_addon.block_skill.already", form, skill, target.getName().getString()
-			).withStyle(ChatFormatting.YELLOW), false);
+			).formatted(Formatting.YELLOW), false);
 			return 0;
 		}
 
 		blockSkill(target, form, skill);
 		LOGGER.info("[SSC] Blocked " + form + "/" + skill + " for " + target.getName().getString());
-		context.getSource().sendSuccess(() -> Component.translatable(
+		context.getSource().sendFeedback(() -> Text.translatable(
 				"command.ssc_addon.block_skill.success", target.getName().getString(), form, skill
-		).withStyle(ChatFormatting.GREEN), true);
+		).formatted(Formatting.GREEN), true);
 		return 1;
 	}
 
-	private static int unblockSkill(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int unblockSkill(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String form = StringArgumentType.getString(context, "form");
 		String skill = StringArgumentType.getString(context, "skill");
 
 		if (!isSkillBlocked(target, form, skill)) {
-			context.getSource().sendSuccess(() -> Component.translatable(
+			context.getSource().sendFeedback(() -> Text.translatable(
 					"command.ssc_addon.unblock_skill.not_blocked", form, skill, target.getName().getString()
-			).withStyle(ChatFormatting.YELLOW), false);
+			).formatted(Formatting.YELLOW), false);
 			return 0;
 		}
 
 		unblockSkill(target, form, skill);
 		LOGGER.info("[SSC] Unblocked " + form + "/" + skill + " for " + target.getName().getString());
-		context.getSource().sendSuccess(() -> Component.translatable(
+		context.getSource().sendFeedback(() -> Text.translatable(
 				"command.ssc_addon.unblock_skill.success", target.getName().getString(), form, skill
-		).withStyle(ChatFormatting.GREEN), true);
+		).formatted(Formatting.GREEN), true);
 		return 1;
 	}
 
-	private static int listBlockedSkills(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int listBlockedSkills(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		List<String> blockedSkills = getBlockedSkills(target);
 
 		if (blockedSkills.isEmpty()) {
-			context.getSource().sendSuccess(() -> Component.translatable(
+			context.getSource().sendFeedback(() -> Text.translatable(
 					"command.ssc_addon.list_blocked.empty", target.getName().getString()
-			).withStyle(ChatFormatting.YELLOW), false);
+			).formatted(Formatting.YELLOW), false);
 			return 0;
 		}
 
-		context.getSource().sendSuccess(() -> Component.translatable(
+		context.getSource().sendFeedback(() -> Text.translatable(
 				"command.ssc_addon.list_blocked.header", target.getName().getString()
-		).withStyle(ChatFormatting.GOLD), false);
+		).formatted(Formatting.GOLD), false);
 
 		for (String blocked : blockedSkills) {
-			context.getSource().sendSuccess(() -> Component.translatable(
+			context.getSource().sendFeedback(() -> Text.translatable(
 					"command.ssc_addon.list_blocked.entry", blocked
-			).withStyle(ChatFormatting.WHITE), false);
+			).formatted(Formatting.WHITE), false);
 		}
 
 		return blockedSkills.size();
 	}
 
-	private static int invokeSkill(CommandContext<CommandSourceStack> context, ServerPlayer target, String form, String skill) {
-		CommandSourceStack source = context.getSource();
-		String executorName = source.getTextName();
+	private static int invokeSkill(CommandContext<ServerCommandSource> context, ServerPlayerEntity target, String form, String skill) {
+		ServerCommandSource source = context.getSource();
+		String executorName = source.getName();
 
 		if (isSkillBlocked(target, form, skill)) {
 			LOGGER.warn("[SSC] Blocked skill invocation: " + form + "/" + skill + " on " + target.getName());
-			source.sendFailure(Component.translatable("command.ssc_addon.ssc_test.skill_blocked", form, skill));
+			source.sendError(Text.translatable("command.ssc_addon.ssc_test.skill_blocked", form, skill));
 			return 0;
 		}
 
@@ -854,19 +854,19 @@ public class SscAddonCommands {
         }
 
         LOGGER.warn("[SSC] Unknown form: " + form);
-		source.sendFailure(Component.translatable("command.ssc_addon.ssc_test.unknown_form", form));
+		source.sendError(Text.translatable("command.ssc_addon.ssc_test.unknown_form", form));
 		return 0;
 	}
 
-	private static int invokeSnowFoxSkill(CommandSourceStack source, ServerPlayer target, String skill, String executorName) {
+	private static int invokeSnowFoxSkill(ServerCommandSource source, ServerPlayerEntity target, String skill, String executorName) {
 		return switch (skill) {
 			case "melee_primary" -> {
 				LOGGER.info("[SSC] Invoking snow_fox/melee_primary on " + target.getName().getString() + " by " + executorName);
 				boolean success = SnowFoxSpMeleeAbility.execute(target);
 				if (!success) {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.melee_primary.fail").withStyle(ChatFormatting.YELLOW), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.melee_primary.fail").formatted(Formatting.YELLOW), false);
 				} else {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.melee_primary.success").withStyle(ChatFormatting.GREEN), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.melee_primary.success").formatted(Formatting.GREEN), false);
 				}
 				yield 1;
 			}
@@ -874,9 +874,9 @@ public class SscAddonCommands {
 				LOGGER.info("[SSC] Invoking snow_fox/melee_secondary on " + target.getName().getString() + " by " + executorName);
 				boolean success = SnowFoxSpTeleportAttack.execute(target);
 				if (!success) {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.melee_secondary.fail").withStyle(ChatFormatting.YELLOW), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.melee_secondary.fail").formatted(Formatting.YELLOW), false);
 				} else {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.melee_secondary.success").withStyle(ChatFormatting.GREEN), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.melee_secondary.success").formatted(Formatting.GREEN), false);
 				}
 				yield 1;
 			}
@@ -884,9 +884,9 @@ public class SscAddonCommands {
 				LOGGER.info("[SSC] Invoking snow_fox/ranged_primary (frost_ball) on " + target.getName().getString() + " by " + executorName);
 				boolean success = invokeSnowFoxFrostBall(target);
 				if (!success) {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_primary.fail").withStyle(ChatFormatting.YELLOW), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_primary.fail").formatted(Formatting.YELLOW), false);
 				} else {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_primary.success").withStyle(ChatFormatting.GREEN), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_primary.success").formatted(Formatting.GREEN), false);
 				}
 				yield success ? 1 : 0;
 			}
@@ -894,29 +894,29 @@ public class SscAddonCommands {
 				LOGGER.info("[SSC] Invoking snow_fox/ranged_secondary (frost_storm) on " + target.getName().getString() + " by " + executorName);
 				boolean success = SnowFoxSpFrostStorm.startCharging(target);
 				if (!success) {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_secondary.fail").withStyle(ChatFormatting.YELLOW), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_secondary.fail").formatted(Formatting.YELLOW), false);
 				} else {
-					source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_secondary.success").withStyle(ChatFormatting.GREEN), false);
+					source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.snow_fox.ranged_secondary.success").formatted(Formatting.GREEN), false);
 				}
 				yield 1;
 			}
 default -> {
                 LOGGER.warn("[SSC] Unknown snow_fox skill: " + skill);
-                source.sendFailure(Component.translatable("command.ssc_addon.ssc_test.unknown_skill", skill, "snow_fox"));
+                source.sendError(Text.translatable("command.ssc_addon.ssc_test.unknown_skill", skill, "snow_fox"));
                 yield 0;
             }
         };
     }
 
-    private static int invokeAnubisWolfSkill(CommandSourceStack source, ServerPlayer target, String skill, String executorName) {
+    private static int invokeAnubisWolfSkill(ServerCommandSource source, ServerPlayerEntity target, String skill, String executorName) {
         return switch (skill) {
             case "summon_wolves" -> {
                 LOGGER.info("[SSC] Invoking anubis_wolf/summon_wolves on " + target.getName().getString() + " by " + executorName);
                 boolean success = AnubisWolfSpSummonWolves.execute(target);
                 if (!success) {
-                    source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.anubis_wolf.summon_wolves.fail").withStyle(ChatFormatting.YELLOW), false);
+                    source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.anubis_wolf.summon_wolves.fail").formatted(Formatting.YELLOW), false);
                 } else {
-                    source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.anubis_wolf.summon_wolves.success").withStyle(ChatFormatting.GREEN), false);
+                    source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.anubis_wolf.summon_wolves.success").formatted(Formatting.GREEN), false);
                 }
                 yield 1;
             }
@@ -924,43 +924,43 @@ default -> {
                 LOGGER.info("[SSC] Invoking anubis_wolf/death_domain on " + target.getName().getString() + " by " + executorName);
                 boolean success = AnubisWolfSpDeathDomain.execute(target);
                 if (!success) {
-                    source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.anubis_wolf.death_domain.fail").withStyle(ChatFormatting.YELLOW), false);
+                    source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.anubis_wolf.death_domain.fail").formatted(Formatting.YELLOW), false);
                 } else {
-                    source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.anubis_wolf.death_domain.success").withStyle(ChatFormatting.GREEN), false);
+                    source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.anubis_wolf.death_domain.success").formatted(Formatting.GREEN), false);
                 }
                 yield 1;
             }
             default -> {
                 LOGGER.warn("[SSC] Unknown anubis_wolf skill: " + skill);
-                source.sendFailure(Component.translatable("command.ssc_addon.ssc_test.unknown_skill", skill, "anubis_wolf"));
+                source.sendError(Text.translatable("command.ssc_addon.ssc_test.unknown_skill", skill, "anubis_wolf"));
                 yield 0;
             }
         };
     }
 
-	private static int invokeAllaySkill(CommandSourceStack source, ServerPlayer target, String skill, String executorName) {
+	private static int invokeAllaySkill(ServerCommandSource source, ServerPlayerEntity target, String skill, String executorName) {
 		return switch (skill) {
 			case "jukebox_charge" -> {
 				LOGGER.info("[SSC] Invoking allay/jukebox_charge on " + target.getName().getString() + " by " + executorName);
 				AllaySPJukebox.tick(target);
-				source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.allay.jukebox_charge.triggered").withStyle(ChatFormatting.AQUA), false);
+				source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.allay.jukebox_charge.triggered").formatted(Formatting.AQUA), false);
 				yield 1;
 			}
 			case "group_heal" -> {
 				LOGGER.info("[SSC] Invoking allay/group_heal on " + target.getName().getString() + " by " + executorName);
 				AllaySPGroupHeal.tick(target);
-				source.sendSuccess(() -> Component.translatable("command.ssc_addon.ssc_test.allay.group_heal.triggered").withStyle(ChatFormatting.AQUA), false);
+				source.sendFeedback(() -> Text.translatable("command.ssc_addon.ssc_test.allay.group_heal.triggered").formatted(Formatting.AQUA), false);
 				yield 1;
 			}
 			default -> {
 				LOGGER.warn("[SSC] Unknown allay skill: " + skill);
-				source.sendFailure(Component.translatable("command.ssc_addon.ssc_test.unknown_skill", skill, "allay"));
+				source.sendError(Text.translatable("command.ssc_addon.ssc_test.unknown_skill", skill, "allay"));
 				yield 0;
 			}
 		};
 	}
 
-	private static boolean invokeSnowFoxFrostBall(ServerPlayer player) {
+	private static boolean invokeSnowFoxFrostBall(ServerPlayerEntity player) {
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SNOW_FOX_RANGED_PRIMARY_CD) > 0) {
 			return false;
 		}
@@ -974,14 +974,14 @@ default -> {
 		}
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SNOW_FOX_RANGED_PRIMARY_CD, 100);
 
-		FrostBallEntity frostBall = new FrostBallEntity(player.level(), player);
-		Vec3 lookDir = player.getLookAngle().normalize();
-		Vec3 startPos = player.position().add(lookDir.scale(0.5));
+		FrostBallEntity frostBall = new FrostBallEntity(player.getWorld(), player);
+		Vec3d lookDir = player.getRotationVector().normalize();
+		Vec3d startPos = player.getPos().add(lookDir.multiply(0.5));
 		frostBall.setPos(startPos.x, startPos.y, startPos.z);
-		frostBall.setDeltaMovement(lookDir.scale(3.0));
-		player.level().addFreshEntity(frostBall);
-		player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-			SoundEvents.SNOWBALL_THROW, SoundSource.PLAYERS, 0.5f, 1.2f);
+		frostBall.setVelocity(lookDir.multiply(3.0));
+		player.getWorld().spawnEntity(frostBall);
+		player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+			SoundEvents.ENTITY_SNOWBALL_THROW, SoundCategory.PLAYERS, 0.5f, 1.2f);
 		return true;
 	}
 }

@@ -6,7 +6,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
 
@@ -37,29 +37,29 @@ public final class ParasiticSeedEnergyRegen {
 
     public static void init() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
                 tickPlayer(player);
             }
         });
     }
 
-    private static void tickPlayer(ServerPlayer player) {
+    private static void tickPlayer(ServerPlayerEntity player) {
         // 仅果蝠形态持有种子量能量资源；非该形态直接清理累计并跳过
         if (!PowerUtils.hasResource(player, FormIdentifiers.BAT_PARASITIC_FRUIT_SEED_ENERGY, 0)) {
-            ACCUM.remove(player.getUUID());
+            ACCUM.remove(player.getUuid());
             return;
         }
         int current = PowerUtils.getResourceValue(player, FormIdentifiers.BAT_PARASITIC_FRUIT_SEED_ENERGY);
         if (current >= MAX_ENERGY) {
-            ACCUM.put(player.getUUID(), 0);
+            ACCUM.put(player.getUuid(), 0);
             return;
         }
         int interval = ParasiticCombatTracker.isInCombat(player) ? INTERVAL_COMBAT : INTERVAL_PEACE;
-        int acc = ACCUM.getOrDefault(player.getUUID(), 0) + 1;
+        int acc = ACCUM.getOrDefault(player.getUuid(), 0) + 1;
         if (acc >= interval) {
             PowerUtils.changeResourceValueAndSync(player, FormIdentifiers.BAT_PARASITIC_FRUIT_SEED_ENERGY, 1);
             acc = 0;
         }
-        ACCUM.put(player.getUUID(), acc);
+        ACCUM.put(player.getUuid(), acc);
     }
 }

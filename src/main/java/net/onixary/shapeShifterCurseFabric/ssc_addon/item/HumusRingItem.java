@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.minecraft.item.tooltip.TooltipType;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
@@ -29,7 +29,7 @@ import java.util.List;
  */
 public class HumusRingItem extends AccessoryItem {
 
-	private static final Identifier MINESHAFT_LOOT = new Identifier("minecraft", "chests/abandoned_mineshaft");
+	private static final Identifier MINESHAFT_LOOT = Identifier.of("minecraft", "chests/abandoned_mineshaft");
 
 	public HumusRingItem(Settings settings) {
 		super(settings);
@@ -39,8 +39,8 @@ public class HumusRingItem extends AccessoryItem {
 	 * 注册腐殖之戒到废弃矿井战利品表（25% 概率）。
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!MINESHAFT_LOOT.equals(id)) return;
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (!MINESHAFT_LOOT.equals(key.getValue())) return;
 			LootPool.Builder pool = LootPool.builder()
 					.rolls(ConstantLootNumberProvider.create(1.0F))
 					.conditionally(RandomChanceLootCondition.builder(0.20F))
@@ -55,10 +55,10 @@ public class HumusRingItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.humus_ring.tooltip_1").formatted(Formatting.DARK_PURPLE));
 		tooltip.add(Text.translatable("item.ssc_addon.humus_ring.tooltip_2").formatted(Formatting.GREEN));
 		tooltip.add(Text.translatable("item.ssc_addon.humus_ring.tooltip_exclusive").formatted(Formatting.GOLD));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

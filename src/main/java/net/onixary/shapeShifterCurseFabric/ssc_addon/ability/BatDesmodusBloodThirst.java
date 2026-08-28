@@ -1,7 +1,9 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -105,7 +107,7 @@ public final class BatDesmodusBloodThirst {
 
     /** 客户端版本，便于 HUD 染色 */
     @net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
-    public static int getClientStage(net.minecraft.entity.player.PlayerEntity player) {
+    public static int getClientStage(PlayerEntity player) {
         int[] vm = PowerUtils.getClientResourceValueAndMax(player, FormIdentifiers.BAT_BLOOD_RESOURCE);
         int b = vm[0];
         if (b < 25) return 0;
@@ -199,7 +201,7 @@ public final class BatDesmodusBloodThirst {
             if (b > 0) {
                 int decay = DECAY_PER_SEC;
                 // 头顶天空可见时按昼夜节奏调整（与 sun_weak/moon_buff power 的 time_of_day 判定一致）
-                net.minecraft.server.world.ServerWorld sw = player.getServerWorld();
+                ServerWorld sw = player.getServerWorld();
                 if (sw.isSkyVisible(player.getBlockPos())) {
                     long tod = sw.getTimeOfDay() % 24000L;
                     boolean isNight = tod >= 13000L && tod <= 23000L;

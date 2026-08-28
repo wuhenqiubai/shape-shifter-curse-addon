@@ -1,8 +1,8 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin;
 
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
 import net.onixary.shapeShifterCurseFabric.data.CodexData;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.PlayerFormComponent;
@@ -36,8 +36,8 @@ import java.util.List;
 public class SscAddonCodexStatusMixin {
 
     @Inject(method = "getContentText", at = @At("RETURN"), cancellable = true)
-    private static void appendEvolutionToAppearance(CodexData.ContentType type, Player player,
-                                                    CallbackInfoReturnable<Component> cir) {
+    private static void appendEvolutionToAppearance(CodexData.ContentType type, PlayerEntity player,
+                                                    CallbackInfoReturnable<Text> cir) {
         if (type != CodexData.ContentType.APPEARANCE) {
             return;
         }
@@ -70,7 +70,7 @@ public class SscAddonCodexStatusMixin {
         if (comp == null) {
             return;
         }
-        Component base = cir.getReturnValue();
+        Text base = cir.getReturnValue();
         if (base == null) {
             return;
         }
@@ -88,12 +88,12 @@ public class SscAddonCodexStatusMixin {
             }
         }
 
-        MutableComponent dynamic = Component.empty();
+        MutableText dynamic = Text.empty();
         dynamic.append(base);
-        dynamic.append(Component.literal("\n\n"));
-        dynamic.append(Component.translatable("text.ssc_addon.evolution.book.summary_title"));
-        dynamic.append(Component.literal("\n"));
-        dynamic.append(Component.translatable("text.ssc_addon.evolution.book.summary_stats",
+        dynamic.append(Text.literal("\n\n"));
+        dynamic.append(Text.translatable("text.ssc_addon.evolution.book.summary_title"));
+        dynamic.append(Text.literal("\n"));
+        dynamic.append(Text.translatable("text.ssc_addon.evolution.book.summary_stats",
                 unlockedCount, unlockableCount, comp.getPoints(), player.experienceLevel));
         // 逐个已解锁节点追加书页化叙述
         for (EvolutionNode node : nodes) {
@@ -103,11 +103,11 @@ public class SscAddonCodexStatusMixin {
             if (!comp.isUnlocked(node.id)) {
                 continue;
             }
-            dynamic.append(Component.literal("\n\n\u2022 "));
-            dynamic.append(Component.translatable(node.nameKey));
-            dynamic.append(Component.literal("\n"));
+            dynamic.append(Text.literal("\n\n\u2022 "));
+            dynamic.append(Text.translatable(node.nameKey));
+            dynamic.append(Text.literal("\n"));
             String bookKey = node.descKey.substring(0, node.descKey.length() - 5) + ".book";
-            dynamic.append(Component.translatable(bookKey));
+            dynamic.append(Text.translatable(bookKey));
         }
         cir.setReturnValue(dynamic);
     }

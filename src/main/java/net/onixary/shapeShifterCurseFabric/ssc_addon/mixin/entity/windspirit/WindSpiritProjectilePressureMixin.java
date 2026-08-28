@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.windspirit;
 
-import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.entity.projectile.ProjectileEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritWindPressureManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,11 +11,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 风灵「风压领域」：拦所有弹射物的 tick，调用 WindSpiritWindPressureManager 判定并应用减速。
  * 拦基类 ProjectileEntity，覆盖箭矢/火球/三叉戟等所有子类。
  */
-@Mixin(Projectile.class)
+@Mixin(ProjectileEntity.class)
 public abstract class WindSpiritProjectilePressureMixin {
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void ssc_addon$applyWindPressure(CallbackInfo ci) {
-        WindSpiritWindPressureManager.tryApplySlow((Projectile) (Object) this);
+        WindSpiritWindPressureManager.tryApplySlow((ProjectileEntity) (Object) this);
     }
 }

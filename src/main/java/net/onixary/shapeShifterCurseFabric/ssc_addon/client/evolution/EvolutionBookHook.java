@@ -2,9 +2,9 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.evolution;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.custom_ui.BookOfShapeShifterScreenV2_P1;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
@@ -35,7 +35,7 @@ public final class EvolutionBookHook {
                 return;
             }
             IForm currentForm = RegPlayerFormComponent.PLAYER_FORM.get(client.player).nowForm;
-            ResourceLocation formId = (currentForm == null) ? null : currentForm.getFormID();
+            Identifier formId = (currentForm == null) ? null : currentForm.getFormID();
             // 当前形态是某条「已开放」进化路线的起点形态时，显示进化加点入口
             EvolutionRoute route = EvolutionRegistry.INSTANCE.getRouteByStartForm(formId);
             if (route == null || !route.enabled) {
@@ -50,10 +50,10 @@ public final class EvolutionBookHook {
             int btnY = bookPosY + 2 * bookScale;
             int btnW = 70 * bookScale;
             int btnH = 12 * bookScale;
-            Button button = Button.builder(
-                    Component.translatable("text.ssc_addon.evolution.book.button"),
+            ButtonWidget button = ButtonWidget.builder(
+                    Text.translatable("text.ssc_addon.evolution.book.button"),
                     b -> client.setScreen(new EvolutionScreen(screen))
-            ).bounds(btnX, btnY, btnW, btnH).build();
+            ).dimensions(btnX, btnY, btnW, btnH).build();
             Screens.getButtons(screen).add(button);
 
         });

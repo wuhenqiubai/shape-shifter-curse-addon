@@ -18,7 +18,7 @@ public final class RegAddonEntities {
 	/** 月织蛛「搭路模式」蛛丝弹：命中方块走附属移植版搭路（网膜让位），其余行为同原版 WebBullet。 */
 	public static final EntityType<BridgeWebBullet> BRIDGE_WEB_BULLET = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "bridge_web_bullet"),
+			Identifier.of("ssc_addon", "bridge_web_bullet"),
 			FabricEntityTypeBuilder.<BridgeWebBullet>create(SpawnGroup.MISC, BridgeWebBullet::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeChunks(10)
@@ -28,7 +28,7 @@ public final class RegAddonEntities {
 	/** 月织蛛「攻击模式」蓄力蛛丝弹：命中方块 / 实体后按蓄力档在半径内贴面铺减速蛛网（web_membrane）。 */
 	public static final EntityType<WebMembraneBullet> WEB_MEMBRANE_BULLET = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "web_membrane_bullet"),
+			Identifier.of("ssc_addon", "web_membrane_bullet"),
 			FabricEntityTypeBuilder.<WebMembraneBullet>create(SpawnGroup.MISC, WebMembraneBullet::new)
 					.dimensions(EntityDimensions.fixed(0.5f, 0.5f))
 					.trackRangeChunks(10)
@@ -38,7 +38,7 @@ public final class RegAddonEntities {
 	/** 月织蛛「蛛丝荡漾」次技能飞弹：抛物线飞行，命中方块→摆荡 / 命中生物→tether 拖拽 / miss→落地消失。 */
 	public static final EntityType<SpiderSwingBullet> SPIDER_SWING_BULLET = Registry.register(
 			Registries.ENTITY_TYPE,
-			new Identifier("ssc_addon", "spider_swing_bullet"),
+			Identifier.of("ssc_addon", "spider_swing_bullet"),
 			FabricEntityTypeBuilder.<SpiderSwingBullet>create(SpawnGroup.MISC, SpiderSwingBullet::new)
 					.dimensions(EntityDimensions.fixed(0.4f, 0.4f))
 					.trackRangeChunks(10)

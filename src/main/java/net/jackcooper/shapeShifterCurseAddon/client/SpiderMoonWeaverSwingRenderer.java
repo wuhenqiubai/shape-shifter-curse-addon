@@ -17,7 +17,6 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 import java.util.Iterator;
@@ -33,7 +32,7 @@ import java.util.UUID;
 @Environment(EnvType.CLIENT)
 public final class SpiderMoonWeaverSwingRenderer {
 
-	private static final Identifier ROPE_TEXTURE = new Identifier("my_addon", "textures/entity/web_swing_rope.png");
+	private static final Identifier ROPE_TEXTURE = Identifier.of("my_addon", "textures/entity/web_swing_rope.png");
 	private static final float ROPE_HALF_WIDTH = 0.04f;
 
 	private SpiderMoonWeaverSwingRenderer() {}
@@ -44,7 +43,7 @@ public final class SpiderMoonWeaverSwingRenderer {
 		World world = MinecraftClient.getInstance().world;
 		if (world == null) return;
 
-		float tickDelta = ctx.tickDelta();
+		float tickDelta = MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true);
 		Camera cam = ctx.camera();
 		Vec3d camPos = cam.getPos();
 		MatrixStack ms = ctx.matrixStack();
@@ -107,7 +106,6 @@ public final class SpiderMoonWeaverSwingRenderer {
 
 		MatrixStack.Entry e = ms.peek();
 		Matrix4f pose = e.getPositionMatrix();
-		Matrix3f nrm = e.getNormalMatrix();
 
 		float len = (float) full;
 		float halfW = ROPE_HALF_WIDTH;
@@ -121,18 +119,18 @@ public final class SpiderMoonWeaverSwingRenderer {
 		for (int q = 0; q < 2; q++) {
 			float ox = (q == 0) ? halfW : 0f;
 			float oz = (q == 0) ? 0f : halfW;
-			vtx(vc, pose, nrm, -ox, 0f, -oz, 0f, v1, r, g, b, a);
-			vtx(vc, pose, nrm, -ox, len, -oz, 0f, v0, r, g, b, a);
-			vtx(vc, pose, nrm, ox, len, oz, 1f, v0, r, g, b, a);
-			vtx(vc, pose, nrm, ox, 0f, oz, 1f, v1, r, g, b, a);
+			vtx(vc, pose, e, -ox, 0f, -oz, 0f, v1, r, g, b, a);
+			vtx(vc, pose, e, -ox, len, -oz, 0f, v0, r, g, b, a);
+			vtx(vc, pose, e, ox, len, oz, 1f, v0, r, g, b, a);
+			vtx(vc, pose, e, ox, 0f, oz, 1f, v1, r, g, b, a);
 		}
 		ms.pop();
 	}
 
-	private static void vtx(VertexConsumer vc, Matrix4f pose, Matrix3f nrm,
+	private static void vtx(VertexConsumer vc, Matrix4f pose, MatrixStack.Entry e,
 	                        float x, float y, float z, float u, float v,
 	                        float r, float g, float b, float a) {
 		vc.vertex(pose, x, y, z).color(r, g, b, a).texture(u, v)
-				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(nrm, 0f, 1f, 0f).next();
+				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(e, 0f, 1f, 0f);
 	}
 }

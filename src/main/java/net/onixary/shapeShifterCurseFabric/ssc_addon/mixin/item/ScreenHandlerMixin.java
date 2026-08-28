@@ -1,15 +1,15 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.item;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
-import net.minecraft.core.NonNullList;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.PotionItem;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.PotionItem;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.collection.DefaultedList;
 import net.onixary.shapeShifterCurseFabric.additional_power.ModifyPotionStackPower;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.item.AllayJukeboxItem;
@@ -24,41 +24,41 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(AbstractContainerMenu.class)
+@Mixin(ScreenHandler.class)
 public abstract class ScreenHandlerMixin {
 
 	@Shadow
-	public final NonNullList<Slot> slots = NonNullList.create();
+	public final DefaultedList<Slot> slots = DefaultedList.of();
 
 	@Shadow
 	public abstract Slot getSlot(int index);
 
 	@Shadow
-	public abstract ItemStack getCarried();
+	public abstract ItemStack getCursorStack();
 
-	@Inject(method = "clicked", at = @At("HEAD"), cancellable = true)
-	private void onSlotClick(int slotIndex, int button, ClickType actionType, Player player, CallbackInfo ci) {
+	@Inject(method = "onSlotClick", at = @At("HEAD"), cancellable = true)
+	private void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player, CallbackInfo ci) {
 		// 药水可叠加形态：双击(PICKUP_ALL)合并同类药水。原版 PICKUP_ALL 走静态 canInsertItemIntoSlot，
 		// 其 getMaxCount 不受本类 internalOnSlotClick 重定向影响(药水原版=1)，导致 2+ 堆叠被跳过、无法合并。
 		// 故对持有该 Power 的玩家自行实现合并并取消原版处理，背包与箱子等任意容器界面通用。
-		if (actionType == ClickType.PICKUP_ALL && ssc_addon$tryMergeStackablePotions(button, player)) {
+		if (actionType == SlotActionType.PICKUP_ALL && ssc_addon$tryMergeStackablePotions(button, player)) {
 			ci.cancel();
 			return;
 		}
 		if (slotIndex >= 0 && slotIndex < this.slots.size()) {
 			Slot slot = this.getSlot(slotIndex);
-			if (slot != null && slot.hasItem()) {
-				ItemStack stack = slot.getItem();
+			if (slot != null && slot.hasStack()) {
+				ItemStack stack = slot.getStack();
 
 				// Potion Bag: 光标拿着药水时放入袋中（左/右键均可，优先非快捷消耗栏），否则锁定不可移动
-				if (stack.is(SscAddon.POTION_BAG)) {
-					if (actionType == ClickType.PICKUP) {
-						ItemStack cursorStack = this.getCarried();
+				if (stack.isOf(SscAddon.POTION_BAG)) {
+					if (actionType == SlotActionType.PICKUP) {
+						ItemStack cursorStack = this.getCursorStack();
 						if (!cursorStack.isEmpty() && PotionBagItem.isStorable(cursorStack)
-								&& PotionBagItem.insertIntoBag(stack, cursorStack, player.level().registryAccess()) > 0) {
-							player.playSound(SoundEvents.BUNDLE_INSERT, 0.8F,
-									0.8F + player.level().getRandom().nextFloat() * 0.4F);
-							slot.setChanged();
+								&& PotionBagItem.insertIntoBag(stack, cursorStack, player.getWorld().getRegistryManager()) > 0) {
+							player.playSound(SoundEvents.ITEM_BUNDLE_INSERT, 0.8F,
+									0.8F + player.getWorld().getRandom().nextFloat() * 0.4F);
+							slot.markDirty();
 						}
 					}
 					ci.cancel();
@@ -66,28 +66,28 @@ public abstract class ScreenHandlerMixin {
 				}
 
 				// Block moving Allay Heal Wand
-				if (stack.is(SscAddon.ALLAY_HEAL_WAND)) {
+				if (stack.isOf(SscAddon.ALLAY_HEAL_WAND)) {
 					ci.cancel();
 					return;
 				}
 
 				// Allay Jukebox: allow disc charging, block other interactions
-				if (stack.is(SscAddon.ALLAY_JUKEBOX)) {
+				if (stack.isOf(SscAddon.ALLAY_JUKEBOX)) {
 					// Check if cursor has a music disc - allow charging
-					ItemStack cursorStack = this.getCarried();
+					ItemStack cursorStack = this.getCursorStack();
 					// Try to charge the jukebox with the disc
-					if (cursorStack != null && !cursorStack.isEmpty() && cursorStack.has(net.minecraft.core.component.DataComponents.JUKEBOX_PLAYABLE) &&
+					if (cursorStack != null && !cursorStack.isEmpty() && cursorStack.contains(net.minecraft.component.DataComponentTypes.JUKEBOX_PLAYABLE) &&
 							AllayJukeboxItem.tryChargeWithDisc(stack, cursorStack)) {
 						// Play charge sound
-						player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-								SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.PLAYERS, 1.0f, 1.5f);
+						player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+								SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, 1.0f, 1.5f);
 					}
 					ci.cancel();
 				}
 			}
-		} else if (actionType == ClickType.SWAP && button >= 0 && button < 9) {
-			ItemStack hotbarStack = player.getInventory().getItem(button);
-			if (hotbarStack.is(SscAddon.POTION_BAG) || hotbarStack.is(SscAddon.ALLAY_HEAL_WAND) || hotbarStack.is(SscAddon.ALLAY_JUKEBOX)) {
+		} else if (actionType == SlotActionType.SWAP && button >= 0 && button < 9) {
+			ItemStack hotbarStack = player.getInventory().getStack(button);
+			if (hotbarStack.isOf(SscAddon.POTION_BAG) || hotbarStack.isOf(SscAddon.ALLAY_HEAL_WAND) || hotbarStack.isOf(SscAddon.ALLAY_JUKEBOX)) {
 				ci.cancel();
 			}
 		}
@@ -100,8 +100,8 @@ public abstract class ScreenHandlerMixin {
 	 * 双端一致(用方法参数 player、与原版相同的 takeStackRange/increment 操作，不引用客户端类)。
 	 */
 	@Unique
-	private boolean ssc_addon$tryMergeStackablePotions(int button, Player player) {
-		ItemStack cursor = this.getCarried();
+	private boolean ssc_addon$tryMergeStackablePotions(int button, PlayerEntity player) {
+		ItemStack cursor = this.getCursorStack();
 		if (cursor.isEmpty()) {
 			return false;
 		}
@@ -112,7 +112,7 @@ public abstract class ScreenHandlerMixin {
 			if (n <= 0) {
 				return false;
 			}
-			maxStack = Math.max(n, cursor.getMaxStackSize());
+			maxStack = Math.max(n, cursor.getMaxCount());
 		} else if (cursor.getItem() instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem) {
 			maxStack = net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.getStackLimitFor(player);
 			if (maxStack <= 1) {
@@ -129,26 +129,27 @@ public abstract class ScreenHandlerMixin {
 		for (int pass = 0; pass < 2; ++pass) {
 			for (int q = start; q >= 0 && q < this.slots.size() && cursor.getCount() < maxStack; q += step) {
 				Slot slot = this.slots.get(q);
-				if (!slot.hasItem() || !slot.mayPickup(player)) {
+				if (!slot.hasStack() || !slot.canTakeItems(player)) {
 					continue;
 				}
-				ItemStack slotStack = slot.getItem();
-				if (!ItemStack.isSameItemSameComponents(cursor, slotStack)) {
+				ItemStack slotStack = slot.getStack();
+				if (!ItemStack.areItemsAndComponentsEqual(cursor, slotStack)) {
 					continue;
 				}
 				if (pass == 0 && slotStack.getCount() >= maxStack) {
 					continue;
 				}
-				ItemStack taken = slot.safeTake(slotStack.getCount(), maxStack - cursor.getCount(), player);
-				cursor.grow(taken.getCount());
+				ItemStack taken = slot.takeStackRange(slotStack.getCount(), maxStack - cursor.getCount(), player);
+				cursor.increment(taken.getCount());
 			}
 		}
 		return true;
 	}
 
-	/**
+	// TODO(Ravel): target method internalOnSlotClick with the signature not found
+/**
 	 * 让「药水可叠加」形态(持有 {@link ModifyPotionStackPower})的玩家在任意容器界面操作药水时，
-	 * 把 {@code internalOnSlotClick} 内用 {@link ItemStack#getMaxStackSize()}(药水原版=1)判定的上限改为 N。
+	 * 把 {@code internalOnSlotClick} 内用 {@link ItemStack#getMaxCount()}(药水原版=1)判定的上限改为 N。
 	 * 主要修复创造模式「物品栏」标签页 / 中键复制(CLONE) 等不走 {@code Slot.getMaxItemCount} 的路径，
 	 * 使其与生存物品栏(原版 PotionStackMixin)一致叠到 N。仅对药水且持有该 Power 时生效，
 	 * 双端安全(用方法参数 player，不引用客户端类)。
@@ -157,7 +158,7 @@ public abstract class ScreenHandlerMixin {
 			method = "internalOnSlotClick(IILnet/minecraft/screen/slot/SlotActionType;Lnet/minecraft/entity/player/PlayerEntity;)V",
 			at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getMaxCount()I"), require = 0
 	)
-	private int ssc_addon$potionStackLimit(ItemStack stack, Operation<Integer> original, @Local(argsOnly = true) Player player) {
+	private int ssc_addon$potionStackLimit(ItemStack stack, Operation<Integer> original, @Local(argsOnly = true) PlayerEntity player) {
 		if (stack.getItem() instanceof net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem) {
 			return Math.max(net.onixary.shapeShifterCurseFabric.ssc_addon.item.WitherPotionItem.getStackLimitFor(player), original.call(stack));
 		}

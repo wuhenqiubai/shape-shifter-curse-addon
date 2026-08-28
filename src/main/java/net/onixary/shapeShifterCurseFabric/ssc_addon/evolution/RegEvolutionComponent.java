@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Identifier;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.entity.EntityComponentFactoryRegistry;
@@ -13,7 +13,7 @@ import org.ladysnake.cca.api.v3.entity.RespawnCopyStrategy;
  */
 public class RegEvolutionComponent implements EntityComponentInitializer {
     public static final ComponentKey<EvolutionComponent> EVOLUTION =
-            ComponentRegistry.getOrCreate(ResourceLocation.fromNamespaceAndPath("ssc_addon", "evolution"), EvolutionComponent.class);
+            ComponentRegistry.getOrCreate(Identifier.of("ssc_addon", "evolution"), EvolutionComponent.class);
 
     @Override
     public void registerEntityComponentFactories(EntityComponentFactoryRegistry registry) {

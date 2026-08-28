@@ -1,14 +1,14 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.recipe;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.world.inventory.CraftingContainer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
-import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.CustomRecipe;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.level.Level;
+import net.minecraft.inventory.RecipeInputInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.recipe.RecipeSerializer;
+import net.minecraft.recipe.SpecialCraftingRecipe;
+import net.minecraft.recipe.book.CraftingRecipeCategory;
+import net.minecraft.recipe.input.CraftingRecipeInput;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import org.jetbrains.annotations.NotNull;
@@ -22,37 +22,37 @@ import org.jetbrains.annotations.NotNull;
  *   0 0 0      I = 压缩能量药水 (原版药水 + feed_potion)
  * </pre>
  */
-public class InfiniteEnergyPotionRecipe extends CustomRecipe {
+public class InfiniteEnergyPotionRecipe extends SpecialCraftingRecipe {
 
-	public InfiniteEnergyPotionRecipe(CraftingBookCategory category) {
+	public InfiniteEnergyPotionRecipe(CraftingRecipeCategory category) {
 		super(category);
 	}
 
 	@Override
-	public boolean matches(CraftingInput input, Level world) {
-		if (input.width() < 3 || input.height() < 3) {
+	public boolean matches(CraftingRecipeInput input, World world) {
+		if (input.getWidth() < 3 || input.getHeight() < 3) {
 			return false;
 		}
 		// 形状 0 M 0 / A I A / 0 0 0，允许整体上对齐或下对齐两种摆放：
 		// 上：M=1 A=3 I=4 A=5，空=0,2,6,7,8
 		// 下：M=4 A=6 I=7 A=8，空=0,1,2,3,5
-		return matchesLayout((CraftingContainer) input, 1, 3, 4, 5, new int[]{0, 2, 6, 7, 8})
-				|| matchesLayout((CraftingContainer) input, 4, 6, 7, 8, new int[]{0, 1, 2, 3, 5});
+		return matchesLayout((RecipeInputInventory) input, 1, 3, 4, 5, new int[]{0, 2, 6, 7, 8})
+				|| matchesLayout((RecipeInputInventory) input, 4, 6, 7, 8, new int[]{0, 1, 2, 3, 5});
 	}
 
 	/** 校验一种摆放：moonSlot=月髓环，appleSlotL/appleSlotR=附魔金苹果，potionSlot=压缩能量药水，emptySlots 必须为空。 */
-	private boolean matchesLayout(CraftingContainer inv, int moonSlot, int appleSlotL, int potionSlot, int appleSlotR, int[] emptySlots) {
-		if (!isMoonRing(inv.getItem(moonSlot))) {
+	private boolean matchesLayout(RecipeInputInventory inv, int moonSlot, int appleSlotL, int potionSlot, int appleSlotR, int[] emptySlots) {
+		if (!isMoonRing(inv.getStack(moonSlot))) {
 			return false;
 		}
-		if (!isEnchantedGoldenApple(inv.getItem(appleSlotL)) || !isEnchantedGoldenApple(inv.getItem(appleSlotR))) {
+		if (!isEnchantedGoldenApple(inv.getStack(appleSlotL)) || !isEnchantedGoldenApple(inv.getStack(appleSlotR))) {
 			return false;
 		}
-		if (!isCompressedEnergyPotion(inv.getItem(potionSlot))) {
+		if (!isCompressedEnergyPotion(inv.getStack(potionSlot))) {
 			return false;
 		}
 		for (int slot : emptySlots) {
-			if (!inv.getItem(slot).isEmpty()) {
+			if (!inv.getStack(slot).isEmpty()) {
 				return false;
 			}
 		}
@@ -60,25 +60,25 @@ public class InfiniteEnergyPotionRecipe extends CustomRecipe {
 	}
 
 	private boolean isMoonRing(ItemStack stack) {
-		return stack.is(SscAddon.SP_UPGRADE_THING);
+		return stack.isOf(SscAddon.SP_UPGRADE_THING);
 	}
 
 	private boolean isEnchantedGoldenApple(ItemStack stack) {
-		return stack.is(Items.ENCHANTED_GOLDEN_APPLE);
+		return stack.isOf(Items.ENCHANTED_GOLDEN_APPLE);
 	}
 
 	/** 压缩能量药水 = 原版药水物品且药水类型为 feed_potion。 */
 	private boolean isCompressedEnergyPotion(ItemStack stack) {
-		return stack.is(Items.POTION) && stack.getOrDefault(net.minecraft.core.component.DataComponents.POTION_CONTENTS, net.minecraft.world.item.alchemy.PotionContents.EMPTY).potion().map(p -> p.value() == RegCustomPotions.FEED_POTION).orElse(false);
+		return stack.isOf(Items.POTION) && stack.getOrDefault(net.minecraft.component.DataComponentTypes.POTION_CONTENTS, net.minecraft.component.type.PotionContentsComponent.DEFAULT).potion().map(p -> p.value() == RegCustomPotions.FEED_POTION).orElse(false);
 	}
 
 	@Override
-	public @NotNull ItemStack assemble(CraftingInput input, HolderLookup.Provider lookup) {
+	public @NotNull ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
 		return new ItemStack(SscAddon.INFINITE_ENERGY_POTION);
 	}
 
 	@Override
-	public boolean canCraftInDimensions(int width, int height) {
+	public boolean fits(int width, int height) {
 		return width >= 3 && height >= 3;
 	}
 

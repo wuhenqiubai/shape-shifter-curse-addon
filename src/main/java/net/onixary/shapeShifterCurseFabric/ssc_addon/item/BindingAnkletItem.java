@@ -1,17 +1,13 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.item;
 
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.mob.IllagerEntity;
-import net.minecraft.entity.mob.PillagerEntity;
-import net.minecraft.entity.mob.VindicatorEntity;
-import net.minecraft.entity.mob.EvokerEntity;
-import net.minecraft.entity.mob.IllusionerEntity;
-import net.minecraft.entity.mob.WitchEntity;
+import net.minecraft.entity.mob.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.raid.RaiderEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
@@ -23,6 +19,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
+import net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.SscAddonLivingEntityMixin;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.TrinketUtils;
@@ -32,15 +29,15 @@ import java.util.List;
 
 /**
  * 绑定脚环（Binding Anklet）—— 契灵首个专属饰品。
- *
+ * <p>
  * 槽位：复用 SSC 守御脚环的 trinkets:feet/aglet 槽（与守御脚环互斥）。
  * 装备限制：仅契灵形态可装备，其他形态拒绝。
  * 被动效果：在 16 格范围内为其他**劫掠阵营 NPC**（pillager / vindicator / evoker /
  *           illusioner / ravager / witch）提供 +20% 造成伤害加成；
  *           佩戴者本人（玩家/契灵）不享受此加成。
  * 获取途径：仅 25% 概率出现在劫掠者哨塔战利品箱中。
- *
- * 加成的伤害侧由 {@link net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.BindingAnkletAuraMixin}
+ * <p>
+ * 加成的伤害侧由 {@link SscAddonLivingEntityMixin}
  * 在 LivingEntity#damage 入口 ModifyVariable，调用本类静态方法判定。
  */
 public class BindingAnkletItem extends AccessoryItem {
@@ -113,11 +110,11 @@ public class BindingAnkletItem extends AccessoryItem {
 	/*  战利品注入：劫掠者哨塔 25%                                       */
 	/* ------------------------------------------------------------ */
 
-	private static final Identifier PILLAGER_OUTPOST_LOOT = new Identifier("minecraft", "chests/pillager_outpost");
+	private static final Identifier PILLAGER_OUTPOST_LOOT = Identifier.of("minecraft", "chests/pillager_outpost");
 
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!PILLAGER_OUTPOST_LOOT.equals(id)) return;
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (!PILLAGER_OUTPOST_LOOT.equals(key.getValue())) return;
 			LootPool.Builder pool = LootPool.builder()
 					.rolls(ConstantLootNumberProvider.create(1.0F))
 					.conditionally(RandomChanceLootCondition.builder(0.25F))
@@ -131,11 +128,11 @@ public class BindingAnkletItem extends AccessoryItem {
 	/* ------------------------------------------------------------ */
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
-		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
-		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_2").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_3").formatted(Formatting.GRAY));
-		tooltip.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_4").formatted(Formatting.DARK_GRAY));
-		super.appendTooltip(stack, world, tooltip, context);
+	public void appendTooltip(ItemStack itemStack, Item.TooltipContext tooltipContext, List<Text> list, TooltipType tooltipFlag) {
+		list.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_1").formatted(Formatting.LIGHT_PURPLE));
+		list.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_2").formatted(Formatting.GRAY));
+		list.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_3").formatted(Formatting.GRAY));
+		list.add(Text.translatable("item.ssc_addon.binding_anklet.tooltip_4").formatted(Formatting.DARK_GRAY));
+		super.appendTooltip(itemStack, tooltipContext, list, tooltipFlag);
 	}
 }

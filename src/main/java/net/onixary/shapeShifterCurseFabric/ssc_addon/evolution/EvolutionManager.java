@@ -1,13 +1,13 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.evolution;
 
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.item.ItemStack;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.data.StaticParams;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
@@ -27,11 +27,11 @@ public final class EvolutionManager {
     private EvolutionManager() {
     }
 
-    public static EvolutionComponent get(ServerPlayer player) {
+    public static EvolutionComponent get(ServerPlayerEntity player) {
         return RegEvolutionComponent.EVOLUTION.get(player);
     }
 
-    public static void sync(ServerPlayer player) {
+    public static void sync(ServerPlayerEntity player) {
         RegEvolutionComponent.EVOLUTION.sync(player);
     }
 
@@ -41,9 +41,9 @@ public final class EvolutionManager {
      *
      * <p>当前形态不是任何路线的起点形态时恒为 true（不施加门控）。</p>
      */
-    public static boolean canUpgradeFoxEvolve(ServerPlayer player) {
+    public static boolean canUpgradeFoxEvolve(ServerPlayerEntity player) {
         IForm nowForm = RegPlayerFormComponent.PLAYER_FORM.get(player).nowForm;
-        ResourceLocation nowFormId = (nowForm == null) ? null : nowForm.getFormID();
+        Identifier nowFormId = (nowForm == null) ? null : nowForm.getFormID();
         EvolutionRoute route = EvolutionRegistry.INSTANCE.getRouteByStartForm(nowFormId);
         if (route == null) {
             return true; // 非任何进化路线的起点形态 → 不限制
@@ -71,7 +71,7 @@ public final class EvolutionManager {
     public static final int JOB_CHANGE_COST = 3;
 
     /** 选择进化路线；自动解锁该路线初始节点，并（若当前非起点形态）变身进入起点形态。 */
-    public static void selectRoute(ServerPlayer player, String routeId) {
+    public static void selectRoute(ServerPlayerEntity player, String routeId) {
         EvolutionComponent comp = get(player);
         comp.setRoute(routeId);
         EvolutionRoute route = EvolutionRegistry.INSTANCE.getRoute(routeId);
@@ -85,12 +85,12 @@ public final class EvolutionManager {
     }
 
     /** 若玩家当前形态非该路线起点形态，立即变身为起点形态。 */
-    private static void transformToStartForm(ServerPlayer player, EvolutionRoute route) {
+    private static void transformToStartForm(ServerPlayerEntity player, EvolutionRoute route) {
         if (route.startForm == null) {
             return;
         }
         IForm currentForm = RegPlayerFormComponent.PLAYER_FORM.get(player).nowForm;
-        ResourceLocation formId = (currentForm == null) ? null : currentForm.getFormID();
+        Identifier formId = (currentForm == null) ? null : currentForm.getFormID();
         if (formId == null || formId.equals(route.startForm)) {
             return;
         }
@@ -101,7 +101,7 @@ public final class EvolutionManager {
     }
 
     /** 该形态 id 是否为某条「已开放」进化路线的起点形态（可在开局选形态界面进入）。 */
-    private static boolean isStartFormAllowed(ResourceLocation formId) {
+    private static boolean isStartFormAllowed(Identifier formId) {
         EvolutionRoute route = EvolutionRegistry.INSTANCE.getRouteByStartForm(formId);
         return route != null && route.enabled;
     }
@@ -115,11 +115,11 @@ public final class EvolutionManager {
      *
      * @param formIdStr 目标 SSCA 起点形态 ID 字符串
      */
-    public static void startSscaRoute(ServerPlayer player, String formIdStr) {
+    public static void startSscaRoute(ServerPlayerEntity player, String formIdStr) {
         if (!RegPlayerForms.ORIGINAL_BEFORE_ENABLE.isPlayerForm(player)) {
             return;
         }
-        ResourceLocation formId = ResourceLocation.tryParse(formIdStr);
+        Identifier formId = Identifier.tryParse(formIdStr);
         if (formId == null || !isStartFormAllowed(formId)) {
             return;
         }
@@ -139,14 +139,14 @@ public final class EvolutionManager {
         ShapeShifterCurseFabric.ON_ENABLE_MOD.trigger(player);
         // 进化演出：黑屏淡入淡出动画期间定身，完成时升级音效
         int fxDuration = StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT;
-        player.addEffect(new MobEffectInstance(SscAddon.STUN_ENTRY, fxDuration, 0, false, false, false));
+        player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, fxDuration, 0, false, false, false));
         TransformManager.startTransform(player, targetForm, data ->
-                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                        SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.0F));
+                player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F));
     }
 
     /** 选择 SP 分支。框架阶段不校验分支前置条件，待业务设计。 */
-    public static void selectBranch(ServerPlayer player, String branchId) {
+    public static void selectBranch(ServerPlayerEntity player, String branchId) {
         get(player).setBranch(branchId);
         sync(player);
     }
@@ -155,7 +155,7 @@ public final class EvolutionManager {
      * 请求解锁一个天赋节点：校验节点合法、未解锁、非自动节点、前置满足（AND）、点数足够，
      * 通过则扣点并解锁。节点取自玩家当前路线（数据驱动）。
      */
-    public static boolean tryUnlock(ServerPlayer player, String nodeId) {
+    public static boolean tryUnlock(ServerPlayerEntity player, String nodeId) {
         if (nodeId == null || nodeId.isEmpty()) {
             return false;
         }
@@ -197,14 +197,14 @@ public final class EvolutionManager {
      * 按 route 的经验等级里程碑发放点数，到达 route 的自动分支等级时解锁满足前置的分支节点；
      * 离开起点形态则重置进度。仅对已走 SSCA 路线的玩家生效。
      */
-    public static void tickPlayer(ServerPlayer player) {
+    public static void tickPlayer(ServerPlayerEntity player) {
         EvolutionComponent comp = get(player);
         // 转职（灵能宝珠）变身演出期间豁免：避免 nowForm 已切新形态但 route 未切时被下方「离开起点形态即重置」误清空。
         if (comp.isJobChanging()) {
             return;
         }
         IForm nowForm = RegPlayerFormComponent.PLAYER_FORM.get(player).nowForm;
-        ResourceLocation nowFormId = (nowForm == null) ? null : nowForm.getFormID();
+        Identifier nowFormId = (nowForm == null) ? null : nowForm.getFormID();
 
         // 成为「某进化路线的起点形态」即自动进入该 SSCA 路线并解锁初始节点
         //（覆盖开局之书 / 指令等所有途径）；放在 isOnSscaRoute 早退之前以便首次自动设路线。
@@ -260,7 +260,7 @@ public final class EvolutionManager {
 
         // 性能优化：XP 里程碑 / 自动分支解锁检查降频到每 20t（XP 变化低频，升级解锁最多晚 1s，肉眼不可察）。
         // 上方「自动进入路线 / 离开起点形态重置」保持每 tick 即时响应变身，不受此节流影响。
-        if (player.tickCount % 20 != 0) {
+        if (player.age % 20 != 0) {
             return;
         }
         int level = comp.getEvoLevel();
@@ -281,13 +281,13 @@ public final class EvolutionManager {
     }
 
     /** 管理指令：把目标玩家进化路线设为全解锁。 */
-    public static void unlockAll(ServerPlayer player) {
+    public static void unlockAll(ServerPlayerEntity player) {
         get(player).setUnlockAll(true);
         sync(player);
     }
 
     /** 管理指令：重置目标玩家全部进化数据。 */
-    public static void reset(ServerPlayer player) {
+    public static void reset(ServerPlayerEntity player) {
         get(player).reset();
         sync(player);
     }
@@ -312,20 +312,20 @@ public final class EvolutionManager {
      * 校验（服务端权威）：当前处于某进化起点形态 + 目标是另一个 enabled 路线的起点形态 + 可用点数 ≥ {@link #JOB_CHANGE_COST}。
      * 通过则置转职标志并带动画变身，变身完成回调里倒退里程碑、扣点、切换到新路线。
      */
-    public static void startJobChange(ServerPlayer player, String targetFormIdStr) {
+    public static void startJobChange(ServerPlayerEntity player, String targetFormIdStr) {
         IForm nowForm = RegPlayerFormComponent.PLAYER_FORM.get(player).nowForm;
-        ResourceLocation nowFormId = (nowForm == null) ? null : nowForm.getFormID();
+        Identifier nowFormId = (nowForm == null) ? null : nowForm.getFormID();
         EvolutionRoute curRoute = EvolutionRegistry.INSTANCE.getRouteByStartForm(nowFormId);
         if (curRoute == null) {
             return; // 当前不是进化起点形态（道具侧已拦，双保险）
         }
-        ResourceLocation targetFormId = ResourceLocation.tryParse(targetFormIdStr);
+        Identifier targetFormId = Identifier.tryParse(targetFormIdStr);
         if (targetFormId == null || targetFormId.equals(nowFormId)) {
             return; // 不能转职到当前形态自身
         }
         EvolutionRoute targetRoute = EvolutionRegistry.INSTANCE.getRouteByStartForm(targetFormId);
         if (targetRoute == null || !targetRoute.enabled) {
-            player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.fail.invalid_target").withStyle(ChatFormatting.RED), true);
+            player.sendMessageToClient(Text.translatable("message.ssc_addon.job_change.fail.invalid_target").formatted(Formatting.RED), true);
             return;
         }
         EvolutionComponent comp = get(player);
@@ -334,9 +334,9 @@ public final class EvolutionManager {
         }
         // 门槛按「总进化点数（已用 + 未用）」判定，即已获得的里程碑点数总量
         if (comp.getGrantedLevelCount() < JOB_CHANGE_COST) {
-            player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.fail.not_enough_points", JOB_CHANGE_COST).withStyle(ChatFormatting.RED), true);
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 1.0F, 1.0F);
+            player.sendMessageToClient(Text.translatable("message.ssc_addon.job_change.fail.not_enough_points", JOB_CHANGE_COST).formatted(Formatting.RED), true);
+            player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0F, 1.0F);
             return;
         }
         IForm targetForm = RegPlayerForms.getPlayerForm(targetFormId);
@@ -344,18 +344,18 @@ public final class EvolutionManager {
             return;
         }
         // 消耗一个灵能宝珠（创造模式不消耗）；没有则拒绝转职（异常情况，界面本由长按道具打开）
-        if (!player.getAbilities().instabuild && !consumeOnePsionicOrb(player)) {
+        if (!player.getAbilities().creativeMode && !consumeOnePsionicOrb(player)) {
             return;
         }
         comp.setJobChanging(true);
         int fxDuration = StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT;
-        player.addEffect(new MobEffectInstance(SscAddon.STUN_ENTRY, fxDuration, 0, false, false, false));
+        player.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, fxDuration, 0, false, false, false));
         // 带黑屏淡入淡出动画变身；完成回调里（nowForm 已是目标形态）再倒退里程碑 + 切路线
         TransformManager.startTransform(player, targetForm, data -> completeJobChange(player, targetRoute));
     }
 
     /** 转职变身完成回调（nowForm 已是新起点形态）：倒退里程碑、切换到新路线、按倒退后等级重发点。 */
-    private static void completeJobChange(ServerPlayer player, EvolutionRoute targetRoute) {
+    private static void completeJobChange(ServerPlayerEntity player, EvolutionRoute targetRoute) {
         EvolutionComponent comp = get(player);
         // 倒退用「当前（旧）路线」的里程碑档计算目标等级
         EvolutionRoute oldRoute = EvolutionRegistry.INSTANCE.getRoute(comp.getRoute());
@@ -384,9 +384,9 @@ public final class EvolutionManager {
         comp.markMigrated();
         comp.setJobChanging(false);
         sync(player);
-        player.sendSystemMessage(Component.translatable("message.ssc_addon.job_change.success").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), false);
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.0F);
+        player.sendMessageToClient(Text.translatable("message.ssc_addon.job_change.success").formatted(Formatting.GREEN, Formatting.BOLD), false);
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0F, 1.0F);
     }
 
     /**
@@ -394,7 +394,7 @@ public final class EvolutionManager {
      * 旧存档特征：已在进化路线 + 未迁移 + 内置 exp 仍为 0（旧机制未用）+ 已发过里程碑点。
      * 命中则把进化等级加满、发满里程碑点（扣除已花），并提示机制已更新。
      */
-    public static void checkAndMigrate(ServerPlayer player) {
+    public static void checkAndMigrate(ServerPlayerEntity player) {
         EvolutionComponent comp = get(player);
         if (comp.hasMigrated()) {
             return;
@@ -425,23 +425,23 @@ public final class EvolutionManager {
         comp.setLastTotalExp(player.totalExperience); // 初始化累积基准
         comp.markMigrated();
         sync(player);
-        player.sendSystemMessage(Component.translatable("message.ssc_addon.evolution.migrated", level).withStyle(ChatFormatting.GOLD), false);
+        player.sendMessageToClient(Text.translatable("message.ssc_addon.evolution.migrated", level).formatted(Formatting.GOLD), false);
     }
 
     /** 从玩家主手/副手/物品栏消耗一个灵能宝珠，成功返回 true。 */
-    private static boolean consumeOnePsionicOrb(@UnknownNullability ServerPlayer player) {
-        if (player.getMainHandItem().is(SscAddon.PSIONIC_ORB)) {
-            player.getMainHandItem().shrink(1);
+    private static boolean consumeOnePsionicOrb(@UnknownNullability ServerPlayerEntity player) {
+        if (player.getMainHandStack().isOf(SscAddon.PSIONIC_ORB)) {
+            player.getMainHandStack().decrement(1);
             return true;
         }
-        if (player.getOffhandItem().is(SscAddon.PSIONIC_ORB)) {
-            player.getOffhandItem().shrink(1);
+        if (player.getOffHandStack().isOf(SscAddon.PSIONIC_ORB)) {
+            player.getOffHandStack().decrement(1);
             return true;
         }
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            ItemStack s = player.getInventory().getItem(i);
-            if (s.is(SscAddon.PSIONIC_ORB)) {
-                s.shrink(1);
+        for (int i = 0; i < player.getInventory().size(); i++) {
+            ItemStack s = player.getInventory().getStack(i);
+            if (s.isOf(SscAddon.PSIONIC_ORB)) {
+                s.decrement(1);
                 return true;
             }
         }

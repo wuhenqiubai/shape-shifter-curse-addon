@@ -1,12 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.onixary.shapeShifterCurseFabric.minion.mobs.AnubisWolfMinionEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
@@ -55,14 +55,14 @@ public class AnubisWolfSpSoulEnergy {
 	/**
 	 * 获取玩家当前灵魂能量
 	 */
-	public static int getEnergy(ServerPlayer player) {
+	public static int getEnergy(ServerPlayerEntity player) {
 		return PowerUtils.getResourceValue(player, FormIdentifiers.ANUBIS_WOLF_SP_SOUL_ENERGY);
 	}
 
 	/**
 	 * 增加灵魂能量（自动限制上限）
 	 */
-	public static void addEnergy(ServerPlayer player, int amount) {
+	public static void addEnergy(ServerPlayerEntity player, int amount) {
 		int current = getEnergy(player);
 		int newValue = Math.min(current + amount, MAX_ENERGY);
 
@@ -71,22 +71,22 @@ public class AnubisWolfSpSoulEnergy {
 
 // 刚好满能量时播放提示音
 		if (current < MAX_ENERGY && newValue >= MAX_ENERGY) {
-			player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-					SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 0.6f, 1.2f);
+			player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+					SoundEvents.ENTITY_WITHER_SPAWN, SoundCategory.PLAYERS, 0.6f, 1.2f);
 		}
 	}
 
 	/**
 	 * 检查灵魂能量是否已满
 	 */
-	public static boolean isFullEnergy(ServerPlayer player) {
+	public static boolean isFullEnergy(ServerPlayerEntity player) {
 		return getEnergy(player) >= MAX_ENERGY;
 	}
 
 	/**
 	 * 消耗全部灵魂能量（施放增强领域时调用）
 	 */
-	public static void consumeEnergy(ServerPlayer player) {
+	public static void consumeEnergy(ServerPlayerEntity player) {
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.ANUBIS_WOLF_SP_SOUL_ENERGY, 0);
 	}
 
@@ -94,7 +94,7 @@ public class AnubisWolfSpSoulEnergy {
 	 * 清除玩家能量（断线/变形时）
 	 * 直接将Apoli资源设为0
 	 */
-	public static void clearPlayer(ServerPlayer player) {
+	public static void clearPlayer(ServerPlayerEntity player) {
 		if (player != null) {
 			PowerUtils.setResourceValueAndSync(player, FormIdentifiers.ANUBIS_WOLF_SP_SOUL_ENERGY, 0);
 		}
@@ -103,7 +103,7 @@ public class AnubisWolfSpSoulEnergy {
 	/**
 	 * 设置灵魂能量（由set_mana命令调用）
 	 */
-	public static void setEnergy(ServerPlayer player, int amount) {
+	public static void setEnergy(ServerPlayerEntity player, int amount) {
 		int clamped = Math.min(Math.max(amount, 0), MAX_ENERGY);
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.ANUBIS_WOLF_SP_SOUL_ENERGY, clamped);
 	}
@@ -121,45 +121,45 @@ public class AnubisWolfSpSoulEnergy {
 	 * 实体死亡时的处理逻辑
 	 */
 	private static void onEntityDeath(LivingEntity entity, DamageSource damageSource) {
-		if (entity.level().isClientSide()) return;
+		if (entity.getWorld().isClient()) return;
 
 // 情况1：玩家直接击杀
-		if (damageSource.getEntity() instanceof ServerPlayer killer) {
+		if (damageSource.getAttacker() instanceof ServerPlayerEntity killer) {
 			if (!FormUtils.isForm(killer, FormIdentifiers.ANUBIS_WOLF_SP)) return;
 
 // 检查击杀是否发生在死亡领域内
-			if (AnubisWolfSpDeathDomain.hasActiveDomain(killer.getUUID())
-					&& AnubisWolfSpDeathDomain.isInActiveDomain(killer.getUUID(), entity.blockPosition())) {
+			if (AnubisWolfSpDeathDomain.hasActiveDomain(killer.getUuid())
+					&& AnubisWolfSpDeathDomain.isInActiveDomain(killer.getUuid(), entity.getBlockPos())) {
 // 增强领域范围内击杀不获取能量
-				if (!AnubisWolfSpDeathDomain.isEnhancedDomain(killer.getUUID())) {
+				if (!AnubisWolfSpDeathDomain.isEnhancedDomain(killer.getUuid())) {
 					addEnergy(killer, KILL_IN_DOMAIN_ENERGY);
 				}
 			} else {
 				addEnergy(killer, REGULAR_KILL_ENERGY);
 			}
 // 凋零击杀回能：自身处于凋零时击杀额外 +10 灵魂能量
-			if (killer.hasEffect(net.minecraft.world.effect.MobEffects.WITHER)) {
+			if (killer.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.WITHER)) {
 				addEnergy(killer, WITHER_KILL_BONUS_ENERGY);
 			}
 			return;
 		}
 
 // 情况2：冥狼击杀（AnubisWolfMinionEntity的owner获得能量）
-		if (damageSource.getEntity() instanceof AnubisWolfMinionEntity wolf) {
+		if (damageSource.getAttacker() instanceof AnubisWolfMinionEntity wolf) {
 			java.util.UUID ownerUuid = wolf.getMinionOwnerUUID();
 			if (ownerUuid == null) return;
 
-			Player ownerEntity = entity.level().getPlayerByUUID(ownerUuid);
-			if (ownerEntity instanceof ServerPlayer ownerPlayer) {
+			PlayerEntity ownerEntity = entity.getWorld().getPlayerByUuid(ownerUuid);
+			if (ownerEntity instanceof ServerPlayerEntity ownerPlayer) {
 				if (!FormUtils.isForm(ownerPlayer, FormIdentifiers.ANUBIS_WOLF_SP)) return;
 // 增强领域范围内冥狼击杀不获取能量
 				if (AnubisWolfSpDeathDomain.isEnhancedDomain(ownerUuid)
-						&& AnubisWolfSpDeathDomain.isInActiveDomain(ownerUuid, entity.blockPosition())) {
+						&& AnubisWolfSpDeathDomain.isInActiveDomain(ownerUuid, entity.getBlockPos())) {
 					return;
 				}
 				addEnergy(ownerPlayer, MINION_KILL_ENERGY);
 // 凋零击杀回能：冥狼击杀时，若主人处于凋零，额外 +10 灵魂能量
-				if (ownerPlayer.hasEffect(net.minecraft.world.effect.MobEffects.WITHER)) {
+				if (ownerPlayer.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.WITHER)) {
 					addEnergy(ownerPlayer, WITHER_KILL_BONUS_ENERGY);
 				}
 			}

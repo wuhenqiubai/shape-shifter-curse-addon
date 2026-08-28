@@ -1,6 +1,6 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.forms;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.player_animation.AnimationHolder;
 import net.onixary.shapeShifterCurseFabric.player_animation.v3.AbstractAnimStateController;
@@ -13,17 +13,17 @@ public class Form_SnowFoxSP extends AbstractFeralForm {
 			new net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimUtils.AnimationHolderData(ShapeShifterCurseFabric.identifier("form_feral_common_sneak_idle"))
 	);
 	public static final AbstractAnimStateController FALL_CONTROLLER_SP = new OneAnimController(
-			new net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimUtils.AnimationHolderData(ResourceLocation.fromNamespaceAndPath("my_addon", "form_snow_fox_sp_fall"))
+			new net.onixary.shapeShifterCurseFabric.player_animation.v3.AnimUtils.AnimationHolderData(Identifier.of("my_addon", "form_snow_fox_sp_fall"))
 	);
 
-	public Form_SnowFoxSP(ResourceLocation formID) {
+	public Form_SnowFoxSP(Identifier formID) {
 		super(formID);
 	}
 
 	@Override
 	public void Anim_registerAnims() {
 		super.Anim_registerAnims();
-		anim_fall = new AnimationHolder(ResourceLocation.fromNamespaceAndPath("my_addon", "form_snow_fox_sp_fall"), true);
+		anim_fall = new AnimationHolder(Identifier.of("my_addon", "form_snow_fox_sp_fall"), true);
 	}
 
 	@Override

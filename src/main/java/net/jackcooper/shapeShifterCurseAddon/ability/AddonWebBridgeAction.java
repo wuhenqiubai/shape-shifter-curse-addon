@@ -1,8 +1,8 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
+import net.minecraft.block.Block;
 import net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks;
 import net.jackcooper.shapeShifterCurseAddon.block.WebMembraneOwners;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -69,7 +69,7 @@ public final class AddonWebBridgeAction {
 				length = config.BottomBlockNum;
 			}
 			default -> {
-				nowPos = pos.offset(direction);
+				nowPos = pos.add(direction.getVector());
 				ladderDirection = Direction.DOWN;
 				length = config.SideBlockNum;
 			}
@@ -93,7 +93,7 @@ public final class AddonWebBridgeAction {
 				SetWebBlock(world, nowPos.south(), ladderBlock, randomFacing);
 				largerLadderCount--;
 			}
-			nowPos = nowPos.offset(ladderDirection);
+			nowPos = nowPos.add(ladderDirection.getVector());
 		}
 	}
 
@@ -120,18 +120,18 @@ public final class AddonWebBridgeAction {
 			BlockPos tempPos = nowPos;
 			Direction tempDirection = direction.rotateYClockwise();
 			for (int j = 0; j < config.Width; j++) {
-				tempPos = tempPos.offset(tempDirection);
+				tempPos = tempPos.add(tempDirection.getVector());
 				randomFacing = horizontalDirections[random.nextInt(horizontalDirections.length)];
 				SetWebBlock(world, tempPos, webBlock, randomFacing);
 			}
 			tempPos = nowPos;
 			tempDirection = direction.rotateYCounterclockwise();
 			for (int j = 0; j < config.Width; j++) {
-				tempPos = tempPos.offset(tempDirection);
+				tempPos = tempPos.add(tempDirection.getVector());
 				randomFacing = horizontalDirections[random.nextInt(horizontalDirections.length)];
 				SetWebBlock(world, tempPos, webBlock, randomFacing);
 			}
-			nowPos = nowPos.offset(direction);
+			nowPos = nowPos.add(direction.getVector());
 		}
 	}
 

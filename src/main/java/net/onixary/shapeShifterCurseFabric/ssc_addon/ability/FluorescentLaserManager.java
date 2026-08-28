@@ -9,6 +9,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
@@ -57,7 +58,7 @@ public final class FluorescentLaserManager {
 	private static final double ARRAY_SIDE = 1.3;
 	private static final double ARRAY_UP = 1.7;
 
-	private static final UUID LASER_SPEED_UUID = UUID.fromString("b7e1c2d3-4f50-6172-8394-a5b6c7d8e9f0");
+	private static final Identifier LASER_SPEED_UUID = Identifier.of("b7e1c2d3-4f50-6172-8394-a5b6c7d8e9f0");
 
 	private static final class ComboSession {
 		boolean active = false;
@@ -209,7 +210,7 @@ public final class FluorescentLaserManager {
 		ComboSession s = COMBOS.get(player.getUuid());
 		if (s == null || !s.active) return;
 		// 被 SP 悦灵净化打断：立即结束 combo（与死亡/卸饰品同路径，含失活音效 + CD 结算）
-		if (player.hasStatusEffect(SscAddon.PURIFIED)) {
+		if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
 			endCombo(player, s);
 			return;
 		}
@@ -296,8 +297,8 @@ public final class FluorescentLaserManager {
 		attr.removeModifier(LASER_SPEED_UUID);
 		if (apply) {
 			attr.addTemporaryModifier(new EntityAttributeModifier(
-					LASER_SPEED_UUID, "Enhanced Laser Slow", SPEED_PENALTY,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+					LASER_SPEED_UUID, SPEED_PENALTY,
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 

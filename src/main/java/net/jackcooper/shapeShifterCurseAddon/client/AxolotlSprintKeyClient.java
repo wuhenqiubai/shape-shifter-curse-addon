@@ -9,6 +9,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.network.PacketByteBuf;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 
@@ -48,6 +49,6 @@ public final class AxolotlSprintKeyClient {
 	private static void send(boolean held) {
 		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
 		buf.writeBoolean(held);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_AXOLOTL_SPRINT_KEY, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_AXOLOTL_SPRINT_KEY), buf));
 	}
 }

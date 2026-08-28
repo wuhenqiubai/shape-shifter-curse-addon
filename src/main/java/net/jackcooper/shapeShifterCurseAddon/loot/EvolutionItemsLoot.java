@@ -1,11 +1,11 @@
 package net.jackcooper.shapeShifterCurseAddon.loot;
 
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.minecraft.loot.LootPool;
+import net.minecraft.loot.condition.RandomChanceLootCondition;
+import net.minecraft.loot.entry.ItemEntry;
+import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 
 import java.util.Set;
@@ -22,19 +22,19 @@ public final class EvolutionItemsLoot {
 	}
 
 	/** 目标原版结构箱子战利品表。 */
-	private static final Set<ResourceLocation> TARGET_CHESTS = Set.of(
+	private static final Set<Identifier> TARGET_CHESTS = Set.of(
 			// 沉船（补给舱 + 宝藏舱）
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/shipwreck_supply"),
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/shipwreck_treasure"),
+			Identifier.of("minecraft", "chests/shipwreck_supply"),
+			Identifier.of("minecraft", "chests/shipwreck_treasure"),
 			// 古城
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/ancient_city"),
+			Identifier.of("minecraft", "chests/ancient_city"),
 			// 堡垒遗迹（猪人城堡）4 种箱子
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/bastion_treasure"),
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/bastion_other"),
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/bastion_bridge"),
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/bastion_hoglin_stable"),
+			Identifier.of("minecraft", "chests/bastion_treasure"),
+			Identifier.of("minecraft", "chests/bastion_other"),
+			Identifier.of("minecraft", "chests/bastion_bridge"),
+			Identifier.of("minecraft", "chests/bastion_hoglin_stable"),
 			// 末地船（与末地城宝藏箱共用 end_city_treasure）
-			ResourceLocation.fromNamespaceAndPath("minecraft", "chests/end_city_treasure")
+			Identifier.of("minecraft", "chests/end_city_treasure")
 	);
 
 	/** 每个箱子生成月髓环 / 进化石（二选一）的总概率。 */
@@ -42,15 +42,15 @@ public final class EvolutionItemsLoot {
 
 	public static void register() {
 		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-			if (!TARGET_CHESTS.contains(key.location())) {
+			if (!TARGET_CHESTS.contains(key.getValue())) {
 				return;
 			}
 			// 3% 概率触发；触发后在月髓环与进化石之间二选一（等权重各 50%）
-			tableBuilder.pool(LootPool.lootPool()
-					.setRolls(ConstantValue.exactly(1.0F))
-					.conditionally(LootItemRandomChanceCondition.randomChance(CHANCE).build())
-					.with(LootItem.lootTableItem(SscAddon.SP_UPGRADE_THING).build())
-					.with(LootItem.lootTableItem(SscAddon.EVOLUTION_STONE).build()).build());
+			tableBuilder.pool(LootPool.builder()
+					.rolls(ConstantLootNumberProvider.create(1.0F))
+					.conditionally(RandomChanceLootCondition.builder(CHANCE).build())
+					.with(ItemEntry.builder(SscAddon.SP_UPGRADE_THING).build())
+					.with(ItemEntry.builder(SscAddon.EVOLUTION_STONE).build()).build());
 		});
 	}
 }

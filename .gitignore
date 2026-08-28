@@ -44,3 +44,11 @@ replay_pid*.log
 /prerequisite module- shape-shifter-curse Mod source code/
 /prerequisite module- apoli-2.9.2-mc.1.20.1 Mod source code/
 /CLAUDE.md
+/_dev/
+/.build-logs/build.log
+/.build-logs/compile1.log
+/.build-logs/compile2.log
+/.build-logs/compile3.log
+/.codegraph/.gitignore
+/.codex/config.toml
+/.codegraph/

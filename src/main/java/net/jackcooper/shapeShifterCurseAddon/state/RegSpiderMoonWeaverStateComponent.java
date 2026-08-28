@@ -1,11 +1,11 @@
 package net.jackcooper.shapeShifterCurseAddon.state;
 
-import dev.onyxstudios.cca.api.v3.component.ComponentKey;
-import dev.onyxstudios.cca.api.v3.component.ComponentRegistry;
-import dev.onyxstudios.cca.api.v3.entity.EntityComponentFactoryRegistry;
-import dev.onyxstudios.cca.api.v3.entity.EntityComponentInitializer;
-import dev.onyxstudios.cca.api.v3.entity.RespawnCopyStrategy;
 import net.minecraft.util.Identifier;
+import org.ladysnake.cca.api.v3.component.ComponentKey;
+import org.ladysnake.cca.api.v3.component.ComponentRegistry;
+import org.ladysnake.cca.api.v3.entity.EntityComponentFactoryRegistry;
+import org.ladysnake.cca.api.v3.entity.EntityComponentInitializer;
+import org.ladysnake.cca.api.v3.entity.RespawnCopyStrategy;
 
 /**
  * 月织蛛模式开关组件的 CCA 注册入口。
@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
  */
 public class RegSpiderMoonWeaverStateComponent implements EntityComponentInitializer {
 	public static final ComponentKey<SpiderMoonWeaverStateComponent> SPIDER_MOON_WEAVER_STATE =
-			ComponentRegistry.getOrCreate(new Identifier("ssc_addon", "spider_moon_weaver_state"), SpiderMoonWeaverStateComponent.class);
+			ComponentRegistry.getOrCreate(Identifier.of("ssc_addon", "spider_moon_weaver_state"), SpiderMoonWeaverStateComponent.class);
 
 	@Override
 	public void registerEntityComponentFactories(EntityComponentFactoryRegistry registry) {

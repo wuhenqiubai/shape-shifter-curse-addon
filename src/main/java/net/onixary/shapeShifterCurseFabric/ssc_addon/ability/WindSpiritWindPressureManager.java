@@ -1,12 +1,12 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.entity.windspirit.WindSpiritProjectilePressureMixin;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
@@ -19,7 +19,7 @@ import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
  * 风灵本人发射的弹射物也不受影响（owner==风灵）。
  *
  * <p>判定逻辑由 {@link WindSpiritProjectilePressureMixin}（拦 {@code ProjectileEntity.tick}）调用本类的
- * {@link #tryApplySlow(Projectile)}，每枚弹射物只处理一次（用 age + command tag 控制）。
+ * {@link #tryApplySlow(ProjectileEntity)}，每枚弹射物只处理一次（用 age + command tag 控制）。
  */
 public final class WindSpiritWindPressureManager {
 
@@ -37,22 +37,22 @@ public final class WindSpiritWindPressureManager {
      * 由弹射物 tick mixin 调用：检查并应用风压减速。
      * 返回 true 表示已应用减速（mixin 可据此做额外处理）。
      */
-    public static boolean tryApplySlow(Projectile projectile) {
+    public static boolean tryApplySlow(ProjectileEntity projectile) {
         // 仅服务端处理（多人一致）
-        if (projectile.level().isClientSide()) return false;
-        if (!(projectile.level() instanceof ServerLevel world)) return false;
+        if (projectile.getWorld().isClient()) return false;
+        if (!(projectile.getWorld() instanceof ServerWorld world)) return false;
 
         // 发射后超过窗口期不再处理
-        if (projectile.tickCount > APPLY_WITHIN_AGE) return false;
+        if (projectile.age > APPLY_WITHIN_AGE) return false;
         // 已减速过则跳过
-        if (projectile.getTags().contains(SLOWED_TAG)) return false;
+        if (projectile.getCommandTags().contains(SLOWED_TAG)) return false;
 
         Entity ownerEntity = projectile.getOwner();
         if (ownerEntity == null) return false;
 
         // 寻找范围内是否有风灵
-        AABB checkBox = projectile.getBoundingBox().inflate(RANGE);
-        ServerPlayer windSpirit = findWindSpiritInRange(world, projectile, checkBox);
+        Box checkBox = projectile.getBoundingBox().expand(RANGE);
+        ServerPlayerEntity windSpirit = findWindSpiritInRange(world, projectile, checkBox);
         if (windSpirit == null) return false;
 
         // 风灵本人发射的弹射物不受影响
@@ -64,19 +64,19 @@ public final class WindSpiritWindPressureManager {
         }
 
         // 应用减速
-        Vec3 v = projectile.getDeltaMovement();
-        projectile.setDeltaMovement(v.scale(SLOW_FACTOR));
-        projectile.hurtMarked = true;
-        projectile.addTag(SLOWED_TAG);
+        Vec3d v = projectile.getVelocity();
+        projectile.setVelocity(v.multiply(SLOW_FACTOR));
+        projectile.velocityModified = true;
+        projectile.addCommandTag(SLOWED_TAG);
         return true;
     }
 
     /** 在范围内找一个风灵玩家。 */
-    private static ServerPlayer findWindSpiritInRange(ServerLevel world, Entity projectile, AABB box) {
-        for (Entity e : world.getEntities(projectile, box)) {
-            if (!(e instanceof ServerPlayer sp)) continue;
+    private static ServerPlayerEntity findWindSpiritInRange(ServerWorld world, Entity projectile, Box box) {
+        for (Entity e : world.getOtherEntities(projectile, box)) {
+            if (!(e instanceof ServerPlayerEntity sp)) continue;
             if (!FormUtils.isOcelotSP(sp)) continue;
-            if (e.distanceToSqr(projectile) <= RANGE * RANGE) {
+            if (e.squaredDistanceTo(projectile) <= RANGE * RANGE) {
                 return sp;
             }
         }

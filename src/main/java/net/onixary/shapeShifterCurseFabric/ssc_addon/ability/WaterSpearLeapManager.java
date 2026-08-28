@@ -1,11 +1,11 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.ability;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.math.Vec3d;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.ThrownWaterSpearEntity;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.AxolotlTree;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.RegEvolutionComponent;
@@ -48,62 +48,62 @@ public final class WaterSpearLeapManager {
 	}
 
 	/** 客户端按主技能键（无 payload）。服务端校验、换水矛并起跃悬浮。 */
-	public static void onKeyPress(ServerPlayer player) {
-		if (STATES.containsKey(player.getUUID())) return; // 施法中不可重入
+	public static void onKeyPress(ServerPlayerEntity player) {
+		if (STATES.containsKey(player.getUuid())) return; // 施法中不可重入
 		if (!FormUtils.isUpgradeAxolotl(player)) return;
 		if (!RegEvolutionComponent.EVOLUTION.get(player).isUnlocked(AxolotlTree.NODE_WATER_SPEAR)) return;
 		if (PowerUtils.getResourceValue(player, FormIdentifiers.SP_PRIMARY_CD) > 0) return; // CD 中
-		if (player.getAirSupply() < AIR_COST) return; // 湿润度不足
+		if (player.getAir() < AIR_COST) return; // 湿润度不足
 
-		player.setAirSupply(player.getAirSupply() - AIR_COST);
+		player.setAir(player.getAir() - AIR_COST);
 
 		LeapState s = new LeapState();
-		STATES.put(player.getUUID(), s);
+		STATES.put(player.getUuid(), s);
 
 		// 同步「蓄力中」→ 客户端纯渲染：手上渲染 3D 水矛模型（不往背包放任何物品）+ 举矛过肩姿势
 		SscAddonNetworking.syncSpearChargeState(player, true);
 
 		// 无重力 + 一次性冲量斜后上跃（视线反方向 + 上），随后衰减到空中悬浮
 		player.setNoGravity(true);
-		Vec3 look = player.getLookAngle();
-		Vec3 back = new Vec3(-look.x, 0, -look.z);
-		if (back.lengthSqr() < 1.0e-4) back = new Vec3(0, 0, -1);
+		Vec3d look = player.getRotationVector();
+		Vec3d back = new Vec3d(-look.x, 0, -look.z);
+		if (back.lengthSquared() < 1.0e-4) back = new Vec3d(0, 0, -1);
 		back = back.normalize();
-		player.setDeltaMovement(back.x * LEAP_BACK, LEAP_UP, back.z * LEAP_BACK);
-		player.hurtMarked = true;
+		player.setVelocity(back.x * LEAP_BACK, LEAP_UP, back.z * LEAP_BACK);
+		player.velocityModified = true;
 		player.fallDistance = 0.0f;
 
-		ServerLevel sw = (ServerLevel) player.level();
+		ServerWorld sw = (ServerWorld) player.getWorld();
 		// 起手蓄力音效：海晶核激活（魔法水涌，音量拉大做明显）+ 高速水花 + 美西螈入水（全员可闻 null）
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.CONDUIT_ACTIVATE, SoundSource.PLAYERS, 2.0f, 1.2f);
+				SoundEvents.BLOCK_CONDUIT_ACTIVATE, SoundCategory.PLAYERS, 2.0f, 1.2f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.PLAYER_SPLASH_HIGH_SPEED, SoundSource.PLAYERS, 1.0f, 1.1f);
+				SoundEvents.ENTITY_PLAYER_SPLASH_HIGH_SPEED, SoundCategory.PLAYERS, 1.0f, 1.1f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.AXOLOTL_SPLASH, SoundSource.PLAYERS, 1.2f, 0.8f);
-		sw.sendParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 0.2, player.getZ(),
+				SoundEvents.ENTITY_AXOLOTL_SPLASH, SoundCategory.PLAYERS, 1.2f, 0.8f);
+		sw.spawnParticles(ParticleTypes.SPLASH, player.getX(), player.getY() + 0.2, player.getZ(),
 				30, 0.4, 0.2, 0.4, 0.3);
 	}
 
 	/** 每服务端 tick 对每个在线玩家调用。 */
-	public static void tick(ServerPlayer player) {
-		LeapState s = STATES.get(player.getUUID());
+	public static void tick(ServerPlayerEntity player) {
+		LeapState s = STATES.get(player.getUuid());
 		if (s == null) return;
-		if (player.isDeadOrDying() || !FormUtils.isUpgradeAxolotl(player)) {
+		if (player.isDead() || !FormUtils.isUpgradeAxolotl(player)) {
 			cancel(player); // 死亡 / 形态丢失 → 取消并归还物品、恢复重力
 			return;
 		}
 		s.tick++;
-		ServerLevel sw = (ServerLevel) player.level();
+		ServerWorld sw = (ServerWorld) player.getWorld();
 
 		if (s.tick < CHARGE_TICKS) {
 			// 无重力下速度衰减：起跃冲量平滑收束到 0 → 跃起后悬浮在空中（不落）
-			Vec3 v = player.getDeltaMovement();
-			player.setDeltaMovement(v.x * DECAY, v.y * DECAY, v.z * DECAY);
-			player.hurtMarked = true;
+			Vec3d v = player.getVelocity();
+			player.setVelocity(v.x * DECAY, v.y * DECAY, v.z * DECAY);
+			player.velocityModified = true;
 			player.fallDistance = 0.0f;
 			if (s.tick % 4 == 0) {
-				sw.sendParticles(ParticleTypes.FALLING_WATER, player.getX(), player.getY() + 1.0, player.getZ(),
+				sw.spawnParticles(ParticleTypes.FALLING_WATER, player.getX(), player.getY() + 1.0, player.getZ(),
 						6, 0.4, 0.4, 0.4, 0.0);
 			}
 			// 蓄力音效：每 5 tick 一声上升气泡（音调随蓄力进度 0.8→1.7，营造能量聚集感）
@@ -111,14 +111,14 @@ public final class WaterSpearLeapManager {
 				float progress = (float) s.tick / (float) CHARGE_TICKS;
 				float pitch = 0.8f + progress * 0.9f;
 				sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.BUBBLE_COLUMN_UPWARDS_INSIDE, SoundSource.PLAYERS, 0.7f, pitch);
+						SoundEvents.BLOCK_BUBBLE_COLUMN_UPWARDS_INSIDE, SoundCategory.PLAYERS, 0.7f, pitch);
 				sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.GENERIC_SPLASH, SoundSource.PLAYERS, 0.35f, pitch);
+						SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 0.35f, pitch);
 			}
 			// 蓄满前瞬间（最后 3 tick）：海晶核短鸣提示「即将投出」
 			if (s.tick == CHARGE_TICKS - 3) {
 				sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-						SoundEvents.CONDUIT_AMBIENT_SHORT, SoundSource.PLAYERS, 0.9f, 1.4f);
+						SoundEvents.BLOCK_CONDUIT_AMBIENT_SHORT, SoundCategory.PLAYERS, 0.9f, 1.4f);
 			}
 		} else {
 			// 投矛：恢复重力、朝准星发射直线水矛
@@ -128,32 +128,32 @@ public final class WaterSpearLeapManager {
 	}
 
 	/** 朝准星方向投出直线水矛。 */
-	private static void throwSpear(ServerPlayer player, LeapState s) {
-		ServerLevel sw = (ServerLevel) player.level();
-		Vec3 dir = player.getLookAngle().normalize();
+	private static void throwSpear(ServerPlayerEntity player, LeapState s) {
+		ServerWorld sw = (ServerWorld) player.getWorld();
+		Vec3d dir = player.getRotationVector().normalize();
 		ThrownWaterSpearEntity spear = new ThrownWaterSpearEntity(sw, player);
-		spear.setPos(player.getX() + dir.x * 0.6, player.getEyeY() - 0.1 + dir.y * 0.6, player.getZ() + dir.z * 0.6);
+		spear.setPosition(player.getX() + dir.x * 0.6, player.getEyeY() - 0.1 + dir.y * 0.6, player.getZ() + dir.z * 0.6);
 		spear.setDirection(dir);
-		sw.addFreshEntity(spear);
+		sw.spawnEntity(spear);
 		// 不 swingHand：与 vanilla 水矛（三叉戟）投掷一致——矛从举矛蓄力姿势直接飞出、手臂落回正常，
 		// 而非普通攻击挥手（TridentItem.onStoppedUsing 同样不挥手）。
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.TRIDENT_THROW, SoundSource.PLAYERS, 1.2f, 1.1f);
+				SoundEvents.ITEM_TRIDENT_THROW, SoundCategory.PLAYERS, 1.2f, 1.1f);
 		sw.playSound(null, player.getX(), player.getY(), player.getZ(),
-				SoundEvents.PLAYER_SPLASH, SoundSource.PLAYERS, 1.0f, 0.9f);
+				SoundEvents.ENTITY_PLAYER_SPLASH, SoundCategory.PLAYERS, 1.0f, 0.9f);
 	}
 
 	/** 投矛完成：恢复重力、结束蓄力渲染、进入 CD 并清理状态。 */
-	private static void finish(ServerPlayer player) {
-		STATES.remove(player.getUUID());
+	private static void finish(ServerPlayerEntity player) {
+		STATES.remove(player.getUuid());
 		player.setNoGravity(false);
 		SscAddonNetworking.syncSpearChargeState(player, false);
 		PowerUtils.setResourceValueAndSync(player, FormIdentifiers.SP_PRIMARY_CD, CD_TICKS);
 	}
 
 	/** 取消（不进 CD、不投矛）：恢复重力、结束蓄力渲染。 */
-	public static void cancel(ServerPlayer player) {
-		LeapState s = STATES.remove(player.getUUID());
+	public static void cancel(ServerPlayerEntity player) {
+		LeapState s = STATES.remove(player.getUuid());
 		if (s != null) {
 			player.setNoGravity(false);
 			SscAddonNetworking.syncSpearChargeState(player, false);
@@ -166,8 +166,8 @@ public final class WaterSpearLeapManager {
 	}
 
 	/** 断线：恢复重力并清理。 */
-	public static void onPlayerDisconnect(ServerPlayer player) {
-		LeapState s = STATES.remove(player.getUUID());
+	public static void onPlayerDisconnect(ServerPlayerEntity player) {
+		LeapState s = STATES.remove(player.getUuid());
 		if (s != null) {
 			player.setNoGravity(false);
 		}

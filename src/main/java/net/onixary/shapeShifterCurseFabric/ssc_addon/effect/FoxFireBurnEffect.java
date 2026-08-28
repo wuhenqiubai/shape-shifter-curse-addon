@@ -1,29 +1,29 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.effect;
 
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectCategory;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.world.ServerWorld;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.util.SscIgnitedEntityAccessor;
 
 import java.util.UUID;
 
-public class FoxFireBurnEffect extends MobEffect {
+public class FoxFireBurnEffect extends StatusEffect {
 	public FoxFireBurnEffect() {
-		super(MobEffectCategory.HARMFUL, 0x3366FF); // Blue color
+		super(StatusEffectCategory.HARMFUL, 0x3366FF); // Blue color
 	}
 
-	private Player getOwnerFromTags(LivingEntity entity) {
-		for (String tag : entity.getTags()) {
+	private PlayerEntity getOwnerFromTags(LivingEntity entity) {
+		for (String tag : entity.getCommandTags()) {
 			if (tag.startsWith("ssc_owner:")) {
 				try {
 					String uuidStr = tag.substring("ssc_owner:".length());
 					UUID uuid = UUID.fromString(uuidStr);
-					return entity.level().getPlayerByUUID(uuid);
+					return entity.getWorld().getPlayerByUuid(uuid);
 				} catch (Exception e) {
 					// Ignore invalid tags
 				}
@@ -33,39 +33,39 @@ public class FoxFireBurnEffect extends MobEffect {
 	}
 
 	@Override
-	public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
+	public boolean canApplyUpdateEffect(int duration, int amplifier) {
 		return true;
 	}
 
 	@Override
-	public boolean applyEffectTick(LivingEntity entity, int amplifier) {
-		if (entity.hasEffect(SscAddon.PURIFIED_ENTRY)) {
-			entity.removeEffect(SscAddon.FOX_FIRE_BURN_ENTRY);
+	public boolean applyUpdateEffect(LivingEntity entity, int amplifier) {
+		if (entity.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
+			entity.removeStatusEffect(SscAddon.FOX_FIRE_BURN_ENTRY);
 			return false;
 		}
 
-		if (entity.level().isClientSide) {
+		if (entity.getWorld().isClient) {
 			// Client side particles can be handled here or via separate client tick handler
 			// But applyUpdateEffect runs on both usually if registered correctly.
 			// For simple visuals, we might rely on server spawning particles or client side implementation.
 			// StatusEffect particles are usually handled by the game automatically if color is set,
 			// but we want Soul Fire particles.
-			entity.level().addParticle(ParticleTypes.SOUL_FIRE_FLAME, true,
-					entity.getX() + (entity.getRandom().nextDouble() - 0.5) * entity.getBbWidth(),
-					entity.getY() + entity.getRandom().nextDouble() * entity.getBbHeight(),
-					entity.getZ() + (entity.getRandom().nextDouble() - 0.5) * entity.getBbWidth(),
+			entity.getWorld().addParticle(ParticleTypes.SOUL_FIRE_FLAME, true,
+					entity.getX() + (entity.getRandom().nextDouble() - 0.5) * entity.getWidth(),
+					entity.getY() + entity.getRandom().nextDouble() * entity.getHeight(),
+					entity.getZ() + (entity.getRandom().nextDouble() - 0.5) * entity.getWidth(),
 					0, 0, 0);
 		} else {
 			// Server side logic
 			// Damage every second (20 ticks) like vanilla fire
-			if (entity.tickCount % 20 == 0) {
-				DamageSource source = entity.damageSources().inFire();
+			if (entity.age % 20 == 0) {
+				DamageSource source = entity.getDamageSources().inFire();
 
-				Player owner = null;
+				PlayerEntity owner = null;
 				if (entity instanceof SscIgnitedEntityAccessor accessor) {
 					UUID igniterUuid = accessor.sscAddon$getIgniterUuid();
 					if (igniterUuid != null) {
-						owner = entity.level().getPlayerByUUID(igniterUuid);
+						owner = entity.getWorld().getPlayerByUuid(igniterUuid);
 					}
 				}
 
@@ -83,24 +83,24 @@ public class FoxFireBurnEffect extends MobEffect {
 					// But getDamageSources().inFire() doesn't take attacker.
 					// We can use create(DamageTypes.IN_FIRE, null, owner) if we want.
 					// But typically 'playerAttack' is safest for credit.
-					source = entity.damageSources().playerAttack(owner);
+					source = entity.getDamageSources().playerAttack(owner);
 				}
 				// Priority 2: Standard vanilla attribution fallback
-				else if (entity.getLastAttacker() instanceof Player player) {
-					source = entity.damageSources().playerAttack(player);
-				} else if (entity.getLastHurtByMob() instanceof Player player) {
-					source = entity.damageSources().playerAttack(player);
+				else if (entity.getLastAttacker() instanceof PlayerEntity player) {
+					source = entity.getDamageSources().playerAttack(player);
+				} else if (entity.getAttacker() instanceof PlayerEntity player) {
+					source = entity.getDamageSources().playerAttack(player);
 				}
 
-				net.minecraft.world.phys.Vec3 oldVelocity = entity.getDeltaMovement();
-				if (entity.hurt(source, 1.0f)) {
-					entity.setDeltaMovement(oldVelocity);
+				net.minecraft.util.math.Vec3d oldVelocity = entity.getVelocity();
+				if (entity.damage(source, 1.0f)) {
+					entity.setVelocity(oldVelocity);
 				}
 
 				// Spawn explicit particles on server for everyone to see
-				if (entity.level() instanceof ServerLevel serverWorld) {
+				if (entity.getWorld() instanceof ServerWorld serverWorld) {
 					net.onixary.shapeShifterCurseFabric.ssc_addon.util.ParticleUtils.spawnParticles(serverWorld, ParticleTypes.SOUL_FIRE_FLAME,
-							entity.getX(), entity.getY() + entity.getBbHeight() / 2.0, entity.getZ(),
+							entity.getX(), entity.getY() + entity.getHeight() / 2.0, entity.getZ(),
 							2, 0.3, 0.3, 0.3, 0.05);
 				}
 			}

@@ -5,15 +5,15 @@
  */
 package net.onixary.shapeShifterCurseFabric.ssc_addon.util;
 
-import net.minecraft.ChatFormatting;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.scoreboard.AbstractTeam;
+import net.minecraft.scoreboard.Scoreboard;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.scores.PlayerTeam;
-import net.minecraft.world.scores.Scoreboard;
-import net.minecraft.world.scores.Team;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Formatting;
 
 /**
  * 寄生果蝠主要技能满层（stack==3）目标的 outline 高光辅助类。
@@ -40,58 +40,58 @@ public final class GlowMarker {
 
     /** 给目标打上"满层友军"绿色 outline；幂等，可重复调用。 */
     public static void markFriend(LivingEntity target) {
-        applyMark(target, TEAM_FRIEND, ChatFormatting.GREEN);
+        applyMark(target, TEAM_FRIEND, Formatting.GREEN);
     }
 
     /** 给目标打上"满层敌方"红色 outline；幂等，可重复调用。 */
     public static void markEnemy(LivingEntity target) {
-        applyMark(target, TEAM_ENEMY, ChatFormatting.RED);
+        applyMark(target, TEAM_ENEMY, Formatting.RED);
     }
 
     /** 取消目标的本机制 outline（仅在目标当前属于本机制 team 时移除）。 */
     public static void unmark(LivingEntity target) {
-        if (!(target.level() instanceof ServerLevel world)) return;
+        if (!(target.getWorld() instanceof ServerWorld world)) return;
         MinecraftServer server = world.getServer();
         if (server == null) return;
         Scoreboard scoreboard = server.getScoreboard();
-        Team current = target.getTeam();
-        if (current instanceof PlayerTeam team
+        AbstractTeam current = target.getScoreboardTeam();
+        if (current instanceof Team team
                 && (TEAM_FRIEND.equals(team.getName()) || TEAM_ENEMY.equals(team.getName()))) {
-            scoreboard.removePlayerFromTeam(target.getScoreboardName(), team);
+            scoreboard.removeScoreHolderFromTeam(target.getNameForScoreboard(), team);
         }
     }
 
-    private static void applyMark(LivingEntity target, String teamName, ChatFormatting color) {
-        if (!(target.level() instanceof ServerLevel world)) return;
+    private static void applyMark(LivingEntity target, String teamName, Formatting color) {
+        if (!(target.getWorld() instanceof ServerWorld world)) return;
         MinecraftServer server = world.getServer();
         if (server == null) return;
         Scoreboard scoreboard = server.getScoreboard();
-        PlayerTeam team = ensureTeam(scoreboard, teamName, color);
+        Team team = ensureTeam(scoreboard, teamName, color);
 
-        Team current = target.getTeam();
-        if (!(current instanceof PlayerTeam currentTeam) || !teamName.equals(currentTeam.getName())) {
+        AbstractTeam current = target.getScoreboardTeam();
+        if (!(current instanceof Team currentTeam) || !teamName.equals(currentTeam.getName())) {
             // 若之前在另一个本机制 team，先移除避免重复
-            if (current instanceof PlayerTeam prev
+            if (current instanceof Team prev
                     && (TEAM_FRIEND.equals(prev.getName()) || TEAM_ENEMY.equals(prev.getName()))) {
-                scoreboard.removePlayerFromTeam(target.getScoreboardName(), prev);
+                scoreboard.removeScoreHolderFromTeam(target.getNameForScoreboard(), prev);
             }
             // 仅当目标完全无 team 或之前在本机制 team 时才接管，避免破坏外部 team 配置
-            if (target.getTeam() == null) {
-                scoreboard.addPlayerToTeam(target.getScoreboardName(), team);
+            if (target.getScoreboardTeam() == null) {
+                scoreboard.addScoreHolderToTeam(target.getNameForScoreboard(), team);
             }
         }
         // 持续刷新 GLOWING 状态以保证客户端描边
-        target.addEffect(new MobEffectInstance(MobEffects.GLOWING,
+        target.addStatusEffect(new StatusEffectInstance(StatusEffects.GLOWING,
                 GLOWING_DURATION, 0, false, false, false));
     }
 
-    private static PlayerTeam ensureTeam(Scoreboard scoreboard, String name, ChatFormatting color) {
-        PlayerTeam team = scoreboard.getPlayerTeam(name);
+    private static Team ensureTeam(Scoreboard scoreboard, String name, Formatting color) {
+        Team team = scoreboard.getTeam(name);
         if (team == null) {
-            team = scoreboard.addPlayerTeam(name);
+            team = scoreboard.addTeam(name);
             team.setColor(color);
-            team.setSeeFriendlyInvisibles(false);
-            team.setAllowFriendlyFire(true);
+            team.setShowFriendlyInvisibles(false);
+            team.setFriendlyFireAllowed(true);
         }
         return team;
     }

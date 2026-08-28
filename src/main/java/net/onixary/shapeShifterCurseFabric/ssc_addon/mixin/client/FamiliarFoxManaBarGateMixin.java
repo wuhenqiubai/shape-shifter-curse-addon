@@ -1,7 +1,7 @@
 package net.onixary.shapeShifterCurseFabric.ssc_addon.mixin.client;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.onixary.shapeShifterCurseFabric.mana.FamiliarFoxManaBar;
 import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.onixary.shapeShifterCurseFabric.player_form.utils.RegPlayerFormComponent;
@@ -25,8 +25,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class FamiliarFoxManaBarGateMixin {
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void ssc_addon$gateUpgradeFamiliarFoxMana(GuiGraphics context, float tickDelta, CallbackInfo ci) {
-        Minecraft mc = Minecraft.getInstance();
+    private void ssc_addon$gateUpgradeFamiliarFoxMana(DrawContext context, float tickDelta, CallbackInfo ci) {
+        MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) {
             return;
         }

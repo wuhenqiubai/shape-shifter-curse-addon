@@ -4,6 +4,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
 
 import java.util.Map;
@@ -26,14 +27,14 @@ public final class WebHighlightClient {
 	private WebHighlightClient() {}
 
 	public static void register() {
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_WEB_HIGHLIGHT,
-				(client, handler, buf, responseSender) -> {
-					int entityId = buf.readVarInt();
-					int duration = buf.readVarInt();
-					int color = buf.readInt();
-					client.execute(() -> {
-						if (client.world == null) return;
-						HIGHLIGHT.put(entityId, new long[]{client.world.getTime() + duration, color});
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_WEB_HIGHLIGHT),
+				(BytePayload bp, ClientPlayNetworking.Context ctx) -> {
+					int entityId = bp.data().readVarInt();
+					int duration = bp.data().readVarInt();
+					int color = bp.data().readInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
+						HIGHLIGHT.put(entityId, new long[]{ctx.client().world.getTime() + duration, color});
 					});
 				});
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {

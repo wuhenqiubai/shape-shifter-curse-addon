@@ -3,9 +3,9 @@ package net.onixary.shapeShifterCurseFabric.ssc_addon.client.colorpicker;
 import me.shedaniel.autoconfig.AutoConfig;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
 import net.onixary.shapeShifterCurseFabric.config.PlayerCustomConfig;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
@@ -81,7 +81,7 @@ public final class AdvancedColorBridge {
 
     /** 备份本地预览状态。 */
     public static PreviewBackup backupPreview() {
-        LocalPlayer p = Minecraft.getInstance().player;
+        ClientPlayerEntity p = MinecraftClient.getInstance().player;
         if (p == null) return null;
         PlayerSkinComponent skin = RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
         PreviewBackup b = new PreviewBackup();
@@ -93,7 +93,7 @@ public final class AdvancedColorBridge {
     /** 把工作态推到客户端 PlayerSkinComponent 实现本地预览（不发包）。 */
     public static void applyPreview(WorkingState s) {
         if (s == null) return;
-        LocalPlayer p = Minecraft.getInstance().player;
+        ClientPlayerEntity p = MinecraftClient.getInstance().player;
         if (p == null) return;
         PlayerSkinComponent skin = RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
         skin.setEnableFormColor(s.enabled);
@@ -111,7 +111,7 @@ public final class AdvancedColorBridge {
     /** 取消：把备份的客户端组件状态还原回去（仅本地，不发包）。 */
     public static void restoreFromBackup(PreviewBackup b) {
         if (b == null) return;
-        LocalPlayer p = Minecraft.getInstance().player;
+        ClientPlayerEntity p = MinecraftClient.getInstance().player;
         if (p == null) return;
         PlayerSkinComponent skin = RegPlayerSkinComponent.SKIN_SETTINGS.get(p);
         skin.setFormColor(b.colorABGR);
@@ -145,7 +145,7 @@ public final class AdvancedColorBridge {
         // 直接走 ClientPlayNetworking.send + update_custom_color 通道补发颜色，
         // 不依赖 SSC 主包是否暴露 sendUpdateCustomColor 方法（1.9.0 上还没暴露）。
         try {
-            net.minecraft.network.FriendlyByteBuf cbuf = PacketByteBufs.create();
+            net.minecraft.network.PacketByteBuf cbuf = PacketByteBufs.create();
             cbuf.writeInt(FormTextureUtils.ARGB2ABGR(s.colorsARGB[IDX_PRIMARY]));
             cbuf.writeInt(FormTextureUtils.ARGB2ABGR(s.colorsARGB[IDX_ACCENT1]));
             cbuf.writeInt(FormTextureUtils.ARGB2ABGR(s.colorsARGB[IDX_ACCENT2]));
@@ -154,7 +154,7 @@ public final class AdvancedColorBridge {
             cbuf.writeBoolean(s.greyReverse[GR_IDX_PRIMARY]);
             cbuf.writeBoolean(s.greyReverse[GR_IDX_ACCENT1]);
             cbuf.writeBoolean(s.greyReverse[GR_IDX_ACCENT2]);
-            ClientPlayNetworking.send(new BytePayload(BytePayload.id(ResourceLocation.fromNamespaceAndPath(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
+            ClientPlayNetworking.send(new BytePayload(BytePayload.id(Identifier.of(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
         } catch (Throwable t) {
             ShapeShifterCurseFabric.LOGGER.error("[SSC_ADDON] AdvancedColorBridge: failed to send color packet", t);
         }

@@ -3,6 +3,7 @@ package net.jackcooper.shapeShifterCurseAddon.effect;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 
 /**
@@ -13,9 +14,9 @@ public final class RegAddonEffects {
 	private RegAddonEffects() {}
 
 	/** 蛛网缠身：月织蛛减速蛛网踩踏施加的减速 debuff（防牛奶、任何形态不免疫）。 */
-	public static final StatusEffect SPIDER_WEB_BOUND = Registry.register(
+	public static final RegistryEntry<StatusEffect> SPIDER_WEB_BOUND = Registry.registerReference(
 			Registries.STATUS_EFFECT,
-			new Identifier("ssc_addon", "spider_web_bound"),
+			Identifier.of("ssc_addon", "spider_web_bound"),
 			new SpiderWebBoundEffect());
 
 	public static void init() {
