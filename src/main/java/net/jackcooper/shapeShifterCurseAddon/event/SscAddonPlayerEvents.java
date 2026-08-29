@@ -78,7 +78,7 @@ public final class SscAddonPlayerEvents {
 							server.execute(() -> {
 							var p = server.getPlayerManager().getPlayer(playerUuid);
 							if (p == null) return;
-							String url = "https://github.com/MangZai-120/shape-shifter-curse-addon/issues";
+							String url = "https://github.com/wuhenqiubai/shape-shifter-curse-addon/issues";
 							String wikiUrl = "https://www.mcmod.cn/class/24327.html";
 							// 根据玩家客户端语言选择显示文本
 							String lang = SscAddon.PLAYER_LANGUAGES.getOrDefault(playerUuid, "en_us");
@@ -94,6 +94,8 @@ public final class SscAddonPlayerEvents {
 											.withUnderline(true)
 											.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, wikiUrl)));
 							if (isChinese) {
+								// 作者/版本声明
+								p.sendMessage(Text.empty().append(Text.literal("1.21.1版本的SSCA由无痕秋白制作，可能存在bug。").formatted(Formatting.BLUE)));
 								// 第一行：欢迎+百科链接+bug说明+GitHub链接+崩溃说明
 								p.sendMessage(Text.empty()
 										.append(Text.literal("欢迎游玩幻形者诅咒扩展，游玩教程在MC百科上：").formatted(Formatting.GOLD))
@@ -106,6 +108,7 @@ public final class SscAddonPlayerEvents {
 								// 第三行：ps提示
 								p.sendMessage(Text.literal("ps：此对话只显示这一次").formatted(Formatting.GRAY));
 							} else {
+								p.sendMessage(Text.empty().append(Text.literal("1.21.1 version of SSCA is made by wuhenqiubai, may have bugs. ").formatted(Formatting.BLUE)));
 								p.sendMessage(Text.empty()
 										.append(Text.literal("Welcome to Shape Shifter's Curse Addon! Tutorial is available on MCMOD Wiki: ").formatted(Formatting.GOLD))
 										.append(wikiLink)

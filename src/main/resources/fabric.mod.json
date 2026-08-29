@@ -13,14 +13,20 @@
       "contact": {
         "github": "https://github.com/MangZai-120"
       }
+    },
+    {
+      "name": "wuhenqiubai(1.21.1 port)",
+      "contact": {
+        "github": "https://github.com/wuhenqiubai"
+      }
     }
   ],
   "contact": {
     "modrinth": "https://modrinth.com/mod/shape-shifter-curse-addon",
     "curseforge": "https://www.curseforge.com/minecraft/mc-mods/shape-shifter-curse-addon",
     "homepage": "https://shape-shifter-curse-addon.readthedocs.io/zh-cn/latest/",
-    "sources": "https://github.com/MangZai-120/shape-shifter-curse-addon",
-    "issues": "https://github.com/MangZai-120/shape-shifter-curse-addon/issues"
+    "sources": "https://github.com/wuhenqiubai/shape-shifter-curse-addon",
+    "issues": "https://github.com/wuhenqiubai/shape-shifter-curse-addon/issues"
   },
   "license": "AGPL-3.0-or-later",
   "icon": "assets/ssc_addon/icon.png",
@@ -69,14 +75,6 @@
     "lambdynlights": "*",
     "asyncparticles": "*"
   },
-  "contributors": [
-    {
-      "name": "wuhenqiubai",
-      "contact": {
-        "github": "https://github.com/wuhenqiubai"
-      }
-    }
-  ],
   "custom": {
     "cardinal-components": [
       "ssc_addon:evolution",
