@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "IPI",
@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:potion_storage_box",
+    "id": "ssc_addon:potion_storage_box",
     "count": 1
   }
 }

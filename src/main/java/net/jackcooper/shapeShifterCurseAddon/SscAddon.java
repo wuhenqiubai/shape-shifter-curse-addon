@@ -558,6 +558,8 @@ public class SscAddon implements ModInitializer {
 		SscAddonConditions.register();
 		SscAddonPowers.register();
 		SscAddonNetworking.registerServerReceivers();
+		// S2C payload 必须在双端注册（服务端 send 需要 codec，见 registerS2CPayloads 注释）
+		SscAddonNetworking.registerS2CPayloads();
 		StoryBookLoot.init();
 		AllaySPTotem.init();
 		AllaySPPortableBeacon.init(); // SP 悦灵右键信标切换激活（UseItemCallback 注册，此前漏注册导致功能失效）

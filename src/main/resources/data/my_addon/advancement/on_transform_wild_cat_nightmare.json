@@ -1,7 +1,6 @@
-{
+﻿{
   "display": {
-    "icon": {
-      "item": "ssc_addon:invisibility_cloak"
+    "icon": { "id": "ssc_addon:invisibility_cloak"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_wild_cat_nightmare.title"
@@ -23,5 +22,5 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [ ["on_transform_wild_cat_nightmare"] ]
 }

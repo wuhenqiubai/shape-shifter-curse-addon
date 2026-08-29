@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "ABA",
@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:energy_storage_tank",
+    "id": "ssc_addon:energy_storage_tank",
     "count": 1
   }
 }

@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "GBG",
@@ -23,7 +23,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:energy_bottler",
+    "id": "ssc_addon:energy_bottler",
     "count": 1
   }
 }

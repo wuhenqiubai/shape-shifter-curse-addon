@@ -31,7 +31,7 @@ public class SpiderWebBoundEffect extends StatusEffect {
 	public SpiderWebBoundEffect() {
 		super(StatusEffectCategory.HARMFUL, 0xBFC4CC);
 		this.addAttributeModifier(EntityAttributes.GENERIC_MOVEMENT_SPEED,
-                Identifier.of("6C9E2A1F-8B3D-4A7E-9F21-3D5C7A0B1E44"), -0.5D, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+                Identifier.of("6c9e2a1f-8b3d-4a7e-9f21-3d5c7a0b1e44"), -0.5D, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 	}
 
 	@Override

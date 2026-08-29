@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "ACA",
@@ -23,7 +23,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:energy_extractor",
+    "id": "ssc_addon:energy_extractor",
     "count": 1
   }
 }

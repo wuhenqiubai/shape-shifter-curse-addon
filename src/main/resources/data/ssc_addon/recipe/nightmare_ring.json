@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "SCS",
@@ -17,7 +17,7 @@
     }
   },
   "result": {
-    "item": "ssc_addon:nightmare_ring",
+    "id": "ssc_addon:nightmare_ring",
     "count": 1
   }
 }

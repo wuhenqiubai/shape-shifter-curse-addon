@@ -9,8 +9,8 @@ import net.minecraft.util.Identifier;
 
 public class StunEffect extends StatusEffect {
 	// 固定 UUID：暴露为常量，供 SscAddon 的「孤儿修正兜底清理」按 UUID 精确移除残留。
-	public static final Identifier SPEED_MODIFIER_UUID = Identifier.of("7107DE5E-7CE8-4030-940E-514C1F160890");
-	public static final Identifier ATTACK_MODIFIER_UUID = Identifier.of("22653B89-116E-49DC-9B6B-9971489B5C0A");
+	public static final Identifier SPEED_MODIFIER_UUID = Identifier.of("7107de5e-7ce8-4030-940e-514c1f160890");
+	public static final Identifier ATTACK_MODIFIER_UUID = Identifier.of("22653b89-116e-49dc-9b6b-9971489b5c0a");
 
 	public StunEffect() {
 		super(StatusEffectCategory.HARMFUL, 0x888888);

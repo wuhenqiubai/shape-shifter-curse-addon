@@ -324,6 +324,34 @@ public class SscAddonNetworking {
 		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_JUMP_KILL_SILK_STATE), buf));
 	}
 
+	/**
+	 * 注册所有 S2C payload 类型（必须在双端都调用——服务端 send 与客户端接收都依赖
+	 * {@code PayloadTypeRegistry.playS2C()} 已注册对应 codec，否则服务端发送时
+	 * {@code PacketCodecDispatcher} 找不到正确 codec，会 ClassCastException 并踢人）。
+	 */
+	public static void registerS2CPayloads() {
+		BytePayload.registerS2C(PACKET_TIDAL_TETHER);
+		BytePayload.registerS2C(PACKET_EVO_ROUTES_SYNC);
+		BytePayload.registerS2C(PACKET_BROADCAST_FORMS);
+		BytePayload.registerS2C(PACKET_CLAW_STATE);
+		BytePayload.registerS2C(PACKET_DASH_STATE);
+		BytePayload.registerS2C(PACKET_SPEAR_CHARGE_STATE);
+		BytePayload.registerS2C(PACKET_WHITELIST_GUI_SYNC);
+		BytePayload.registerS2C(PACKET_FROST_SPIKE_CHARGE_STATE);
+		BytePayload.registerS2C(PACKET_OPEN_JOB_CHANGE);
+		BytePayload.registerS2C(PACKET_ANIM_DEBUG_TOGGLE);
+		BytePayload.registerS2C(PACKET_WEB_HIGHLIGHT);
+		BytePayload.registerS2C(PACKET_DREAM_VEIL);
+		BytePayload.registerS2C(PACKET_FEAR_STATE);
+		BytePayload.registerS2C(PACKET_FEAR_HIDE);
+		BytePayload.registerS2C(PACKET_FEAR_REVEAL);
+		BytePayload.registerS2C(PACKET_SPOOK_GHOST);
+		BytePayload.registerS2C(PACKET_JUMP_KILL_SILK_STATE);
+		BytePayload.registerS2C(PACKET_SPIDER_MOON_WEAVER_SWING_STATE);
+		BytePayload.registerS2C(net.jackcooper.shapeShifterCurseAddon.ability.GoldenSandstormErosionBrand.PACKET_BRAND_SYNC);
+		BytePayload.registerS2C(net.jackcooper.shapeShifterCurseAddon.ability.MancianimaMarkManager.PACKET_MARK_SYNC);
+	}
+
 	public static void registerServerReceivers() {
         // 注册所有 C2S payload 类型
         BytePayload.registerC2S(PACKET_MANCIANIMA_TELEPORT);

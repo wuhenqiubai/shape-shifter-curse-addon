@@ -18,7 +18,7 @@ public class SscAddonPreLaunch implements PreLaunchEntrypoint {
 	public void onPreLaunch() {
 		printDependencyReport();
 
-		var sscOpt = FabricLoader.getInstance().getModContainer("shape-shifter-curse");
+		var sscOpt = FabricLoader.getInstance().getModContainer("shape-shifter-curse-unofficial");
 
 		if (sscOpt.isEmpty()) {
 			// SSC 模组完全不存在 —— 理论上 fabric.mod.json depends 已声明，此处做二次兜底
@@ -65,7 +65,7 @@ public class SscAddonPreLaunch implements PreLaunchEntrypoint {
 	 */
 	private static void printDependencyReport() {
 		String[][] deps = {
-				{"shape-shifter-curse", "幻型者诅咒本体 Shape Shifter's Curse", MIN_SSC_VERSION},
+				{"shape-shifter-curse-unofficial", "幻型者诅咒非官方版 Shape Shifter Curse-Unofficial Port", MIN_SSC_VERSION},
 				{"geckolib", "GeckoLib", MIN_GECKOLIB_VERSION},
 				{"trinkets", "Trinkets 饰品栏", MIN_TRINKETS_VERSION},
 		};

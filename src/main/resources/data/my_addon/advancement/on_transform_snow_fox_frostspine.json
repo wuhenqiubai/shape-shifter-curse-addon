@@ -1,7 +1,6 @@
-{
+﻿{
   "display": {
-    "icon": {
-      "item": "minecraft:snowball"
+    "icon": { "id": "minecraft:snowball"
     },
     "title": {
       "translate": "advancements.my_addon.on_transform_snow_fox_frostspine.title"
@@ -23,5 +22,5 @@
       }
     }
   },
-  "requirements": []
+  "requirements": [ ["on_transform_snow_fox_frostspine"] ]
 }

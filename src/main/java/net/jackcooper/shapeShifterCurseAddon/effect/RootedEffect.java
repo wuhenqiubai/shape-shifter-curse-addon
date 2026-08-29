@@ -16,7 +16,7 @@ import net.minecraft.util.Identifier;
  */
 public class RootedEffect extends StatusEffect {
 	/** 固定 UUID，供孤儿清理按 UUID 精确移除。 */
-	public static final UUID SPEED_MODIFIER_UUID = UUID.fromString("3F2A6C11-9D74-4B8E-A1C3-77E5D2B0A9F1");
+	public static final UUID SPEED_MODIFIER_UUID = UUID.fromString("3f2a6c11-9d74-4b8e-a1c3-77e5d2b0a9f1");
 
 	public RootedEffect() {
 		super(StatusEffectCategory.NEUTRAL, 0x33CCFF);
