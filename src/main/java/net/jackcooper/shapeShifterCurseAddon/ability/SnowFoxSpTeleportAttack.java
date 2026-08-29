@@ -63,7 +63,7 @@ public class SnowFoxSpTeleportAttack {
 		List<LivingEntity> targets = findTargets(player);
 
 		if (targets.isEmpty()) {
-			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 1.0f, 1.0f);
+			player.playSound(SoundEvents.BLOCK_FIRE_EXTINGUISH, 1.0f, 1.0f);
 			net.jackcooper.shapeShifterCurseAddon.resource.ResourceBars.consume(player,
 					net.jackcooper.shapeShifterCurseAddon.resource.BarKeys.SNOW_FOX, MANA_COST_FAIL);
 			setRegenCooldown(player, 100);

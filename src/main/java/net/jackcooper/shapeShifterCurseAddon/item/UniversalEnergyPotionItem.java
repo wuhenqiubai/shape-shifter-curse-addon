@@ -3,12 +3,12 @@ package net.jackcooper.shapeShifterCurseAddon.item;
 import net.jackcooper.shapeShifterCurseAddon.resource.BarKeys;
 import net.jackcooper.shapeShifterCurseAddon.resource.ResourceBarDef;
 import net.jackcooper.shapeShifterCurseAddon.resource.ResourceBars;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.stat.Stats;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
@@ -120,7 +120,7 @@ public class UniversalEnergyPotionItem extends Item {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, LivingEntity entity) {
 		return 32; // 与原版药水一致的饮用读条
 	}
 
@@ -135,8 +135,8 @@ public class UniversalEnergyPotionItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
-		super.appendTooltip(stack, world, tooltip, context);
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+		super.appendTooltip(stack, context, tooltip, type);
 		tooltip.add(Text.translatable("tooltip.ssc_addon.universal_potion").formatted(net.minecraft.util.Formatting.AQUA));
 	}
 }

@@ -7,10 +7,10 @@ import me.shedaniel.rei.api.common.util.EntryIngredients;
 import me.shedaniel.rei.api.common.util.EntryStacks;
 import me.shedaniel.rei.plugin.common.displays.crafting.DefaultCraftingDisplay;
 import me.shedaniel.rei.plugin.common.displays.brewing.DefaultBrewingDisplay;
-import net.minecraft.item.ItemStack;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.Items;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.potion.Potions;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
@@ -29,7 +29,7 @@ import java.util.Optional;
 public class SSCA_REIPlugin implements REIClientPlugin {
 
 	public Identifier getIdentifier() {
-		return new Identifier("ssc_addon", "rei_plugin");
+		return Identifier.of("ssc_addon", "rei_plugin");
 	}
 
 	public void registerDisplays(DisplayRegistry registry) {
@@ -57,9 +57,9 @@ public class SSCA_REIPlugin implements REIClientPlugin {
 		EntryIngredient eye = EntryIngredients.of(Items.SPIDER_EYE);
 		// 中心槽：三种瓶型（饮用/喷溅/滞留）的剧毒药水作为可切换选项
 		EntryIngredient poison = EntryIngredient.of(
-				EntryStacks.of(PotionUtil.setPotion(new ItemStack(Items.POTION), Potions.POISON)),
-				EntryStacks.of(PotionUtil.setPotion(new ItemStack(Items.SPLASH_POTION), Potions.POISON)),
-				EntryStacks.of(PotionUtil.setPotion(new ItemStack(Items.LINGERING_POTION), Potions.POISON)));
+				EntryStacks.of(PotionContentsComponent.createStack(Items.POTION, Potions.POISON)),
+				EntryStacks.of(PotionContentsComponent.createStack(Items.SPLASH_POTION, Potions.POISON)),
+				EntryStacks.of(PotionContentsComponent.createStack(Items.LINGERING_POTION, Potions.POISON)));
 		return new DefaultCraftingDisplay<>(
 				List.of(eye, eye, eye, eye, poison, eye, eye, eye, eye),
 				List.of(EntryIngredients.of(SscAddon.VENOM_GLAND)),
@@ -79,7 +79,7 @@ public class SSCA_REIPlugin implements REIClientPlugin {
 		EntryIngredient moonRing = EntryIngredients.of(SscAddon.SP_UPGRADE_THING);
 		EntryIngredient apple = EntryIngredients.of(Items.ENCHANTED_GOLDEN_APPLE);
 		EntryIngredient feedPotion = EntryIngredients.of(
-				PotionUtil.setPotion(new ItemStack(Items.POTION), RegCustomPotions.FEED_POTION));
+				PotionContentsComponent.createStack(Items.POTION, RegistryEntry.of(RegCustomPotions.FEED_POTION)));
 		return new DefaultCraftingDisplay<>(
 				List.of(empty, moonRing, empty, apple, feedPotion, apple, empty, empty, empty),
 				List.of(EntryIngredients.of(SscAddon.INFINITE_ENERGY_POTION)),

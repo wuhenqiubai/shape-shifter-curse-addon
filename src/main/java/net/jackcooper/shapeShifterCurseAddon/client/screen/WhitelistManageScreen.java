@@ -18,6 +18,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.ArrayList;
 import java.util.Collection;

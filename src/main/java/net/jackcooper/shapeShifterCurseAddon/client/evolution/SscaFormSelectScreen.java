@@ -18,6 +18,7 @@ import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionNode;
 import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionRegistry;
 import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionRoute;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.ArrayList;
 import java.util.List;

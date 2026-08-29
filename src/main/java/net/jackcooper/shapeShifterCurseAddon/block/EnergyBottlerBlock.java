@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -31,6 +32,13 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressWarnings("deprecation") // 覆写 vanilla @Deprecated 的 Block 交互/状态替换/旋转镜像方法，统一抑制
 public class EnergyBottlerBlock extends BlockWithEntity {
+
+	public static final MapCodec<EnergyBottlerBlock> CODEC = createCodec(EnergyBottlerBlock::new);
+
+	@Override
+	public MapCodec<EnergyBottlerBlock> getCodec() {
+		return CODEC;
+	}
 
 	/** 开口所朝的水平方向（同汲取器：放置时开口朝向放置者）。 */
 	public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
@@ -76,11 +84,11 @@ public class EnergyBottlerBlock extends BlockWithEntity {
 	@Override
 	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
 		return world.isClient ? null
-				: checkType(type, RegAddonBlockEntities.ENERGY_BOTTLER_BE, EnergyBottlerBlockEntity::tick);
+				: validateTicker(type, RegAddonBlockEntities.ENERGY_BOTTLER_BE, EnergyBottlerBlockEntity::tick);
 	}
 
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (!world.isClient) {
 			BlockEntity be = world.getBlockEntity(pos);
 			if (be instanceof EnergyBottlerBlockEntity bottler) {

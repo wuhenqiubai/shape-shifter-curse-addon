@@ -19,6 +19,7 @@ import net.minecraft.network.packet.s2c.play.PlaySoundFromEntityS2CPacket;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -117,16 +118,16 @@ public class FrostThornEntity extends ProjectileEntity {
 	}
 
 	@Override
-	protected void initDataTracker() {
-		this.dataTracker.startTracking(STATE, STATE_HOVER);
-		this.dataTracker.startTracking(STAGE, 0);
-		this.dataTracker.startTracking(SLOT, 0);
-		this.dataTracker.startTracking(OWNER_UUID, Optional.empty());
-		this.dataTracker.startTracking(VEL_X, 0.0f);
-		this.dataTracker.startTracking(VEL_Y, 0.0f);
-		this.dataTracker.startTracking(VEL_Z, 0.0f);
-		this.dataTracker.startTracking(LEVEL, 0);
-		this.dataTracker.startTracking(FRESH, false);
+	protected void initDataTracker(DataTracker.Builder builder) {
+		this.dataTracker.set(STATE, STATE_HOVER);
+		this.dataTracker.set(STAGE, 0);
+		this.dataTracker.set(SLOT, 0);
+		this.dataTracker.set(OWNER_UUID, Optional.empty());
+		this.dataTracker.set(VEL_X, 0.0f);
+		this.dataTracker.set(VEL_Y, 0.0f);
+		this.dataTracker.set(VEL_Z, 0.0f);
+		this.dataTracker.set(LEVEL, 0);
+		this.dataTracker.set(FRESH, false);
 	}
 
 	public int getState() { return this.dataTracker.get(STATE); }
@@ -278,9 +279,9 @@ public class FrostThornEntity extends ProjectileEntity {
 	 * 位置/速度经 DataTracker 全精度每 tick 同步（VEL_X/Y/Z），本地外推已自洽，忽略跟踪包即可根治。</p>
 	 */
 	@Override
-	public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
+	public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int interpolationSteps) {
 		if (this.getWorld().isClient && getState() == STATE_FLY) return; // FLY 态：外推权威，忽略网络包
-		super.updateTrackedPositionAndAngles(x, y, z, yaw, pitch, interpolationSteps, interpolate);
+		super.updateTrackedPositionAndAngles(x, y, z, yaw, pitch, interpolationSteps);
 	}
 
 	@Override
@@ -316,7 +317,7 @@ public class FrostThornEntity extends ProjectileEntity {
 			return;
 		}
 		// 净化消除：主人被 SP 悦灵净化 → 无论环绕 / 飞行都碎裂（owner 引用在下方 adopt 中恢复）
-		if (this.getOwner() instanceof ServerPlayerEntity op && op.hasStatusEffect(SscAddon.PURIFIED)) {
+		if (this.getOwner() instanceof ServerPlayerEntity op && op.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
 			shatter();
 			return;
 		}
@@ -374,7 +375,7 @@ public class FrostThornEntity extends ProjectileEntity {
 				sw.spawnParticles(ParticleTypes.SNOWFLAKE, getX(), getY(), getZ(), 3, 0.08, 0.08, 0.08, 0.0);
 				if (flyTicks % FLIGHT_SOUND_INTERVAL == 1) {
 					// 高速划破空气音：用 FromEntity 包让声源跟随冰锥移动（非钉在播放坐标）
-					RegistryEntry<SoundEvent> entry = Registries.SOUND_EVENT.getEntry(SoundEvents.ITEM_TRIDENT_RIPTIDE_3);
+					RegistryEntry<SoundEvent> entry = Registries.SOUND_EVENT.getEntry(SoundEvents.ITEM_TRIDENT_RIPTIDE_3.value());
 					PlaySoundFromEntityS2CPacket pkt = new PlaySoundFromEntityS2CPacket(entry, SoundCategory.PLAYERS, this, 0.8f, 1.0f, this.random.nextLong());
 					for (ServerPlayerEntity p : sw.getPlayers()) {
 						if (p.squaredDistanceTo(this) < 64.0 * 64.0) p.networkHandler.sendPacket(pkt);
@@ -544,7 +545,7 @@ public class FrostThornEntity extends ProjectileEntity {
 	}
 
 	@Override
-	public Packet<ClientPlayPacketListener> createSpawnPacket() {
-		return new EntitySpawnS2CPacket(this);
+	public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+		return new EntitySpawnS2CPacket(this, entityTrackerEntry);
 	}
 }

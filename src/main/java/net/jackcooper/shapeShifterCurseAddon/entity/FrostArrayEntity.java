@@ -10,6 +10,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
+import net.minecraft.server.network.EntityTrackerEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -46,9 +47,9 @@ public class FrostArrayEntity extends Entity {
 	}
 
 	@Override
-	protected void initDataTracker() {
-		this.dataTracker.startTracking(OWNER_ID, -1);
-		this.dataTracker.startTracking(LEVEL, 0);
+	protected void initDataTracker(DataTracker.Builder builder) {
+		this.dataTracker.set(OWNER_ID, -1);
+		this.dataTracker.set(LEVEL, 0);
 	}
 
 	/** 施法者实体 id（客户端渲染器据此取施法者准星算法阵位置）。 */
@@ -105,8 +106,8 @@ public class FrostArrayEntity extends Entity {
 	@Override protected void writeCustomDataToNbt(NbtCompound nbt) {}
 
 	@Override
-	public Packet<ClientPlayPacketListener> createSpawnPacket() {
-		return new EntitySpawnS2CPacket(this);
+	public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entityTrackerEntry) {
+		return new EntitySpawnS2CPacket(this, entityTrackerEntry);
 	}
 
 	@Override public boolean isCollidable() { return false; }

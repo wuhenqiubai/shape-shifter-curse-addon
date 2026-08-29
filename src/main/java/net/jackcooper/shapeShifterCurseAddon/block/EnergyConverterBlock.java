@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -35,6 +36,13 @@ import java.util.List;
 @SuppressWarnings("deprecation") // 覆写 vanilla @Deprecated 的 Block 交互/状态方法，统一抑制
 public class EnergyConverterBlock extends BlockWithEntity {
 
+	public static final MapCodec<EnergyConverterBlock> CODEC = createCodec(EnergyConverterBlock::new);
+
+	@Override
+	public MapCodec<EnergyConverterBlock> getCodec() {
+		return CODEC;
+	}
+
 	/** 是否激活（激活后才开始转换输出）。 */
 	public static final BooleanProperty ACTIVE = Properties.LIT;
 
@@ -69,11 +77,11 @@ public class EnergyConverterBlock extends BlockWithEntity {
 	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
 		// 仅服务端 tick（能量转换判定与推送全部服务端权威）
 		return world.isClient ? null
-				: checkType(type, RegAddonBlockEntities.ENERGY_CONVERTER_BE, EnergyConverterBlockEntity::tick);
+				: validateTicker(type, RegAddonBlockEntities.ENERGY_CONVERTER_BE, EnergyConverterBlockEntity::tick);
 	}
 
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (!world.isClient) {
 			boolean active = !state.get(ACTIVE);
 			world.setBlockState(pos, state.with(ACTIVE, active), Block.NOTIFY_ALL);

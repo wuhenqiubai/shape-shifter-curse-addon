@@ -48,7 +48,7 @@ public abstract class AddonTrinketBridgeMixin implements Trinket {
 		}
 		SlotType slotType = slot.inventory().getSlotType();
 		AccessoryItem.SlotData data = new AccessoryItem.SlotData(
-				new Identifier("trinket", "%s/%s".formatted(slotType.getGroup(), slotType.getName())), slot.index());
+				Identifier.of("trinket", "%s/%s".formatted(slotType.getGroup(), slotType.getName())), slot.index());
 		ssca$slotDataCache.put(slot.hashCode(), data);
 		return data;
 	}

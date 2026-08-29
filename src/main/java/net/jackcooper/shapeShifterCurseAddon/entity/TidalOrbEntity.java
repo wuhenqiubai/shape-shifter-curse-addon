@@ -1,6 +1,7 @@
 package net.jackcooper.shapeShifterCurseAddon.entity;
 
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
@@ -28,6 +29,7 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.TrinketUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import org.joml.Vector3f;
 
 import java.util.HashSet;
@@ -321,7 +323,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
             }
             // 35% 减速 12 秒（TIDAL_SLOW amplifier=2 → -0.35）；带主人 source 供入梦拦截归因
             t.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(
-                    SscAddon.TIDAL_SLOW, 240, 2, false, false, true), owner);
+                    SscAddon.TIDAL_SLOW_ENTRY, 240, 2, false, false, true), owner);
         }
         // 爆炸表现 + 立即破裂（跳过 8.5 秒拴人）
         sw.spawnParticles(ParticleTypes.EXPLOSION, cx, cy + 0.5, cz, 3, 0.3, 0.3, 0.3, 0.0);
@@ -389,8 +391,7 @@ public class TidalOrbEntity extends Entity implements net.minecraft.entity.Flyin
             buf.writeVarInt(this.getId());
             buf.writeVarInt(ids.size());
             for (int i : ids) buf.writeVarInt(i);
-            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(
-                    p, net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_TIDAL_TETHER, buf);
+            ServerPlayNetworking.send(p, new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_TIDAL_TETHER), buf));
         }
     }
 

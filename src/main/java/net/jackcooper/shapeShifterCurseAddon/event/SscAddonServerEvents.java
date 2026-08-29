@@ -204,7 +204,7 @@ public final class SscAddonServerEvents {
 				// 性能：STUN 孤儿校正降频到每 10 tick——孤儿修正多残留 0.5s 无感知，
 				// 省掉每 tick 每玩家 hasStatusEffect + 2×getAttributeInstance + 2×getModifier
 				if (server.getTicks() % 10 == 0) {
-					if (player.hasStatusEffect(SscAddon.STUN)) continue;
+					if (player.hasStatusEffect(SscAddon.STUN_ENTRY)) continue;
 					EntityAttributeInstance atk =
 							player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
 					if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {

@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

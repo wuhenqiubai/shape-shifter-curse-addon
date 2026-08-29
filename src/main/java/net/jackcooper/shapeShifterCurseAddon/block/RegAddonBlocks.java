@@ -106,7 +106,7 @@ public final class RegAddonBlocks {
 		register("potion_storage_box", POTION_STORAGE_BOX);
 		// 创造储罐：带附魔光效的 BlockItem（无合成表无其它获取途径，仅创造物品栏可拿）
 		{
-			Identifier glintId = new Identifier(NAMESPACE, "creative_energy_tank");
+			Identifier glintId = Identifier.of(NAMESPACE, "creative_energy_tank");
 			Registry.register(Registries.BLOCK, glintId, CREATIVE_ENERGY_TANK);
 			Registry.register(Registries.ITEM, glintId, new BlockItem(CREATIVE_ENERGY_TANK, new Item.Settings()) {
 				@Override
@@ -119,7 +119,7 @@ public final class RegAddonBlocks {
 		RegAddonBlockEntities.register();
 		// 加入 SSCA 创造物品栏
 		ItemGroupEvents.modifyEntriesEvent(
-				RegistryKey.of(RegistryKeys.ITEM_GROUP, new Identifier("ssc_addon", "group")))
+				RegistryKey.of(RegistryKeys.ITEM_GROUP, Identifier.of("ssc_addon", "group")))
 				.register(entries -> {
 					entries.add(ENERGY_EXTRACTOR);
 					entries.add(ENERGY_STORAGE_TANK);

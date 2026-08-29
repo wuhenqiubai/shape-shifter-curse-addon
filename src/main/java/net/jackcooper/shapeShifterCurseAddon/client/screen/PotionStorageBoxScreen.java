@@ -16,7 +16,7 @@ import net.jackcooper.shapeShifterCurseAddon.screen.PotionStorageBoxScreenHandle
 @Environment(EnvType.CLIENT)
 public class PotionStorageBoxScreen extends HandledScreen<PotionStorageBoxScreenHandler> {
 
-	private static final Identifier TEXTURE = new Identifier("ssc_addon", "textures/gui/container/potion_storage_box.png");
+	private static final Identifier TEXTURE = Identifier.of("ssc_addon", "textures/gui/container/potion_storage_box.png");
 
 	public PotionStorageBoxScreen(PotionStorageBoxScreenHandler handler, PlayerInventory inventory, Text title) {
 		super(handler, inventory, title);
@@ -39,7 +39,7 @@ public class PotionStorageBoxScreen extends HandledScreen<PotionStorageBoxScreen
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		this.renderBackground(context);
+		this.renderBackground(context, mouseX, mouseY, delta);
 		super.render(context, mouseX, mouseY, delta);
 		this.drawMouseoverTooltip(context, mouseX, mouseY);
 	}

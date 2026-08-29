@@ -1,16 +1,17 @@
 package net.jackcooper.shapeShifterCurseAddon.recipe;
 
-import net.minecraft.inventory.RecipeInputInventory;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.potion.Potions;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.util.Identifier;
+import net.minecraft.recipe.input.CraftingRecipeInput;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.world.World;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 
@@ -25,22 +26,22 @@ import net.jackcooper.shapeShifterCurseAddon.SscAddon;
  */
 public class VenomGlandRecipe extends SpecialCraftingRecipe {
 
-	public VenomGlandRecipe(Identifier id, CraftingRecipeCategory category) {
-		super(id, category);
+	public VenomGlandRecipe(CraftingRecipeCategory category) {
+		super(category);
 	}
 
 	@Override
-	public boolean matches(RecipeInputInventory inventory, World world) {
-		if (inventory.getWidth() < 3 || inventory.getHeight() < 3) {
+	public boolean matches(CraftingRecipeInput input, World world) {
+		if (input.getWidth() < 3 || input.getHeight() < 3) {
 			return false;
 		}
 		// 中心（index 4）必须是剧毒药水，其余 8 格全是蜘蛛眼
-		if (!isPoisonPotion(inventory.getStack(4))) {
+		if (!isPoisonPotion(input.getStackInSlot(4))) {
 			return false;
 		}
 		for (int i = 0; i < 9; i++) {
 			if (i == 4) continue;
-			if (!inventory.getStack(i).isOf(Items.SPIDER_EYE)) {
+			if (!input.getStackInSlot(i).isOf(Items.SPIDER_EYE)) {
 				return false;
 			}
 		}
@@ -52,12 +53,14 @@ public class VenomGlandRecipe extends SpecialCraftingRecipe {
 		if (!stack.isOf(Items.POTION) && !stack.isOf(Items.SPLASH_POTION) && !stack.isOf(Items.LINGERING_POTION)) {
 			return false;
 		}
-		Potion potion = PotionUtil.getPotion(stack);
+		PotionContentsComponent contents = stack.get(DataComponentTypes.POTION_CONTENTS);
+		if (contents == null) return false;
+		RegistryEntry<Potion> potion = contents.potion().orElse(null);
 		return potion == Potions.POISON || potion == Potions.LONG_POISON || potion == Potions.STRONG_POISON;
 	}
 
 	@Override
-	public ItemStack craft(RecipeInputInventory inventory, DynamicRegistryManager registryManager) {
+	public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
 		return new ItemStack(SscAddon.VENOM_GLAND);
 	}
 

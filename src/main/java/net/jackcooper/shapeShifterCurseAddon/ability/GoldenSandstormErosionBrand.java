@@ -27,6 +27,7 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.ParticleUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.TrinketUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

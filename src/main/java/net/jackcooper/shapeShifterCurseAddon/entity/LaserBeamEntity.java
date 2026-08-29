@@ -28,6 +28,7 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.UUID;
@@ -366,7 +367,7 @@ public class LaserBeamEntity extends Entity {
 		// 螺旋粒子已移到客户端渲染器自绘（含消退期半径缩小，网络包归零）
 		if (phaseTicks >= FADE_TICKS) {
 			// 完全消失 → 进 CD、解除定身、清状态
-			owner.removeStatusEffect(SscAddon.ROOTED);
+			owner.removeStatusEffect(SscAddon.ROOTED_ENTRY);
 			syncLaserStateDedup(owner, 0);
 			PowerUtils.setResourceValueAndSync(owner, FormIdentifiers.SP_PRIMARY_CD, CD_TICKS);
 			sw.playSound(null, arrayPos.x, arrayPos.y, arrayPos.z,
@@ -405,7 +406,7 @@ public class LaserBeamEntity extends Entity {
 	// ==================== 取消/清理 ====================
 	private void cancelNoCd(ServerPlayerEntity owner) {
 		if (owner != null) {
-			owner.removeStatusEffect(SscAddon.ROOTED);
+			owner.removeStatusEffect(SscAddon.ROOTED_ENTRY);
 			syncLaserStateDedup(owner, 0);
 		}
 	}
@@ -413,7 +414,7 @@ public class LaserBeamEntity extends Entity {
 	/** 被净化打断时取消：返还 40% CD（进 60% CD = 400 × 0.6 = 240t = 12 秒）。 */
 	private void cancelWithInterruptCd(ServerPlayerEntity owner) {
 		if (owner != null) {
-			owner.removeStatusEffect(SscAddon.ROOTED);
+			owner.removeStatusEffect(SscAddon.ROOTED_ENTRY);
 			syncLaserStateDedup(owner, 0);
 			PowerUtils.setResourceValueAndSync(owner, FormIdentifiers.SP_PRIMARY_CD, (int)(CD_TICKS * 0.6));
 		}

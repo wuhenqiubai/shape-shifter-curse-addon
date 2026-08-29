@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -31,6 +32,13 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressWarnings("deprecation") // 覆写 vanilla @Deprecated 的 Block 交互/状态替换/旋转镜像方法，统一抑制
 public class PotionStorageBoxBlock extends BlockWithEntity {
+
+	public static final MapCodec<PotionStorageBoxBlock> CODEC = createCodec(PotionStorageBoxBlock::new);
+
+	@Override
+	public MapCodec<PotionStorageBoxBlock> getCodec() {
+		return CODEC;
+	}
 
 	/** 门面所朝的水平方向。 */
 	public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
@@ -77,11 +85,11 @@ public class PotionStorageBoxBlock extends BlockWithEntity {
 	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
 		// 仅服务端 tick（自动合并同类药水）
 		return world.isClient ? null
-				: checkType(type, RegAddonBlockEntities.POTION_STORAGE_BOX_BE, PotionStorageBoxBlockEntity::tick);
+				: validateTicker(type, RegAddonBlockEntities.POTION_STORAGE_BOX_BE, PotionStorageBoxBlockEntity::tick);
 	}
 
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (!world.isClient) {
 			BlockEntity be = world.getBlockEntity(pos);
 			if (be instanceof PotionStorageBoxBlockEntity box) {

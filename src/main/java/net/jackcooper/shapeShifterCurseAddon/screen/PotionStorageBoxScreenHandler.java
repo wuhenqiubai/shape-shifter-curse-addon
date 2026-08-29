@@ -111,7 +111,7 @@ public class PotionStorageBoxScreenHandler extends ScreenHandler {
 		// 先合并进未满的同类堆
 		for (int i = 0; i < CONTAINER_SLOTS && !stack.isEmpty(); i++) {
 			ItemStack target = this.inventory.getStack(i);
-			if (!target.isEmpty() && ItemStack.canCombine(target, stack)) {
+			if (!target.isEmpty() && ItemStack.areItemsAndComponentsEqual(target, stack)) {
 				int room = PotionStorageBoxBlockEntity.MAX_PER_SLOT - target.getCount();
 				if (room > 0) {
 					int moved = Math.min(room, stack.getCount());

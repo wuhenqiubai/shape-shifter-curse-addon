@@ -14,6 +14,7 @@ import net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * SP 美西螈漩涡蓄力 - 客户端按键检测器。

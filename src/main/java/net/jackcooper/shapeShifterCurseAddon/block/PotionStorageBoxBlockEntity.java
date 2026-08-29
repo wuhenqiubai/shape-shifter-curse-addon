@@ -15,6 +15,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
@@ -139,7 +140,7 @@ public class PotionStorageBoxBlockEntity extends BlockEntity implements SidedInv
 	private boolean insertOverstackOne(ItemStack potion) {
 		for (int i = 0; i < SLOT_COUNT; i++) {
 			ItemStack a = items.get(i);
-			if (!a.isEmpty() && a.getCount() < MAX_PER_SLOT && ItemStack.canCombine(a, potion)) {
+			if (!a.isEmpty() && a.getCount() < MAX_PER_SLOT && ItemStack.areItemsAndComponentsEqual(a, potion)) {
 				a.increment(1);
 				markDirty();
 				return true;
@@ -160,20 +161,20 @@ public class PotionStorageBoxBlockEntity extends BlockEntity implements SidedInv
 	// ==================== NBT 持久化 ====================
 
 	@Override
-	protected void writeNbt(NbtCompound nbt) {
-		super.writeNbt(nbt);
-		Inventories.writeNbt(nbt, items);
+	protected void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+		super.writeNbt(nbt, registryLookup);
+		Inventories.writeNbt(nbt, items, registryLookup);
 	}
 
 	@Override
-	public void readNbt(NbtCompound nbt) {
-		super.readNbt(nbt);
+	public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+		super.readNbt(nbt, registryLookup);
 		items.clear();
-		Inventories.readNbt(nbt, items);
+		Inventories.readNbt(nbt, items, registryLookup);
 		// 客户端 BE 数据包路径：刷新柜内瓶子渲染镜像
 		clientItems.clear();
 		DefaultedList<ItemStack> mirror = DefaultedList.ofSize(SLOT_COUNT, ItemStack.EMPTY);
-		Inventories.readNbt(nbt, mirror);
+		Inventories.readNbt(nbt, mirror, registryLookup);
 		for (int i = 0; i < SLOT_COUNT && i < mirror.size(); i++) {
 			clientItems.set(i, mirror.get(i));
 		}
@@ -201,9 +202,9 @@ public class PotionStorageBoxBlockEntity extends BlockEntity implements SidedInv
 
 	/** 区块数据包：进存档/重进世界时客户端也能拿到槽位内容渲染柜内瓶子。 */
 	@Override
-	public NbtCompound toInitialChunkDataNbt() {
-		NbtCompound nbt = super.toInitialChunkDataNbt();
-		Inventories.writeNbt(nbt, items);
+	public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup) {
+		NbtCompound nbt = super.toInitialChunkDataNbt(registryLookup);
+		Inventories.writeNbt(nbt, items, registryLookup);
 		return nbt;
 	}
 

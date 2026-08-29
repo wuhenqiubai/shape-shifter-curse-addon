@@ -14,6 +14,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -80,7 +81,7 @@ public final class JumpKillManager {
 	private static final int RECALL_STALL_TICKS = 5; // 拉回连续 5t 距离不拉近 → 外力过强，丝断
 	private static final double OBSCURE_BREAK_BLOCKS = 1.0; // 丝线被实心方块遮挡累计阈值（同月织蛛，超过即断）
 
-	private static final UUID SLOW_UUID = UUID.fromString("b7e2c9a4-3f81-4d6e-9a25-7c1e0f4d82ab");
+	private static final Identifier SLOW_UUID = Identifier.of("b7e2c9a4-3f81-4d6e-9a25-7c1e0f4d82ab");
 
 	private static final Map<UUID, State> STATES = new ConcurrentHashMap<>();
 
@@ -448,7 +449,7 @@ public final class JumpKillManager {
 		int amp = POISON_AMPLIFIER + (gland ? 1 : 0);
 		int dur = gland ? Math.round(POISON_DURATION * net.jackcooper.shapeShifterCurseAddon.item.VenomGlandItem.DURATION_SCALE) : POISON_DURATION;
 		target.addStatusEffect(new StatusEffectInstance(StatusEffects.POISON, dur, amp, false, true, true), player);
-		target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN, STUN_DURATION, 0, false, false, false), player);
+		target.addStatusEffect(new StatusEffectInstance(SscAddon.STUN_ENTRY, STUN_DURATION, 0, false, false, false), player);
 		sw.playSound(null, target.getX(), target.getY(), target.getZ(),
 				SoundEvents.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS, 1.0f, 0.9f);
 		sw.playSound(null, target.getX(), target.getY(), target.getZ(),
@@ -611,7 +612,7 @@ public final class JumpKillManager {
 		if (speed != null) {
 			speed.removeModifier(SLOW_UUID);
 			speed.addTemporaryModifier(new EntityAttributeModifier(
-					SLOW_UUID, "Jump Kill Charge Slow", CHARGE_SLOW, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+					SLOW_UUID, CHARGE_SLOW, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 

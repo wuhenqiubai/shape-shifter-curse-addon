@@ -10,6 +10,7 @@ import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
@@ -23,14 +24,14 @@ import net.jackcooper.shapeShifterCurseAddon.entity.ThrownWaterSpearEntity;
  */
 @Environment(EnvType.CLIENT)
 public class ThrownWaterSpearEntityRenderer extends EntityRenderer<ThrownWaterSpearEntity> {
-	// 渲染纹理常量（原实现每帧 new Identifier）+ CustomModelData=1 投掷态模型缓存
-	private static final Identifier TEXTURE = new Identifier("textures/atlas/blocks.png");
+	// 渲染纹理常量（原实现每帧 Identifier.of）+ CustomModelData=1 投掷态模型缓存
+	private static final Identifier TEXTURE = Identifier.of("textures/atlas/blocks.png");
 	private static final ItemStack CACHED_THROWING_STACK = createThrowingStack();
 
 	private static ItemStack createThrowingStack() {
-		ItemStack s = new ItemStack(SscAddon.WATER_SPEAR);
-		s.getOrCreateNbt().putInt("CustomModelData", 1);
-		return s;
+		ItemStack stack = new ItemStack(SscAddon.WATER_SPEAR);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("CustomModelData", 1));
+		return stack;
 	}
 
 	private final ItemRenderer itemRenderer;

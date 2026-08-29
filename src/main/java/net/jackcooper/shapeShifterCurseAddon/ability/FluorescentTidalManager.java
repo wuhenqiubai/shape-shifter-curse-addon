@@ -10,6 +10,7 @@ import net.jackcooper.shapeShifterCurseAddon.entity.TidalOrbEntity;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
+import net.minecraft.util.Identifier;
 
 import java.util.Collection;
 import java.util.Map;
@@ -32,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class FluorescentTidalManager {
 
     /** 客户端同步状态：0=空闲，1=蓄力中，2=球飞行中。 */
-    public static final net.minecraft.util.Identifier TIDAL_STATE =
+    public static final Identifier TIDAL_STATE =
             Identifier.of("my_addon", "form_axolotl_fluorescent_tidal_state");
 
     private static final int CHARGE_TICKS = 25;       // 1.25 秒蓄力

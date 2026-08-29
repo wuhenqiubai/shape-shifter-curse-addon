@@ -3,6 +3,8 @@ package net.jackcooper.shapeShifterCurseAddon.block;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
@@ -14,7 +16,8 @@ import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionUtil;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
@@ -204,7 +207,8 @@ public class EnergyBottlerBlockEntity extends BlockEntity
 		if (!stack.isOf(Items.POTION)) {
 			return false;
 		}
-		Potion potion = PotionUtil.getPotion(stack);
+		PotionContentsComponent contents = stack.get(DataComponentTypes.POTION_CONTENTS);
+		Potion potion = contents != null ? contents.potion().map(RegistryEntry::value).orElse(null) : null;
 		return potion == RegCustomPotions.FEED_POTION;
 	}
 
@@ -266,9 +270,9 @@ public class EnergyBottlerBlockEntity extends BlockEntity
 	// ==================== NBT 持久化 ====================
 
 	@Override
-	protected void writeNbt(NbtCompound nbt) {
-		super.writeNbt(nbt);
-		Inventories.writeNbt(nbt, items);
+	protected void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+		super.writeNbt(nbt, registryLookup);
+		Inventories.writeNbt(nbt, items, registryLookup);
 		nbt.putIntArray("Progress", progress.clone());
 		nbt.putBoolean("AutoMode", autoMode);
 		int mask = 0;
@@ -281,14 +285,14 @@ public class EnergyBottlerBlockEntity extends BlockEntity
 	}
 
 	@Override
-	public void readNbt(NbtCompound nbt) {
-		super.readNbt(nbt);
+	public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+		super.readNbt(nbt, registryLookup);
 		items.clear();
-		Inventories.readNbt(nbt, items);
+		Inventories.readNbt(nbt, items, registryLookup);
 		// 客户端 BE 数据包路径：刷新渲染镜像（服务端磁盘加载读到也无妨，会被快照同步覆盖）
 		clientItems.clear();
 		DefaultedList<ItemStack> mirror = DefaultedList.ofSize(LINES * 2, ItemStack.EMPTY);
-		Inventories.readNbt(nbt, mirror);
+		Inventories.readNbt(nbt, mirror, registryLookup);
 		for (int i = 0; i < LINES * 2 && i < mirror.size(); i++) {
 			clientItems.set(i, mirror.get(i));
 		}
@@ -325,9 +329,9 @@ public class EnergyBottlerBlockEntity extends BlockEntity
 
 	/** 区块数据包：进存档/重进世界时客户端也能拿到槽位内容渲染瓶子。Items 必须在根级（客户端 readNbt 才能读回）。 */
 	@Override
-	public NbtCompound toInitialChunkDataNbt() {
-		NbtCompound nbt = super.toInitialChunkDataNbt();
-		Inventories.writeNbt(nbt, items);
+	public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup) {
+		NbtCompound nbt = super.toInitialChunkDataNbt(registryLookup);
+		Inventories.writeNbt(nbt, items, registryLookup);
 		return nbt;
 	}
 

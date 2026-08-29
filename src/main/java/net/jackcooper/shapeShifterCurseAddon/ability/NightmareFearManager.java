@@ -5,11 +5,13 @@ import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
+import net.minecraft.util.Identifier;
 
 import java.util.Iterator;
 import java.util.List;
@@ -49,7 +51,7 @@ public final class NightmareFearManager {
 	/** 心跳音效间隔（tick，1.6 秒/拍——守卫者心跳节奏）。 */
 	public static final int HEARTBEAT_INTERVAL = 32;
 	/** 减速 20% 的属性 modifier UUID（固定 UUID，可幂等移除）。 */
-	private static final UUID FEAR_SLOW_UUID = UUID.fromString("e3a1f7c2-9b4d-4e6a-8c15-d2f3a7b9e810");
+	private static final Identifier FEAR_SLOW_UUID = Identifier.of("e3a1f7c2-9b4d-4e6a-8c15-d2f3a7b9e810");
 	private static final String FEAR_SLOW_NAME = "Nightmare Fear Slow";
 	/** 减速幅度（用户定稿：必备减速 20%，玩家/生物一致）。 */
 	public static final float FEAR_SLOW_RATIO = 0.20f;
@@ -182,7 +184,7 @@ public final class NightmareFearManager {
 		if (attr != null) {
 			attr.removeModifier(FEAR_SLOW_UUID);
 			attr.addPersistentModifier(new EntityAttributeModifier(
-					FEAR_SLOW_UUID, FEAR_SLOW_NAME, -FEAR_SLOW_RATIO, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+					FEAR_SLOW_UUID, -FEAR_SLOW_RATIO, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 		// 客户端包（粉雾淡入 + 心跳启动 + 本地失明驱动），仅目标本人（时长随戒指快照变化）
 		if (target instanceof ServerPlayerEntity sp) {

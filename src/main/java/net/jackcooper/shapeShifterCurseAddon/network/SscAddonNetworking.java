@@ -3,9 +3,13 @@ package net.jackcooper.shapeShifterCurseAddon.network;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverDoubleJumpManager;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager;
+import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
+import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -74,25 +78,25 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_SPIDER_MOON_WEAVER_SWING_PRESS = Identifier.of("my_addon", "spider_moon_weaver_swing_press");
 	/** C2S：月织蛛蛛丝荡漾 - 摆荡中上报当前绳长 + 收放意图（服务端权威扣 mana）。payload: double ropeLen + varint reel(>0收/<0放/0无)。 */
 	public static final Identifier PACKET_SPIDER_MOON_WEAVER_SWING_SYNC = Identifier.of("my_addon", "spider_moon_weaver_swing_sync");	/** C2S：寒棘狐冰刺 - 长按开始蕠力（每 1.2s 凝聚一根冰锥）。无 payload。 */
-	public static final Identifier PACKET_FROST_SPIKE_CHARGE_START = new Identifier("my_addon", "frost_spike_charge_start");
+	public static final Identifier PACKET_FROST_SPIKE_CHARGE_START = Identifier.of("my_addon", "frost_spike_charge_start");
 	/** C2S：寒棘狐冰刺 - 松开停止蕠力（保留已凝聚冰锥）。无 payload。 */
-	public static final Identifier PACKET_FROST_SPIKE_CHARGE_RELEASE = new Identifier("my_addon", "frost_spike_charge_release");
+	public static final Identifier PACKET_FROST_SPIKE_CHARGE_RELEASE = Identifier.of("my_addon", "frost_spike_charge_release");
 	/** C2S：寒棘狐冰刺 - 点按发射一根冰锥。无 payload。 */
-	public static final Identifier PACKET_FROST_SPIKE_FIRE = new Identifier("my_addon", "frost_spike_fire");
+	public static final Identifier PACKET_FROST_SPIKE_FIRE = Identifier.of("my_addon", "frost_spike_fire");
 	/** C2S：寒棘狐凝棘（次技能） - 长按开始蓄力（每 1s 消耗一个环绕冰锥强化）。无 payload。 */
-	public static final Identifier PACKET_FROST_SPIKE_SECONDARY_START = new Identifier("my_addon", "frost_spike_secondary_start");
+	public static final Identifier PACKET_FROST_SPIKE_SECONDARY_START = Identifier.of("my_addon", "frost_spike_secondary_start");
 	/** C2S：寒棘狐凝棘（次技能） - 松开发射一根强化冰锥。无 payload。 */
-	public static final Identifier PACKET_FROST_SPIKE_SECONDARY_RELEASE = new Identifier("my_addon", "frost_spike_secondary_release");
+	public static final Identifier PACKET_FROST_SPIKE_SECONDARY_RELEASE = Identifier.of("my_addon", "frost_spike_secondary_release");
 	/** C2S：跳蛛跳杀 - 主键按下开始蓄力（蓄越久索敌越远）。无 payload。 */
-	public static final Identifier PACKET_JUMP_KILL_CHARGE_START = new Identifier("my_addon", "jump_kill_charge_start");
+	public static final Identifier PACKET_JUMP_KILL_CHARGE_START = Identifier.of("my_addon", "jump_kill_charge_start");
 	/** C2S：跳蛛跳杀 - 主键松开向前跳扑锁定目标。无 payload。 */
-	public static final Identifier PACKET_JUMP_KILL_CHARGE_RELEASE = new Identifier("my_addon", "jump_kill_charge_release");
+	public static final Identifier PACKET_JUMP_KILL_CHARGE_RELEASE = Identifier.of("my_addon", "jump_kill_charge_release");
 	/** C2S：跳蛛毒液（次技能） - 次键按下（基础区域/丝线强化冲刺由服务端判定）。无 payload。 */
-	public static final Identifier PACKET_VENOM_SKILL_PRESS = new Identifier("my_addon", "venom_skill_press");
+	public static final Identifier PACKET_VENOM_SKILL_PRESS = Identifier.of("my_addon", "venom_skill_press");
 	/** S2C：月织蛛蛛丝荡漾 - 状态同步给附近玩家（销点/绳长/状态/canExtend）。payload: UUID + boolean active + 3×double anchor + double ropeLen + varint state + boolean canExtend。 */
 	public static final Identifier PACKET_SPIDER_MOON_WEAVER_SWING_STATE = Identifier.of("my_addon", "spider_moon_weaver_swing_state");
 	/** S2C：跳蛛安全丝 - 锚点状态广播（active=false 即断丝/结束，仅传 UUID）。payload: UUID + boolean + 3×double 锦点。 */
-	public static final Identifier PACKET_JUMP_KILL_SILK_STATE = new Identifier("my_addon", "jump_kill_silk_state");
+	public static final Identifier PACKET_JUMP_KILL_SILK_STATE = Identifier.of("my_addon", "jump_kill_silk_state");
 
 	/** C2S：进化美西蟠上报「真正疾跑键」按住状态（区分双击 W/游泳自动疾跑）。payload: boolean held。 */
 	public static final Identifier PACKET_AXOLOTL_SPRINT_KEY = Identifier.of("my_addon", "axolotl_sprint_key");
@@ -100,15 +104,15 @@ public class SscAddonNetworking {
 	/** S2C：踩网蓝色高亮——仅向施法者发送，令其客户端把受害者描蓝边。payload: varint entityId + varint duration。 */
 	public static final Identifier PACKET_WEB_HIGHLIGHT = Identifier.of("my_addon", "web_highlight");
 	/** S2C：食梦魔「入梦」目标屏幕粉色晕影——仅向入梦目标本人发送。payload: varint durationTicks（<=0 = 该食梦魔的入梦关系结束）+ UUID nightmareUuid（入梦你的食梦魔）。 */
-	public static final Identifier PACKET_DREAM_VEIL = new Identifier("my_addon", "dream_veil");
+	public static final Identifier PACKET_DREAM_VEIL = Identifier.of("my_addon", "dream_veil");
 	/** S2C：食梦魔「恐惧」状态——仅向恐惧目标本人发送。payload: varint durationTicks（<=0 = 恐惧结束）。驱动粉雾淡入/心跳节奏/出梦表现。 */
-	public static final Identifier PACKET_FEAR_STATE = new Identifier("my_addon", "fear_state");
+	public static final Identifier PACKET_FEAR_STATE = Identifier.of("my_addon", "fear_state");
 	/** S2C：恐惧目标「1 秒看不见梦魔」窗口——仅向恐惧目标本人发送。payload: UUID nightmareUuid + varint hideTicks。 */
-	public static final Identifier PACKET_FEAR_HIDE = new Identifier("my_addon", "fear_hide");
+	public static final Identifier PACKET_FEAR_HIDE = Identifier.of("my_addon", "fear_hide");
 	/** S2C：恐惧目标「梦魇显形 1 秒」——梦魔攻击恐惧目标时，该梦魔在其眼里显形（清除隐匿窗口并 1s 内不再隐匿）。payload: UUID nightmareUuid + varint revealTicks。 */
-	public static final Identifier PACKET_FEAR_REVEAL = new Identifier("my_addon", "fear_reveal");
+	public static final Identifier PACKET_FEAR_REVEAL = Identifier.of("my_addon", "fear_reveal");
 	/** S2C：「惊吓」幽灵实体标记（幽灵苦力怕/幽灵野猫）——仅目标本人。payload: UUID ghostUuid + varint lifeTicks（客户端对该实体局部取消隐身→只有目标看得见它）。 */
-	public static final Identifier PACKET_SPOOK_GHOST = new Identifier("my_addon", "spook_ghost");
+	public static final Identifier PACKET_SPOOK_GHOST = Identifier.of("my_addon", "spook_ghost");
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
 	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
 	/** C2S：进化美西螈次技能「涡流引导」按键。无 payload。 */
@@ -130,7 +134,7 @@ public class SscAddonNetworking {
 
 	// ===== 寒棘狐技能网络包 =====
 	/** S2C：寒棘狐主技能蓄力状态（事件级，蓄力开始/结束各 1 包）：客户端本地自算下个冰锥位的汇聚流，替代原每 4t 粒子波。payload: UUID player + boolean charging */
-	public static final Identifier PACKET_FROST_SPIKE_CHARGE_STATE = new Identifier("my_addon", "frost_spike_charge_state");
+	public static final Identifier PACKET_FROST_SPIKE_CHARGE_STATE = Identifier.of("my_addon", "frost_spike_charge_state");
 
 	// ===== SSCA 进化加点系统网络包（框架） =====
 	/** C2S：玩家选择进化路线。payload: String routeId */
@@ -211,9 +215,9 @@ public class SscAddonNetworking {
 		buf.writeBoolean(charging);
 		for (net.minecraft.server.network.ServerPlayerEntity viewer :
 				net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(player)) {
-			ServerPlayNetworking.send(viewer, PACKET_FROST_SPIKE_CHARGE_STATE, net.fabricmc.fabric.api.networking.v1.PacketByteBufs.copy(buf));
+			ServerPlayNetworking.send(viewer, new BytePayload(BytePayload.id(PACKET_FROST_SPIKE_CHARGE_STATE), PacketByteBufs.copy(buf)));
 		}
-		ServerPlayNetworking.send(player, PACKET_FROST_SPIKE_CHARGE_STATE, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_FROST_SPIKE_CHARGE_STATE), buf));
 	}
 
 	/** S2C：向施法者发「高亮」（默认蓝色），令其客户端把 entityId 对应实体描边 duration tick。 */
@@ -243,14 +247,14 @@ public class SscAddonNetworking {
 		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 		buf.writeVarInt(durationTicks);
 		buf.writeUuid(nightmareUuid);
-		ServerPlayNetworking.send(target, PACKET_DREAM_VEIL, buf);
+		ServerPlayNetworking.send(target, new BytePayload(BytePayload.id(PACKET_DREAM_VEIL), buf));
 	}
 
 	/** S2C：向恐惧目标本人发「恐惧」状态（duration<=0 = 结束），仅目标可见。 */
 	public static void sendFearState(ServerPlayerEntity target, int durationTicks) {
 		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 		buf.writeVarInt(durationTicks);
-		ServerPlayNetworking.send(target, PACKET_FEAR_STATE, buf);
+		ServerPlayNetworking.send(target, new BytePayload(BytePayload.id(PACKET_FEAR_STATE), buf));
 	}
 
 	/** S2C：向恐惧目标本人发「1 秒看不见该梦魔」窗口，仅目标可见。 */
@@ -258,7 +262,7 @@ public class SscAddonNetworking {
 		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 		buf.writeUuid(nightmareUuid);
 		buf.writeVarInt(hideTicks);
-		ServerPlayNetworking.send(target, PACKET_FEAR_HIDE, buf);
+		ServerPlayNetworking.send(target, new BytePayload(BytePayload.id(PACKET_FEAR_HIDE), buf));
 	}
 
 	/** S2C：向恐惧目标本人发「梦魇显形 N tick」（清除该梦魔的隐匿窗口 + 显形期内不触发新隐匿），仅目标可见。 */
@@ -266,7 +270,7 @@ public class SscAddonNetworking {
 		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 		buf.writeUuid(nightmareUuid);
 		buf.writeVarInt(revealTicks);
-		ServerPlayNetworking.send(target, PACKET_FEAR_REVEAL, buf);
+		ServerPlayNetworking.send(target, new BytePayload(BytePayload.id(PACKET_FEAR_REVEAL), buf));
 	}
 
 	/** S2C：向目标本人发「幽灵实体」标记（客户端对该真实体局部取消隐身，仅目标可见）。 */
@@ -274,7 +278,7 @@ public class SscAddonNetworking {
 		net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 		buf.writeUuid(ghostUuid);
 		buf.writeVarInt(lifeTicks);
-		ServerPlayNetworking.send(target, PACKET_SPOOK_GHOST, buf);
+		ServerPlayNetworking.send(target, new BytePayload(BytePayload.id(PACKET_SPOOK_GHOST), buf));
 	}
 
 	/** S2C：月织蛛蛛丝荡漾 - 向追踪该玩家的客户端 + 玩家自身广播摆荡状态（销点/绳长/状态/canExtend）。 */
@@ -313,10 +317,10 @@ public class SscAddonNetworking {
 		buf.writeDouble(ay);
 		buf.writeDouble(az);
 		for (ServerPlayerEntity viewer : net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(player)) {
-			ServerPlayNetworking.send(viewer, PACKET_JUMP_KILL_SILK_STATE,
-					net.fabricmc.fabric.api.networking.v1.PacketByteBufs.copy(buf));
+			ServerPlayNetworking.send(viewer, new BytePayload(BytePayload.id(PACKET_JUMP_KILL_SILK_STATE),
+					net.fabricmc.fabric.api.networking.v1.PacketByteBufs.copy(buf)));
 		}
-		ServerPlayNetworking.send(player, PACKET_JUMP_KILL_SILK_STATE, buf);
+		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_JUMP_KILL_SILK_STATE), buf));
 	}
 
 	public static void registerServerReceivers() {
@@ -413,25 +417,25 @@ public class SscAddonNetworking {
 		});
 
 		// SSCA 美西螈装死 - 提前结束（装死期间按 sp_secondary）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_PLAY_DEAD_END, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> {
-				if (!player.hasStatusEffect(net.jackcooper.shapeShifterCurseAddon.SscAddon.PLAYING_DEAD)) return;
-				player.removeStatusEffect(net.jackcooper.shapeShifterCurseAddon.SscAddon.PLAYING_DEAD);
-				player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
-				player.removeStatusEffect(net.minecraft.entity.effect.StatusEffects.SLOWNESS);
-				player.setPose(net.minecraft.entity.EntityPose.STANDING);
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_PLAY_DEAD_END), (bp, ctx) -> {
+			ctx.server().execute(() -> {
+				if (!ctx.player().hasStatusEffect(SscAddon.PLAYING_DEAD_ENTRY)) return;
+				ctx.player().removeStatusEffect(SscAddon.PLAYING_DEAD_ENTRY);
+				ctx.player().removeStatusEffect(StatusEffects.BLINDNESS);
+				ctx.player().removeStatusEffect(StatusEffects.SLOWNESS);
+				ctx.player().setPose(EntityPose.STANDING);
 				// 提前结束：CD 从此刻起算 25 秒
-				net.jackcooper.shapeShifterCurseAddon.util.PowerUtils.setResourceValueAndSync(player, net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers.SP_SECONDARY_CD, 500);
+				PowerUtils.setResourceValueAndSync(ctx.player(), FormIdentifiers.SP_SECONDARY_CD, 500);
 			});
 		});
 
 
 		// SSCA 美西螈漩涡蓄力 - 开始 / 释放
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_START, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager.start(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_START), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager.start(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_VORTEX_RELEASE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager.release(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_RELEASE), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager.release(ctx.player()));
 		});
 
 		// SSCA 月织蛛「织网术」- 切换模式 / 开始蓄力 / 释放
@@ -449,32 +453,32 @@ public class SscAddonNetworking {
 		// SSCA 月织蛛蛛丝荡漾 - 次键按下（发射 / 断丝切换）
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPIDER_MOON_WEAVER_SWING_PRESS), (BytePayload payload, ServerPlayNetworking.Context ctx) ->
 				ctx.server().execute(() -> SpiderMoonWeaverSwingManager.onSecondaryPress(ctx.player())));		// SSCA 寒棘狐冰刺 - 蕠力开始 / 停止 / 发射
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FROST_SPIKE_CHARGE_START, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.startCharge(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FROST_SPIKE_CHARGE_START), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.startCharge(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FROST_SPIKE_CHARGE_RELEASE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.stopCharge(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FROST_SPIKE_CHARGE_RELEASE), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.stopCharge(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FROST_SPIKE_FIRE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.fire(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FROST_SPIKE_FIRE), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.fire(ctx.player()));
 		});
 		// SSCA 寒棘狐凝棘（次技能） - 蓄力开始 / 发射
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FROST_SPIKE_SECONDARY_START, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.startSecondaryCharge(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FROST_SPIKE_SECONDARY_START), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.startSecondaryCharge(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FROST_SPIKE_SECONDARY_RELEASE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.releaseSecondary(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FROST_SPIKE_SECONDARY_RELEASE), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.releaseSecondary(ctx.player()));
 		});
 		// SSCA 跳蛛跳杀 - 蓄力开始 / 松开跳杀
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_JUMP_KILL_CHARGE_START, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.JumpKillManager.startCharge(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_JUMP_KILL_CHARGE_START), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.JumpKillManager.startCharge(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_JUMP_KILL_CHARGE_RELEASE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.JumpKillManager.release(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_JUMP_KILL_CHARGE_RELEASE), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.JumpKillManager.release(ctx.player()));
 		});
 		// SSCA 跳蛛毒液（次技能） - 按下触发
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_VENOM_SKILL_PRESS, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VenomSkillManager.onPress(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VENOM_SKILL_PRESS), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VenomSkillManager.onPress(ctx.player()));
 		});
 		// SSCA 月织蛛蛛丝荡漾 - 摆荡中上报绳长 + 收放意图（服务端权威扣 mana）
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPIDER_MOON_WEAVER_SWING_SYNC), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
@@ -488,40 +492,40 @@ public class SscAddonNetworking {
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_AXOLOTL_SPRINT_KEY), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
 			PacketByteBuf buf = payload.data();
 			boolean held = buf.readBoolean();
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.AxolotlWaterSpurtHandler.setClientSprintHeld(player, held));
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.AxolotlWaterSpurtHandler.setClientSprintHeld(ctx.player(), held));
 		});
 
 		// SSCA 进化美西螈技能：主「投掷水矛」 / 次「涡流引导」
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_UPGRADE_AXOLOTL_SPEAR, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WaterSpearLeapManager.onKeyPress(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_UPGRADE_AXOLOTL_SPEAR), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WaterSpearLeapManager.onKeyPress(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_UPGRADE_AXOLOTL_VORTEX, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexGuideManager.onKeyPress(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_UPGRADE_AXOLOTL_VORTEX), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexGuideManager.onKeyPress(ctx.player()));
 		});
 
 		// 风灵「疾风连爪」：客户端上报左键按住状态
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_CLAW_HOLD), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
 			PacketByteBuf buf = payload.data();
 			boolean hold = buf.readBoolean();
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritClawManager.setHolding(player, hold));
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritClawManager.setHolding(ctx.player(), hold));
 		});
 
 		// 风灵副技能：sp_secondary 触发 +50% 增伤 buff
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_CLAW_BUFF, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritClawManager.activateSecondaryBuff(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_CLAW_BUFF), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritClawManager.activateSecondaryBuff(ctx.player()));
 		});
 
 		// 风灵「风之冲刺」：主技能键（服务端按当前阶段分支：起飞 / 悬浮中冲刺）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_WIND_DASH, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WindDashManager.onKeyPress(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_WIND_DASH), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.WindDashManager.onKeyPress(ctx.player()));
 		});
 
 		// 荧光幼灵技能按键：主要（法阵激光）/ 次要（潮汐波动）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FLUO_LASER, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FluorescentLaserManager.onKeyPress(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FLUO_LASER), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FluorescentLaserManager.onKeyPress(ctx.player()));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FLUO_TIDAL, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FluorescentTidalManager.onKeyPress(player));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FLUO_TIDAL), (bp, ctx) -> {
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FluorescentTidalManager.onKeyPress(ctx.player()));
 		});
 
 		// ===== SSCA 进化加点系统 =====
@@ -595,9 +599,9 @@ public class SscAddonNetworking {
 		// 客机加入后请求：把所有在场玩家的形态 ID + 皮肤数据广播给「所有在线玩家」（含请求者与已在线客机），
 		// 绕过 CCA 同步的不确定性，修复刚进游戏 / 新玩家加入时看其它玩家是默认白模型。
 		// 形态模型由客机据 formId 重建 origin 决定，颜色据皮肤数据上色。
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_REQUEST_ALL_FORM_SYNC, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> {
-				java.util.List<net.minecraft.server.network.ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_REQUEST_ALL_FORM_SYNC), (bp, ctx) -> {
+			ctx.server().execute(() -> {
+				java.util.List<net.minecraft.server.network.ServerPlayerEntity> players = ctx.server().getPlayerManager().getPlayerList();
 				for (net.minecraft.server.network.ServerPlayerEntity recipient : players) {
 					net.minecraft.network.PacketByteBuf out = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
 					out.writeInt(players.size());
@@ -622,7 +626,7 @@ public class SscAddonNetworking {
 						out.writeBoolean(c.getAccent2GreyReverse());
 						out.writeBoolean(skin.isEnableFormRandomSound());
 					}
-					ServerPlayNetworking.send(recipient, PACKET_BROADCAST_FORMS, out);
+					ServerPlayNetworking.send(recipient, new BytePayload(BytePayload.id(PACKET_BROADCAST_FORMS), out));
 				}
 				// 同步 SSCA 进化路线定义给请求者（客户端进化树 UI 渲染需要，多人环境客户端无 datapack 数据）
 				net.minecraft.network.PacketByteBuf routesOut = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
@@ -633,7 +637,7 @@ public class SscAddonNetworking {
 					routesOut.writeString(e.getKey(), 256);
 					routesOut.writeString(e.getValue(), 2000000);
 				}
-				ServerPlayNetworking.send(player, PACKET_EVO_ROUTES_SYNC, routesOut);
+				ServerPlayNetworking.send(ctx.player(), new BytePayload(BytePayload.id(PACKET_EVO_ROUTES_SYNC), routesOut));
 			});
 		});
 	}

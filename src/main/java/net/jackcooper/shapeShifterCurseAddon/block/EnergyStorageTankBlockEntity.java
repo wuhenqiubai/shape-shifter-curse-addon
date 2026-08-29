@@ -6,6 +6,7 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.listener.ClientPlayPacketListener;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.math.BlockPos;
 import net.jackcooper.shapeShifterCurseAddon.energy.EnergyNetwork;
 import net.jackcooper.shapeShifterCurseAddon.energy.EnergyNetworkMember;
@@ -96,14 +97,14 @@ public class EnergyStorageTankBlockEntity extends BlockEntity implements EnergyN
 	// ==================== NBT 持久化 + 客户端同步 ====================
 
 	@Override
-	protected void writeNbt(NbtCompound nbt) {
-		super.writeNbt(nbt);
+	protected void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+		super.writeNbt(nbt, registryLookup);
 		nbt.putInt("Energy", energy);
 	}
 
 	@Override
-	public void readNbt(NbtCompound nbt) {
-		super.readNbt(nbt);
+	public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+		super.readNbt(nbt, registryLookup);
 		energy = nbt.getInt("Energy");
 		// 客户端 BE 数据包路径：读液面比例（服务端磁盘加载读到也无妨，会被 syncFillRatio 覆盖）
 		clientRatio = nbt.getFloat("ClientRatio");
@@ -120,8 +121,8 @@ public class EnergyStorageTankBlockEntity extends BlockEntity implements EnergyN
 	 * 导致进游戏时包里永远是 0、液面不显示），改为按当前所在网络实时计算比例写入；
 	 * BE 尚无 world（区块加载极早期）时降级用自身 energy/MAX_ENERGY 兜底。 */
 	@Override
-	public NbtCompound toInitialChunkDataNbt() {
-		NbtCompound nbt = super.toInitialChunkDataNbt();
+	public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup) {
+		NbtCompound nbt = super.toInitialChunkDataNbt(registryLookup);
 		nbt.putInt("Energy", energy);
 		float ratio;
 		if (world != null) {

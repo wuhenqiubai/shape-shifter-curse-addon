@@ -9,6 +9,7 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.TrinketUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
+import net.minecraft.server.world.ServerWorld;
 
 import java.util.List;
 import java.util.Map;

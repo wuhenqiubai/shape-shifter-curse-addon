@@ -10,6 +10,8 @@ import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
@@ -21,8 +23,8 @@ import net.jackcooper.shapeShifterCurseAddon.SscAddon;
  */
 @Environment(EnvType.CLIENT)
 public class FrostThornEntityRenderer extends EntityRenderer<FrostThornEntity> {
-	// 渲染纹理常量（原实现每帧 new Identifier，含字符串规范化开销）
-	private static final Identifier TEXTURE = new Identifier("textures/atlas/blocks.png");
+	// 渲染纹理常量（原实现每帧 Identifier.of，含字符串规范化开销）
+	private static final Identifier TEXTURE = Identifier.of("textures/atlas/blocks.png");
 	// 按 stage 缓存的渲染用 ItemStack（stage 仅 0/1/2 三档，原实现每帧每锥 new + NBT 写入，纯 GC 压力）
 	private static final ItemStack[] CACHED_STACKS = new ItemStack[3];
 
@@ -52,7 +54,7 @@ public class FrostThornEntityRenderer extends EntityRenderer<FrostThornEntity> {
 		ItemStack stack = CACHED_STACKS[stage];
 		if (stack == null) {
 			stack = new ItemStack(SscAddon.FROST_THORN);
-			stack.getOrCreateNbt().putInt("CustomModelData", stage + 1);
+			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("CustomModelData", stage + 1));
 			CACHED_STACKS[stage] = stack;
 		}
 		this.itemRenderer.renderItem(stack, ModelTransformationMode.GROUND, light, OverlayTexture.DEFAULT_UV,

@@ -9,11 +9,11 @@ public class FormIdentifiers {
 	public static final Identifier FAMILIAR_FOX_MANCIANIMA = Identifier.of("my_addon", "familiar_fox_mancianima");
 	public static final Identifier SNOW_FOX_SP = Identifier.of("my_addon", "snow_fox_sp");
 	// 寒棘狐（Frostspine）——雪狐线月髓环进化形态（原版雪狐 snow_fox_3 经月髓环进化）；复用原版雪狐模型/贴图，能力完全等同原版雪狐
-	public static final Identifier SNOW_FOX_FROSTSPINE = new Identifier("my_addon", "snow_fox_frostspine");
+	public static final Identifier SNOW_FOX_FROSTSPINE = Identifier.of("my_addon", "snow_fox_frostspine");
 	public static final Identifier ALLAY_SP = Identifier.of("my_addon", "allay_sp");
 	public static final Identifier WILD_CAT_SP = Identifier.of("my_addon", "wild_cat_sp");
 	// 食梦魔（Nightmare）——野猫线月髓环进化形态；入梦机制（累计伤害触发 debuff 免疫 + 粉红描边）
-	public static final Identifier WILD_CAT_NIGHTMARE = new Identifier("my_addon", "wild_cat_nightmare");
+	public static final Identifier WILD_CAT_NIGHTMARE = Identifier.of("my_addon", "wild_cat_nightmare");
 	// 风灵（月髓环豹猫）——原版豹猫永久形态 ocelot_3 经月髓环进化获得；注册名 ocelot_wind_spirit
 	public static final Identifier OCELOT_SP = Identifier.of("my_addon", "ocelot_wind_spirit");
 	// 朔望（月髓环豹猫）——与风灵同为原版豹猫 ocelot_3 线；定位：九命灵猫（极限生存/不死）
@@ -53,7 +53,7 @@ public class FormIdentifiers {
 	// 月织蛛SP形态ID（月髓环进化）
 	public static final Identifier SPIDER_MOON_WEAVER = Identifier.of("my_addon", "spider_moon_weaver");
 	// 跳蛛（Salticidae）：蜘蛛_3 进化石分支（与月髓环→月织蛛并行）
-	public static final Identifier SPIDER_SALTICIDAE = new Identifier("my_addon", "spider_salticidae");
+	public static final Identifier SPIDER_SALTICIDAE = Identifier.of("my_addon", "spider_salticidae");
 	// 寄生果蝠形态ID
 	public static final Identifier BAT_PARASITIC_FRUIT = Identifier.of("my_addon", "bat_parasitic_fruit");
 	// 寄生果蝠"种子量"能量资源（最大 10）

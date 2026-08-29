@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.entity.SpawnGroup;
+import net.minecraft.entity.SpawnLocationTypes;
 import net.minecraft.entity.SpawnRestriction;
 import net.minecraft.entity.passive.AxolotlEntity;
 import net.minecraft.world.Heightmap;
@@ -21,7 +22,7 @@ public final class AxolotlShifterSpawnHandler {
 	private AxolotlShifterSpawnHandler() {}
 
 	public static void register() {
-		SpawnRestriction.register(SscAddon.AXOLOTL_SHIFTER_ENTITY, SpawnRestriction.Location.IN_WATER,
+		SpawnRestriction.register(SscAddon.AXOLOTL_SHIFTER_ENTITY, SpawnLocationTypes.IN_WATER,
 				Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, AxolotlShifterEntity::canSpawnInWater);
 
 		// 仅繁茂洞穴（与原版美西螈自然生成群系一致）

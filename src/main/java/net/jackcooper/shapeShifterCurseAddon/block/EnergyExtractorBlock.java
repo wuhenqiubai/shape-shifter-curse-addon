@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -39,6 +40,13 @@ import java.util.List;
  */
 @SuppressWarnings("deprecation") // 覆写多个 vanilla @Deprecated 的 Block 方法（形状/交互/状态替换/旋转镜像），统一抑制
 public class EnergyExtractorBlock extends BlockWithEntity {
+
+	public static final MapCodec<EnergyExtractorBlock> CODEC = createCodec(EnergyExtractorBlock::new);
+
+	@Override
+	public MapCodec<EnergyExtractorBlock> getCodec() {
+		return CODEC;
+	}
 
 	/** 开口所朝的水平方向。 */
 	public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
@@ -116,11 +124,11 @@ public class EnergyExtractorBlock extends BlockWithEntity {
 	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
 		// 仅服务端 tick（转化与合成均为服务端权威）
 		return world.isClient ? null
-				: checkType(type, RegAddonBlockEntities.ENERGY_EXTRACTOR_BE, EnergyExtractorBlockEntity::tick);
+				: validateTicker(type, RegAddonBlockEntities.ENERGY_EXTRACTOR_BE, EnergyExtractorBlockEntity::tick);
 	}
 
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (!world.isClient) {
 			BlockEntity be = world.getBlockEntity(pos);
 			if (be instanceof EnergyExtractorBlockEntity ext) {

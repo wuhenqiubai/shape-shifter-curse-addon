@@ -105,7 +105,7 @@ public final class SscAddonForms {
 		// 缩放与雪狐SP一致（对齐原版 SNOW_FOX_3 体型 0.55，eye_scale 0.6 支持潜行过半格）
 		frostspineForm.applyScale(0.55f, 0.6f);
 		RegPlayerForms.registerPlayerForm(frostspineForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_snow_fox_frostspine")).registerForm(1, 7, frostspineForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_snow_fox_frostspine")).registerForm(1, 7, frostspineForm));
 
 		Form_Allay allayForm = new Form_Allay(FormIdentifiers.ALLAY_SP);
 		allayForm.formFlag(NoInstinct, NoCursedMoonEffect, SpecialForm, InhibitorImmune);
@@ -132,7 +132,7 @@ public final class SscAddonForms {
 		// 缩放与月光魅影一致（原版野猫 form_feral_cat_sp_scale 同值）
 		nightmareForm.applyScale(0.55f, 0.6f);
 		RegPlayerForms.registerPlayerForm(nightmareForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_wild_cat_nightmare")).registerForm(1, 5, nightmareForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_wild_cat_nightmare")).registerForm(1, 5, nightmareForm));
 
 		// 风灵（月髓环豹猫）——完全复用原版豹猫 Form_Ocelot3 的模型与动画，四足兽形，可疾跑；核心为「疾风连爪」左键连击技能
 		Form_Ocelot3 ocelotSpForm = new Form_Ocelot3(FormIdentifiers.OCELOT_SP);
@@ -205,7 +205,7 @@ public final class SscAddonForms {
 		// 跳蛛体格：正常（玩家 1.0）的 60% → 0.6（现实中跳蛛体型小巧）；眼睛/碰撞箱保持 1.0
 		SpiderSalticidaeForm.applyScaleFunc(NormalForm.NORMAL_SCALE_FUNC_BUILDER.apply(0.6f, 1.0f));
 		RegPlayerForms.registerPlayerForm(SpiderSalticidaeForm);
-		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(new Identifier("my_addon", "group_spider_salticidae")).registerForm(1, 12, SpiderSalticidaeForm));
+		RegPlayerForms.registerPlayerFormGroup(new NormalGroup(Identifier.of("my_addon", "group_spider_salticidae")).registerForm(1, 12, SpiderSalticidaeForm));
 
 		// 寄生果蝠 - 原版三阶段蝙蝠使用进化石进化获得，复用蝙蝠模型/动画
 		Form_BatParasiticFruit batParasiticFruitForm = new Form_BatParasiticFruit(FormIdentifiers.BAT_PARASITIC_FRUIT);

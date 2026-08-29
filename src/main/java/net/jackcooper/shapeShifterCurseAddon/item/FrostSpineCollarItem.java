@@ -1,9 +1,9 @@
 package net.jackcooper.shapeShifterCurseAddon.item;
 
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
@@ -11,12 +11,10 @@ import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -34,10 +32,10 @@ import java.util.List;
 public class FrostSpineCollarItem extends AccessoryItem {
 
 	/** 雪屋（igloo 楼上chest）战利品表 id。 */
-	private static final Identifier IGLOO_LOOT = new Identifier("minecraft", "chests/igloo_chest");
+	private static final Identifier IGLOO_LOOT = Identifier.of("minecraft", "chests/igloo_chest");
 
 	/** 地牢（怪物房间）战利品表 id。 */
-	private static final Identifier DUNGEON_LOOT = new Identifier("minecraft", "chests/simple_dungeon");
+	private static final Identifier DUNGEON_LOOT = Identifier.of("minecraft", "chests/simple_dungeon");
 
 	/** 凝聚间隔倍率（×1.75）：1.2s → 2.1s。 */
 	public static final float CHARGE_INTERVAL_MULTIPLIER = 1.75f;
@@ -53,11 +51,11 @@ public class FrostSpineCollarItem extends AccessoryItem {
 	 * 注册寒棘项圈到雪屋 / 地牢战利品表。
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
 			float chance;
-			if (IGLOO_LOOT.equals(id)) {
+			if (IGLOO_LOOT.equals(key.getValue())) {
 				chance = 0.15F;
-			} else if (DUNGEON_LOOT.equals(id)) {
+			} else if (DUNGEON_LOOT.equals(key.getValue())) {
 				chance = 0.10F;
 			} else {
 				return;
@@ -104,12 +102,12 @@ public class FrostSpineCollarItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.frost_spine_collar.tooltip_1").formatted(Formatting.AQUA));
 		tooltip.add(Text.translatable("item.ssc_addon.frost_spine_collar.tooltip_2").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.frost_spine_collar.tooltip_3").formatted(Formatting.RED));
 		tooltip.add(Text.translatable("item.ssc_addon.frost_spine_collar.tooltip_4").formatted(Formatting.RED));
 		tooltip.add(Text.translatable("item.ssc_addon.frost_spine_collar.tooltip_exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

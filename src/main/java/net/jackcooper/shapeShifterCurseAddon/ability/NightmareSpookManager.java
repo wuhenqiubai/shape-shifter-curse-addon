@@ -366,7 +366,7 @@ public final class NightmareSpookManager {
 			if (gc.age >= CREEPER_LIFE_TICKS) {
 				// 到期：无实伤爆除（声/粒直发目标，不广播）
 				cit.remove();
-				playSoundAt(player, SoundEvents.ENTITY_GENERIC_EXPLODE, gc.getX(), gc.getY(), gc.getZ(), 1.0f, 1.0f);
+				playSoundAt(player, SoundEvents.ENTITY_GENERIC_EXPLODE.value(), gc.getX(), gc.getY(), gc.getZ(), 1.0f, 1.0f);
 				spawnParticlesAt(player, ParticleTypes.EXPLOSION_EMITTER, gc.getX(), gc.getBodyY(0.5), gc.getZ(), 1, 0, 0, 0);
 				gc.discard();
 				continue;

@@ -104,14 +104,14 @@ public class GhostCatRenderer extends GeoEntityRenderer<GhostCatEntity> {
 	public void preRender(MatrixStack poseStack, GhostCatEntity animatable, BakedGeoModel model,
 	                      VertexConsumerProvider bufferSource, VertexConsumer buffer,
 	                      boolean isReRender, float partialTick, int packedLight,
-	                      int packedOverlay, float red, float green, float blue, float alpha) {
+	                      int packedOverlay, int color) {
 		// reRender（overlay层）会再次调用preRender(isReRender=true)，
 		// 此时poseStack已携带首次渲染的缩放和骨骼变换，不能重复应用
 		if (!isReRender) {
 			poseStack.scale(MODEL_SCALE, MODEL_SCALE, MODEL_SCALE);
 		}
 		super.preRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick,
-				packedLight, packedOverlay, red, green, blue, alpha);
+				packedLight, packedOverlay, color);
 		if (!isReRender) {
 			// 在动画处理后覆写骨骼变换（等效SSC ProcessModel）
 			processModel(animatable);

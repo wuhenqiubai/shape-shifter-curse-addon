@@ -102,8 +102,8 @@ public class EvolutionStoneItem extends Item {
 					canEvolve = true;
 				}
 				// 允许原版三阶段蜘蛛使用进化石进化为跳蛛（与月髓环→月织蛛并行存在，不同道具不冲突）
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "spider_3"))) {
-					targetFormId = new Identifier("my_addon", "spider_salticidae");
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "spider_3"))) {
+					targetFormId = Identifier.of("my_addon", "spider_salticidae");
 					canEvolve = true;
 				}			}
 

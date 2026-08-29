@@ -1,9 +1,9 @@
 package net.jackcooper.shapeShifterCurseAddon.item;
 
 import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
@@ -32,7 +32,7 @@ import java.util.List;
 public class NightmareRingItem extends AccessoryItem {
 
 	/** 地牢（怪物房间）战利品表 id。 */
-	private static final Identifier DUNGEON_LOOT = new Identifier("minecraft", "chests/simple_dungeon");
+	private static final Identifier DUNGEON_LOOT = Identifier.of("minecraft", "chests/simple_dungeon");
 
 	/** 「恐惧」持续时长增幅（+35%）。 */
 	public static final float FEAR_DURATION_BONUS = 0.35f;
@@ -45,8 +45,8 @@ public class NightmareRingItem extends AccessoryItem {
 	 * 注册梦魇戒指到地牢战利品表（15% 概率）。
 	 */
 	public static void registerLootTable() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!DUNGEON_LOOT.equals(id)) return;
+		LootTableEvents.MODIFY.register((key, tableBuilder, source) -> {
+			if (!DUNGEON_LOOT.equals(key.getValue())) return;
 			LootPool.Builder poolBuilder = LootPool.builder()
 					.rolls(ConstantLootNumberProvider.create(1.0F))
 					.conditionally(RandomChanceLootCondition.builder(0.15F))
@@ -90,10 +90,10 @@ public class NightmareRingItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		tooltip.add(Text.translatable("item.ssc_addon.nightmare_ring.tooltip_1").formatted(Formatting.DARK_PURPLE));
 		tooltip.add(Text.translatable("item.ssc_addon.nightmare_ring.tooltip_2").formatted(Formatting.GRAY));
 		tooltip.add(Text.translatable("item.ssc_addon.nightmare_ring.tooltip_exclusive").formatted(Formatting.LIGHT_PURPLE));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }

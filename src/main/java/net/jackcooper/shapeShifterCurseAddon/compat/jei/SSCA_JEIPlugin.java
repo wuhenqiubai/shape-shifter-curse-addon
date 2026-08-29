@@ -10,10 +10,11 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.potion.Potions;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
@@ -41,7 +42,7 @@ public class SSCA_JEIPlugin implements IModPlugin {
 
 	@Override
 	public @NotNull Identifier getPluginUid() {
-		return new Identifier("ssc_addon", "jei_plugin");
+		return Identifier.of("ssc_addon", "jei_plugin");
 	}
 
 	@Override
@@ -63,12 +64,12 @@ public class SSCA_JEIPlugin implements IModPlugin {
 						java.util.List.of(new ItemStack(SscAddon.INFINITE_ENERGY_POTION)),
 						new ItemStack(Items.GUNPOWDER),
 						new ItemStack(SscAddon.INFINITE_ENERGY_POTION_SPLASH),
-						new Identifier("ssc_addon", "infinite_energy_potion_brewing_splash")),
+						Identifier.of("ssc_addon", "infinite_energy_potion_brewing_splash")),
 				factory.createBrewingRecipe(
 						java.util.List.of(new ItemStack(SscAddon.INFINITE_ENERGY_POTION_SPLASH)),
 						new ItemStack(Items.DRAGON_BREATH),
 						new ItemStack(SscAddon.INFINITE_ENERGY_POTION_LINGERING),
-						new Identifier("ssc_addon", "infinite_energy_potion_brewing_lingering"))));
+						Identifier.of("ssc_addon", "infinite_energy_potion_brewing_lingering"))));
 	}
 
 	/** 分类：3×3 槽位布局 + 箭头 + 输出。 */
@@ -105,9 +106,9 @@ public class SSCA_JEIPlugin implements IModPlugin {
 		public void setRecipe(@NotNull IRecipeLayoutBuilder builder, @NotNull VenomGlandRecipe recipe, @NotNull IFocusGroup focuses) {
 			// 3×3：8 蜘蛛眼 + 中心三种剧毒瓶型（作为可循环选项）
 			ItemStack eye = new ItemStack(Items.SPIDER_EYE);
-			ItemStack poisonDrink = PotionUtil.setPotion(new ItemStack(Items.POTION), Potions.POISON);
-			ItemStack poisonSplash = PotionUtil.setPotion(new ItemStack(Items.SPLASH_POTION), Potions.POISON);
-			ItemStack poisonLingering = PotionUtil.setPotion(new ItemStack(Items.LINGERING_POTION), Potions.POISON);
+			ItemStack poisonDrink = PotionContentsComponent.createStack(Items.POTION, Potions.POISON);
+			ItemStack poisonSplash = PotionContentsComponent.createStack(Items.SPLASH_POTION, Potions.POISON);
+			ItemStack poisonLingering = PotionContentsComponent.createStack(Items.LINGERING_POTION, Potions.POISON);
 			for (int row = 0; row < 3; row++) {
 				for (int col = 0; col < 3; col++) {
 					int idx = row * 3 + col;
@@ -168,7 +169,7 @@ public class SSCA_JEIPlugin implements IModPlugin {
 			// 3×3：上中=月髓环，中间行=附魔金苹果 / 压缩能量药水 / 附魔金苹果，其余为空槽
 			ItemStack moonRing = new ItemStack(SscAddon.SP_UPGRADE_THING);
 			ItemStack apple = new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
-			ItemStack feedPotion = PotionUtil.setPotion(new ItemStack(Items.POTION), RegCustomPotions.FEED_POTION);
+			ItemStack feedPotion = PotionContentsComponent.createStack(Items.POTION, RegistryEntry.of(RegCustomPotions.FEED_POTION));
 			for (int row = 0; row < 3; row++) {
 				for (int col = 0; col < 3; col++) {
 					int idx = row * 3 + col;

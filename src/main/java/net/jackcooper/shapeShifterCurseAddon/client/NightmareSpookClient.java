@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.Map;
 import java.util.UUID;
@@ -30,13 +31,13 @@ public final class NightmareSpookClient {
 
 	public static void register() {
 		// 幽灵标记：记 UUID（SpookGhostVisibleMixin 据此局部显形）
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_SPOOK_GHOST,
-				(client, handler, buf, responseSender) -> {
-					UUID ghostUuid = buf.readUuid();
-					int life = buf.readVarInt();
-					client.execute(() -> {
-						if (client.world == null) return;
-						GHOSTS.put(ghostUuid, client.world.getTime() + life);
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_SPOOK_GHOST),
+				(bp, ctx) -> {
+					UUID ghostUuid = bp.data().readUuid();
+					int life = bp.data().readVarInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
+						GHOSTS.put(ghostUuid, ctx.client().world.getTime() + life);
 					});
 				});
 		// 断线清理

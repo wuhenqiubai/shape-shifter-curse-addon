@@ -13,17 +13,17 @@ public class AxolotlShifterModel extends GeoModel<AxolotlShifterEntity> {
 	@Override
 	public Identifier getModelResource(AxolotlShifterEntity entity) {
 		// 原版美西螈形态 geo（人形直立布局：bipedHead + bipedBody + tail_0~3 + 四肢）
-		return new Identifier("ssc_addon", "geo/axolotl_shifter.geo.json");
+		return Identifier.of("ssc_addon", "geo/axolotl_shifter.geo.json");
 	}
 
 	@Override
 	public Identifier getTextureResource(AxolotlShifterEntity entity) {
-		return new Identifier("ssc_addon", "textures/entity/axolotl_shifter.png");
+		return Identifier.of("ssc_addon", "textures/entity/axolotl_shifter.png");
 	}
 
 	@Override
 	public Identifier getAnimationResource(AxolotlShifterEntity entity) {
 		// 附属包占位动画（骨骼变换由渲染器程序化驱动，动画仅提供控制器挂载点）
-		return new Identifier("ssc_addon", "animations/axolotl_shifter.animation.json");
+		return Identifier.of("ssc_addon", "animations/axolotl_shifter.animation.json");
 	}
 }

@@ -4,12 +4,6 @@ import io.github.apace100.apoli.power.factory.action.ActionFactory;
 import io.github.apace100.apoli.registry.ApoliRegistries;
 import io.github.apace100.calio.data.SerializableData;
 import io.github.apace100.calio.data.SerializableDataTypes;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpDeathDomain;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSummonWolves;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormWitherSand;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormCounterBurst;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormDetonate;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -156,7 +150,7 @@ public class SscAddonActions {
 				}));
 
 		// 食梦魔主要技能「恐惧」：对所有已入梦目标施加恐惧（粉雾/减速/心跳/伤害翻倍/1s隐匿）
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "nightmare_fear"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "nightmare_fear"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -165,7 +159,7 @@ public class SscAddonActions {
 				}));
 
 		// 食梦魔次要技能「惊吓」：假苦力怕幻影 + 复制品反击（仅目标可见）
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "nightmare_spook"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "nightmare_spook"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -202,7 +196,7 @@ public class SscAddonActions {
 								target.setVelocity(oldVelocity);
 							}
 
-							target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN, duration, 0), living); // Duration from data; source=施法者供入梦拦截归因
+							target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration, 0), living); // Duration from data; source=施法者供入梦拦截归因
 
 							if (living instanceof PlayerEntity player && target instanceof SscIgnitedEntityAccessor accessor) {
 								accessor.sscAddon$setIgniterUuid(player.getUuid());
@@ -229,7 +223,7 @@ public class SscAddonActions {
 					// target.setOnFireFor(duration); // Replaced with custom effect
 
 					if (target instanceof LivingEntity livingTarget) {
-						livingTarget.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN, duration * 20, 0), actor); // source=施法者供入梦拦截归因
+						livingTarget.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, duration * 20, 0), actor); // source=施法者供入梦拦截归因
 					}
 
 					if (actor instanceof PlayerEntity player && target instanceof SscIgnitedEntityAccessor accessor) {
@@ -237,7 +231,7 @@ public class SscAddonActions {
 					}
 				}));
 
-		registerBiEntity(new ActionFactory<>(new Identifier("ssc_addon", "salticidae_venom_fang"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("ssc_addon", "salticidae_venom_fang"),
 				new SerializableData(),
 				(data, pair) -> {
 				// 毒牙（跳蛛被动）：左键命中 → 中毒 I 5s（100t）；毒液腺体：等级+1（变 II）/ 3s（60t）
@@ -255,7 +249,7 @@ public class SscAddonActions {
 							net.minecraft.sound.SoundCategory.PLAYERS, 0.4f, 1.6f);
 				}));
 
-		registerBiEntity(new ActionFactory<>(new Identifier("my_addon", "damage_target_from_actor"),
+		registerBiEntity(new ActionFactory<>(Identifier.of("my_addon", "damage_target_from_actor"),
 				new SerializableData()
 						.add("amount", SerializableDataTypes.FLOAT)
 						.add("damage_type", SerializableDataTypes.IDENTIFIER),

@@ -6,11 +6,14 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
+import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks;
+import net.jackcooper.shapeShifterCurseAddon.criteria.OnTransformAddonForm;
 import net.jackcooper.shapeShifterCurseAddon.item.PsionicOrbItem;
 import net.jackcooper.shapeShifterCurseAddon.item.SeaCrystalPendantItem;
 import net.jackcooper.shapeShifterCurseAddon.loot.EvolutionItemsLoot;
+import net.jackcooper.shapeShifterCurseAddon.recipe.*;
 import net.minecraft.block.jukebox.JukeboxSong;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityDimensions;
@@ -21,6 +24,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.SpawnEggItem;
+import net.minecraft.particle.SimpleParticleType;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialRecipeSerializer;
 import net.minecraft.registry.Registries;
@@ -39,10 +43,8 @@ import net.jackcooper.shapeShifterCurseAddon.command.SscAddonCommands;
 import net.jackcooper.shapeShifterCurseAddon.condition.SscAddonConditions;
 import net.jackcooper.shapeShifterCurseAddon.config.SSCAddonClientConfig;
 import net.jackcooper.shapeShifterCurseAddon.config.SSCAddonServerConfig;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.criteria.OnTransformAddonForm;
 import net.jackcooper.shapeShifterCurseAddon.effect.*;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
-import net.minecraft.item.SpawnEggItem;
 import net.jackcooper.shapeShifterCurseAddon.entity.AllayClearMarkerEntity;
 import net.jackcooper.shapeShifterCurseAddon.entity.AllayFriendMarkerEntity;
 import net.jackcooper.shapeShifterCurseAddon.entity.FrostBallEntity;
@@ -53,12 +55,6 @@ import net.jackcooper.shapeShifterCurseAddon.forms.*;
 import net.jackcooper.shapeShifterCurseAddon.item.*;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.power.SscAddonPowers;
-import net.jackcooper.shapeShifterCurseAddon.recipe.BlizzardTankRechargeRecipe;
-import net.jackcooper.shapeShifterCurseAddon.recipe.RefillMoisturizerRecipe;
-import net.jackcooper.shapeShifterCurseAddon.recipe.UpgradeMoisturizerRecipe;
-import net.jackcooper.shapeShifterCurseAddon.recipe.ReloadSnowballLauncherRecipe;
-import net.jackcooper.shapeShifterCurseAddon.recipe.InfiniteEnergyPotionRecipe;
-import net.jackcooper.shapeShifterCurseAddon.recipe.SpUpgradeRecipe;
 import net.jackcooper.shapeShifterCurseAddon.screen.PotionBagScreenHandler;
 import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPTotem;
 import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPPortableBeacon;
@@ -69,13 +65,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import net.minecraft.advancement.criterion.Criteria;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.MusicDiscItem;
-import net.minecraft.resource.ResourceType;
-import net.minecraft.util.Rarity;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.jackcooper.shapeShifterCurseAddon.criteria.OnTransformAddonForm;
 import net.jackcooper.shapeShifterCurseAddon.entity.ThrownWaterSpearEntity;
 import net.jackcooper.shapeShifterCurseAddon.entity.FoxFireballEntity;
 import net.jackcooper.shapeShifterCurseAddon.entity.ParasiticSeedProjectile;
@@ -201,9 +190,9 @@ public class SscAddon implements ModInitializer {
 	public static final EntityType<net.jackcooper.shapeShifterCurseAddon.entity.FrostArrayEntity> FROST_ARRAY_ENTITY =
 			registerEntity("frost_array", SpawnGroup.MISC, net.jackcooper.shapeShifterCurseAddon.entity.FrostArrayEntity::new, 0.3f, 0.3f, 64, 1);
 	// 寒棘狐蓄力「汇聚冰晶」粒子：匀速直线飞向中心、抵达即消失（自定义粒子保证精确几何）
-	public static final net.minecraft.particle.DefaultParticleType INWARD_ICE_PARTICLE =
-			Registry.register(Registries.PARTICLE_TYPE, new Identifier("ssc_addon", "inward_ice"),
-					net.fabricmc.fabric.api.particle.v1.FabricParticleTypes.simple(true));
+	public static final SimpleParticleType INWARD_ICE_PARTICLE =
+			Registry.register(Registries.PARTICLE_TYPE, Identifier.of("ssc_addon", "inward_ice"),
+					FabricParticleTypes.simple(true));
 	// red 狐火火球投射物
 	public static final EntityType<FoxFireballEntity> FOX_FIREBALL_ENTITY =
 			registerEntity("fox_fireball", SpawnGroup.MISC, FoxFireballEntity::new, 0.25f, 0.25f, 64, 2);
@@ -323,7 +312,7 @@ public class SscAddon implements ModInitializer {
 			new Item.Settings().maxCount(1), WitherPotionItem.Type.LINGERING);
 	public static final RecipeSerializer<InfiniteEnergyPotionRecipe> INFINITE_ENERGY_POTION_SERIALIZER = new SpecialRecipeSerializer<>(InfiniteEnergyPotionRecipe::new);
 	// 毒液腺体合成（8蜘蛛眼夹剧毒药水，特殊配方按药水 NBT 匹配三级剧毒）
-	public static final RecipeSerializer<net.jackcooper.shapeShifterCurseAddon.recipe.VenomGlandRecipe> VENOM_GLAND_SERIALIZER = new SpecialRecipeSerializer<>(net.jackcooper.shapeShifterCurseAddon.recipe.VenomGlandRecipe::new);
+	public static final RecipeSerializer<net.jackcooper.shapeShifterCurseAddon.recipe.VenomGlandRecipe> VENOM_GLAND_SERIALIZER = new SpecialRecipeSerializer<>(VenomGlandRecipe::new);
 	// 幻形之梦 音乐唱片（Shape Shifter's Dream）：流式音效 + vanilla 唱片物品，145 秒
 	public static final Identifier SHAPE_SHIFTERS_DREAM_ID = Identifier.of("ssc_addon", "shape_shifters_dream");
 	public static final SoundEvent SHAPE_SHIFTERS_DREAM_EVENT = SoundEvent.of(SHAPE_SHIFTERS_DREAM_ID);
@@ -529,7 +518,7 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "blizzard_tank_recharge"), BLIZZARD_TANK_RECHARGE_SERIALIZER);
 		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "sp_upgrade_crafting"), SP_UPGRADE_SERIALIZER);
 		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "infinite_energy_potion_crafting"), INFINITE_ENERGY_POTION_SERIALIZER);
-		Registry.register(Registries.RECIPE_SERIALIZER, new Identifier("ssc_addon", "venom_gland_crafting"), VENOM_GLAND_SERIALIZER);
+		Registry.register(Registries.RECIPE_SERIALIZER, Identifier.of("ssc_addon", "venom_gland_crafting"), VENOM_GLAND_SERIALIZER);
 	}
 
 	// 拆分的私有方法

@@ -12,6 +12,7 @@ import net.minecraft.sound.SoundEvents;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.util.Identifier;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -109,12 +110,12 @@ public final class FrostArmorManager {
 			sw.getServer().execute(() -> {
 				if (!fAttacker.isAlive() || fAttacker.isRemoved()) return;
 				fAttacker.addStatusEffect(new StatusEffectInstance(
-						SscAddon.FROST_FREEZE, BURST_FREEZE_TICKS, 0, false, true, true), victim);
+						SscAddon.FROST_FREEZE_ENTRY, BURST_FREEZE_TICKS, 0, false, true, true), victim);
 				// 反伤走独立 magic 源（无 attacker=寒棘狐本人）→ 不会在攻击者身上再触发反刺链
 				fAttacker.damage(fAttacker.getDamageSources().create(
 						net.minecraft.registry.RegistryKey.of(
 								net.minecraft.registry.RegistryKeys.DAMAGE_TYPE,
-								new net.minecraft.util.Identifier("my_addon", "thorn_burst")),
+								Identifier.of("my_addon", "thorn_burst")),
 						victim), BURST_DAMAGE);
 			});
 			// 棘爆反馈：碎冰音 + 雪花爆裂粒子（攻击者处）

@@ -18,6 +18,7 @@ import net.minecraft.util.math.Vec3d;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 月织蛛二段跳 - 客户端跳跃键检测器。

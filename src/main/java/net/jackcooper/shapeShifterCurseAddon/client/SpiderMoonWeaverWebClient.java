@@ -13,6 +13,7 @@ import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 月织蛛「织网术」- 客户端按键检测器。

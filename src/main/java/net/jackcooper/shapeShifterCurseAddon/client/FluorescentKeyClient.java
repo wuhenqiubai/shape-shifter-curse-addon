@@ -12,6 +12,7 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 荧光幼灵按键检测器（客户端边沿触发）。

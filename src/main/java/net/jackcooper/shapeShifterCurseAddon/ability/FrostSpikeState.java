@@ -1,8 +1,10 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
+import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.PersistentState;
 
@@ -23,8 +25,7 @@ public final class FrostSpikeState extends PersistentState {
 
 	public static FrostSpikeState get(MinecraftServer server) {
 		return server.getOverworld().getPersistentStateManager().getOrCreate(
-				FrostSpikeState::fromNbt,
-				FrostSpikeState::new,
+				new PersistentState.Type<>(FrostSpikeState::new, (nbt, lookup) -> fromNbt(nbt), DataFixTypes.LEVEL),
 				KEY);
 	}
 
@@ -48,7 +49,7 @@ public final class FrostSpikeState extends PersistentState {
 	}
 
 	@Override
-	public NbtCompound writeNbt(NbtCompound nbt) {
+	public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		NbtList players = new NbtList();
 		for (Map.Entry<UUID, int[]> en : thorns.entrySet()) {
 			NbtCompound p = new NbtCompound();

@@ -13,6 +13,7 @@ import net.minecraft.util.math.Vec3d;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.Iterator;
 import java.util.Map;

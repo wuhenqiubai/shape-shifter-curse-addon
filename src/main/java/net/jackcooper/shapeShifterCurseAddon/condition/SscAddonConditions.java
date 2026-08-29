@@ -101,7 +101,7 @@ public class SscAddonConditions {
 
 		// 食梦魔「入梦」门控（Apoli JSON 侧用）：actor（施加者）被 target（食梦魔）入梦 → false（效果不施加）。
 		// 用于 apply_effect 等无法带 source 的 JSON 动作，与服务端 addStatusEffect 拦截器同语义。
-		registerBiEntity(new ConditionFactory<>(new Identifier("my_addon", "not_dream_blocked"),
+		registerBiEntity(new ConditionFactory<>(Identifier.of("my_addon", "not_dream_blocked"),
 				new SerializableData(),
 				(data, pair) -> {
 					Entity actor = pair.getLeft();

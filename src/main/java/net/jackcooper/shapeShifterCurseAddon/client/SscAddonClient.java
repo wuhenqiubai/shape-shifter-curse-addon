@@ -5,12 +5,13 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.jackcooper.shapeShifterCurseAddon.client.JobChangeSelectScreen;
-import net.jackcooper.shapeShifterCurseAddon.client.SpiderMoonWeaverAnimDebugHud;
+import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.jackcooper.shapeShifterCurseAddon.particle.client.InwardIceParticle;
 import net.minecraft.client.gui.screen.ingame.HandledScreens;
 import net.minecraft.client.item.ModelPredicateProviderRegistry;
 import net.minecraft.client.render.entity.EmptyEntityRenderer;
@@ -34,6 +35,8 @@ import net.jackcooper.shapeShifterCurseAddon.client.renderer.WaterSpearEntityRen
 import net.jackcooper.shapeShifterCurseAddon.client.renderer.FluorescentLaserRenderer;
 import net.jackcooper.shapeShifterCurseAddon.client.renderer.WitchFamiliarRenderer;
 import net.jackcooper.shapeShifterCurseAddon.client.screen.PotionBagScreen;
+import net.onixary.shapeShifterCurseFabric.ShapeShifterCurseFabric;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,9 +79,8 @@ public class SscAddonClient implements ClientModInitializer {
 		net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks.clientInit();
 
 		// 寒棘狐蓄力「汇聚冰晶」自定义粒子工厂（贴图 assets/ssc_addon/particles/inward_ice.json）
-		net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry.getInstance()
-				.register(SscAddon.INWARD_ICE_PARTICLE,
-						net.jackcooper.shapeShifterCurseAddon.particle.client.InwardIceParticle.Factory::new);
+		ParticleFactoryRegistry.getInstance()
+				.register(SscAddon.INWARD_ICE_PARTICLE,	InwardIceParticle.Factory::new);
 
 		// 关键路径：键位注册必须成功，否则客机所有 SP 技能都无法激活。
 		// 包裹 try-catch 防止任何意外（如类加载失败）静默吞掉异常导致客机无反应。
@@ -122,17 +124,17 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// 荧光幼灵「潮汐束缚」守卫者激光：服务端同步被拴目标 entityId，客户端逐帧画光束
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_TIDAL_TETHER,
-				(client, handler, buf, responseSender) -> {
-					int orbId = buf.readVarInt();
-					int count = buf.readVarInt();
+				BytePayload.id(SscAddonNetworking.PACKET_TIDAL_TETHER),
+				(bp, ctx) -> {
+					int orbId = bp.data().readVarInt();
+					int count = bp.data().readVarInt();
 					if (count < 0 || count > 64) return;
 					int[] ids = new int[count];
-					for (int i = 0; i < count; i++) ids[i] = buf.readVarInt();
-					client.execute(() -> {
-						if (client.world == null) return;
+					for (int i = 0; i < count; i++) ids[i] = bp.data().readVarInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
 						net.jackcooper.shapeShifterCurseAddon.client.renderer.TidalTetherBeamRenderer
-								.update(orbId, ids, client.world.getTime() + 20);
+								.update(orbId, ids, ctx.client().world.getTime() + 20);
 					});
 				});
 		// 逐帧渲染潮汐束缚光束（守卫者激光样式）
@@ -141,18 +143,18 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// SSCA 月织蛛「蛛丝荡漾」- 接收服务端 S2C 摆荡状态同步（销点/绳长/状态），更新本地镜像供渲染
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_STATE,
-				(client, handler, buf, responseSender) -> {
-					java.util.UUID uuid = buf.readUuid();
-					boolean active = buf.readBoolean();
-					double ax = buf.readDouble();
-					double ay = buf.readDouble();
-					double az = buf.readDouble();
-					double ropeLen = buf.readDouble();
-					int state = buf.readVarInt();
-					boolean canExtend = buf.readBoolean();
-					int tetherEntityId = buf.readInt();
-					client.execute(() -> net.jackcooper.shapeShifterCurseAddon.client.SpiderMoonWeaverSwingClient
+				BytePayload.id(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_STATE),
+				(bp, ctx) -> {
+					java.util.UUID uuid = bp.data().readUuid();
+					boolean active = bp.data().readBoolean();
+					double ax = bp.data().readDouble();
+					double ay = bp.data().readDouble();
+					double az = bp.data().readDouble();
+					double ropeLen = bp.data().readDouble();
+					int state = bp.data().readVarInt();
+					boolean canExtend = bp.data().readBoolean();
+					int tetherEntityId = bp.data().readInt();
+					ctx.client().execute(() -> net.jackcooper.shapeShifterCurseAddon.client.SpiderMoonWeaverSwingClient
 							.onStateSync(uuid, active, ax, ay, az, ropeLen, state, canExtend, tetherEntityId));
 				});
 
@@ -186,9 +188,9 @@ public class SscAddonClient implements ClientModInitializer {
 				cbuf.writeBoolean(cfg.accent2GreyReverse);
 				ClientPlayNetworking.send(new BytePayload(BytePayload.id(Identifier.of(ShapeShifterCurseFabric.MOD_ID, "update_custom_color")), cbuf));
 				// 请求服务端把所有在场玩家的形态+皮肤同步过来（修复客机看其它玩家是默认白模型）。
-				net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-						net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_REQUEST_ALL_FORM_SYNC,
-						net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
+				ClientPlayNetworking.send(
+						new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_REQUEST_ALL_FORM_SYNC),
+						PacketByteBufs.empty()));
 			} catch (Throwable t) {
 				LOGGER.error("[SSC_ADDON] 跨存档颜色重同步失败", t);
 			}
@@ -198,9 +200,9 @@ public class SscAddonClient implements ClientModInitializer {
 		try { MancianimaCrosshairTracker.register(); } catch (Throwable t) { LOGGER.error("[SSC_ADDON] CrosshairTracker register failed", t); }
 		// 注册「SSCA 进化路线定义同步」接收器：服务端把 routes JSON 同步过来，供进化树 UI（多人）渲染。
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_EVO_ROUTES_SYNC,
-				(client, handler, buf, responseSender) -> {
-					int count = buf.readInt();
+				BytePayload.id(SscAddonNetworking.PACKET_EVO_ROUTES_SYNC),
+				(bp, ctx) -> {
+					int count = bp.data().readInt();
 					if (count < 0 || count > 1000) return;
 					java.util.Map<String, String> raw = new java.util.LinkedHashMap<>();
 					for (int i = 0; i < count; i++) {
@@ -208,15 +210,15 @@ public class SscAddonClient implements ClientModInitializer {
 						String json = bp.data().readString(2000000);
 						raw.put(routeId, json);
 					}
-					client.execute(() -> net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionRegistry.INSTANCE.applyClientSync(raw));
+					ctx.client().execute(() -> net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionRegistry.INSTANCE.applyClientSync(raw));
 				});
 		// 注册「广播所有玩家形态」接收器：服务端把在场玩家的 formID + 皮肤数据直接广播过来，
 		// 客机按 UUID 直接写入其它玩家的 nowForm/nowFormID 与 PlayerSkinComponent（颜色/是否启用形态颜色等），
 		// 绕过 CCA 同步的不确定性，修复刚进游戏看其它玩家是「白色人类模型」（enableFormColor 未同步=渲染原版人类模型）。
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_BROADCAST_FORMS,
-				(client, handler, buf, responseSender) -> {
-					int count = buf.readInt();
+				BytePayload.id(SscAddonNetworking.PACKET_BROADCAST_FORMS),
+				(bp, ctx) -> {
+					int count = bp.data().readInt();
 					if (count < 0 || count > 1000) return; // 防恶意服务端 OOM
 					java.util.List<UUID> uuids = new java.util.ArrayList<>(count);
 					java.util.List<String> formIds = new java.util.ArrayList<>(count);
@@ -328,73 +330,73 @@ public class SscAddonClient implements ClientModInitializer {
 		});
 
 		// 风灵「疾风连爪」：接收爪击阶段+准星条进度，更新客户端镜像
-		ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_CLAW_STATE, (client, handler, buf, responseSender) -> {
-			int phase = buf.readInt();
-			float progress = buf.readFloat();
-			client.execute(() -> net.jackcooper.shapeShifterCurseAddon.client.ClawClientState.update(phase, progress));
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_CLAW_STATE), (bp, ctx) -> {
+			int phase = bp.data().readInt();
+			float progress = bp.data().readFloat();
+			ctx.client().execute(() -> net.jackcooper.shapeShifterCurseAddon.client.ClawClientState.update(phase, progress));
 		});
 
         // 风灵「风之冲刺」：接收阶段+目标悬浮Y，更新客户端镜像（驱动悬浮期绿色落点预览）
-        ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_DASH_STATE, (client, handler, buf, responseSender) -> {
-            int phase = buf.readInt();
-            double targetY = buf.readDouble();
-            client.execute(() -> net.jackcooper.shapeShifterCurseAddon.client.DashClientState.update(phase, targetY));
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_DASH_STATE), (bp, ctx) -> {
+            int phase = bp.data().readInt();
+            double targetY = bp.data().readDouble();
+            ctx.client().execute(() -> net.jackcooper.shapeShifterCurseAddon.client.DashClientState.update(phase, targetY));
         });
 
         // 进化美西螈「投掷水矛」蓄力期手持水矛渲染状态（主机 + 客机一致）
-        ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE, (client, handler, buf, responseSender) -> {
-            java.util.UUID id = buf.readUuid();
-            boolean charging = buf.readBoolean();
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE), (bp, ctx) -> {
+            java.util.UUID id = bp.data().readUuid();
+            boolean charging = bp.data().readBoolean();
 
             ctx.client().execute(() -> UpgradeAxolotlSpearRenderState.set(id, charging));
         });
 
         // 寒棘狐主技能蓄力状态（事件级）：客户端本地自算下个冰锥位汇聚流（零网络粒子包）
-        ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_FROST_SPIKE_CHARGE_STATE, (client, handler, buf, responseSender) -> {
-            java.util.UUID id = buf.readUuid();
-            boolean charging = buf.readBoolean();
-            client.execute(() -> net.jackcooper.shapeShifterCurseAddon.client.FrostSpikeChargeClientState.setCharging(id, charging));
+        ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_FROST_SPIKE_CHARGE_STATE), (bp, ctx) -> {
+            java.util.UUID id = bp.data().readUuid();
+            boolean charging = bp.data().readBoolean();
+            ctx.client().execute(() -> net.jackcooper.shapeShifterCurseAddon.client.FrostSpikeChargeClientState.setCharging(id, charging));
         });
         net.jackcooper.shapeShifterCurseAddon.client.FrostSpikeChargeClientState.register();
         // 断线/换服清理蓄力镜像，防残留
         ClientPlayConnectionEvents.DISCONNECT.register((h, c) -> net.jackcooper.shapeShifterCurseAddon.client.FrostSpikeChargeClientState.clearAll());
 
 		// 注册白名单 GUI S2C 同步包接收器：收到后打开/刷新 WhitelistManageScreen
-		ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC, (client, handler, buf, responseSender) -> {
-			boolean customMode = buf.readBoolean();
-			int n = buf.readInt();
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC), (bp, ctx) -> {
+			boolean customMode = bp.data().readBoolean();
+			int n = bp.data().readInt();
 			if (n < 0 || n > 10000) return;
 			java.util.Set<UUID> set = new java.util.HashSet<>();
-			for (int i = 0; i < n; i++) set.add(payload.data().readUuid());
-			int m = payload.data().readInt();
+			for (int i = 0; i < n; i++) set.add(bp.data().readUuid());
+			int m = bp.data().readInt();
 			if (m < 0 || m > 10000) return;
 			java.util.List<net.jackcooper.shapeShifterCurseAddon.client.screen.WhitelistManageScreen.MobEntry> mobs = new java.util.ArrayList<>();
 			for (int i = 0; i < m; i++) {
-				java.util.UUID u = buf.readUuid();
-				String typeId = buf.readString();
+				java.util.UUID u = bp.data().readUuid();
+				String typeId = bp.data().readString();
 				mobs.add(new net.jackcooper.shapeShifterCurseAddon.client.screen.WhitelistManageScreen.MobEntry(u, typeId.isEmpty() ? null : typeId));
 			}
-			client.execute(() -> {
-				if (client.currentScreen instanceof net.jackcooper.shapeShifterCurseAddon.client.screen.WhitelistManageScreen s) {
+			ctx.client().execute(() -> {
+				if (ctx.client().currentScreen instanceof net.jackcooper.shapeShifterCurseAddon.client.screen.WhitelistManageScreen s) {
 					s.updateState(set, customMode, mobs);
 				} else {
-					client.setScreen(new net.jackcooper.shapeShifterCurseAddon.client.screen.WhitelistManageScreen(set, customMode, mobs));
+					ctx.client().setScreen(new net.jackcooper.shapeShifterCurseAddon.client.screen.WhitelistManageScreen(set, customMode, mobs));
 				}
 			});
 		});
 
 		// 灵能宝珠转职：服务端通知打开「转职选择形态」界面（jackcooper 独立类，当前形态灰显不可选）
-		ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_OPEN_JOB_CHANGE, (client, handler, buf, responseSender) -> {
-			client.execute(() -> client.setScreen(
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_OPEN_JOB_CHANGE), (bp, ctx) -> {
+			ctx.client().execute(() -> ctx.client().setScreen(
 					new net.jackcooper.shapeShifterCurseAddon.client.JobChangeSelectScreen()));
 		});
 
 		// 动画调试记录开关：/ssc_addon debug anim 指令触发，客户端切换本地日志记录
-		ClientPlayNetworking.registerGlobalReceiver(net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_ANIM_DEBUG_TOGGLE, (client, handler, buf, responseSender) -> {
-			client.execute(() -> {
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_ANIM_DEBUG_TOGGLE), (bp, ctx) -> {
+			ctx.client().execute(() -> {
 				boolean now = net.jackcooper.shapeShifterCurseAddon.client.SpiderMoonWeaverAnimDebugHud.toggleRecording();
-				if (client.player != null) {
-					client.player.sendMessage(net.minecraft.text.Text.translatable(
+				if (ctx.client().player != null) {
+					ctx.client().player.sendMessage(net.minecraft.text.Text.translatable(
 							now ? "message.ssc_addon.anim_debug.on" : "message.ssc_addon.anim_debug.off")
 							.formatted(now ? Formatting.GREEN : Formatting.RED), true);
 				}
@@ -455,7 +457,7 @@ public class SscAddonClient implements ClientModInitializer {
 
 		// Register predicate for 3D model when held (0.0 = inventory/ground, 1.0 = held)
 		// GUI/GROUND 渲染上下文时强制返回 0，避免 override 把物品栏图标也切到 3D
-		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "held"), (stack, world, entity, seed) ->
+		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, Identifier.of("ssc_addon", "held"), (stack, world, entity, seed) ->
 				net.jackcooper.shapeShifterCurseAddon.util.RenderContextTracker.isGuiContext() ? 0.0F :
 				(entity != null && (entity.getMainHandStack() == stack || entity.getOffHandStack() == stack) ? 1.0F : 0.0F)
 		);
@@ -464,7 +466,7 @@ public class SscAddonClient implements ClientModInitializer {
 		// GUI 上下文同样门控（与 held 一致）：蓄力中 activeItem==stack 会让 throwing 在
 		// 快捷栏/背包图标位也返回 1 → 3D 投掷态模型挤进 GUI 图标位与 2D 材质打架。
 		// GUI 上下文（DrawContext.drawItem 系）强制返回 0，手持渲染（不经过 drawItem）不受影响。
-		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, new Identifier("ssc_addon", "throwing"), (stack, world, entity, seed) ->
+		ModelPredicateProviderRegistry.register(SscAddon.WATER_SPEAR, Identifier.of("ssc_addon", "throwing"), (stack, world, entity, seed) ->
 				net.jackcooper.shapeShifterCurseAddon.util.RenderContextTracker.isGuiContext() ? 0.0F :
 				(entity != null && entity.isUsingItem() && entity.getActiveItem() == stack ? 1.0F : 0.0F)
 		);

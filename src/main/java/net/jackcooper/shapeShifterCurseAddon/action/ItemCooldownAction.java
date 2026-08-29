@@ -23,7 +23,7 @@ public class ItemCooldownAction {
 
 	public static ActionFactory<Entity> getFactory() {
 		return new ActionFactory<>(
-				new Identifier("ssc_addon", "item_cooldown"),
+				Identifier.of("ssc_addon", "item_cooldown"),
 				new SerializableData()
 						.add("item", SerializableDataTypes.ITEM)
 						.add("duration", SerializableDataTypes.INT),

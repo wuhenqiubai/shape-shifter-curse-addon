@@ -20,7 +20,7 @@ import net.jackcooper.shapeShifterCurseAddon.screen.EnergyBottlerScreenHandler;
 public class EnergyBottlerScreen extends HandledScreen<EnergyBottlerScreenHandler> {
 
 	/** 背景图资源（176x184：含边框/面板/全部槽位，坐标与槽位一一对应）。 */
-	private static final Identifier BACKGROUND = new Identifier("ssc_addon", "textures/gui/container/energy_bottler.png");
+	private static final Identifier BACKGROUND = Identifier.of("ssc_addon", "textures/gui/container/energy_bottler.png");
 
 	private static final int ENERGY_BAR_X = 8;
 	private static final int ENERGY_BAR_Y = 17;
@@ -94,7 +94,7 @@ public class EnergyBottlerScreen extends HandledScreen<EnergyBottlerScreenHandle
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		this.renderBackground(context);
+		this.renderBackground(context, mouseX, mouseY, delta);
 		boolean auto = this.handler.isAutoMode();
 		modeButton.setMessage(Text.translatable(auto
 				? "gui.ssc_addon.energy_bottler.mode.auto"

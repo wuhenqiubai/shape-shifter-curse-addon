@@ -13,6 +13,8 @@ import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
@@ -31,7 +33,7 @@ import org.joml.Matrix4f;
 @Environment(EnvType.CLIENT)
 public class FrostArrayRenderer extends EntityRenderer<FrostArrayEntity> {
 
-	private static final Identifier TEXTURE = new Identifier("minecraft", "textures/misc/white.png");
+	private static final Identifier TEXTURE = Identifier.of("minecraft", "textures/misc/white.png");
 
 	// 青蓝主基调
 	private static final float[] ICE_CYAN  = {0.45f, 0.85f, 1.00f, 0.85f};
@@ -90,7 +92,7 @@ public class FrostArrayRenderer extends EntityRenderer<FrostArrayEntity> {
 		// 模型中心补偿（同 FrostThornEntityRenderer：模型中心在网格 (1.5,0.5,3)）
 		matrices.translate((8.0 - 1.5) / 16.0, (8.0 - 0.5) / 16.0, (8.0 - 3.0) / 16.0);
 		ItemStack stack = new ItemStack(SscAddon.FROST_THORN);
-		stack.getOrCreateNbt().putInt("CustomModelData", 1);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt("CustomModelData", 1));
 		this.itemRenderer.renderItem(stack, ModelTransformationMode.GROUND, 0xF000F0, OverlayTexture.DEFAULT_UV,
 				matrices, vcp, entity.getWorld(), entity.getId());
 		matrices.pop();
@@ -159,7 +161,7 @@ public class FrostArrayRenderer extends EntityRenderer<FrostArrayEntity> {
 
 	private void v(VertexConsumer buf, Matrix4f pose, Matrix3f nrm, float x, float y, float z, float[] c) {
 		buf.vertex(pose, x, y, z).color(c[0], c[1], c[2], c[3]).texture(0.5f, 0.5f)
-				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(nrm, 0f, 0f, 1f).next();
+				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0).normal(0f, 0f, 1f);
 	}
 
 	@Override

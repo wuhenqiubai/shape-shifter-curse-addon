@@ -41,12 +41,12 @@ public class CreativeEnergyTankBlock extends EnergyStorageTankBlock {
 	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
 		// 仅服务端 tick（补满判定服务端权威）
 		return world.isClient ? null
-				: checkType(type, RegAddonBlockEntities.CREATIVE_ENERGY_TANK_BE, CreativeEnergyTankBlockEntity::tick);
+				: validateTicker(type, RegAddonBlockEntities.CREATIVE_ENERGY_TANK_BE, CreativeEnergyTankBlockEntity::tick);
 	}
 
 	/** 右键动作栏显示网络能量（同储罐交互习惯；BE 类型不同故在此覆写）。 */
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (!world.isClient) {
 			List<EnergyNetworkMember> net = EnergyNetwork.collect(world, pos);
 			player.sendMessage(Text.translatable("message.ssc_addon.energy_network.status",

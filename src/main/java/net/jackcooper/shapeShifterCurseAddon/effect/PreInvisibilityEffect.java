@@ -14,6 +14,7 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.power.TrueInvisibilityAbilityPower;
+import net.minecraft.util.Identifier;
 
 import java.util.List;
 

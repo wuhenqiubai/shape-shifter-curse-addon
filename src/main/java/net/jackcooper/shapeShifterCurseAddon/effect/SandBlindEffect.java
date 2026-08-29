@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.effect;
 
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.AttributeContainer;
@@ -15,7 +16,6 @@ import net.minecraft.particle.BlockStateParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
 
 /**
  * 致盲效果 - 金沙岚SP的凋零金沙技能施加的debuff

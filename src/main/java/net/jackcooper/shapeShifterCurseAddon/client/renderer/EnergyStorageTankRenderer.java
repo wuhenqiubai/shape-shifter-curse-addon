@@ -50,7 +50,7 @@ public class EnergyStorageTankRenderer implements BlockEntityRenderer<EnergyStor
 	private static final int FULL_BRIGHT = 0xF000F0;
 
 	/** 能量液体帧动画贴图（方块图集精灵，图集动画器自动逐帧播放）。 */
-	private static final Identifier ENERGY_LIQUID = new Identifier("ssc_addon", "block/energy_liquid");
+	private static final Identifier ENERGY_LIQUID = Identifier.of("ssc_addon", "block/energy_liquid");
 
 	public EnergyStorageTankRenderer(BlockEntityRendererFactory.Context ctx) {
 	}
@@ -135,13 +135,13 @@ public class EnergyStorageTankRenderer implements BlockEntityRenderer<EnergyStor
 			case EAST -> { nx = 1; }
 		}
 		vc.vertex(pos, x0, y0, z0).color(255, 255, 255, 255).texture(u0, v0)
-				.overlay(overlay).light(FULL_BRIGHT).normal(normal, nx, ny, nz).next();
+				.overlay(overlay).light(FULL_BRIGHT).normal(nx, ny, nz);
 		vc.vertex(pos, x1, y1, z1).color(255, 255, 255, 255).texture(u1, v0)
-				.overlay(overlay).light(FULL_BRIGHT).normal(normal, nx, ny, nz).next();
+				.overlay(overlay).light(FULL_BRIGHT).normal(nx, ny, nz);
 		vc.vertex(pos, x2, y2, z2).color(255, 255, 255, 255).texture(u1, v1)
-				.overlay(overlay).light(FULL_BRIGHT).normal(normal, nx, ny, nz).next();
+				.overlay(overlay).light(FULL_BRIGHT).normal(nx, ny, nz);
 		vc.vertex(pos, x3, y3, z3).color(255, 255, 255, 255).texture(u0, v1)
-				.overlay(overlay).light(FULL_BRIGHT).normal(normal, nx, ny, nz).next();
+				.overlay(overlay).light(FULL_BRIGHT).normal( nx, ny, nz);
 	}
 
 	/** 客户端注册入口：由 {@code RegAddonBlocks.clientInit()} 调用。 */

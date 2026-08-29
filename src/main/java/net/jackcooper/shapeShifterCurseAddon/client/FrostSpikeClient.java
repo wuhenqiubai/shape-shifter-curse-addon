@@ -14,6 +14,7 @@ import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.entity.FrostThornEntity;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 寒棘狐「冰刺」客户端按键检测器：单主技能键（sp_primary）区分长按 / 点按。
@@ -107,6 +108,6 @@ public final class FrostSpikeClient {
 	}
 
 	private static void send(Identifier packet) {
-		ClientPlayNetworking.send(packet, new PacketByteBuf(Unpooled.buffer()));
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), new PacketByteBuf(Unpooled.buffer())));
 	}
 }

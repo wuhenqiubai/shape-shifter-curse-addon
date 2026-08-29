@@ -26,9 +26,9 @@ import net.jackcooper.shapeShifterCurseAddon.entity.TidalOrbEntity;
 public class TidalOrbRenderer extends FlyingItemEntityRenderer<TidalOrbEntity> {
 
     // 直接指向原版潮涌贴图文件（不走图集，避免图集常量在版本间的不确定性）
-    private static final Identifier WIND_TEX = new Identifier("textures/entity/conduit/wind.png");
-    private static final Identifier WIND_VERTICAL_TEX = new Identifier("textures/entity/conduit/wind_vertical.png");
-    private static final Identifier OPEN_EYE_TEX = new Identifier("textures/entity/conduit/open_eye.png");
+    private static final Identifier WIND_TEX = Identifier.of("textures/entity/conduit/wind.png");
+    private static final Identifier WIND_VERTICAL_TEX = Identifier.of("textures/entity/conduit/wind_vertical.png");
+    private static final Identifier OPEN_EYE_TEX = Identifier.of("textures/entity/conduit/open_eye.png");
 
     private final ModelPart eye;
     private final ModelPart wind;

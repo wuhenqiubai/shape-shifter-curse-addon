@@ -10,6 +10,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.PacketByteBuf;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * SSCA 美西螈装死 - 客户端提前结束检测器。

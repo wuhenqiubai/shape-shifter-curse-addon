@@ -91,7 +91,7 @@ public final class LoginResourceRestoreHandler {
 			// VariableIntPower 的 toTag 是 NbtInt（Data 字段），resource power 均属此类
 			NbtElement valueTag = powerTag.get("Data");
 			if (valueTag != null && valueTag.getType() == NbtElement.INT_TYPE) {
-				p.snapshot.put(new Identifier(typeId.getNamespace(), typeId.getPath()),
+				p.snapshot.put(Identifier.of(typeId.getNamespace(), typeId.getPath()),
 						((net.minecraft.nbt.NbtInt) valueTag).intValue());
 			}
 		}

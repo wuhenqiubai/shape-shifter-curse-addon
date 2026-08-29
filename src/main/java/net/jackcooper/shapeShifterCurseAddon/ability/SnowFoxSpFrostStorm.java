@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -118,7 +119,7 @@ public class SnowFoxSpFrostStorm {
         if (data == null) return;
         
         // 检查是否被净化 - 如果有purified效果则取消蓄力
-        if (player.hasStatusEffect(net.jackcooper.shapeShifterCurseAddon.SscAddon.PURIFIED)) {
+        if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) {
             cancelCharging(player);
             return;
         }

@@ -1,8 +1,5 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
 import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -14,7 +11,7 @@ import net.minecraft.util.math.Box;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
-import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
+import net.onixary.shapeShifterCurseFabric.status_effects.RegOtherStatusEffects;
 
 import java.util.List;
 

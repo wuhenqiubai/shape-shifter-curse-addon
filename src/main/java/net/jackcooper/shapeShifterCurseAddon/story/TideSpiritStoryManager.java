@@ -2,6 +2,7 @@ package net.jackcooper.shapeShifterCurseAddon.story;
 
 import net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
@@ -167,7 +168,7 @@ public final class TideSpiritStoryManager {
 		// 月髓环免费变回荧光幼灵：带黑屏淡入淡出动画（startTransform），STUN 在动画期间定身
 		TransformManager.startTransform(sp, fluorescentForm, null);
 		sp.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(
-				net.jackcooper.shapeShifterCurseAddon.SscAddon.STUN,
+				SscAddon.STUN_ENTRY,
 				StaticParams.TRANSFORM_FX_DURATION_IN + StaticParams.TRANSFORM_FX_DURATION_OUT,
 				0, false, false, false));
 

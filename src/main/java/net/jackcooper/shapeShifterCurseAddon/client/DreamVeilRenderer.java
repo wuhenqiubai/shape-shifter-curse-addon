@@ -9,10 +9,12 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 食梦魔「入梦」目标屏幕粉色晕影 —— 客户端 HUD 渲染器。
@@ -32,7 +34,7 @@ import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 public final class DreamVeilRenderer implements HudRenderCallback {
 
 	/** 复用原版反胃灰度渐晕贴图（无色，可任意染色；资源包替换原版贴图会连带生效）。 */
-	private static final Identifier VEIL_TEXTURE = new Identifier("textures/misc/nausea.png");
+	private static final Identifier VEIL_TEXTURE = Identifier.of("textures/misc/nausea.png");
 
 	/** 粉色染色，与入梦粉红描边同色源 0xFF6EC7 → (1.0, 0.43, 0.78)。 */
 	private static final float TINT_R = 1.0F;
@@ -53,13 +55,13 @@ public final class DreamVeilRenderer implements HudRenderCallback {
 
 	public static void register() {
 		// S2C：入梦晕影状态（仅目标本人收到；payload = duration + 入梦你的食梦魔 UUID）
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_DREAM_VEIL,
-				(client, handler, buf, responseSender) -> {
-					int duration = buf.readVarInt();
-					java.util.UUID nightmareUuid = buf.readUuid();
-					client.execute(() -> {
-						if (client.world == null) return;
-						long now = client.world.getTime();
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_DREAM_VEIL),
+				(bp, ctx) -> {
+					int duration = bp.data().readVarInt();
+					java.util.UUID nightmareUuid = bp.data().readUuid();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
+						long now = ctx.client().world.getTime();
 						if (duration <= 0) {
 							// 该食梦魔的入梦关系结束：移除镜像（另一食梦魔关系不受影响）
 							net.jackcooper.shapeShifterCurseAddon.ability.NightmareDreamManager
@@ -92,13 +94,14 @@ public final class DreamVeilRenderer implements HudRenderCallback {
 	}
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext drawContext, RenderTickCounter tickCounter) {
 		MinecraftClient client = MinecraftClient.getInstance();
 		// 死亡界面不渲染（纯净出梦视觉）；与原版反胃一致：不受 hudHidden 影响
 		if (client.world == null || client.player == null || client.player.isDead()) return;
 		if (startWorldTime < 0L) return;
 
 		long now = client.world.getTime();
+		float tickDelta = tickCounter.getTickDelta(true);
 		if (endWorldTime <= now) {
 			// 自然到期：本地自清理（服务端不再发结束包）
 			startWorldTime = -1L;
@@ -113,11 +116,11 @@ public final class DreamVeilRenderer implements HudRenderCallback {
 		float strength = MathHelper.clamp(Math.min(fadeIn, fadeOut), 0.0F, 1.0F);
 		if (strength <= 0.0F) return;
 
-		int w = context.getScaledWindowWidth();
-		int h = context.getScaledWindowHeight();
+		int w = drawContext.getScaledWindowWidth();
+		int h = drawContext.getScaledWindowHeight();
 
 		// 仿原版：以屏幕中心缩放（强度越低贴图越大、白边推出屏幕外），淡入时边框从四周收拢
-		MatrixStack matrices = context.getMatrices();
+		MatrixStack matrices = drawContext.getMatrices();
 		matrices.push();
 		float scale = MathHelper.lerp(strength, 2.0F, 1.0F);
 		matrices.translate(w / 2.0F, h / 2.0F, 0.0F);
@@ -132,10 +135,10 @@ public final class DreamVeilRenderer implements HudRenderCallback {
 				GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE,
 				GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE);
 		float a = strength * BRIGHTNESS;
-		context.setShaderColor(TINT_R * a, TINT_G * a, TINT_B * a, 1.0F);
+		drawContext.setShaderColor(TINT_R * a, TINT_G * a, TINT_B * a, 1.0F);
 		// 全贴图（256×256）拉伸铺满 w×h：边缘白=屏幕四周叠粉光，中心黑=不叠加
-		context.drawTexture(VEIL_TEXTURE, 0, 0, 0.0F, 0.0F, w, h, w, h);
-		context.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+		drawContext.drawTexture(VEIL_TEXTURE, 0, 0, 0.0F, 0.0F, w, h, w, h);
+		drawContext.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 		RenderSystem.defaultBlendFunc();
 		RenderSystem.disableBlend();
 		RenderSystem.depthMask(true);

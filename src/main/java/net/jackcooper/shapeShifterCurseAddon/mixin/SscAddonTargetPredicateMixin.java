@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 @Mixin(TargetPredicate.class)
 public class SscAddonTargetPredicateMixin {
 
-	// 缓存 Identifier，避免 AI 索敌高频路径每次 new Identifier 分配；
+	// 缓存 Identifier，避免 AI 索敌高频路径每次 Identifier.of 分配；
 	// PowerType 不缓存——/reload 会重建 PowerTypeRegistry，缓存引用会失效，故每次查表（HashMap，开销极小）。
 	@Unique
 	private static final net.minecraft.util.Identifier SSCA_FOX_SP_VISIBILITY = net.minecraft.util.Identifier.of("my_addon", "form_familiar_fox_sp_visibility");

@@ -4,6 +4,8 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.OverlayTexture;
@@ -16,6 +18,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
@@ -34,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Environment(EnvType.CLIENT)
 public final class JumpKillSilkClient {
 
-	private static final Identifier ROPE_TEXTURE = new Identifier("my_addon", "textures/entity/web_swing_rope.png");
+	private static final Identifier ROPE_TEXTURE = Identifier.of("my_addon", "textures/entity/web_swing_rope.png");
 	private static final float ROPE_HALF_WIDTH = 0.04f;
 
 	/** UUID → 锚点坐标（active 镜像；断丝即移除）。 */
@@ -44,12 +47,12 @@ public final class JumpKillSilkClient {
 
 	public static void register() {
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_JUMP_KILL_SILK_STATE,
-				(client, handler, buf, responseSender) -> {
-					UUID uuid = buf.readUuid();
-					boolean active = buf.readBoolean();
-					double ax = buf.readDouble(), ay = buf.readDouble(), az = buf.readDouble();
-					client.execute(() -> {
+				BytePayload.id(SscAddonNetworking.PACKET_JUMP_KILL_SILK_STATE),
+				(bp, ctx) -> {
+					UUID uuid = bp.data().readUuid();
+					boolean active = bp.data().readBoolean();
+					double ax = bp.data().readDouble(), ay = bp.data().readDouble(), az = bp.data().readDouble();
+					ctx.client().execute(() -> {
 						if (active) {
 							ANCHORS.put(uuid, new Vec3d(ax, ay, az));
 						} else {
@@ -61,13 +64,13 @@ public final class JumpKillSilkClient {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ANCHORS.clear());
 	}
 
-	public static void render(net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext ctx) {
+	public static void render(WorldRenderContext ctx) {
 		VertexConsumerProvider vcp = ctx.consumers();
 		if (vcp == null) return;
 		World world = MinecraftClient.getInstance().world;
 		if (world == null || ANCHORS.isEmpty()) return;
 
-		float tickDelta = ctx.tickDelta();
+		float tickDelta = ctx.tickCounter().getTickDelta(true);
 		Camera cam = ctx.camera();
 		Vec3d camPos = cam.getPos();
 		MatrixStack ms = ctx.matrixStack();
@@ -128,6 +131,6 @@ public final class JumpKillSilkClient {
 							float x, float y, float z, float u, float v, float r, float g, float b, float a) {
 		vc.vertex(pose, x, y, z).color(r, g, b, a).texture(u, v)
 				.overlay(OverlayTexture.DEFAULT_UV).light(0xF000F0)
-				.normal(nrm, 0f, 1f, 0f).next();
+				.normal(0f, 1f, 0f);
 	}
 }

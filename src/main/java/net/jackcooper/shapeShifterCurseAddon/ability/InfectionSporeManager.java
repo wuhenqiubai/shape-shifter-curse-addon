@@ -6,6 +6,7 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -192,7 +193,7 @@ public final class InfectionSporeManager {
             );
             ENTRIES.put(candidate.getUuid(), child);
             candidate.addStatusEffect(new StatusEffectInstance(
-                    net.jackcooper.shapeShifterCurseAddon.SscAddon.BAT_POISON, Math.max(20, remaining), 0, false, true, true), caster);
+                    SscAddon.BAT_POISON_ENTRY, Math.max(20, remaining), 0, false, true, true), caster);
         }
     }
 

@@ -15,6 +15,7 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.UUID;
@@ -40,7 +41,7 @@ public final class FrostSpikeManager {
 	// ===== 凝棘（次技能）蓄力 =====
 	private static final int SECONDARY_CONSUME_INTERVAL = 20;   // 每 1 秒消耗一个环绕冰锥强化
 	private static final double SECONDARY_SLOW_AMOUNT = -0.90;  // 蓄力时移速降为 10%（MULTIPLY_TOTAL -0.9）
-	private static final UUID SECONDARY_SLOW_UUID = UUID.fromString("f2a7c3d1-8b64-4e29-9a11-6c3d0f7e51ab");
+	private static final Identifier SECONDARY_SLOW_UUID = Identifier.of("f2a7c3d1-8b64-4e29-9a11-6c3d0f7e51ab");
 	// 环绕几何统一在 FrostThornEntity.hoverTarget/hoverYaw（服务端权威设置；客户端每 tick 按本地玩家自算贴合，平滑不卡顿）
 
 	private static final Map<UUID, State> STATES = new ConcurrentHashMap<>();
@@ -166,8 +167,8 @@ public final class FrostSpikeManager {
 		if (speed != null) {
 			speed.removeModifier(SECONDARY_SLOW_UUID);
 			speed.addTemporaryModifier(new EntityAttributeModifier(
-					SECONDARY_SLOW_UUID, "Frost Forge Charge Slow", SECONDARY_SLOW_AMOUNT,
-					EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+					SECONDARY_SLOW_UUID, SECONDARY_SLOW_AMOUNT,
+					EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 
@@ -189,7 +190,7 @@ public final class FrostSpikeManager {
 			if (s.charging) SscAddonNetworking.syncFrostSpikeChargeState(player, false);
 			s.charging = false; s.chargeTicks = 0; STATES.remove(player.getUuid()); return; }
 		// 净化：主人被 SP 悦灵净化 → 全部环绕冰锥碎裂（飞行中的由实体自身 tick 处理）
-		if (player.hasStatusEffect(SscAddon.PURIFIED)) { endSecondaryCharge(player, s); clearAll(s);
+		if (player.hasStatusEffect(SscAddon.PURIFIED_ENTRY)) { endSecondaryCharge(player, s); clearAll(s);
 			if (s.charging) SscAddonNetworking.syncFrostSpikeChargeState(player, false);
 			s.charging = false; s.chargeTicks = 0; return; }
 		cleanupDead(s);

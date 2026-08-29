@@ -12,6 +12,7 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 进化美西螈技能 - 客户端按键检测器。

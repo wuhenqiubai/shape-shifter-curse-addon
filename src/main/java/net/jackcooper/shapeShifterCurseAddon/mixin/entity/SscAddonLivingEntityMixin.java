@@ -1,18 +1,8 @@
 package net.jackcooper.shapeShifterCurseAddon.mixin.entity;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPRangedHitPassive;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaMarkManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.InfectionSporeManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NineLivesManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.NovaSkillManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpTeleportAttack;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.item.BindingAnkletItem;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
+import net.minecraft.component.type.FoodComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
@@ -23,6 +13,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.HuskEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.registry.RegistryKey;
@@ -40,7 +31,6 @@ import net.jackcooper.shapeShifterCurseAddon.ability.SnowFoxSpTeleportAttack;
 import net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager;
 import net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritClawManager;
 import net.jackcooper.shapeShifterCurseAddon.item.BindingAnkletItem;
-import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
 import net.jackcooper.shapeShifterCurseAddon.event.LoginHealthRestoreHandler;
 import net.jackcooper.shapeShifterCurseAddon.event.LoginResourceRestoreHandler;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
@@ -53,6 +43,7 @@ import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.UndeadNeutralState;
 import net.jackcooper.shapeShifterCurseAddon.evolution.RegEvolutionComponent;
 import net.jackcooper.shapeShifterCurseAddon.evolution.FamiliarFoxTree;
+import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -112,7 +103,7 @@ public abstract class SscAddonLivingEntityMixin {
 	@org.spongepowered.asm.mixin.Unique
 	private static final ThreadLocal<Boolean> ssca$salticidaeCocoonBypass = ThreadLocal.withInitial(() -> Boolean.FALSE);
 	@org.spongepowered.asm.mixin.Unique
-	private static final Identifier ssca$SPIDER_FLUID_COCOON = new Identifier("shape-shifter-curse", "spider_fluid_cocoon");
+	private static final Identifier ssca$SPIDER_FLUID_COCOON = Identifier.of("shape-shifter-curse", "spider_fluid_cocoon");
 
 	/**
 	 * 跳蛛毒免疫（附属自控，替代原版 apoli effect_immunity）：跳蛛保留对毒素的免疫，
@@ -131,8 +122,7 @@ public abstract class SscAddonLivingEntityMixin {
 
 	/** 跳蛛吃流食囊：开窗放行毒素（HEAD 置标记，RETURN 复位），让物品自带中毒穿过毒免疫。 */
 	@Inject(method = "eatFood", at = @At("HEAD"))
-	private void ssca$salticidaeCocoonEatHead(net.minecraft.world.World world, net.minecraft.item.ItemStack stack,
-			CallbackInfoReturnable<net.minecraft.item.ItemStack> cir) {
+	private void ssca$salticidaeCocoonEatHead(World world, ItemStack stack, FoodComponent foodComponent, CallbackInfoReturnable<ItemStack> cir) {
 		if (!world.isClient && (Object) this instanceof ServerPlayerEntity sp
 				&& FormUtils.isForm(sp, FormIdentifiers.SPIDER_SALTICIDAE)
 				&& net.minecraft.registry.Registries.ITEM.getId(stack.getItem()).equals(ssca$SPIDER_FLUID_COCOON)) {
@@ -141,8 +131,7 @@ public abstract class SscAddonLivingEntityMixin {
 	}
 
 	@Inject(method = "eatFood", at = @At("RETURN"))
-	private void ssca$salticidaeCocoonEatReturn(net.minecraft.world.World world, net.minecraft.item.ItemStack stack,
-			CallbackInfoReturnable<net.minecraft.item.ItemStack> cir) {
+	private void ssca$salticidaeCocoonEatReturn(World world, ItemStack stack, FoodComponent foodComponent, CallbackInfoReturnable<ItemStack> cir) {
 		if (ssca$salticidaeCocoonBypass.get()) ssca$salticidaeCocoonBypass.set(Boolean.FALSE);
 	}
 
@@ -468,7 +457,7 @@ public abstract class SscAddonLivingEntityMixin {
 	 */
 	@Inject(method = "addStatusEffect(Lnet/minecraft/entity/effect/StatusEffectInstance;Lnet/minecraft/entity/Entity;)Z", at = @At("HEAD"), cancellable = true)
 	private void ssc_addon$blockDreamingDebuff(StatusEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> cir) {
-		net.minecraft.entity.effect.StatusEffect type = effect.getEffectType();
+		net.minecraft.entity.effect.StatusEffect type = effect.getEffectType().value();
 		boolean harmful = type.getCategory() == net.minecraft.entity.effect.StatusEffectCategory.HARMFUL;
 		boolean glowing = type == net.minecraft.entity.effect.StatusEffects.GLOWING;
 		if (!harmful && !glowing) return;

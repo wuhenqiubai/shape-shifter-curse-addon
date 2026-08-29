@@ -5,7 +5,7 @@ import net.minecraft.client.particle.ParticleTextureSheet;
 import net.minecraft.client.particle.SpriteBillboardParticle;
 import net.minecraft.client.particle.SpriteProvider;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.particle.DefaultParticleType;
+import net.minecraft.particle.SimpleParticleType;
 
 /**
  * 「汇聚冰晶」粒子客户端实现：匀速直线飞向中心，抵达（寿命尽）即移除，末段淡出。
@@ -76,7 +76,7 @@ public class InwardIceParticle extends SpriteBillboardParticle {
 	}
 
 	/** 粒子工厂：服务端速度精确交给粒子（无随机化）。 */
-	public static class Factory implements ParticleFactory<DefaultParticleType> {
+	public static class Factory implements ParticleFactory<SimpleParticleType> {
 		private final SpriteProvider spriteProvider;
 
 		public Factory(SpriteProvider sprites) {
@@ -84,7 +84,7 @@ public class InwardIceParticle extends SpriteBillboardParticle {
 		}
 
 		@Override
-		public InwardIceParticle createParticle(DefaultParticleType type, ClientWorld world, double x, double y, double z, double vx, double vy, double vz) {
+		public InwardIceParticle createParticle(SimpleParticleType type, ClientWorld world, double x, double y, double z, double vx, double vy, double vz) {
 			return new InwardIceParticle(world, x, y, z, vx, vy, vz, spriteProvider);
 		}
 	}

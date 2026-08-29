@@ -7,6 +7,9 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffects;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.Map;
 import java.util.UUID;
@@ -49,12 +52,12 @@ public final class NightmareFearClient {
 
 	public static void register() {
 		// 恐惧状态
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_FEAR_STATE,
-				(client, handler, buf, responseSender) -> {
-					int duration = buf.readVarInt();
-					client.execute(() -> {
-						if (client.world == null) return;
-						long now = client.world.getTime();
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_FEAR_STATE),
+				(bp, ctx) -> {
+					int duration = bp.data().readVarInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
+						long now = ctx.client().world.getTime();
 						if (duration <= 0) {
 							endWorldTime = -1L;
 							startWorldTime = -1L;
@@ -66,24 +69,24 @@ public final class NightmareFearClient {
 					});
 				});
 		// 1 秒看不见窗口
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_FEAR_HIDE,
-				(client, handler, buf, responseSender) -> {
-					UUID nightmareUuid = buf.readUuid();
-					int hideTicks = buf.readVarInt();
-					client.execute(() -> {
-						if (client.world == null) return;
-						HIDDEN.put(nightmareUuid, client.world.getTime() + hideTicks);
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_FEAR_HIDE),
+				(bp, ctx) -> {
+					UUID nightmareUuid = bp.data().readUuid();
+					int hideTicks = bp.data().readVarInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
+						HIDDEN.put(nightmareUuid, ctx.client().world.getTime() + hideTicks);
 					});
 				});
 		// 梦魇显形窗口（攻击恐惧目标 → 显形 1s：清隐匿 + 压制新隐匿）
-		ClientPlayNetworking.registerGlobalReceiver(SscAddonNetworking.PACKET_FEAR_REVEAL,
-				(client, handler, buf, responseSender) -> {
-					UUID nightmareUuid = buf.readUuid();
-					int revealTicks = buf.readVarInt();
-					client.execute(() -> {
-						if (client.world == null) return;
+		ClientPlayNetworking.registerGlobalReceiver(BytePayload.id(SscAddonNetworking.PACKET_FEAR_REVEAL),
+				(bp, ctx) -> {
+					UUID nightmareUuid = bp.data().readUuid();
+					int revealTicks = bp.data().readVarInt();
+					ctx.client().execute(() -> {
+						if (ctx.client().world == null) return;
 						HIDDEN.remove(nightmareUuid);
-						REVEALED.put(nightmareUuid, client.world.getTime() + revealTicks);
+						REVEALED.put(nightmareUuid, ctx.client().world.getTime() + revealTicks);
 					});
 				});
 		// 断线清理
@@ -153,7 +156,7 @@ public final class NightmareFearClient {
 				net.minecraft.entity.effect.StatusEffectInstance cur =
 						effects.get(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
 				if (cur == null || cur.getDuration() < 30) {
-					effects.put(net.minecraft.entity.effect.StatusEffects.BLINDNESS,
+					effects.put((StatusEffect) StatusEffects.BLINDNESS,
 							new net.minecraft.entity.effect.StatusEffectInstance(
 									net.minecraft.entity.effect.StatusEffects.BLINDNESS, 40, 0,
 									false, false, false));

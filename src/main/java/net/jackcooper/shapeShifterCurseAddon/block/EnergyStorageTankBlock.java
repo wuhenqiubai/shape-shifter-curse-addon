@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;
@@ -29,6 +30,13 @@ import java.util.List;
 @SuppressWarnings("deprecation") // 覆写 vanilla @Deprecated 的 Block 交互/状态替换方法，统一抑制
 public class EnergyStorageTankBlock extends BlockWithEntity {
 
+	public static final MapCodec<EnergyStorageTankBlock> CODEC = createCodec(EnergyStorageTankBlock::new);
+
+	@Override
+	public MapCodec<EnergyStorageTankBlock> getCodec() {
+		return CODEC;
+	}
+
 	public EnergyStorageTankBlock(Settings settings) {
 		super(settings);
 	}
@@ -45,7 +53,7 @@ public class EnergyStorageTankBlock extends BlockWithEntity {
 	}
 
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (!world.isClient) {
 			BlockEntity be = world.getBlockEntity(pos);
 			if (be instanceof EnergyStorageTankBlockEntity tank) {

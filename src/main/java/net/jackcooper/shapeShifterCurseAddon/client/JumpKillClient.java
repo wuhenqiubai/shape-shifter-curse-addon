@@ -13,6 +13,7 @@ import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 跳蛛「跳杀」- 客户端按键检测器。
@@ -48,6 +49,6 @@ public final class JumpKillClient {
 	}
 
 	private static void send(Identifier packet) {
-		ClientPlayNetworking.send(packet, new PacketByteBuf(Unpooled.buffer()));
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), new PacketByteBuf(Unpooled.buffer())));
 	}
 }

@@ -17,6 +17,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.entity.projectile.WebBullet;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
+import net.onixary.shapeShifterCurseFabric.status_effects.EntangledEffectUtils;
 
 /**
  * 月织蛛「攻击模式」蛛丝弹：复用原版 {@link WebBullet} 的飞行 / 粒子 / 发射音效，

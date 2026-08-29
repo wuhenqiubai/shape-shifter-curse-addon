@@ -18,8 +18,8 @@ import net.jackcooper.shapeShifterCurseAddon.item.WaterSpearEntity;
 
 @Environment(EnvType.CLIENT)
 public class WaterSpearEntityRenderer extends EntityRenderer<WaterSpearEntity> {
-	// 渲染纹理常量（原实现每帧 new Identifier）
-	private static final Identifier TEXTURE = new Identifier("textures/atlas/blocks.png");
+	// 渲染纹理常量（原实现每帧 Identifier.of）
+	private static final Identifier TEXTURE = Identifier.of("textures/atlas/blocks.png");
 
 	private final ItemRenderer itemRenderer;
 

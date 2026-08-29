@@ -98,7 +98,7 @@ public class FoxFireballEntity extends ProjectileEntity implements FlyingItemEnt
 
     @Override
     protected void initDataTracker(DataTracker.Builder builder) {
-        this.dataTracker.startTracking(EXPLODED, false);
+        this.dataTracker.set(EXPLODED, false);
     }
 
     @Override
@@ -334,7 +334,7 @@ public class FoxFireballEntity extends ProjectileEntity implements FlyingItemEnt
 
     /** 火球命中附加狐火灼烧 5 秒（每秒掉血），并打上施法者归属 tag。 */
     private void applyFoxFireBurn(LivingEntity target) {
-        target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN, 100, 0, false, true, true));
+        target.addStatusEffect(new StatusEffectInstance(SscAddon.FOX_FIRE_BURN_ENTRY, 100, 0, false, true, true));
         if (this.getOwner() != null) {
             target.addCommandTag("ssc_owner:" + this.getOwner().getUuid());
         }

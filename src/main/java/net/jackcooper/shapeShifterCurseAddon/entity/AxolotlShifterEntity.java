@@ -1,18 +1,14 @@
 package net.jackcooper.shapeShifterCurseAddon.entity;
 
+import net.minecraft.registry.tag.EntityTypeTags;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.CaveVinesHeadBlock;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityGroup;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.SpawnReason;
@@ -59,7 +55,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraft.world.event.GameEvent;
 import net.minecraft.world.explosion.Explosion;
-import net.minecraft.enchantment.ProtectionEnchantment;
 import net.jackcooper.shapeShifterCurseAddon.util.ParticleUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -97,7 +92,7 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 	private static final int BURST_MOISTURE_COST = 15;      // 原版 gain_air -15
 	// 原版水花爆炸免疫 tag（盔甲架/展示框等）
 	private static final TagKey<EntityType<?>> WATER_EXPLODE_IMMUNE =
-			TagKey.of(RegistryKeys.ENTITY_TYPE, new Identifier("shape-shifter-curse", "water_explode_immune"));
+			TagKey.of(RegistryKeys.ENTITY_TYPE, Identifier.of("shape-shifter-curse", "water_explode_immune"));
 
 	// ===== 湿润度参数 =====
 	public static final int MAX_MOISTURE = 300;   // 对齐玩家 air 上限
@@ -123,20 +118,20 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 	private static final int EAT_COOLDOWN_MAX = 1200;        // 最长 60 秒
 
 	// ===== 战斗爆发提速（平时移速慢，进战斗临时提速，复刻「战斗触发 power 增强」观感） =====
-	private static final UUID COMBAT_SPEED_UUID = UUID.fromString("b7f3c2a1-4d5e-6f70-8192-a3b4c5d6e7f8");
+	private static final Identifier COMBAT_SPEED_UUID = Identifier.of("b7f3c2a1-4d5e-6f70-8192-a3b4c5d6e7f8");
 	private static final double COMBAT_SPEED_BOOST = 0.3;    // 战斗时移速 ×1.3（0.22→0.286，避免过快导致寻路过冲乱晃）
 
 	// ===== 冲划猛扑（原版 form_axolotl_3_sprinting_attack 的音效/粒子部分，击退增强已按需求移除） =====
 	private static final int POUNCE_MOISTURE_COST = 10;     // 原版 gain_air -10
 
 	// ===== 湿润度→生命联动（原版 oxygen_health 0~9 分档合并） =====
-	private static final UUID MOISTURE_HEALTH_UUID = UUID.fromString("8e6e6b3a-1c2d-4e5f-9a8b-7c6d5e4f3a2b");
+	private static final Identifier MOISTURE_HEALTH_UUID = Identifier.of("8e6e6b3a-1c2d-4e5f-9a8b-7c6d5e4f3a2b");
 
 	// ===== 自定义伤害类型（4 点无物理近战 / 脱水真实伤害） =====
 	private static final RegistryKey<DamageType> ATTACK_DAMAGE_KEY =
-			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("ssc_addon", "axolotl_shifter_attack"));
+			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("ssc_addon", "axolotl_shifter_attack"));
 	private static final RegistryKey<DamageType> THIRST_DAMAGE_KEY =
-			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("ssc_addon", "axolotl_shifter_thirst"));
+			RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("ssc_addon", "axolotl_shifter_thirst"));
 
 	/** 深蓝水尘粒子（原版 dust 参数 0.11 0.18 0.69 2） */
 	private static final DustParticleEffect DEEP_BLUE_DUST =
@@ -230,7 +225,7 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 		attr.removeModifier(COMBAT_SPEED_UUID);
 		if (active) {
 			attr.addTemporaryModifier(new EntityAttributeModifier(COMBAT_SPEED_UUID,
-					"Axolotl shifter combat speed", COMBAT_SPEED_BOOST, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                    COMBAT_SPEED_BOOST, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 		this.combatSpeedApplied = active;
 	}
@@ -382,7 +377,7 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 		if (attr == null) return;
 		attr.removeModifier(MOISTURE_HEALTH_UUID);
 		attr.addTemporaryModifier(new EntityAttributeModifier(MOISTURE_HEALTH_UUID,
-				"Axolotl shifter moisture health", bonus, EntityAttributeModifier.Operation.ADDITION));
+                bonus, EntityAttributeModifier.Operation.ADD_VALUE));
 		if (this.getHealth() > this.getMaxHealth()) {
 			this.setHealth(this.getMaxHealth());
 		} else if (oldBonus == Integer.MIN_VALUE) {
@@ -472,7 +467,16 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 			// 爆炸击退（受爆炸保护附魔减免）
 			double knockback;
 			if (targetEntity instanceof LivingEntity living) {
-				knockback = ProtectionEnchantment.transformExplosionKnockback(living, intensity);
+				// 1.21 附魔注册表为动态注册表：经 RegistryWrapper 取 blast_protection 的 RegistryEntry
+				// 映射：mojmap EnchantmentHelper.getEnchantmentLevel → yarn EnchantmentHelper.getEquipmentLevel
+				net.minecraft.registry.RegistryWrapper<net.minecraft.enchantment.Enchantment> enchantWrapper =
+						serverWorld.getRegistryManager().getWrapperOrThrow(net.minecraft.registry.RegistryKeys.ENCHANTMENT);
+				net.minecraft.registry.entry.RegistryEntry<net.minecraft.enchantment.Enchantment> blastProtEntry =
+						enchantWrapper.getOrThrow(net.minecraft.enchantment.Enchantments.BLAST_PROTECTION);
+				int blastProtLevel = net.minecraft.enchantment.EnchantmentHelper.getEquipmentLevel(blastProtEntry, living);
+				knockback = blastProtLevel > 0
+						? intensity * MathHelper.clamp(1.0 - blastProtLevel * 0.15, 0.0, 1.0)
+						: intensity;
 			} else {
 				knockback = intensity;
 			}
@@ -484,8 +488,7 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 	private boolean shouldBurstAffect(Entity target) {
 		// 同类不伤（避免内讧）
 		if (target instanceof AxolotlShifterEntity) return false;
-		// 爆炸免疫实体
-		if (target.isImmuneToExplosion()) return false;
+		// isImmuneToExplosion() 在 1.21 已移除（base 实现恒 false），直接跳过该检查
 		// 原版水花爆炸免疫 tag（盔甲架/展示框/掉落物等）
 		if (target.getType().isIn(WATER_EXPLODE_IMMUNE)) return false;
 		return true;
@@ -573,9 +576,8 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 	}
 
 	/** 水生阵营（对应 aquatic power：药水效果按水生组结算） */
-	@Override
-	public EntityGroup getGroup() {
-		return EntityGroup.AQUATIC;
+	public TagKey<EntityType<?>> getGroup() {
+		return EntityTypeTags.AQUATIC;
 	}
 
 	/** 不被水流推动（对应 like_water power） */
@@ -584,11 +586,8 @@ public class AxolotlShifterEntity extends PathAwareEntity implements GeoEntity {
 		return false;
 	}
 
-	/** 湿润度载体自管：水中不掉氧、不溺水 */
-	@Override
-	public boolean canBreatheInWater() {
-		return true;
-	}
+	// 水下呼吸：canBreatheInWater() 在 1.21 LivingEntity 是 final，不能 override；
+	// 通过 entity_type tag #minecraft:can_breathe_under_water 实现（见 data/minecraft/tags/entity_type/can_breathe_under_water.json）
 
 	// ========== 持久化 ==========
 

@@ -1,11 +1,12 @@
 package net.jackcooper.shapeShifterCurseAddon.mixin.item;
 
 import io.github.apace100.apoli.component.PowerHolderComponent;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.PotionItem;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.potion.Potions;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
@@ -240,7 +241,8 @@ public abstract class ScreenHandlerMixin {
 					.orElse(1));
 		}
 		if (stack.getItem() instanceof PotionItem) {
-			boolean isWater = PotionUtil.getPotion(stack).equals(Potions.WATER);
+			PotionContentsComponent contents = stack.get(DataComponentTypes.POTION_CONTENTS);
+			boolean isWater = contents != null && contents.potion().orElse(null) == Potions.WATER;
 			return Math.max(1, PowerHolderComponent.getPowers(player, ModifyPotionStackPower.class)
 					.stream()
 					.filter(power -> !power.isOnlyWaterPotion() || isWater)
@@ -256,42 +258,27 @@ public abstract class ScreenHandlerMixin {
 
 	/**
 	 * 修复 shift 快速移动（QUICK_MOVE → quickMove → insertItem）路径的药水叠放（覆盖全部药水）：
-	 * ① 合并循环只用 {@code stack.getMaxCount()}（药水=1）——有 power 形态抬到 N 恢复合并；
-	 * ② 空槽放置只用无参 {@code Slot.getMaxItemCount()}（玩家背包=64）——不经过任何 power 门控，
-	 * 导致从存储箱等容器 shift 出的多瓶堆（>1）会整堆落进无 power 形态的背包（越权叠放）。
-	 * 这里对「目标是玩家背包槽且移动堆是药水」的情形把空槽放置上限钳到该玩家的实际资格；
+	 * ① 合并循环上限——1.20.1 用 {@code stack.getMaxCount()}（药水=1），1.21.1 改为
+	 *    {@code slot.getMaxItemCount(ItemStack)}（Slot 决定上限），故原 {@code ItemStack.getMaxCount()}
+	 *    注入点在 1.21.1 的 insertItem 中已无对应调用，被本注入（Slot#getMaxItemCount）统一接管；
+	 * ② 空槽放置只走 {@code slot.getMaxItemCount(ItemStack)}（玩家背包=64）——不经过任何 power 门控，
+	 *    导致从存储箱等容器 shift 出的多瓶堆（&gt;1）会整堆落进无 power 形态的背包（越权叠放）。
+	 * 这里对「目标是玩家背包槽且移动堆是药水」的情形把放置/合并上限钳到该玩家的实际资格；
 	 * 非 PlayerInventory 槽（存储箱 / 装瓶器等自有容器）保持原值（容器叠放不论形态）。
 	 */
 	@WrapOperation(
 			method = "insertItem",
-			at = @At(value = "INVOKE", target = "Lnet/minecraft/screen/slot/Slot;getMaxItemCount()I"),
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/screen/slot/Slot;getMaxItemCount(Lnet/minecraft/item/ItemStack;)I"),
 			require = 0
 	)
-	private int ssc_addon$insertItemEmptySlotCap(Slot slot, Operation<Integer> original,
-			@Local(argsOnly = true) ItemStack movingStack) {
+	private int ssc_addon$insertItemEmptySlotCap(Slot instance, ItemStack stack, Operation<Integer> original, @Local(argsOnly = true) ItemStack movingStack) {
 		PlayerEntity player = this.ssc_addon$clickPlayer;
-		if (player != null && slot.inventory instanceof PlayerInventory) {
+		if (player != null && instance.inventory instanceof PlayerInventory) {
 			int limit = ssc_addon$potionInsertLimit(movingStack, player);
 			if (limit > 0) {
-				return Math.min(limit, original.call(slot));
+				return Math.min(limit, original.call(instance, stack));
 			}
 		}
-		return original.call(slot);
-	}
-
-	@WrapOperation(
-			method = "insertItem",
-			at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getMaxCount()I"),
-			require = 0
-	)
-	private int ssc_addon$insertItemAddonPotionLimit(ItemStack stack, Operation<Integer> original) {
-		PlayerEntity player = this.ssc_addon$clickPlayer;
-		if (player != null) {
-			int limit = ssc_addon$potionInsertLimit(stack, player);
-			if (limit > 1) {
-				return Math.max(limit, original.call(stack));
-			}
-		}
-		return original.call(stack);
+		return original.call(instance, stack);
 	}
 }
