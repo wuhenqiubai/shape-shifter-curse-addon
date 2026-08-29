@@ -14,24 +14,19 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
-import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
-import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPGroupHeal;
 import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaTeleport;
 import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaPrimary;
 import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionManager;
-import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-//import net.jackcooper.shapeShifterCurseAddon.ability.Ability_AllayHeal;
 
 
 public class SscAddonNetworking {
-	public static final Identifier PACKET_KEY_PRESS = Identifier.of("my_addon", "key_press");
 	/** 契灵 - 次要技能：瞬移。payload: byte mode (0=RAYCAST, 1=PLATFORM) */
 	public static final Identifier PACKET_MANCIANIMA_TELEPORT = Identifier.of("my_addon", "mancianima_teleport");
 	/** 契灵 - 主要技能：三段标记。无 payload，服务端根据当前状态分支。 */
@@ -114,9 +109,7 @@ public class SscAddonNetworking {
 	/** S2C：「惊吓」幽灵实体标记（幽灵苦力怕/幽灵野猫）——仅目标本人。payload: UUID ghostUuid + varint lifeTicks（客户端对该实体局部取消隐身→只有目标看得见它）。 */
 	public static final Identifier PACKET_SPOOK_GHOST = Identifier.of("my_addon", "spook_ghost");
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
-	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
-	/** C2S：进化美西螈次技能「涡流引导」按键。无 payload。 */
-	public static final Identifier PACKET_UPGRADE_AXOLOTL_VORTEX_GUIDE = Identifier.of("my_addon", "upgrade_axolotl_vortex_guide");
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = new Identifier("my_addon", "upgrade_axolotl_spear");
 
 	/** S2C：动画调试记录开关切换（由 /ssc_addon debug anim 指令触发，服务端转发给执行者客户端）。无 payload。 */
 	public static final Identifier PACKET_ANIM_DEBUG_TOGGLE = Identifier.of("my_addon", "anim_debug_toggle");
@@ -178,6 +171,13 @@ public class SscAddonNetworking {
 	/** 玩家退服时调用：清理限频时间戳，防止僵尸 UUID 长期积累。 */
 	public static void onPlayerDisconnect(UUID uuid) {
 		LAST_WHITELIST_PACKET_TICK.remove(uuid);
+	}
+
+	/** 客户端：发送无 payload 的空包（统一收拢各按键检测器的 send 样板）。 */
+	@net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
+	public static void sendEmpty(Identifier packet) {
+		net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(packet,
+				net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
 	}
 
 	/** 风灵「疾风连爪」：同步爪击阶段(phase)与准星条进度给客户端。 */
@@ -324,39 +324,7 @@ public class SscAddonNetworking {
 	}
 
 	public static void registerServerReceivers() {
-		// 注册所有 C2S payload 类型
-		BytePayload.registerC2S(PACKET_KEY_PRESS);
-		BytePayload.registerC2S(PACKET_MANCIANIMA_TELEPORT);
-		BytePayload.registerC2S(PACKET_MANCIANIMA_PRIMARY);
-		BytePayload.registerC2S(PACKET_WHITELIST_GUI_ADD);
-		BytePayload.registerC2S(PACKET_WHITELIST_GUI_REMOVE);
-		BytePayload.registerC2S(PACKET_WHITELIST_GUI_MODE);
-		BytePayload.registerC2S(PACKET_WHITELIST_GUI_MOB_REMOVE);
-		BytePayload.registerC2S(PACKET_PLAY_DEAD_END);
-		BytePayload.registerC2S(PACKET_VORTEX_START);
-		BytePayload.registerC2S(PACKET_VORTEX_RELEASE);
-		BytePayload.registerC2S(PACKET_UPGRADE_AXOLOTL_SPEAR);
-		BytePayload.registerC2S(PACKET_UPGRADE_AXOLOTL_VORTEX);
-		BytePayload.registerC2S(PACKET_CLAW_HOLD);
-		BytePayload.registerC2S(PACKET_CLAW_BUFF);
-		BytePayload.registerC2S(PACKET_WIND_DASH);
-		BytePayload.registerC2S(PACKET_FLUO_LASER);
-		BytePayload.registerC2S(PACKET_FLUO_TIDAL);
-		BytePayload.registerC2S(PACKET_EVO_SELECT_ROUTE);
-		BytePayload.registerC2S(PACKET_EVO_SELECT_BRANCH);
-		BytePayload.registerC2S(PACKET_EVO_UNLOCK);
-		BytePayload.registerC2S(PACKET_EVO_UNLOCK_BATCH);
-		BytePayload.registerC2S(PACKET_SSCA_START_ROUTE);
-		BytePayload.registerC2S(PACKET_REQUEST_ALL_FORM_SYNC);
-
-		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_KEY_PRESS), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
-			PacketByteBuf buf = payload.data();
-			int keyId = buf.readInt();
-			ctx.server().execute(() -> handleKeyPress(ctx.player(), keyId));
-		});
-
-		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_MANCIANIMA_TELEPORT), (BytePayload payload, ServerPlayNetworking.Context ctx) -> {
-			PacketByteBuf buf = payload.data();
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_MANCIANIMA_TELEPORT, (server, player, handler, buf, responseSender) -> {
 			byte mode = buf.readByte();
 			ctx.server().execute(() -> MancianimaTeleport.execute(ctx.player(), mode));
 		});
@@ -667,19 +635,5 @@ public class SscAddonNetworking {
 			buf.writeString(typeId != null ? typeId : "");
 		}
 		ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_WHITELIST_GUI_SYNC), buf));
-	}
-
-	private static void handleKeyPress(ServerPlayerEntity player, int keyId) {
-		// Find current form
-		IForm form = FormUtils.getCurrentForm(player);
-		if (form == null) return;
-
-		// formId 暂未使用（旧 Ability_AllayHeal 已废弃），保留 form 引用以便后续按形态分发
-		// Allay Heal (using keyId 1 for now, mapped from client)
-        /*if (keyId == 1 && (formId.getPath().equals("form_allay_sp") || formId.getPath().equals("allay_sp"))) {
-             Ability_AllayHeal.onHold(player);
-        }*/
-
-		// Add other key handlers here if needed (e.g. Fox Fire)
 	}
 }

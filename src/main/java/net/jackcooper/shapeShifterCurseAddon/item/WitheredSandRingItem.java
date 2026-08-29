@@ -18,7 +18,6 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 枯沙指环 - SP金沙岚专属饰品（戒指槽）
@@ -27,8 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class WitheredSandRingItem extends AccessoryItem {
 
-	/** 服务端装备状态追踪：玩家UUID -> 最后一次tick的游戏时间 */
-	private static final ConcurrentHashMap<UUID, Long> EQUIPPED_PLAYERS = new ConcurrentHashMap<>();
+	/** 服务端装备状态追踪（统一 EquippedTracker） */
+	private static final net.jackcooper.shapeShifterCurseAddon.util.EquippedTracker TRACKER =
+			new net.jackcooper.shapeShifterCurseAddon.util.EquippedTracker();
 
 	public WitheredSandRingItem(Settings settings) {
 		super(settings);
@@ -56,22 +56,18 @@ public class WitheredSandRingItem extends AccessoryItem {
 
 	@Override
 	public void accessoryTick(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
-		if (entity instanceof ServerPlayerEntity player) {
-			EQUIPPED_PLAYERS.put(player.getUuid(), entity.getWorld().getTime());
-		}
+		TRACKER.markEquipped(entity);
 	}
 
 	@Override
 	public void onEquip(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
-		if (entity instanceof ServerPlayerEntity player) {
-			EQUIPPED_PLAYERS.put(player.getUuid(), entity.getWorld().getTime());
-		}
+		TRACKER.markEquipped(entity);
 	}
 
 	@Override
 	public void onUnequip(ItemStack stack, LivingEntity entity, AccessoryItem.SlotData slotData) {
-		if (entity instanceof ServerPlayerEntity) {
-			EQUIPPED_PLAYERS.remove(entity.getUuid());
+		if (entity instanceof ServerPlayerEntity player) {
+			TRACKER.remove(player.getUuid());
 		}
 	}
 
@@ -79,15 +75,12 @@ public class WitheredSandRingItem extends AccessoryItem {
 	 * 检查玩家是否装备了枯沙指环（基于tick回调追踪，比isEquipped API更可靠）
 	 */
 	public static boolean isEquippedBy(ServerPlayerEntity player) {
-		Long lastTick = EQUIPPED_PLAYERS.get(player.getUuid());
-		if (lastTick == null) return false;
-		// 超过3tick未更新视为已卸下（容错）
-		return Math.abs(player.getWorld().getTime() - lastTick) <= 3;
+		return TRACKER.isEquippedBy(player);
 	}
 
 	/** 清理玩家数据（退出/切换形态时调用） */
 	public static void clearPlayer(UUID uuid) {
-		EQUIPPED_PLAYERS.remove(uuid);
+		TRACKER.remove(uuid);
 	}
 
 	@Override
