@@ -65,7 +65,7 @@ public class EvolutionStoneItem extends Item {
 					canEvolve = true;
 				}
 				// Allow Allay to evolve to SP Allay
-				else if (playerFormID.equals(new Identifier("shape-shifter-curse", "allay_sp"))) {
+				else if (playerFormID.equals(Identifier.of("shape-shifter-curse", "allay_sp"))) {
 					targetFormId = net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers.ALLAY_SP;
 					canEvolve = true;
 				}

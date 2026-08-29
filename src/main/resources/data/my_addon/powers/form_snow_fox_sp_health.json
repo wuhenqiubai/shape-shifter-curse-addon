@@ -1,9 +1,9 @@
 {
     "type": "apoli:attribute",
     "modifier": {
-        "id": "my_addon:sp_snow_fox_health",
+        "name": "SP Snow Fox Health",
         "attribute": "minecraft:generic.max_health",
         "value": -8.0,
-        "operation": "add_value"
+        "operation": "addition"
     }
 }

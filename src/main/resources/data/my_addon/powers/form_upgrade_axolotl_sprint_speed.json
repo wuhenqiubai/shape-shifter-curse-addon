@@ -1,9 +1,8 @@
 {
     "type": "apoli:conditioned_attribute",
     "modifier": {
-        "id": "my_addon:axolotl_sprint_speed",
         "attribute": "minecraft:generic.movement_speed",
-        "operation": "add_multiplied_total",
+        "operation": "multiply_total",
         "value": 0.65
     },
     "tick_rate": 1,

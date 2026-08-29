@@ -7,8 +7,10 @@ package net.jackcooper.shapeShifterCurseAddon.client.mana;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -32,7 +34,7 @@ import net.onixary.shapeShifterCurseFabric.util.UIPositionUtils;
  * {@link #requirePower()}（默认 false = 资源为空时隐藏，与旧实现一致）。</p>
  */
 @Environment(EnvType.CLIENT)
-public abstract class SimpleResourceBarRenderer implements net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback {
+public abstract class SimpleResourceBarRenderer implements HudRenderCallback {
 	private static final MinecraftClient MC = MinecraftClient.getInstance();
 
 	/** 资源 power id。 */
@@ -75,7 +77,7 @@ public abstract class SimpleResourceBarRenderer implements net.fabricmc.fabric.a
 	}
 
 	@Override
-	public void onHudRender(DrawContext context, float tickDelta) {
+	public void onHudRender(DrawContext drawContext, RenderTickCounter tickCounter) {
 		if (MC.options.hudHidden || MC.player == null) return;
 		PlayerEntity player = MC.player;
 
@@ -100,13 +102,13 @@ public abstract class SimpleResourceBarRenderer implements net.fabricmc.fabric.a
 		int w = width();
 		int h = height();
 		// 底层：空槽
-		context.drawTexture(texEmpty(), x, y, 0, 0, w, h, w, h);
+		drawContext.drawTexture(texEmpty(), x, y, 0, 0, w, h, w, h);
 		// 顶层：满层按百分比横向裁剪
 		if (current > 0) {
 			int filledWidth = (int) Math.ceil(w * percent);
 			filledWidth = Math.max(0, Math.min(w, filledWidth));
 			if (filledWidth > 0) {
-				context.drawTexture(texFull(), x, y, 0, 0, filledWidth, h, w, h);
+				drawContext.drawTexture(texFull(), x, y, 0, 0, filledWidth, h, w, h);
 			}
 		}
 	}

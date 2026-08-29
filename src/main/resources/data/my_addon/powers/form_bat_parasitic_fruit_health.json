@@ -1,9 +1,9 @@
 {
     "type": "apoli:attribute",
     "modifier": {
-        "id": "my_addon:parasitic_fruit_bat_fixed_max_health",
+        "name": "Parasitic fruit bat fixed max health",
         "attribute": "minecraft:generic.max_health",
         "value": -4.0,
-        "operation": "add_value"
+        "operation": "addition"
     }
 }

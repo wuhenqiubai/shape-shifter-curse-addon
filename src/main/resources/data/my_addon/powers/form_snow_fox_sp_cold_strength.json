@@ -3,10 +3,10 @@
     "health": {
         "type": "shape-shifter-curse:delay_attribute",
         "modifier": {
-            "id": "my_addon:sp_snow_fox_cold_buff_health",
+            "name": "SP Snow Fox Cold Buff Health",
             "attribute": "minecraft:generic.max_health",
             "value": 4.0,
-            "operation": "add_value"
+            "operation": "addition"
         },
         "tick_rate": 20,
         "updateHealth": true,
@@ -62,10 +62,10 @@
     "speed": {
         "type": "apoli:conditioned_attribute",
         "modifier": {
-            "id": "my_addon:sp_snow_fox_cold_buff_speed",
+            "name": "SP Snow Fox Cold Buff Speed",
             "attribute": "minecraft:generic.movement_speed",
             "value": 0.15,
-            "operation": "add_multiplied_total"
+            "operation": "multiply_total"
         },
         "tick_rate": 20,
         "condition": {

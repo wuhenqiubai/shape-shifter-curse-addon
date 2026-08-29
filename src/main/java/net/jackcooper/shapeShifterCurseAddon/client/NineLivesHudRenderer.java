@@ -20,8 +20,8 @@ import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
  */
 @Environment(EnvType.CLIENT)
 public final class NineLivesHudRenderer extends SimpleResourceBarRenderer {
-    private static final Identifier TEX_EMPTY = new Identifier("my_addon", "textures/gui/form_ocelot_nova_nine_lives_empty.png");
-    private static final Identifier TEX_FULL = new Identifier("my_addon", "textures/gui/form_ocelot_nova_nine_lives_full.png");
+    private static final Identifier TEX_EMPTY = Identifier.of("my_addon", "textures/gui/form_ocelot_nova_nine_lives_empty.png");
+    private static final Identifier TEX_FULL = Identifier.of("my_addon", "textures/gui/form_ocelot_nova_nine_lives_full.png");
     /** 命数条尺寸：76 像素宽 × 5 像素高（与实际贴图一致，居中按此宽度计算）。 */
     private static final int TEX_WIDTH = 76;
 

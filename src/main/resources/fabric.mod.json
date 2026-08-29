@@ -56,7 +56,7 @@
     "my_addon.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.0",
+    "fabricloader": ">=0.16.1",
     "minecraft": "1.21.1",
     "java": ">=21",
     "fabric": ">=0.110.0",

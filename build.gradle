@@ -11,6 +11,8 @@ base {
 }
 
 loom {
+    def awFile = file("src/main/resources/ssc_addon.accesswidener")
+    if (awFile.exists()) accessWidenerPath = awFile
     mixin {
         useLegacyMixinAp = true
         defaultRefmapName = "ssc-addon.refmap.json"
@@ -83,6 +85,7 @@ repositories {
     maven { url "https://jitpack.io" }
     maven { url "https://maven.shedaniel.me" }
     maven { url "https://maven.terraformersmc.com" }
+    maven {url "https://repo.spongepowered.org/maven/"}
 }
 
 dependencies {
@@ -125,10 +128,11 @@ dependencies {
     modCompileOnly "maven.modrinth:jei:19.44.0.413" // Fr 1.21.1 JEI
     // EMI 配方查看器
     modCompileOnly"maven.modrinth:emi:1.1.24+1.21.1+fabric"
-
     // Iris
     modCompileOnly"maven.modrinth:iris:1.8.8+1.21.1-fabric"
-    
+    // Satin
+    modRuntimeOnly"org.ladysnake:satin:2.0.0"
+
     // Config & Components (Usually needed by Apoli/Origins)
     modApi("me.shedaniel.cloth:cloth-config-fabric:${project.clothconfig_version}") {
         exclude(group: "net.fabricmc.fabric-api")

@@ -71,6 +71,17 @@ public class SscAddonClient implements ClientModInitializer {
 		BytePayload.registerS2C(SscAddonNetworking.PACKET_DASH_STATE);
 		BytePayload.registerS2C(SscAddonNetworking.PACKET_SPEAR_CHARGE_STATE);
 		BytePayload.registerS2C(SscAddonNetworking.PACKET_WHITELIST_GUI_SYNC);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_FROST_SPIKE_CHARGE_STATE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_OPEN_JOB_CHANGE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_ANIM_DEBUG_TOGGLE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_WEB_HIGHLIGHT);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_DREAM_VEIL);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_FEAR_STATE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_FEAR_HIDE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_FEAR_REVEAL);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_SPOOK_GHOST);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_JUMP_KILL_SILK_STATE);
+		BytePayload.registerS2C(SscAddonNetworking.PACKET_SPIDER_MOON_WEAVER_SWING_STATE);
 		BytePayload.registerS2C(GoldenSandstormErosionBrand.PACKET_BRAND_SYNC);
 		BytePayload.registerS2C(MancianimaMarkManager.PACKET_MARK_SYNC);
 

@@ -68,9 +68,6 @@
 > ⚠️ **非官方维护分支 — Minecraft 1.21.1 / Fabric 移植**
 > 此分支由 [wuhenqiubai](https://github.com/wuhenqiubai) 移植并维护至 **Minecraft 1.21.1**。
 > 如需原始版本请查看上游 [MangZai-120/shape-shifter-curse-addon](https://github.com/MangZai-120/shape-shifter-curse-addon)。
->
-> 目前SSCA1.21.1版本已经基于 [Shape-Shifter-Curse_Unofficial-Port](https://github.com/wuhenqiubai/Shape-Shifter-Curse_Unofficial-Port) 的 `5818c6e` commit移植完成，我的开发已经转向sscu1.21.11的开发，ssca1.21.1的更新短期来看会缓慢一点。
-
 ---
 - Q:这个模组和Xu233的模组能不能共用？
 - A:可以共用，因为Xu233的模组写的很标准，完全可以和这个模组共用。

@@ -28,23 +28,23 @@ public class FormIdentifiers {
 	// 荧光幼灵（Axolotl Fluorescent）- SP美西螈经进化石进化获得
 	public static final Identifier AXOLOTL_FLUORESCENT = Identifier.of("my_addon", "axolotl_fluorescent");
 	// 阿澪（Aling）- 特殊形态，基于荧光幼灵，技能一致，专属模型/贴图，颜色不可改
-	public static final Identifier AXOLOTL_ALING = new Identifier("my_addon", "axolotl_aling");
-	public static final Identifier FALLEN_ALLAY_SP = new Identifier("my_addon", "fallen_allay_sp");
-	public static final Identifier ANUBIS_WOLF_SP = new Identifier("my_addon", "anubis_wolf_sp");
-	public static final Identifier SNOW_FOX_RESOURCE = new Identifier("my_addon", "form_snow_fox_sp_resource");
-	public static final Identifier SNOW_FOX_REGEN_COOLDOWN = new Identifier("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
-	public static final Identifier SNOW_FOX_MELEE_PRIMARY = new Identifier("my_addon", "form_snow_fox_sp_melee_primary");
-	public static final Identifier SNOW_FOX_MELEE_SECONDARY = new Identifier("my_addon", "form_snow_fox_sp_melee_secondary");
-	public static final Identifier SNOW_FOX_RANGED_SECONDARY = new Identifier("my_addon", "form_snow_fox_sp_ranged_secondary");
-	public static final Identifier ALLAY_MANA_RESOURCE = new Identifier("my_addon", "form_allay_sp_mana_resource");
-	public static final Identifier ALLAY_MANA_COOLDOWN = new Identifier("my_addon", "form_allay_sp_mana_cooldown_resource");
-	public static final Identifier ALLAY_GROUP_HEAL = new Identifier("my_addon", "form_allay_sp_group_heal");
-	public static final Identifier ALLAY_GROUP_HEAL_EXECUTE = new Identifier("my_addon", "form_allay_sp_group_heal_heal_execute");
-	public static final Identifier ALLAY_GROUP_HEAL_SOLO_DAMAGE_TIMER = new Identifier("my_addon", "form_allay_sp_group_heal_solo_damage_timer");
+	public static final Identifier AXOLOTL_ALING = Identifier.of("my_addon", "axolotl_aling");
+	public static final Identifier FALLEN_ALLAY_SP = Identifier.of("my_addon", "fallen_allay_sp");
+	public static final Identifier ANUBIS_WOLF_SP = Identifier.of("my_addon", "anubis_wolf_sp");
+	public static final Identifier SNOW_FOX_RESOURCE = Identifier.of("my_addon", "form_snow_fox_sp_resource");
+	public static final Identifier SNOW_FOX_REGEN_COOLDOWN = Identifier.of("my_addon", "form_snow_fox_sp_frost_regen_cooldown_resource");
+	public static final Identifier SNOW_FOX_MELEE_PRIMARY = Identifier.of("my_addon", "form_snow_fox_sp_melee_primary");
+	public static final Identifier SNOW_FOX_MELEE_SECONDARY = Identifier.of("my_addon", "form_snow_fox_sp_melee_secondary");
+	public static final Identifier SNOW_FOX_RANGED_SECONDARY = Identifier.of("my_addon", "form_snow_fox_sp_ranged_secondary");
+	public static final Identifier ALLAY_MANA_RESOURCE = Identifier.of("my_addon", "form_allay_sp_mana_resource");
+	public static final Identifier ALLAY_MANA_COOLDOWN = Identifier.of("my_addon", "form_allay_sp_mana_cooldown_resource");
+	public static final Identifier ALLAY_GROUP_HEAL = Identifier.of("my_addon", "form_allay_sp_group_heal");
+	public static final Identifier ALLAY_GROUP_HEAL_EXECUTE = Identifier.of("my_addon", "form_allay_sp_group_heal_heal_execute");
+	public static final Identifier ALLAY_GROUP_HEAL_SOLO_DAMAGE_TIMER = Identifier.of("my_addon", "form_allay_sp_group_heal_solo_damage_timer");
 	// 使魔系红狐 SP 魔力初始化 resource（form_familiar_fox_sp_init_mana）
-	public static final Identifier FAMILIAR_FOX_MANA = new Identifier("my_addon", "form_familiar_fox_sp_init_mana");
+	public static final Identifier FAMILIAR_FOX_MANA = Identifier.of("my_addon", "form_familiar_fox_sp_init_mana");
 	// 使魔系红狐 SP 隐身 resource（form_familiar_fox_sp_visibility）
-	public static final Identifier FAMILIAR_FOX_VISIBILITY = new Identifier("my_addon", "form_familiar_fox_sp_visibility");
+	public static final Identifier FAMILIAR_FOX_VISIBILITY = Identifier.of("my_addon", "form_familiar_fox_sp_visibility");
 	// 通用技能CD资源（用于HUD显示）
 	public static final Identifier SP_PRIMARY_CD = Identifier.of("my_addon", "form_sp_primary_cd");
 	public static final Identifier SP_SECONDARY_CD = Identifier.of("my_addon", "form_sp_secondary_cd");

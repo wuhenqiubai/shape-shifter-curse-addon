@@ -1,9 +1,9 @@
 {
     "type": "apoli:attribute",
     "modifier": {
-        "id": "my_addon:sp_anubis_wolf_health",
+        "name": "SP Anubis Wolf Health",
         "attribute": "minecraft:generic.max_health",
         "value": 4.0,
-        "operation": "add_value"
+        "operation": "addition"
     }
 }

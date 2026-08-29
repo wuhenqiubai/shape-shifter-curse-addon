@@ -7,6 +7,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.SkillBlocker;
+import net.minecraft.util.Identifier;
 
 import java.util.UUID;
 
@@ -24,7 +25,7 @@ import java.util.UUID;
  */
 public final class WildCatPaceManager {
 	/** 固定 UUID：状态切换时先移除再按新值添加，防重复堆积。 */
-	private static final UUID PACE_MODIFIER_UUID = UUID.fromString("5f6a2e8c-1b3d-4c7e-9a0f-8e2d1c4b6a3c");
+	private static final Identifier PACE_MODIFIER_UUID = Identifier.of("5f6a2e8c-1b3d-4c7e-9a0f-8e2d1c4b6a3c");
 	private static final String MODIFIER_NAME = "Wild Cat Night Walker";
 	/** 白天缓慢 I 等效（vanilla slowness amplifier 0 = -15% 移速）。 */
 	private static final double DAY_SLOW = -0.15;
@@ -51,10 +52,10 @@ public final class WildCatPaceManager {
 			return;
 		}
 		// 状态未变不动修饰符 —— 每 20t 无脑 remove+add 会复现 FOV 周期弹动，必须跳过
-		if (current != null && Math.abs(current.getValue() - target) < 1.0e-9) return;
+		if (current != null && Math.abs(current.value() - target) < 1.0e-9) return;
 		if (current != null) attr.removeModifier(PACE_MODIFIER_UUID);
 		attr.addTemporaryModifier(new EntityAttributeModifier(
-				PACE_MODIFIER_UUID, MODIFIER_NAME, target, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+				PACE_MODIFIER_UUID, target, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 	}
 
 	/**

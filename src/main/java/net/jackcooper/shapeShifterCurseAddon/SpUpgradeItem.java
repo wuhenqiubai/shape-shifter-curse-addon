@@ -129,7 +129,7 @@ public class SpUpgradeItem extends Item {
 
 				// 5% Chance for Red Form (when upgrading to SP Fox)
 				if (targetFormId != null && targetFormId.equals(net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers.FAMILIAR_FOX_SP)
-						&& new Identifier("shape-shifter-curse", "familiar_fox_3").equals(getPlayerFormID(player))
+						&& Identifier.of("shape-shifter-curse", "familiar_fox_3").equals(getPlayerFormID(player))
 						&& world.random.nextFloat() < 0.05f) {
 					Identifier redFormId = net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers.FAMILIAR_FOX_RED;
 					IForm redForm = RegPlayerForms.getPlayerForm(redFormId);

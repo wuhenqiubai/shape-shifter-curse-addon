@@ -4,9 +4,9 @@
         "type": "apoli:attribute",
         "modifier": {
             "attribute": "minecraft:generic.attack_damage",
-            "operation": "add_multiplied_total",
+            "operation": "multiply_total",
             "value": -0.2,
-            "id": "my_addon:bat_desmodus_sun_weak_attack"
+            "name": "Bat Desmodus Sun Weak Attack"
         },
         "condition": {
             "type": "apoli:and",
@@ -26,9 +26,9 @@
         "type": "apoli:attribute",
         "modifier": {
             "attribute": "minecraft:generic.movement_speed",
-            "operation": "add_multiplied_total",
+            "operation": "multiply_total",
             "value": -0.1,
-            "id": "my_addon:bat_desmodus_sun_weak_speed"
+            "name": "Bat Desmodus Sun Weak Speed"
         },
         "condition": {
             "type": "apoli:and",

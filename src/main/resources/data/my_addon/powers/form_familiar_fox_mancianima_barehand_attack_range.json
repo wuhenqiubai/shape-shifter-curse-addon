@@ -1,10 +1,10 @@
 {
     "type": "apoli:conditioned_attribute",
     "modifier": {
-        "attribute": "minecraft:player.entity_interaction_range",
-        "operation": "add_multiplied_total",
+        "attribute": "reach-entity-attributes:attack_range",
+        "operation": "multiply_total",
         "value": 0.2,
-        "id": "my_addon:mancianima_bare_hand_attack_range_up"
+        "name": "Mancianima Bare Hand Attack Range Up"
     },
     "tick_rate": 5,
     "condition": {

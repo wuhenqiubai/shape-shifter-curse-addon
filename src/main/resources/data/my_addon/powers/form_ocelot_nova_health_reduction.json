@@ -1,9 +1,9 @@
 {
     "type": "apoli:attribute",
     "modifier": {
-        "id": "my_addon:nova_extra_health_reduction",
+        "name": "Nova extra health reduction",
         "attribute": "minecraft:generic.max_health",
         "value": -2.0,
-        "operation": "add_value"
+        "operation": "addition"
     }
 }

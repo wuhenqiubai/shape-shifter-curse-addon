@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.network;
 
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -19,6 +20,7 @@ import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaTeleport;
 import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaPrimary;
 import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionManager;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 import java.util.List;
 import java.util.Map;
@@ -109,7 +111,7 @@ public class SscAddonNetworking {
 	/** S2C：「惊吓」幽灵实体标记（幽灵苦力怕/幽灵野猫）——仅目标本人。payload: UUID ghostUuid + varint lifeTicks（客户端对该实体局部取消隐身→只有目标看得见它）。 */
 	public static final Identifier PACKET_SPOOK_GHOST = Identifier.of("my_addon", "spook_ghost");
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
-	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = new Identifier("my_addon", "upgrade_axolotl_spear");
+	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
 
 	/** S2C：动画调试记录开关切换（由 /ssc_addon debug anim 指令触发，服务端转发给执行者客户端）。无 payload。 */
 	public static final Identifier PACKET_ANIM_DEBUG_TOGGLE = Identifier.of("my_addon", "anim_debug_toggle");
@@ -176,8 +178,7 @@ public class SscAddonNetworking {
 	/** 客户端：发送无 payload 的空包（统一收拢各按键检测器的 send 样板）。 */
 	@net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
 	public static void sendEmpty(Identifier packet) {
-		net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(packet,
-				net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(packet), PacketByteBufs.empty()));
 	}
 
 	/** 风灵「疾风连爪」：同步爪击阶段(phase)与准星条进度给客户端。 */
@@ -324,8 +325,50 @@ public class SscAddonNetworking {
 	}
 
 	public static void registerServerReceivers() {
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_MANCIANIMA_TELEPORT, (server, player, handler, buf, responseSender) -> {
-			byte mode = buf.readByte();
+        // 注册所有 C2S payload 类型
+        BytePayload.registerC2S(PACKET_MANCIANIMA_TELEPORT);
+        BytePayload.registerC2S(PACKET_MANCIANIMA_PRIMARY);
+        BytePayload.registerC2S(PACKET_WHITELIST_GUI_ADD);
+        BytePayload.registerC2S(PACKET_WHITELIST_GUI_REMOVE);
+        BytePayload.registerC2S(PACKET_WHITELIST_GUI_MODE);
+        BytePayload.registerC2S(PACKET_WHITELIST_GUI_MOB_REMOVE);
+        BytePayload.registerC2S(PACKET_PLAY_DEAD_END);
+        BytePayload.registerC2S(PACKET_VORTEX_START);
+        BytePayload.registerC2S(PACKET_VORTEX_RELEASE);
+        BytePayload.registerC2S(PACKET_UPGRADE_AXOLOTL_SPEAR);
+        BytePayload.registerC2S(PACKET_UPGRADE_AXOLOTL_VORTEX);
+        BytePayload.registerC2S(PACKET_CLAW_HOLD);
+        BytePayload.registerC2S(PACKET_CLAW_BUFF);
+        BytePayload.registerC2S(PACKET_WIND_DASH);
+        BytePayload.registerC2S(PACKET_FLUO_LASER);
+        BytePayload.registerC2S(PACKET_FLUO_TIDAL);
+        BytePayload.registerC2S(PACKET_EVO_SELECT_ROUTE);
+        BytePayload.registerC2S(PACKET_EVO_SELECT_BRANCH);
+        BytePayload.registerC2S(PACKET_EVO_UNLOCK);
+        BytePayload.registerC2S(PACKET_EVO_UNLOCK_BATCH);
+        BytePayload.registerC2S(PACKET_SSCA_START_ROUTE);
+        BytePayload.registerC2S(PACKET_REQUEST_ALL_FORM_SYNC);
+        BytePayload.registerC2S(PACKET_AXOLOTL_SPRINT_KEY);
+        BytePayload.registerC2S(PACKET_EVO_OPEN);
+        BytePayload.registerC2S(PACKET_FROST_SPIKE_CHARGE_START);
+        BytePayload.registerC2S(PACKET_FROST_SPIKE_CHARGE_RELEASE);
+        BytePayload.registerC2S(PACKET_FROST_SPIKE_FIRE);
+        BytePayload.registerC2S(PACKET_FROST_SPIKE_SECONDARY_START);
+        BytePayload.registerC2S(PACKET_FROST_SPIKE_SECONDARY_RELEASE);
+        BytePayload.registerC2S(PACKET_JOB_CHANGE_CONFIRM);
+        BytePayload.registerC2S(PACKET_JUMP_KILL_CHARGE_START);
+        BytePayload.registerC2S(PACKET_JUMP_KILL_CHARGE_RELEASE);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_CHARGE_START);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_CHARGE_RELEASE);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_CHARGE_START_FLAT);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_DOUBLE_JUMP);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_SWING_PRESS);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_SWING_SYNC);
+        BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_TOGGLE);
+        BytePayload.registerC2S(PACKET_VENOM_SKILL_PRESS);
+
+        ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_MANCIANIMA_TELEPORT), (bp, ctx) -> {
+			byte mode = bp.data().readByte();
 			ctx.server().execute(() -> MancianimaTeleport.execute(ctx.player(), mode));
 		});
 
