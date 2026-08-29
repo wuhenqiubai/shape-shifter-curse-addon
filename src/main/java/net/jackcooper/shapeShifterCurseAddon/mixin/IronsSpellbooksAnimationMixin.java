@@ -1,0 +1,33 @@
+package net.jackcooper.shapeShifterCurseAddon.mixin;
+
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.player_form.IForm;
+import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
+
+/**
+ * Mixin to cancel Iron's Spellbooks casting animation for specific forms (SP/Red).
+ * Uses Pseudo to avoid crash if mod is missing, and string target to avoid compile/load dependency errors if not present directly.
+ */
+@Pseudo
+@Mixin(targets = "io.redspace.ironsspellbooks.player.ClientSpellCastHelper")
+public class IronsSpellbooksAnimationMixin {
+	//TODO: 之后做Connector版再恢复
+//	@Inject(method = "animatePlayerStart", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+//	private static void onAnimatePlayerStart(net.minecraft.world.entity.player.Player player, net.minecraft.resources.ResourceLocation resourceLocation, CallbackInfo ci) {
+//		try {
+//			IForm currentForm = FormUtils.getCurrentForm(player);
+//			if (currentForm != null && currentForm.getFormID() != null) {
+//				String path = currentForm.getFormID().getPath();
+//				// Check if the form is an SP form (contains "_sp") or Red form (contains "red")
+//				if ((path.contains("_sp") || path.contains("red")) && !path.contains("axolotl_sp")) {
+//					ci.cancel();
+//				}
+//			}
+//		} catch (Exception e) {
+//			// Ignore if FormAbilityManager is unavailable or other errors occur
+//		}
+//	}
+}

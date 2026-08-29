@@ -4,8 +4,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
+import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,6 +41,7 @@ public final class WebHighlightClient {
 				HIGHLIGHT.clear();
 				return;
 			}
+			if (HIGHLIGHT.isEmpty()) return; // 空表短路，避免每 tick 无意义 removeIf + lambda 捕获分配
 			long now = client.world.getTime();
 			HIGHLIGHT.entrySet().removeIf(e -> e.getValue()[0] <= now);
 		});

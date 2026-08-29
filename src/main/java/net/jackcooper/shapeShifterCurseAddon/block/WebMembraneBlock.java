@@ -20,10 +20,11 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldAccess;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.network.SscAddonNetworking;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormIdentifiers;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.WhitelistUtils;
+import net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects;
+import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
+import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
+import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
 
 import java.util.UUID;
 
@@ -161,7 +162,11 @@ public class WebMembraneBlock extends MultifaceGrowthBlock {
 		entity.slowMovement(state, new Vec3d(0.7D, 1.0D, 0.7D));
 		if (!world.isClient && entity instanceof LivingEntity living) {
 			// 施加/刷新蛛网缠身（防牛奶、任何形态不免疫）；脚下蛛网粒子由效果自身逐 tick 生成
-			living.addStatusEffect(new StatusEffectInstance(RegAddonEffects.SPIDER_WEB_BOUND, WEB_BOUND_DURATION, 0, false, false, true));
+			// 带网主（若在线）作 source，供食梦魔「入梦」debuff 拦截归因
+			UUID casterId0 = WebMembraneOwners.get(pos);
+			ServerPlayerEntity webCaster = world instanceof ServerWorld sw0 && casterId0 != null
+					? sw0.getServer().getPlayerManager().getPlayer(casterId0) : null;
+			living.addStatusEffect(new StatusEffectInstance(RegAddonEffects.SPIDER_WEB_BOUND, WEB_BOUND_DURATION, 0, false, false, true), webCaster);
 			// 踩烂前先取施法者，用于「仅施法者可见」的蓝色高亮
 			UUID casterId = WebMembraneOwners.get(pos);
 			// 踩烂脚下这块网：非免疫生物走过即毁

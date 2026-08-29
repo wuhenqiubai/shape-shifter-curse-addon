@@ -11,41 +11,38 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
-import net.onixary.shapeShifterCurseFabric.player_form.IForm;
-import net.onixary.shapeShifterCurseFabric.player_form.PlayerFormBodyType;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.action.SscAddonActions;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.effect.StunEffect;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.evolution.EvolutionManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.PowerUtils;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.UndeadNeutralState;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPGroupHeal;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPJukebox;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AllaySPTotem;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpDeathDomain;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AnubisWolfSpSummonWolves;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.AxolotlWaterSpurtHandler;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.BatDesmodusBloodThirst;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentLaserManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.FluorescentTidalManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormErosionBrand;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormRegen;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.GoldenSandstormWitherSand;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.MancianimaPassive;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.PlayDeadAbsorptionManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpFrostStorm;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpMeleeAbility;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.SnowFoxSpTeleportAttack;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexChargeManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.VortexGuideManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WaterSpearLeapManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindDashManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritClawManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WindSpiritLandingSurgeManager;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.ability.WitherFrenzyManager;
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
+import net.jackcooper.shapeShifterCurseAddon.action.SscAddonActions;
+import net.jackcooper.shapeShifterCurseAddon.effect.StunEffect;
+import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionManager;
+import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
+import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
+import net.jackcooper.shapeShifterCurseAddon.util.UndeadNeutralState;
+import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPGroupHeal;
+import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPJukebox;
+import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPTotem;
+import net.jackcooper.shapeShifterCurseAddon.ability.AnubisWolfSpDeathDomain;
+import net.jackcooper.shapeShifterCurseAddon.ability.AnubisWolfSpSummonWolves;
+import net.jackcooper.shapeShifterCurseAddon.ability.AxolotlWaterSpurtHandler;
+import net.jackcooper.shapeShifterCurseAddon.ability.BatDesmodusBloodThirst;
+import net.jackcooper.shapeShifterCurseAddon.ability.FluorescentLaserManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.FluorescentTidalManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.GoldenSandstormErosionBrand;
+import net.jackcooper.shapeShifterCurseAddon.ability.GoldenSandstormRegen;
+import net.jackcooper.shapeShifterCurseAddon.ability.GoldenSandstormWitherSand;
+import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaPassive;
+import net.jackcooper.shapeShifterCurseAddon.ability.PlayDeadAbsorptionManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.SnowFoxSpFrostStorm;
+import net.jackcooper.shapeShifterCurseAddon.ability.SnowFoxSpMeleeAbility;
+import net.jackcooper.shapeShifterCurseAddon.ability.SnowFoxSpTeleportAttack;
+import net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.VortexGuideManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.WaterSpearLeapManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.WindDashManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritClawManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.WindSpiritLandingSurgeManager;
+import net.jackcooper.shapeShifterCurseAddon.ability.WitherFrenzyManager;
 import net.onixary.shapeShifterCurseFabric.util.CustomEdibleUtils;
 
 import java.util.Collection;
@@ -75,6 +72,8 @@ public final class SscAddonServerEvents {
 							.tickRaiderGroups(world.getServer());
 				}
 			}
+			// 冻雪智被动「寒棘护体」反刺层过期清理（世界级，每 tick 轻量）
+			net.jackcooper.shapeShifterCurseAddon.ability.FrostArmorManager.tick(world);
 			for (ServerPlayerEntity player : world.getPlayers()) {
 				// 修复局域网多人游戏中远程玩家的自定义可食用物品Map未在服务端刷新的问题
 				// 原版mod在集成服务器(EnvType.CLIENT)环境下跳过了OnServerTick，导致非主机玩家无法食用自定义食物（如悦灵吃紫水晶）
@@ -95,6 +94,11 @@ public final class SscAddonServerEvents {
 				BatDesmodusBloodThirst.tick(player);
 				MancianimaPassive.tick(player);
 				VortexChargeManager.tick(player);
+				net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.tick(player);
+				net.jackcooper.shapeShifterCurseAddon.ability.JumpKillManager.tick(player);
+				net.jackcooper.shapeShifterCurseAddon.ability.VenomSkillManager.tick(player);
+				// 跳蛛安全丝：纯锚点（跳杀已结束）6 秒倒计时推进，到时丝线消失
+				net.jackcooper.shapeShifterCurseAddon.ability.JumpKillManager.tickAnchors(player);
 				net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.tick(player);
 				net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager.tick(player);			net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverMoonPoisonManager.tick(player);				WindSpiritClawManager.tick(player);
 				WindDashManager.tick(player);
@@ -106,8 +110,12 @@ public final class SscAddonServerEvents {
 				FluorescentTidalManager.tick(player);
 				FluorescentLaserManager.tick(player);
 				// 冥裁者凋零阶梯 / 凋零抗性追踪（凋零持续时长分层 + tick 跳过计数）
-				WitherFrenzyManager.tick(player);
-				EvolutionManager.tickPlayer(player);
+				WitherFrenzyManager.tick(player);			// 食梦魔「入梦」状态推进（到期出梦清理 + 粉红描边同步）
+			net.jackcooper.shapeShifterCurseAddon.ability.NightmareDreamManager.tick(player);
+				// 食梦魔「恐惧」状态推进（入梦锁定/心跳/1s隐匿窗口/到期出梦+免疫）
+				net.jackcooper.shapeShifterCurseAddon.ability.NightmareFearManager.tick(player);
+				// 食梦魔「惊吓」幻影推进（复制品到期攻击结算）
+				net.jackcooper.shapeShifterCurseAddon.ability.NightmareSpookManager.tick(player);				EvolutionManager.tickPlayer(player);
 			// SSCA 专属饰品登录守卫：登录宽容放行后，形态不符的自动卸下归还（Curios/Trinkets 双后端）
 			net.jackcooper.shapeShifterCurseAddon.item.AddonAccessoryGuard.tick(player);
 		}
@@ -120,11 +128,19 @@ public final class SscAddonServerEvents {
 		});
 
 
-		// 月织蛛「织网术」/「蛛丝荡漾」：玩家掉线清理状态，防僵尸 UUID 残留
+		// 月织蛛「织网术」/「蛛丝荡漾」/ 食梦魔「惊吓」：玩家掉线清理状态，防僵尸 UUID 残留
 		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((netHandler, server) -> {
 			net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager.onDisconnect(netHandler.player.getUuid());
 			net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager.onDisconnect(netHandler.player.getUuid());
+			net.jackcooper.shapeShifterCurseAddon.ability.NightmareSpookManager.onDisconnect(netHandler.player.getUuid());
+			// 寒棘狐冰刺：退出时环绕冰锥随玩家消失（存档保留各槽存在时间，重进由 JOIN 恢复）
+			net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.onDisconnect(netHandler.player);
 		});
+		// 寒棘狐冰刺：重进后按退出前存档重建环绕冰锥（存在时间延续）
+		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+				server.execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.FrostSpikeManager.onJoin(handler.player)));
+		// 食梦魔「惊吓」：服务端监听目标攻击幽灵苦力怕（真实体受击判定）
+		net.jackcooper.shapeShifterCurseAddon.ability.NightmareSpookManager.registerEvents();
 
 		// 减速蜘网施法者表：服务器停止时清空，防跨存档/重启残留
 		ServerLifecycleEvents.SERVER_STOPPED.register(server ->
@@ -144,7 +160,7 @@ public final class SscAddonServerEvents {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 				// [DEBUG] 水矛出现监测 + 硬上限：背包最多 1 把水矛，多余立即移除（兜底任何未知产出路径）
-				// 性能优化：背包全扫（41 格）降频到每 10 tick 一次——水矛「有→无」触发合成CD重置最多晚 10t，肉眼不可察；STUN 属性校正仍每 tick（见下方）。
+				// 性能优化：背包全扫（41 格）降频到每 10 tick 一次——水矛「有→无」触发合成CD重置最多晚 10t，肉眼不可察；STUN 属性校正同样降频到每 10t（见下方）。
 				if (server.getTicks() % 10 == 0 && FormUtils.isAxolotlSP(player)) {
 					PlayerInventory inv = player.getInventory();
 					int wsCnt = 0;
@@ -157,6 +173,14 @@ public final class SscAddonServerEvents {
 								wsCnt--;
 							}
 						}
+					}
+					// 鼠标拿起/拖拽中的水矛（光标携带）也算「仍在玩家手中」，不计为消失；
+					// 否则左键拾取水矛时光标持有、背包扫描为 0 → 误判「水矛消失」→ 错误触发合成CD。
+					// currentScreenHandler 在无打开容器时是 playerScreenHandler（玩家自身背包），始终非 null。
+					// 必须在 put 取 wsPrev 之前累加，保证 wsCnt 与 wsPrev 都基于「背包+光标」完整口径。
+					net.minecraft.screen.ScreenHandler handler = player.currentScreenHandler;
+					if (handler != null && handler.getCursorStack().isOf(SscAddon.WATER_SPEAR)) {
+						wsCnt += handler.getCursorStack().getCount();
 					}
 					Integer wsPrev = SscAddon.WS_LAST_SPEAR_COUNT.put(player.getUuid(), wsCnt);
 					if (wsPrev != null && wsCnt > wsPrev) {
@@ -177,54 +201,20 @@ public final class SscAddonServerEvents {
 						SscAddon.WS_DBG.warn("[WS-CD] 水矛消失 @tick {} → 重启合成冷却(从消失起算 {}t)", wsT, SscAddon.WATER_SPEAR_CRAFT_CD_TICKS);
 					}
 				}
-				if (player.hasStatusEffect(SscAddon.STUN_ENTRY)) continue;
-				EntityAttributeInstance atk =
-						player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
-				if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {
-					atk.removeModifier(StunEffect.ATTACK_MODIFIER_UUID);
-				}
-				EntityAttributeInstance spd =
-						player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
-				if (spd != null && spd.getModifier(StunEffect.SPEED_MODIFIER_UUID) != null) {
-					spd.removeModifier(StunEffect.SPEED_MODIFIER_UUID);
-				}
-			}
-		});
-	}
-
-	/**
-	 * 修复多人下客机看主机时四足(FERAL)形态头部偶尔「转过身后」的视觉异常。
-	 * 根因：vanilla 服务端 ServerPlayerEntity.bodyYaw 只在玩家「移动」时才被 tickHeadTurn 拉向 headYaw。
-	 * 玩家站着只转鼠标时，移动包只上报 pos+yaw(=headYaw)+pitch，不带 bodyYaw，服务端 bodyYaw 保持陈旧值；
-	 * 服务端再把「新 headYaw + 陈旧 bodyYaw」一起发给远端客机，远端 OtherClientPlayerEntity 直接采信，
-	 * head−body 夹角于是很大。人形头骨绕颈部偏转视觉不明显，但四足形态头骨水平前伸，看上去就是「头扭过身后」。
-	 * 主机走一步路 → 服务端 bodyYaw 被 tickHeadTurn 拉正 → 自愈。生物 bodyYaw 由服务端持续维护所以不受影响。
-	 * 这里每服务端 tick 给已激活 Mod 的 FERAL 形态玩家补一个 tickHeadTurn 等效收敛：把 bodyYaw 限速拉向 headYaw，
-	 * 并夹住头身夹角 ≤ 75°（与 vanilla LivingEntity.tickHeadTurn 一致），使服务端发出的 bodyYaw 不再陈旧。
-	 * 仅作用于玩家自身的 bodyYaw（服务端权威字段），主客机都靠它，零客机预测冲突。
-	 */
-	public static void registerFeralBodyYawSync() {
-		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-				IForm form =
-						net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils.getPlayerForm(player);
-				if (form == null
-						|| form.getBodyType() != PlayerFormBodyType.FERAL) {
-					continue;
-				}
-				// 把 bodyYaw 朝 headYaw 收敛（vanilla tickHeadTurn 同款：限速 + 夹角钳制）。
-				float headYaw = player.getHeadYaw();
-				float bodyYaw = player.bodyYaw;
-				float diff = MathHelper.wrapDegrees(headYaw - bodyYaw);
-				// 头身夹角钳制到 ±75°（超出部分立即并入身体朝向，避免极端扭头）
-				float clampedDiff = MathHelper.clamp(diff, -75.0f, 75.0f);
-				float overflow = diff - clampedDiff;
-				// 收敛速度：每 tick 最多转 10°，模拟身体平滑跟随视角
-				float step = MathHelper.clamp(clampedDiff, -10.0f, 10.0f);
-				float newBodyYaw = bodyYaw + step + overflow;
-				if (newBodyYaw != bodyYaw) {
-					player.bodyYaw = newBodyYaw;
-					player.prevBodyYaw = newBodyYaw;
+				// 性能：STUN 孤儿校正降频到每 10 tick——孤儿修正多残留 0.5s 无感知，
+				// 省掉每 tick 每玩家 hasStatusEffect + 2×getAttributeInstance + 2×getModifier
+				if (server.getTicks() % 10 == 0) {
+					if (player.hasStatusEffect(SscAddon.STUN)) continue;
+					EntityAttributeInstance atk =
+							player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+					if (atk != null && atk.getModifier(StunEffect.ATTACK_MODIFIER_UUID) != null) {
+						atk.removeModifier(StunEffect.ATTACK_MODIFIER_UUID);
+					}
+					EntityAttributeInstance spd =
+							player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+					if (spd != null && spd.getModifier(StunEffect.SPEED_MODIFIER_UUID) != null) {
+						spd.removeModifier(StunEffect.SPEED_MODIFIER_UUID);
+					}
 				}
 			}
 		});
@@ -236,8 +226,7 @@ public final class SscAddonServerEvents {
 			System.out.println("[SSC_ADDON] SERVER_STARTING event fired, clearing all ability static state");
 			SnowFoxSpMeleeAbility.clearAll();
 			SnowFoxSpTeleportAttack.clearAll();
-			SnowFoxSpFrostStorm.clearAll();
-			AnubisWolfSpDeathDomain.clearAll();
+			SnowFoxSpFrostStorm.clearAll();				net.jackcooper.shapeShifterCurseAddon.ability.FrostArmorManager.clearAll();			AnubisWolfSpDeathDomain.clearAll();
 			AnubisWolfSpSummonWolves.clearAll();
 			AllaySPTotem.clearAll();
 			GoldenSandstormErosionBrand.clearAll();
@@ -248,6 +237,7 @@ public final class SscAddonServerEvents {
 			MancianimaPassive.clearAll();
 			SscAddonActions.clearAll();
 			FluorescentLaserManager.clearAll();   // 海晶荧光坠增强激光：清残留待机法阵实体
+			net.jackcooper.shapeShifterCurseAddon.ability.NightmareSpookManager.clearAll(server); // 惊吓：清幽灵苦力怕/复制品状态
 			System.out.println("[SSC_ADDON] SERVER_STARTING ability state cleared");
 		});
 		// 服务器关闭前还原所有死亡领域方块（在世界存档之前触发）
@@ -278,6 +268,7 @@ public final class SscAddonServerEvents {
 			MancianimaPassive.clearAll();
 			SscAddonActions.clearAll();
 			FluorescentLaserManager.clearAll();   // 海晶荧光坠增强激光：清残留待机法阵实体
+			net.jackcooper.shapeShifterCurseAddon.ability.NightmareSpookManager.clearAll(server); // 惊吓：清幽灵苦力怕/复制品状态
 			System.out.println("[SSC_ADDON] END_DATA_PACK_RELOAD ability state cleared");
 		});
 	}

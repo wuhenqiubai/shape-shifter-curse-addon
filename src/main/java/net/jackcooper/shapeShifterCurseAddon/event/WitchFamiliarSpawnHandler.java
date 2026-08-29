@@ -11,8 +11,8 @@ import net.minecraft.entity.mob.WitchEntity;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeKeys;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.entity.WitchFamiliarEntity;
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
+import net.jackcooper.shapeShifterCurseAddon.entity.WitchFamiliarEntity;
 
 import static net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon.WITCH_FAMILIAR_ENTITY;
 

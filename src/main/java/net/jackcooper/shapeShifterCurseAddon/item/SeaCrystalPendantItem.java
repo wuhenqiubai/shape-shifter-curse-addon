@@ -13,8 +13,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.SscAddon;
-import net.onixary.shapeShifterCurseFabric.ssc_addon.util.FormUtils;
+import net.jackcooper.shapeShifterCurseAddon.SscAddon;
+import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 
 import java.util.List;
 
