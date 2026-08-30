@@ -22,7 +22,14 @@ public abstract class MinecraftClientSetScreenMixin {
     private void ssc_addon(Screen screen, CallbackInfo ci) {
         if (screen == null) return;
         if (screen instanceof AdvancedColorScreen) return; // 防递归
-        SSCAddonClientConfig cfg = AutoConfig.getConfigHolder(SSCAddonClientConfig.class).getConfig();
+        SSCAddonClientConfig cfg;
+        try {
+            cfg = AutoConfig.getConfigHolder(SSCAddonClientConfig.class).getConfig();
+        } catch (RuntimeException e) {
+            // 客户端启动早期（如 SinytraConnector 下 setScreen 先于 config 注册）可能尚未注册，
+            // 此时启动屏幕不可能是 FormColorSelectMenu，直接跳过颜色编辑拦截以避免崩溃。
+            return;
+        }
         if (!cfg.enableColorEditor) return;
         if (!"net.onixary.shapeShifterCurseFabric.custom_ui.FormColorSelectMenu".equals(screen.getClass().getName())) return;
         // 关键：FormColorSelectMenu 的构造函数已经把 SSC 的 instance / useTempTexture / tempTextureProcessor 三个全局

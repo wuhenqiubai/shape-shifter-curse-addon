@@ -428,9 +428,22 @@ public class SscAddon implements ModInitializer {
 
 
 
-	private void registerConfig() {
-		AutoConfig.register(SSCAddonClientConfig.class, GsonConfigSerializer::new);
-		AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
+	/**
+	 * 注册 Cloth Config。改为 public static 并幂等：main（onInitialize）与 client（onInitializeClient）
+	 * 两个入口都会调用，而 AutoConfig.register 对重复注册会抛 "already registered"，
+	 * 因此这里只忽略该种异常，保证双入口（含 SinytraConnector 下客户端先于 main 初始化）安全。
+	 */
+	public static void registerConfig() {
+		try {
+			AutoConfig.register(SSCAddonClientConfig.class, GsonConfigSerializer::new);
+		} catch (RuntimeException e) {
+			if (e.getMessage() == null || !e.getMessage().contains("already registered")) throw e;
+		}
+		try {
+			AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
+		} catch (RuntimeException e) {
+			if (e.getMessage() == null || !e.getMessage().contains("already registered")) throw e;
+		}
 	}
 
 	private void registerStatusEffects() {

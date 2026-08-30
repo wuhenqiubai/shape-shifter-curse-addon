@@ -1,0 +1,46 @@
+modLoader="javafml"
+loaderVersion="[4,5)"
+license="AGPL-3.0-or-later"
+
+# NeoForge/Connector compatibility: this FML metadata is only a placeholder (declares deps + shows a
+# clear error when connector is missing). Actual loading is done by Connector via fabric.mod.json.
+[properties]
+"connector:placeholder"=true
+
+[[mods]]
+# FML modId must be lowercase alphanumeric + underscores (no hyphens). The fabric.mod.json id
+# "ssc_addon" is already FML-valid, so it is reused verbatim here.
+modId="ssc_addon"
+version="${version}"
+displayName="Shape Shifter Curse Addon"
+logoFile="assets/ssc_addon/icon.png"
+authors="MangZai-120, wuhenqiubai"
+description='''Enhances existing forms and expands gameplay.'''
+
+[[dependencies."ssc_addon"]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,26)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies."ssc_addon"]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies."ssc_addon"]]
+modId="connector"
+type="required"
+versionRange="*"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies."ssc_addon"]]
+modId="shape_shifter_curse_unofficial"
+type="required"
+versionRange="*"
+ordering="NONE"
+side="BOTH"

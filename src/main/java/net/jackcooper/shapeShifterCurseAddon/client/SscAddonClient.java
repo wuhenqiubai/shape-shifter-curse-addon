@@ -63,6 +63,11 @@ public class SscAddonClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		// 必须在任何客户端 config 访问前注册（含 SinytraConnector 下 setScreen 早于 main onInitialize 的场景，
+		// 以及 MinecraftClientSetScreenMixin 等客户端 mixin/渲染器对 config 的读取）。
+		// registerConfig 已幂等，main onInitialize 也会调用，双入口不会二次注册崩溃。
+		SscAddon.registerConfig();
+
 		// 注册所有 S2C payload 类型（必须先注册才能接收）
 		BytePayload.registerS2C(SscAddonNetworking.PACKET_TIDAL_TETHER);
 		BytePayload.registerS2C(SscAddonNetworking.PACKET_EVO_ROUTES_SYNC);

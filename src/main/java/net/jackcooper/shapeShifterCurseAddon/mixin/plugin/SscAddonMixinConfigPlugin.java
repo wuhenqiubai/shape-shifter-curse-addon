@@ -103,6 +103,13 @@ public class SscAddonMixinConfigPlugin implements IMixinConfigPlugin {
         // 反之（如 Kilt 转载的 curios 2000 抢占）主包跳过 TrinketImpl，此时我们才应用。
         // 两边判定条件互补，保证同一目标类 AccessoryItem 永远只有一份 Trinket 接口实现。
         if (TRINKET_BRIDGE_MIXIN.equals(mixinClassName)) {
+            // 必须先确认 trinkets API 实际可用（原生 Trinkets 或 tclayer 兼容层 provides "trinkets"）。
+            // 否则本类方法签名里的 SlotReference / Trinket / TrinketsApi 会在 mixin attach 时
+            // ClassNotFound（例如只装了 Forge Curios、未装 Trinkets 的环境）而整个游戏崩溃。
+            if (!FabricLoader.getInstance().isModLoaded("trinkets")) {
+                LOGGER.info("[trinket-bridge] trinkets mod not loaded, skipping bridge mixin");
+                return false;
+            }
             String highest = net.onixary.shapeShifterCurseFabric.util.Accessory.AccessoryPriorityUtils
                     .getHighestPriorityPlugin();
             if ("trinkets".equals(highest)) {
