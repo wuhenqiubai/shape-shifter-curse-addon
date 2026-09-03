@@ -305,7 +305,7 @@ public class SscAddonActions {
 				}));
 
 		// 朔望 - 舍身爆炸（主技能，原指令桥迁移为自定义 action）
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "nova_charge"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "nova_charge"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
@@ -314,7 +314,7 @@ public class SscAddonActions {
 				}));
 
 		// 朔望 - 灵跃闪身（次技能，原指令桥迁移为自定义 action）
-		registerEntity(new ActionFactory<>(new Identifier("ssc_addon", "nova_leap"),
+		registerEntity(new ActionFactory<>(Identifier.of("ssc_addon", "nova_leap"),
 				new SerializableData(),
 				(data, entity) -> {
 					if (entity instanceof ServerPlayerEntity player) {
