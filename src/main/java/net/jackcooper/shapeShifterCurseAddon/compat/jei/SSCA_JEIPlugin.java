@@ -14,7 +14,7 @@ import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Potions;
-import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
@@ -169,7 +169,7 @@ public class SSCA_JEIPlugin implements IModPlugin {
 			// 3×3：上中=月髓环，中间行=附魔金苹果 / 压缩能量药水 / 附魔金苹果，其余为空槽
 			ItemStack moonRing = new ItemStack(SscAddon.SP_UPGRADE_THING);
 			ItemStack apple = new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
-			ItemStack feedPotion = PotionContentsComponent.createStack(Items.POTION, RegistryEntry.of(RegCustomPotions.FEED_POTION));
+			ItemStack feedPotion = PotionContentsComponent.createStack(Items.POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION));
 			for (int row = 0; row < 3; row++) {
 				for (int col = 0; col < 3; col++) {
 					int idx = row * 3 + col;

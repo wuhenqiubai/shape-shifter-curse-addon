@@ -1,6 +1,5 @@
 package net.jackcooper.shapeShifterCurseAddon.recipe;
 
-import net.minecraft.inventory.RecipeInputInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.recipe.RecipeSerializer;
@@ -36,23 +35,23 @@ public class InfiniteEnergyPotionRecipe extends SpecialCraftingRecipe {
 		// 形状 0 M 0 / A I A / 0 0 0，允许整体上对齐或下对齐两种摆放：
 		// 上：M=1 A=3 I=4 A=5，空=0,2,6,7,8
 		// 下：M=4 A=6 I=7 A=8，空=0,1,2,3,5
-		return matchesLayout((RecipeInputInventory) input, 1, 3, 4, 5, new int[]{0, 2, 6, 7, 8})
-				|| matchesLayout((RecipeInputInventory) input, 4, 6, 7, 8, new int[]{0, 1, 2, 3, 5});
+		return matchesLayout(input, 1, 3, 4, 5, new int[]{0, 2, 6, 7, 8})
+				|| matchesLayout(input, 4, 6, 7, 8, new int[]{0, 1, 2, 3, 5});
 	}
 
 	/** 校验一种摆放：moonSlot=月髓环，appleSlotL/appleSlotR=附魔金苹果，potionSlot=压缩能量药水，emptySlots 必须为空。 */
-	private boolean matchesLayout(RecipeInputInventory inv, int moonSlot, int appleSlotL, int potionSlot, int appleSlotR, int[] emptySlots) {
-		if (!isMoonRing(inv.getStack(moonSlot))) {
+	private boolean matchesLayout(CraftingRecipeInput input, int moonSlot, int appleSlotL, int potionSlot, int appleSlotR, int[] emptySlots) {
+		if (!isMoonRing(input.getStackInSlot(moonSlot))) {
 			return false;
 		}
-		if (!isEnchantedGoldenApple(inv.getStack(appleSlotL)) || !isEnchantedGoldenApple(inv.getStack(appleSlotR))) {
+		if (!isEnchantedGoldenApple(input.getStackInSlot(appleSlotL)) || !isEnchantedGoldenApple(input.getStackInSlot(appleSlotR))) {
 			return false;
 		}
-		if (!isCompressedEnergyPotion(inv.getStack(potionSlot))) {
+		if (!isCompressedEnergyPotion(input.getStackInSlot(potionSlot))) {
 			return false;
 		}
 		for (int slot : emptySlots) {
-			if (!inv.getStack(slot).isEmpty()) {
+			if (!input.getStackInSlot(slot).isEmpty()) {
 				return false;
 			}
 		}

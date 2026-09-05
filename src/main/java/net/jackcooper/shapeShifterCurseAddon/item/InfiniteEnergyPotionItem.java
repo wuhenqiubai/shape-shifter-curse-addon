@@ -11,8 +11,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.potion.Potion;
-import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.Registries;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
@@ -99,7 +98,7 @@ public class InfiniteEnergyPotionItem extends Item {
 	public void spawnThrownPotion(World world, PlayerEntity user) {
 		ItemStack thrown = PotionContentsComponent.createStack(
 				type == Type.LINGERING ? Items.LINGERING_POTION : Items.SPLASH_POTION,
-				(RegistryEntry<Potion>) RegCustomPotions.FEED_POTION);
+				Registries.POTION.getEntry(RegCustomPotions.FEED_POTION));
 		PotionEntity entity = new PotionEntity(world, user);
 		entity.setItem(thrown);
 		entity.setVelocity(user, user.getPitch(), user.getYaw(), -20.0F, 0.5F, 1.0F);

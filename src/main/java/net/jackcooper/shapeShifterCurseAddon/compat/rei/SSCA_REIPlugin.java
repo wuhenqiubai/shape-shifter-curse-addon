@@ -10,7 +10,7 @@ import me.shedaniel.rei.plugin.common.displays.brewing.DefaultBrewingDisplay;
 import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Potions;
-import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
@@ -79,7 +79,7 @@ public class SSCA_REIPlugin implements REIClientPlugin {
 		EntryIngredient moonRing = EntryIngredients.of(SscAddon.SP_UPGRADE_THING);
 		EntryIngredient apple = EntryIngredients.of(Items.ENCHANTED_GOLDEN_APPLE);
 		EntryIngredient feedPotion = EntryIngredients.of(
-				PotionContentsComponent.createStack(Items.POTION, RegistryEntry.of(RegCustomPotions.FEED_POTION)));
+				PotionContentsComponent.createStack(Items.POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION)));
 		return new DefaultCraftingDisplay<>(
 				List.of(empty, moonRing, empty, apple, feedPotion, apple, empty, empty, empty),
 				List.of(EntryIngredients.of(SscAddon.INFINITE_ENERGY_POTION)),

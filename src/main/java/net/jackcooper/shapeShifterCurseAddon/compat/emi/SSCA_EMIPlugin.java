@@ -9,7 +9,7 @@ import dev.emi.emi.recipe.EmiBrewingRecipe;
 import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Potions;
-import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
@@ -40,7 +40,7 @@ public class SSCA_EMIPlugin implements EmiPlugin {
 		EmiIngredient moonRing = EmiStack.of(SscAddon.SP_UPGRADE_THING);
 		EmiIngredient apple = EmiStack.of(Items.ENCHANTED_GOLDEN_APPLE);
 		EmiIngredient feedPotion = EmiStack.of(
-				PotionContentsComponent.createStack(Items.POTION, RegistryEntry.of(RegCustomPotions.FEED_POTION)));
+				PotionContentsComponent.createStack(Items.POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION)));
 		List<EmiIngredient> potionGrid = List.of(
 				EmiStack.EMPTY, moonRing, EmiStack.EMPTY,
 				apple, feedPotion, apple,
