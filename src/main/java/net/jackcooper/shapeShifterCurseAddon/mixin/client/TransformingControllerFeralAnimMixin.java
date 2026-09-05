@@ -46,7 +46,7 @@ public class TransformingControllerFeralAnimMixin {
 
 	/** 附属「四足→四足」变身动画 id（完成动画倒放蓄力 + 正放起身，assets/my_addon/player_animation/）。 */
 	private static final Identifier SSC_ADDON_FERAL_REVERSE_ANIM =
-			new Identifier("my_addon", "player_on_transform_feral_reverse");
+			Identifier.of("my_addon", "player_on_transform_feral_reverse");
 
 	@Inject(method = "getAnimation", at = @At("HEAD"), cancellable = true, require = 0)
 	private void sscAddon$forceFeralTransformAnim(PlayerEntity player, AnimSystem.AnimSystemData data,
