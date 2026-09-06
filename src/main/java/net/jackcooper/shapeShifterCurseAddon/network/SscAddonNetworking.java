@@ -18,7 +18,9 @@ import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.ability.AllaySPGroupHeal;
 import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaTeleport;
 import net.jackcooper.shapeShifterCurseAddon.ability.MancianimaPrimary;
+import net.jackcooper.shapeShifterCurseAddon.block.InfusionAltarBlockEntity;
 import net.jackcooper.shapeShifterCurseAddon.evolution.EvolutionManager;
+import net.jackcooper.shapeShifterCurseAddon.screen.InfusionAltarScreenHandler;
 import net.jackcooper.shapeShifterCurseAddon.util.WhitelistUtils;
 import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
@@ -61,6 +63,10 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_VORTEX_START = Identifier.of("my_addon", "vortex_start");
 	/** C2S：美西螈漩涡释放（提前释放）。无 payload。 */
 	public static final Identifier PACKET_VORTEX_RELEASE = Identifier.of("my_addon", "vortex_release");
+	/** C2S：月尘魔法书 - 释放书内指定槽魔法。payload: varint slot。 */
+	public static final Identifier PACKET_SPELL_CAST = Identifier.of("my_addon", "spell_cast");
+	/** C2S：月尘魔法书 - 更新当前选中槽（滚轮切换）。payload: varint slot。 */
+	public static final Identifier PACKET_SPELL_SELECT = Identifier.of("my_addon", "spell_select");
 	/** C2S：月织蛛织网术 - 潜行双击主键切换 搭路/攻击 模式。无 payload。 */
 	public static final Identifier PACKET_SPIDER_MOON_WEAVER_TOGGLE = Identifier.of("my_addon", "spider_moon_weaver_toggle");
 	/** C2S：月织蛛织网术 - 主键按下开始蓄力。无 payload。 */
@@ -110,6 +116,9 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_FEAR_REVEAL = Identifier.of("my_addon", "fear_reveal");
 	/** S2C：「惊吓」幽灵实体标记（幽灵苦力怕/幽灵野猫）——仅目标本人。payload: UUID ghostUuid + varint lifeTicks（客户端对该实体局部取消隐身→只有目标看得见它）。 */
 	public static final Identifier PACKET_SPOOK_GHOST = Identifier.of("my_addon", "spook_ghost");
+	/** C2S：注魔台 - 点击「升级」按钮请求升级魔法书。无 payload，服务端重验条件后扣材料。 */
+	public static final Identifier PACKET_INFUSION_ALTAR_UPGRADE = Identifier.of("my_addon", "infusion_altar_upgrade");
+
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
 	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
 
@@ -475,6 +484,26 @@ public class SscAddonNetworking {
 		});
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_VORTEX_RELEASE), (bp, ctx) -> {
 			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.ability.VortexChargeManager.release(ctx.player()));
+		});
+
+		// SSCA 月尘魔法书 - 施法 / 切换选中槽
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_CAST, (server, player, handler, buf, responseSender) -> {
+			int slot = buf.readVarInt();
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.cast(player, slot));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_SELECT, (server, player, handler, buf, responseSender) -> {
+			int slot = buf.readVarInt();
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.setSelected(player, slot));
+		});
+
+		// SSCA 注魔台 - 点击「升级」按钮（服务端权威重验：书可升级 + 催化超核 + 燃料纯晶）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_INFUSION_ALTAR_UPGRADE, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> {
+				if (player.currentScreenHandler instanceof InfusionAltarScreenHandler sh
+						&& sh.getInventory() instanceof InfusionAltarBlockEntity be) {
+					be.tryUpgrade(player);
+				}
+			});
 		});
 
 		// SSCA 月织蛛「织网术」- 切换模式 / 开始蓄力 / 释放
