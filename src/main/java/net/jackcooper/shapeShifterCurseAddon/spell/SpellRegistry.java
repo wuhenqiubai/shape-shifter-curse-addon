@@ -30,7 +30,7 @@ public final class SpellRegistry {
 		if (path == null || path.isEmpty()) {
 			return null;
 		}
-		return SPELLS.get(new Identifier("ssc_addon", path));
+		return SPELLS.get(Identifier.of("ssc_addon", path));
 	}
 
 	public static Collection<Spell> all() {

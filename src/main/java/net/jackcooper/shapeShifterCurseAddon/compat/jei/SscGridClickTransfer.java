@@ -4,10 +4,14 @@ import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.potion.PotionUtil;
+import net.minecraft.potion.Potion;
 import net.minecraft.potion.Potions;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.screen.CraftingScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
@@ -41,9 +45,9 @@ public final class SscGridClickTransfer {
 		/** 无限压缩能量药水：上中月髓环，中间行 苹果/药水(三瓶型)/苹果，其余空。 */
 		public static GridSpec infinitePotion() {
 			ItemStack[] feedAlts = {
-					PotionUtil.setPotion(new ItemStack(net.minecraft.item.Items.POTION), RegCustomPotions.FEED_POTION),
-					PotionUtil.setPotion(new ItemStack(net.minecraft.item.Items.SPLASH_POTION), RegCustomPotions.FEED_POTION),
-					PotionUtil.setPotion(new ItemStack(net.minecraft.item.Items.LINGERING_POTION), RegCustomPotions.FEED_POTION)};
+					PotionContentsComponent.createStack(net.minecraft.item.Items.POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION)),
+					PotionContentsComponent.createStack(net.minecraft.item.Items.SPLASH_POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION)),
+					PotionContentsComponent.createStack(net.minecraft.item.Items.LINGERING_POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION))};
 			ItemStack[] moonRing = {new ItemStack(SscAddon.SP_UPGRADE_THING)};
 			ItemStack[] apple = {new ItemStack(net.minecraft.item.Items.ENCHANTED_GOLDEN_APPLE)};
 			List<List<ItemStack>> grid = new ArrayList<>(9);
@@ -62,9 +66,9 @@ public final class SscGridClickTransfer {
 		/** 毒液腺体：8 蜘蛛眼环绕 + 中心剧毒药水（三瓶型）。 */
 		public static GridSpec venomGland() {
 			ItemStack[] poisonAlts = {
-					PotionUtil.setPotion(new ItemStack(net.minecraft.item.Items.POTION), Potions.POISON),
-					PotionUtil.setPotion(new ItemStack(net.minecraft.item.Items.SPLASH_POTION), Potions.POISON),
-					PotionUtil.setPotion(new ItemStack(net.minecraft.item.Items.LINGERING_POTION), Potions.POISON)};
+					PotionContentsComponent.createStack(net.minecraft.item.Items.POTION, Potions.POISON),
+					PotionContentsComponent.createStack(net.minecraft.item.Items.SPLASH_POTION, Potions.POISON),
+					PotionContentsComponent.createStack(net.minecraft.item.Items.LINGERING_POTION, Potions.POISON)};
 			ItemStack[] eye = {new ItemStack(net.minecraft.item.Items.SPIDER_EYE)};
 			List<List<ItemStack>> grid = new ArrayList<>(9);
 			for (int i = 0; i < 9; i++) {
@@ -226,14 +230,18 @@ public final class SscGridClickTransfer {
 	 * 注意：不能用 areEqual——它还比较 count，display 候选恒 count=1，
 	 * 背包堆叠材料永远匹配不上（REI 侧踩过的坑）。 */
 	private static boolean stackMatches(ItemStack have, ItemStack want) {
-		if (ItemStack.canCombine(have, want)) {
+		if (ItemStack.areItemsAndComponentsEqual(have, want)) {
 			return true;
 		}
 		if (have.getItem() != want.getItem()) {
 			return false;
 		}
 		if (isPotionBottle(have) && isPotionBottle(want)) {
-			return PotionUtil.getPotion(have).equals(PotionUtil.getPotion(want));
+			PotionContentsComponent havePotion = have.get(DataComponentTypes.POTION_CONTENTS);
+			PotionContentsComponent wantPotion = want.get(DataComponentTypes.POTION_CONTENTS);
+			RegistryEntry<Potion> hp = havePotion != null ? havePotion.potion().orElse(null) : null;
+			RegistryEntry<Potion> wp = wantPotion != null ? wantPotion.potion().orElse(null) : null;
+			return java.util.Objects.equals(hp, wp);
 		}
 		return false;
 	}
@@ -249,7 +257,7 @@ public final class SscGridClickTransfer {
 		PlayerInventory inv = player.getInventory();
 		for (int i = 0; i < PlayerInventory.MAIN_SIZE; i++) {
 			ItemStack s = inv.getStack(i);
-			if (!s.isEmpty() && ItemStack.canCombine(s, want) && s.getCount() < s.getMaxCount()) {
+			if (!s.isEmpty() && ItemStack.areItemsAndComponentsEqual(s, want) && s.getCount() < s.getMaxCount()) {
 				return i;
 			}
 		}

@@ -28,6 +28,37 @@ public final class TrinketUtils {
     /** 诊断日志：Curios 反射兜底各阶段失败原因（定位 Kilt 类加载器/能力注入问题用）。 */
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("ssc-addon");
 
+    /**
+     * Curios API 类缓存。Curios 是否存在是模组加载期就确定的进程级常量，
+     * 不必每次检测都 Class.forName 扫一遍类加载器。首次判定后缓存，null = 无 Curios。
+     * 惰性初始化（首个调用方触发），多线程下重复扫一次也只是无害的幂等。
+     */
+    private static volatile Class<?> curiosApiClass; // null = 未判 / 无 Curios；非 null = 已判
+    private static boolean curiosResolved = false;
+
+    private static Class<?> findCuriosApi() {
+        if (curiosResolved) {
+            return curiosApiClass;
+        }
+        // Kilt 转载环境下 Forge Curios 由独立类加载器加载，需多加载器尝试 CuriosApi。
+        Class<?> api = null;
+        for (ClassLoader cl : new ClassLoader[]{
+                Thread.currentThread().getContextClassLoader(),
+                TrinketUtils.class.getClassLoader()}) {
+            if (cl == null) continue;
+            try {
+                api = Class.forName("top.theillusivec4.curios.api.CuriosApi", true, cl);
+                break;
+            } catch (ClassNotFoundException ignored) {
+                // 该 classloader 未见 Curios，继续试下一个
+            }
+        }
+        // 记录判定结果（多线程重复也无害——幂等）
+        curiosApiClass = api;
+        curiosResolved = true;
+        return api;
+    }
+
     private TrinketUtils() {
     }
 
@@ -51,8 +82,11 @@ public final class TrinketUtils {
         if (isWearing(entity, item)) {
             return true;
         }
+        Class<?> api = findCuriosApi();
+        if (api == null) {
+            return false; // 无 Curios，安全兜底
+        }
         try {
-            Class<?> api = Class.forName("top.theillusivec4.curios.api.CuriosApi");
             Object lazyOptional = api.getMethod("getCuriosInventory", LivingEntity.class).invoke(null, entity);
             if (lazyOptional == null) return false;
             Object resolved = lazyOptional.getClass().getMethod("resolve").invoke(lazyOptional);
@@ -97,27 +131,13 @@ public final class TrinketUtils {
         } catch (Throwable ignored) {
         }
         // Curios 反射兜底：遍历 Curios 自有 inventory 的全部槽位（含 cosmetic）。
-        // Kilt 转载环境下 Forge Curios 由独立类加载器加载，需多加载器尝试 CuriosApi；
-        // 各阶段失败均打 warn 日志（不再静默），便于实机定位断点。
+        // Curios 可见性已缓存（{@link #findCuriosApi()} 仅首调扫类加载器），避免每 tick 重复 Class.forName。
+        Class<?> api = findCuriosApi();
+        if (api == null) {
+            // 纯 Fabric 环境通常无 Curios（Kilt 才转 NeoForge Curios）——不可见是正常态，静默返回。
+            return null;
+        }
         try {
-            Class<?> api = null;
-            String lastErr = "no classloader tried";
-            for (ClassLoader cl : new ClassLoader[]{
-                    Thread.currentThread().getContextClassLoader(),
-                    TrinketUtils.class.getClassLoader(),
-                    entity.getClass().getClassLoader()}) {
-                if (cl == null) continue;
-                try {
-                    api = Class.forName("top.theillusivec4.curios.api.CuriosApi", true, cl);
-                    break;
-                } catch (ClassNotFoundException e) {
-                    lastErr = e.toString();
-                }
-            }
-            if (api == null) {
-                LOG.warn("[SSCA] Curios fallback: CuriosApi 类不可见（{}）——Kilt 类加载器隔离？", lastErr);
-                return null;
-            }
             Object lazyOptional = api.getMethod("getCuriosInventory", LivingEntity.class).invoke(null, entity);
             if (lazyOptional == null) {
                 LOG.warn("[SSCA] Curios fallback: getCuriosInventory 返回 null");

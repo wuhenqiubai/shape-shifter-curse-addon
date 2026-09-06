@@ -13,6 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomItem;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 注魔台界面（jackcooper）。程序化紫调背景 + 三槽凹槽，右侧展示书槽内魔法书的等级 / 法力 / 经验。
@@ -21,7 +22,7 @@ import net.onixary.shapeShifterCurseFabric.items.RegCustomItem;
  */
 public class InfusionAltarScreen extends HandledScreen<InfusionAltarScreenHandler> {
 
-	private static final Identifier TEXTURE = new Identifier("ssc_addon", "textures/gui/infusion_altar.png");
+	private static final Identifier TEXTURE = Identifier.of("ssc_addon", "textures/gui/infusion_altar.png");
 
 	/** 升级按钮（仅满足条件时可见，位于左右两物品框中间） */
 	private ButtonWidget upgradeButton;
@@ -39,7 +40,7 @@ public class InfusionAltarScreen extends HandledScreen<InfusionAltarScreenHandle
 		// 居中于燃料槽(44-62)与催化槽(116-134)之间：中心 x=89；高度与槽行(52-70)对齐
 		this.upgradeButton = this.addDrawableChild(ButtonWidget.builder(
 					Text.translatable("gui.ssc_addon.infusion_altar.upgrade"),
-				b -> ClientPlayNetworking.send(SscAddonNetworking.PACKET_INFUSION_ALTAR_UPGRADE, PacketByteBufs.empty()))
+				b -> ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_INFUSION_ALTAR_UPGRADE), PacketByteBufs.empty())))
 				.dimensions(this.x + 66, this.y + 52, 46, 20).build());
 		this.upgradeButton.visible = false;
 	}
@@ -86,7 +87,7 @@ public class InfusionAltarScreen extends HandledScreen<InfusionAltarScreenHandle
 
 	@Override
 	public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-		this.renderBackground(ctx);
+		this.renderBackground(ctx, mouseX, mouseY, delta);
 		// 每帧刷新按钮可见性（槽内物品 / 书 NBT 均会实时同步到客户端）
 		if (this.upgradeButton != null) {
 			this.upgradeButton.visible = canUpgradeNow();

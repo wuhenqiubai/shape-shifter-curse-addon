@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -30,33 +31,33 @@ import net.onixary.shapeShifterCurseFabric.util.UIPositionUtils;
 public class SpellbookHudRenderer implements HudRenderCallback {
 
 	// 槽位双状态贴图：_empty=空槽（无魔法时显示），_filled=「空白框」覆盖层（无魔法时叠在最上层）
-	private static final Identifier TEX_SLOT_EMPTY = new Identifier("ssc_addon", "textures/gui/spell_hud_slot_empty.png");
-	private static final Identifier TEX_SLOT_FILLED = new Identifier("ssc_addon", "textures/gui/spell_hud_slot_filled.png");
-	private static final Identifier TEX_SLOT_BIG_EMPTY = new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_empty.png");
-	private static final Identifier TEX_SLOT_BIG_FILLED = new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_filled.png");
+	private static final Identifier TEX_SLOT_EMPTY = Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_empty.png");
+	private static final Identifier TEX_SLOT_FILLED = Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_filled.png");
+	private static final Identifier TEX_SLOT_BIG_EMPTY = Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_empty.png");
+	private static final Identifier TEX_SLOT_BIG_FILLED = Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_filled.png");
 	// 品质覆盖层（有魔法时叠在最上层，按卷轴稀有度选色；顺序与 SpellRarity 枚举一致：白/绿/蓝/紫/橙/红）
 	private static final Identifier[] TEX_SLOT_RARITY = {
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_rarity_white.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_rarity_green.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_rarity_blue.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_rarity_purple.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_rarity_orange.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_rarity_red.png")
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_rarity_white.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_rarity_green.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_rarity_blue.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_rarity_purple.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_rarity_orange.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_rarity_red.png")
 	};
 	private static final Identifier[] TEX_SLOT_BIG_RARITY = {
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_white.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_green.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_blue.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_purple.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_orange.png"),
-			new Identifier("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_red.png")
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_white.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_green.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_blue.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_purple.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_orange.png"),
+			Identifier.of("ssc_addon", "textures/gui/spell_hud_slot_big_rarity_red.png")
 	};
 	// 法力条双态贴图：_empty=空条(底,含金框与中心装饰)，_full=满条(按法力%从左裁剪叠上)
-	private static final Identifier TEX_BAR_EMPTY = new Identifier("ssc_addon", "textures/gui/spell_hud_bar_empty.png");
-	private static final Identifier TEX_BAR_FULL = new Identifier("ssc_addon", "textures/gui/spell_hud_bar_full.png");
+	private static final Identifier TEX_BAR_EMPTY = Identifier.of("ssc_addon", "textures/gui/spell_hud_bar_empty.png");
+	private static final Identifier TEX_BAR_FULL = Identifier.of("ssc_addon", "textures/gui/spell_hud_bar_full.png");
 
 	@Override
-	public void onHudRender(DrawContext ctx, float tickDelta) {
+	public void onHudRender(DrawContext ctx, RenderTickCounter tickCounter) {
 		MinecraftClient mc = MinecraftClient.getInstance();
 		if (mc.player == null || mc.world == null || mc.options.hudHidden) {
 			return;
@@ -113,7 +114,7 @@ public class SpellbookHudRenderer implements HudRenderCallback {
 		RenderSystem.disableBlend();
 
 		// 当前魔法名（白色普通文字，三槽正下方居中显示，可左右超出范围）+ 剩余 cd
-		ItemStack scroll = SpellbookData.getScroll(book, sel);
+		ItemStack scroll = SpellbookData.getScroll(mc.world.getRegistryManager(), book, sel);
 		Spell spell = ScrollData.getSpell(scroll);
 		if (spell != null) {
 			int centerX = baseX + 31; // 选择器中心（= 中槽中心）
@@ -132,7 +133,7 @@ public class SpellbookHudRenderer implements HudRenderCallback {
 	}
 
 	private void drawSlot(DrawContext ctx, MinecraftClient mc, ItemStack book, int slot, int x, int y, int size, boolean big) {
-		ItemStack scroll = SpellbookData.getScroll(book, slot);
+		ItemStack scroll = SpellbookData.getScroll(mc.world.getRegistryManager(), book, slot);
 		Spell spell = ScrollData.getSpell(scroll);
 		int fs = size + 2; // 含 1px 外框，在内容区左上外扩 1px 绘制
 		// 固定三层（底→顶）：空白 → 技能图标(有魔法才画) → 有东西

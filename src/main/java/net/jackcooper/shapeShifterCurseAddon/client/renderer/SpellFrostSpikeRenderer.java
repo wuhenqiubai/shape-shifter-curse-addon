@@ -11,6 +11,8 @@ import net.minecraft.client.render.entity.FlyingItemEntityRenderer;
 import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.CustomModelDataComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
@@ -62,7 +64,7 @@ public class SpellFrostSpikeRenderer extends EntityRenderer<SpellFrostSpikeEntit
 		matrices.translate((8.0 - 1.5) / 16.0, (8.0 - 0.5) / 16.0, (8.0 - 3.0) / 16.0);
 		if (CACHED_STACK == null) {
 			CACHED_STACK = new ItemStack(SscAddon.FROST_THORN);
-			CACHED_STACK.getOrCreateNbt().putInt("CustomModelData", 1);
+			CACHED_STACK.set(DataComponentTypes.CUSTOM_MODEL_DATA, new CustomModelDataComponent(1));
 		}
 		this.itemRenderer.renderItem(CACHED_STACK, ModelTransformationMode.GROUND, light, OverlayTexture.DEFAULT_UV,
 				matrices, vertexConsumers, entity.getWorld(), entity.getId());

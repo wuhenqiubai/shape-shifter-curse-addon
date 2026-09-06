@@ -403,6 +403,9 @@ public class SscAddonNetworking {
         BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_SWING_SYNC);
         BytePayload.registerC2S(PACKET_SPIDER_MOON_WEAVER_TOGGLE);
         BytePayload.registerC2S(PACKET_VENOM_SKILL_PRESS);
+        BytePayload.registerC2S(PACKET_SPELL_CAST);
+        BytePayload.registerC2S(PACKET_SPELL_SELECT);
+        BytePayload.registerC2S(PACKET_INFUSION_ALTAR_UPGRADE);
 
         ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_MANCIANIMA_TELEPORT), (bp, ctx) -> {
 			byte mode = bp.data().readByte();
@@ -487,21 +490,21 @@ public class SscAddonNetworking {
 		});
 
 		// SSCA 月尘魔法书 - 施法 / 切换选中槽
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_CAST, (server, player, handler, buf, responseSender) -> {
-			int slot = buf.readVarInt();
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.cast(player, slot));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPELL_CAST), (bp, ctx) -> {
+			int slot = bp.data().readVarInt();
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.cast(ctx.player(), slot));
 		});
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_SELECT, (server, player, handler, buf, responseSender) -> {
-			int slot = buf.readVarInt();
-			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.setSelected(player, slot));
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPELL_SELECT), (bp, ctx) -> {
+			int slot = bp.data().readVarInt();
+			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.setSelected(ctx.player(), slot));
 		});
 
 		// SSCA 注魔台 - 点击「升级」按钮（服务端权威重验：书可升级 + 催化超核 + 燃料纯晶）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_INFUSION_ALTAR_UPGRADE, (server, player, handler, buf, responseSender) -> {
-			server.execute(() -> {
-				if (player.currentScreenHandler instanceof InfusionAltarScreenHandler sh
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_INFUSION_ALTAR_UPGRADE), (bp, ctx) -> {
+			ctx.server().execute(() -> {
+				if (ctx.player().currentScreenHandler instanceof InfusionAltarScreenHandler sh
 						&& sh.getInventory() instanceof InfusionAltarBlockEntity be) {
-					be.tryUpgrade(player);
+					be.tryUpgrade(ctx.player());
 				}
 			});
 		});

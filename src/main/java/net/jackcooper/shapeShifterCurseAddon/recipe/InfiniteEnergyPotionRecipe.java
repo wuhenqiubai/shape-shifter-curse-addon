@@ -1,12 +1,16 @@
 package net.jackcooper.shapeShifterCurseAddon.recipe;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.potion.Potion;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
 import net.minecraft.recipe.input.CraftingRecipeInput;
 import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.RegCustomPotions;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
@@ -71,7 +75,9 @@ public class InfiniteEnergyPotionRecipe extends SpecialCraftingRecipe {
 		boolean isPotionBottle = stack.isOf(Items.POTION)
 				|| stack.isOf(Items.SPLASH_POTION)
 				|| stack.isOf(Items.LINGERING_POTION);
-		return isPotionBottle && PotionUtil.getPotion(stack) == RegCustomPotions.FEED_POTION;
+		PotionContentsComponent contents = stack.get(DataComponentTypes.POTION_CONTENTS);
+		Potion potion = contents != null ? contents.potion().map(RegistryEntry::value).orElse(null) : null;
+		return isPotionBottle && potion == RegCustomPotions.FEED_POTION;
 	}
 
 	@Override

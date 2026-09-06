@@ -1,5 +1,7 @@
 package net.jackcooper.shapeShifterCurseAddon.spell;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.world.World;
@@ -25,9 +27,15 @@ public final class ScrollData {
 	private ScrollData() {
 	}
 
+	/** 读取卷轴/魔法书组件里的自定义 NBT（无组件返回 null）。 */
+	private static NbtCompound getNbt(ItemStack stack) {
+		NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
+		return component == null ? null : component.copyNbt();
+	}
+
 	/** 读取卷轴绑定的魔法（无绑定或未注册返回 null）。 */
 	public static Spell getSpell(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtCompound nbt = getNbt(stack);
 		if (nbt == null || !nbt.contains(NBT_SPELL)) {
 			return null;
 		}
@@ -36,7 +44,7 @@ public final class ScrollData {
 
 	/** 剩余单独使用次数（未初始化时按等级对应品质的上限）。 */
 	public static int getUses(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtCompound nbt = getNbt(stack);
 		if (nbt != null && nbt.contains(NBT_USES)) {
 			return nbt.getInt(NBT_USES);
 		}
@@ -45,7 +53,7 @@ public final class ScrollData {
 	}
 
 	public static void setUses(ItemStack stack, int uses) {
-		stack.getOrCreateNbt().putInt(NBT_USES, Math.max(0, uses));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt(NBT_USES, Math.max(0, uses)));
 	}
 
 	/** 该卷轴等级对应品质的单独使用次数上限。 */
@@ -77,12 +85,12 @@ public final class ScrollData {
 	// ---- 单独使用冷却（卷轴自身 NBT 时间戳，双端一致）----
 
 	public static long getCooldownEnd(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtCompound nbt = getNbt(stack);
 		return (nbt != null && nbt.contains(NBT_CD)) ? nbt.getLong(NBT_CD) : 0L;
 	}
 
 	public static void setCooldownEnd(ItemStack stack, long endTime) {
-		stack.getOrCreateNbt().putLong(NBT_CD, endTime);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putLong(NBT_CD, endTime));
 	}
 
 	public static boolean isOnCooldown(ItemStack stack, World world) {
@@ -96,7 +104,7 @@ public final class ScrollData {
 
 	/** 魔法等级（1-5；无字段或缺省时为 1，与旧存档卷轴兼容）。 */
 	public static int getLevel(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtCompound nbt = getNbt(stack);
 		if (nbt != null && nbt.contains(NBT_LEVEL)) {
 			return Math.max(1, Math.min(MAX_SPELL_LEVEL, nbt.getInt(NBT_LEVEL)));
 		}
@@ -105,17 +113,19 @@ public final class ScrollData {
 
 	/** 写入魔法等级（内部工具/战利品生成用；等级固定不可升级，正常游玩无升级途径）。 */
 	public static void setLevel(ItemStack stack, int level) {
-		stack.getOrCreateNbt().putInt(NBT_LEVEL, Math.max(1, Math.min(MAX_SPELL_LEVEL, level)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt(NBT_LEVEL, Math.max(1, Math.min(MAX_SPELL_LEVEL, level))));
 	}
 
 	/** 新建一张绑定指定魔法的卷轴（次数按品质上限；可选指定等级，0/缺省=1）。 */
 	public static ItemStack create(String spellPath, int level) {
 		ItemStack stack = new ItemStack(net.jackcooper.shapeShifterCurseAddon.SscAddon.MAGIC_SCROLL);
 		Spell spell = SpellRegistry.get(spellPath);
-		stack.getOrCreateNbt().putString(NBT_SPELL, spellPath);
 		int lv = Math.max(1, Math.min(MAX_SPELL_LEVEL, level == 0 ? 1 : level));
-		stack.getOrCreateNbt().putInt(NBT_LEVEL, lv);
-		stack.getOrCreateNbt().putInt(NBT_USES, spell == null ? 0 : spell.getRarity(lv).soloUses);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+			nbt.putString(NBT_SPELL, spellPath);
+			nbt.putInt(NBT_LEVEL, lv);
+			nbt.putInt(NBT_USES, spell == null ? 0 : spell.getRarity(lv).soloUses);
+		});
 		return stack;
 	}
 

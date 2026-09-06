@@ -9,8 +9,12 @@ import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.potion.Potion;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.item.Items;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
@@ -60,7 +64,7 @@ public class SscSpecialRecipeTransferHandler implements TransferHandler {
 		boolean ours = display instanceof SscSpecialCraftingDisplay;
 		if (!ours && display instanceof DefaultCraftingDisplay<?> dd
 				&& dd.getOptionalRecipe().isPresent()
-				&& SSCA_REIPlugin.isSscSpecialRecipe(dd.getOptionalRecipe().get())) {
+				&& SSCA_REIPlugin.isSscSpecialRecipe(dd.getOptionalRecipe().get().value())) {
 			ours = true;
 		}
 		if (!ours && hasOurOutput(display)) {
@@ -126,9 +130,9 @@ public class SscSpecialRecipeTransferHandler implements TransferHandler {
 			requiredPerSlot = our.getRequiredPerSlot();
 		} else if (context.getDisplay() instanceof DefaultCraftingDisplay<?> dd
 				&& dd.getOptionalRecipe().isPresent()
-				&& SSCA_REIPlugin.gridFor(dd.getOptionalRecipe().get()) != null) {
+				&& SSCA_REIPlugin.gridFor(dd.getOptionalRecipe().get().value()) != null) {
 			requiredPerSlot = SscSpecialCraftingDisplay.requiredOf(
-					SSCA_REIPlugin.gridFor(dd.getOptionalRecipe().get()));
+					SSCA_REIPlugin.gridFor(dd.getOptionalRecipe().get().value()));
 		} else {
 			// 输出内容匹配的宽泛路径：按输出物品选网格
 			ItemStack[][] grid = outputGrid(context.getDisplay());
@@ -297,14 +301,18 @@ public class SscSpecialRecipeTransferHandler implements TransferHandler {
 	 * 注意：不能用 areEqual——它还比较 count（反编译确认：count 不等直接 false），
 	 * display 候选恒 count=1，背包堆叠材料永远匹配不上。 */
 	private static boolean stackMatches(ItemStack have, ItemStack want) {
-		if (ItemStack.canCombine(have, want)) {
+		if (ItemStack.areItemsAndComponentsEqual(have, want)) {
 			return true;
 		}
 		if (have.getItem() != want.getItem()) {
 			return false;
 		}
 		if (isPotionBottle(have) && isPotionBottle(want)) {
-			return net.minecraft.potion.PotionUtil.getPotion(have).equals(net.minecraft.potion.PotionUtil.getPotion(want));
+			PotionContentsComponent havePotion = have.get(DataComponentTypes.POTION_CONTENTS);
+			PotionContentsComponent wantPotion = want.get(DataComponentTypes.POTION_CONTENTS);
+			RegistryEntry<Potion> hp = havePotion != null ? havePotion.potion().orElse(null) : null;
+			RegistryEntry<Potion> wp = wantPotion != null ? wantPotion.potion().orElse(null) : null;
+			return java.util.Objects.equals(hp, wp);
 		}
 		return false;
 	}
@@ -319,7 +327,7 @@ public class SscSpecialRecipeTransferHandler implements TransferHandler {
 		// 优先同栈合并槽
 		for (int i = 0; i < PlayerInventory.MAIN_SIZE; i++) {
 			ItemStack s = inv.getStack(i);
-			if (!s.isEmpty() && ItemStack.canCombine(s, want) && s.getCount() < s.getMaxCount()) {
+			if (!s.isEmpty() && ItemStack.areItemsAndComponentsEqual(s, want) && s.getCount() < s.getMaxCount()) {
 				return i;
 			}
 		}

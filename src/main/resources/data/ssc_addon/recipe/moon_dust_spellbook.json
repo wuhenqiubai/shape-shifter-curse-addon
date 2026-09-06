@@ -12,7 +12,7 @@
     "L": { "item": "minecraft:leather" }
   },
   "result": {
-    "item": "ssc_addon:moon_dust_spellbook",
+    "id": "ssc_addon:moon_dust_spellbook",
     "count": 1
   }
 }

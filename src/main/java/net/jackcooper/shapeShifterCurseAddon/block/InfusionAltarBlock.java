@@ -1,5 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.block;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -16,7 +17,6 @@ import net.minecraft.state.property.Properties;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -31,6 +31,13 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressWarnings("deprecation")
 public class InfusionAltarBlock extends BlockWithEntity {
+
+	public static final MapCodec<InfusionAltarBlock> CODEC = createCodec(InfusionAltarBlock::new);
+
+	@Override
+	public MapCodec<InfusionAltarBlock> getCodec() {
+		return CODEC;
+	}
 
 	public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
 
@@ -72,7 +79,7 @@ public class InfusionAltarBlock extends BlockWithEntity {
 	}
 
 	@Override
-	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+	public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
 		if (world.isClient) {
 			return ActionResult.SUCCESS;
 		}
@@ -89,7 +96,7 @@ public class InfusionAltarBlock extends BlockWithEntity {
 		if (world.isClient) {
 			return null;
 		}
-		return checkType(type, RegAddonBlockEntities.INFUSION_ALTAR_BE, InfusionAltarBlockEntity::tick);
+		return validateTicker(type, RegAddonBlockEntities.INFUSION_ALTAR_BE, InfusionAltarBlockEntity::tick);
 	}
 
 	@Override

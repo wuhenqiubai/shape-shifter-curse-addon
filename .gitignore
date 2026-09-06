@@ -60,3 +60,4 @@ replay_pid*.log
 /.build-logs/compile7.log
 /.build-logs/build2.log
 /.build-logs/build-offline.log
+/docs/

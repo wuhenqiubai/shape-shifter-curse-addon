@@ -31,7 +31,7 @@ public final class SpellCastManager {
 		if (slot < 0 || slot >= count) {
 			return;
 		}
-		ItemStack scroll = SpellbookData.getScroll(book, slot);
+		ItemStack scroll = SpellbookData.getScroll(player.getWorld().getRegistryManager(), book, slot);
 		if (scroll.isEmpty()) {
 			return;
 		}

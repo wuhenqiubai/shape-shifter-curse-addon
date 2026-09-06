@@ -75,11 +75,11 @@ public final class RegAddonBlockEntities {
 
 		INFUSION_ALTAR_BE = Registry.register(
 				Registries.BLOCK_ENTITY_TYPE,
-				new Identifier(NAMESPACE, "infusion_altar"),
+				Identifier.of(NAMESPACE, "infusion_altar"),
 				FabricBlockEntityTypeBuilder.create(InfusionAltarBlockEntity::new, RegAddonBlocks.INFUSION_ALTAR).build());
 		INFUSION_ALTAR_SH = Registry.register(
 				Registries.SCREEN_HANDLER,
-				new Identifier(NAMESPACE, "infusion_altar"),
+				Identifier.of(NAMESPACE, "infusion_altar"),
 				new ScreenHandlerType<>(net.jackcooper.shapeShifterCurseAddon.screen.InfusionAltarScreenHandler::new, FeatureSet.empty()));
 	}
 }

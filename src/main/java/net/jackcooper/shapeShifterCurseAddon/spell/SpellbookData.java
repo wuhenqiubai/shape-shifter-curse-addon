@@ -1,8 +1,11 @@
 package net.jackcooper.shapeShifterCurseAddon.spell;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.world.World;
 
 /**
@@ -30,14 +33,20 @@ public final class SpellbookData {
 	private SpellbookData() {
 	}
 
+	/** 读取魔法书组件里的自定义 NBT（无组件返回 null）。 */
+	private static NbtCompound getNbt(ItemStack book) {
+		NbtComponent component = book.get(DataComponentTypes.CUSTOM_DATA);
+		return component == null ? null : component.copyNbt();
+	}
+
 	public static int getLevel(ItemStack book) {
-		NbtCompound nbt = book.getNbt();
+		NbtCompound nbt = getNbt(book);
 		int lv = (nbt != null && nbt.contains(NBT_LEVEL)) ? nbt.getInt(NBT_LEVEL) : 1;
 		return Math.max(1, Math.min(MAX_LEVEL, lv));
 	}
 
 	public static void setLevel(ItemStack book, int level) {
-		book.getOrCreateNbt().putInt(NBT_LEVEL, Math.max(1, Math.min(MAX_LEVEL, level)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> nbt.putInt(NBT_LEVEL, Math.max(1, Math.min(MAX_LEVEL, level))));
 	}
 
 	public static int getSlotCount(ItemStack book) {
@@ -49,7 +58,7 @@ public final class SpellbookData {
 	}
 
 	public static int getMana(ItemStack book) {
-		NbtCompound nbt = book.getNbt();
+		NbtCompound nbt = getNbt(book);
 		// 新书（无 Mana 字段）默认满法力
 		if (nbt == null || !nbt.contains(NBT_MANA)) {
 			return getMaxMana(book);
@@ -58,7 +67,7 @@ public final class SpellbookData {
 	}
 
 	public static void setMana(ItemStack book, int mana) {
-		book.getOrCreateNbt().putInt(NBT_MANA, Math.max(0, Math.min(getMaxMana(book), mana)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> nbt.putInt(NBT_MANA, Math.max(0, Math.min(getMaxMana(book), mana))));
 	}
 
 	/** 尝试消耗法力，够则扣除返回 true。 */
@@ -80,12 +89,12 @@ public final class SpellbookData {
 	}
 
 	public static int getExp(ItemStack book) {
-		NbtCompound nbt = book.getNbt();
+		NbtCompound nbt = getNbt(book);
 		return (nbt != null && nbt.contains(NBT_EXP)) ? nbt.getInt(NBT_EXP) : 0;
 	}
 
 	public static void setExp(ItemStack book, int exp) {
-		book.getOrCreateNbt().putInt(NBT_EXP, Math.max(0, exp));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> nbt.putInt(NBT_EXP, Math.max(0, exp)));
 	}
 
 	public static void addExp(ItemStack book, int amount) {
@@ -108,7 +117,7 @@ public final class SpellbookData {
 	}
 
 	public static int getSelectedSlot(ItemStack book) {
-		NbtCompound nbt = book.getNbt();
+		NbtCompound nbt = getNbt(book);
 		int sel = (nbt != null && nbt.contains(NBT_SELECTED)) ? nbt.getInt(NBT_SELECTED) : 0;
 		int count = getSlotCount(book);
 		if (count <= 0) {
@@ -120,14 +129,24 @@ public final class SpellbookData {
 	public static void setSelectedSlot(ItemStack book, int slot) {
 		int count = getSlotCount(book);
 		int s = count <= 0 ? 0 : ((slot % count) + count) % count;
-		book.getOrCreateNbt().putInt(NBT_SELECTED, s);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> nbt.putInt(NBT_SELECTED, s));
 	}
 
 	// ---- 卷轴槽读写（与 PotionBag 相同的 Items NbtList 结构）----
 
-	/** 指定槽是否装有卷轴（非空即算）。 */
+	/** 指定槽是否装有卷轴（非空即算；无需反序列化 ItemStack）。 */
 	public static boolean hasScroll(ItemStack book, int slot) {
-		return !getScroll(book, slot).isEmpty();
+		NbtCompound nbt = getNbt(book);
+		if (nbt == null || !nbt.contains(NBT_ITEMS, 9)) {
+			return false;
+		}
+		NbtList list = nbt.getList(NBT_ITEMS, 10);
+		for (int i = 0; i < list.size(); ++i) {
+			if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -160,8 +179,8 @@ public final class SpellbookData {
 		return -1;
 	}
 
-	public static ItemStack getScroll(ItemStack book, int slot) {
-		NbtCompound nbt = book.getNbt();
+	public static ItemStack getScroll(RegistryWrapper.WrapperLookup lookup, ItemStack book, int slot) {
+		NbtCompound nbt = getNbt(book);
 		if (nbt == null || !nbt.contains(NBT_ITEMS, 9)) {
 			return ItemStack.EMPTY;
 		}
@@ -169,33 +188,34 @@ public final class SpellbookData {
 		for (int i = 0; i < list.size(); ++i) {
 			NbtCompound tag = list.getCompound(i);
 			if ((tag.getByte("Slot") & 255) == slot) {
-				return ItemStack.fromNbt(tag);
+				return ItemStack.fromNbtOrEmpty(lookup, tag);
 			}
 		}
 		return ItemStack.EMPTY;
 	}
 
-	public static void setScroll(ItemStack book, int slot, ItemStack scroll) {
-		NbtCompound nbt = book.getOrCreateNbt();
-		NbtList list = nbt.contains(NBT_ITEMS, 9) ? nbt.getList(NBT_ITEMS, 10) : new NbtList();
-		for (int i = list.size() - 1; i >= 0; --i) {
-			if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
-				list.remove(i);
+	public static void setScroll(RegistryWrapper.WrapperLookup lookup, ItemStack book, int slot, ItemStack scroll) {
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> {
+			NbtList list = nbt.contains(NBT_ITEMS, 9) ? nbt.getList(NBT_ITEMS, 10) : new NbtList();
+			for (int i = list.size() - 1; i >= 0; --i) {
+				if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
+					list.remove(i);
+				}
 			}
-		}
-		if (!scroll.isEmpty()) {
-			NbtCompound tag = new NbtCompound();
-			tag.putByte("Slot", (byte) slot);
-			scroll.writeNbt(tag);
-			list.add(tag);
-		}
-		nbt.put(NBT_ITEMS, list);
+			if (!scroll.isEmpty()) {
+				NbtCompound tag = new NbtCompound();
+				tag.putByte("Slot", (byte) slot);
+				tag = (NbtCompound) scroll.encode(lookup, tag);
+				list.add(tag);
+			}
+			nbt.put(NBT_ITEMS, list);
+		});
 	}
 
 	// ---- 每槽冷却（世界时间戳，双端一致）----
 
 	public static long getCooldownEnd(ItemStack book, int slot) {
-		NbtCompound nbt = book.getNbt();
+		NbtCompound nbt = getNbt(book);
 		if (nbt == null || !nbt.contains(NBT_COOLDOWNS)) {
 			return 0L;
 		}
@@ -205,10 +225,11 @@ public final class SpellbookData {
 	}
 
 	public static void setCooldownEnd(ItemStack book, int slot, long endTime) {
-		NbtCompound nbt = book.getOrCreateNbt();
-		NbtCompound cds = nbt.contains(NBT_COOLDOWNS) ? nbt.getCompound(NBT_COOLDOWNS) : new NbtCompound();
-		cds.putLong(String.valueOf(slot), endTime);
-		nbt.put(NBT_COOLDOWNS, cds);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> {
+			NbtCompound cds = nbt.contains(NBT_COOLDOWNS) ? nbt.getCompound(NBT_COOLDOWNS) : new NbtCompound();
+			cds.putLong(String.valueOf(slot), endTime);
+			nbt.put(NBT_COOLDOWNS, cds);
+		});
 	}
 
 	public static boolean isOnCooldown(ItemStack book, int slot, World world) {

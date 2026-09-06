@@ -3,6 +3,8 @@ package net.jackcooper.shapeShifterCurseAddon.screen;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.spell.ScrollData;
 import net.jackcooper.shapeShifterCurseAddon.spell.SpellbookData;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
@@ -10,7 +12,7 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 
@@ -27,6 +29,7 @@ public class SpellbookScreenHandler extends ScreenHandler {
 	public final int bookExp;
 	public final int bookMana;
 	public final int bookMaxMana;
+	private final RegistryWrapper.WrapperLookup registryLookup;
 
 	/** 服务端构造：拿到真实魔法书 stack。 */
 	public SpellbookScreenHandler(int syncId, PlayerInventory playerInv, ItemStack bookStack) {
@@ -38,15 +41,16 @@ public class SpellbookScreenHandler extends ScreenHandler {
 				SpellbookData.getMaxMana(bookStack));
 	}
 
-	/** 客户端构造：从开屏数据包读取槽数与等级/法力快照。 */
-	public SpellbookScreenHandler(int syncId, PlayerInventory playerInv, PacketByteBuf buf) {
+	/** 客户端构造：从开屏数据（{@link SpellbookScreenData}）读取槽数与等级/法力快照。 */
+	public SpellbookScreenHandler(int syncId, PlayerInventory playerInv, SpellbookScreenData data) {
 		this(syncId, playerInv, ItemStack.EMPTY,
-				buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt(), buf.readInt());
+				data.slotCount(), data.level(), data.exp(), data.mana(), data.maxMana());
 	}
 
 	private SpellbookScreenHandler(int syncId, PlayerInventory playerInv, ItemStack bookStack,
 			int slotCount, int level, int exp, int mana, int maxMana) {
 		super(SscAddon.SPELLBOOK_SCREEN_HANDLER, syncId);
+		this.registryLookup = playerInv.player.getWorld().getRegistryManager();
 		this.bookStack = bookStack;
 		this.slotCount = Math.max(1, Math.min(SpellbookData.MAX_SLOTS, slotCount));
 		this.bookLevel = level;
@@ -72,7 +76,8 @@ public class SpellbookScreenHandler extends ScreenHandler {
 			}
 		};
 
-		loadFromNbt(bookStack.getNbt());
+		NbtComponent bookComponent = bookStack.get(DataComponentTypes.CUSTOM_DATA);
+		loadFromNbt(bookComponent == null ? null : bookComponent.copyNbt(), this.registryLookup);
 		inventory.onOpen(playerInv.player);
 
 		// 卷轴槽横排居中（GUI 宽 176）
@@ -132,14 +137,14 @@ public class SpellbookScreenHandler extends ScreenHandler {
 		return newStack;
 	}
 
-	private void loadFromNbt(NbtCompound nbt) {
+	private void loadFromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
 		if (nbt != null && nbt.contains(SpellbookData.NBT_ITEMS, 9)) {
 			NbtList list = nbt.getList(SpellbookData.NBT_ITEMS, 10);
 			for (int i = 0; i < list.size(); ++i) {
 				NbtCompound itemTag = list.getCompound(i);
 				int slot = itemTag.getByte("Slot") & 255;
 				if (slot >= 0 && slot < inventory.size()) {
-					inventory.setStack(slot, ItemStack.fromNbt(itemTag));
+					inventory.setStack(slot, ItemStack.fromNbtOrEmpty(lookup, itemTag));
 				}
 			}
 		}
@@ -153,11 +158,11 @@ public class SpellbookScreenHandler extends ScreenHandler {
 				if (!stack.isEmpty()) {
 					NbtCompound itemTag = new NbtCompound();
 					itemTag.putByte("Slot", (byte) i);
-					stack.writeNbt(itemTag);
+					itemTag = (NbtCompound) stack.encode(this.registryLookup, itemTag);
 					list.add(itemTag);
 				}
 			}
-			bookStack.getOrCreateNbt().put(SpellbookData.NBT_ITEMS, list);
+			NbtComponent.set(DataComponentTypes.CUSTOM_DATA, bookStack, nbt -> nbt.put(SpellbookData.NBT_ITEMS, list));
 		}
 	}
 

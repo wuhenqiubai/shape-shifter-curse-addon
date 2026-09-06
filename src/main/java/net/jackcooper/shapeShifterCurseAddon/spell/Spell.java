@@ -114,6 +114,6 @@ public abstract class Spell {
 	 * 返回 null 表示无专用图标（HUD 回落到绘制卷轴物品本身）。
 	 */
 	public Identifier getIconTexture() {
-		return new Identifier("ssc_addon", "textures/gui/spell_icons/" + id.getPath() + ".png");
+		return Identifier.of("ssc_addon", "textures/gui/spell_icons/" + id.getPath() + ".png");
 	}
 }

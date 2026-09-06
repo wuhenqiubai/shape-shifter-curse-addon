@@ -1,10 +1,11 @@
 package net.jackcooper.shapeShifterCurseAddon.loot;
 
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.function.SetNbtLootFunction;
+import net.minecraft.loot.entry.LootPoolEntry;
+import net.minecraft.loot.function.SetCustomDataLootFunction;
 import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.util.Identifier;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
@@ -32,45 +33,45 @@ public final class MagicScrollLoot {
 	/** 目标原版结构箱子战利品表（覆盖常见探险结构，与故事书生成同域）。 */
 	private static final Identifier[] TARGET_CHESTS = {
 			// 村庄各类箱子
-			new Identifier("minecraft", "chests/village/village_plains_house"),
-			new Identifier("minecraft", "chests/village/village_savanna_house"),
-			new Identifier("minecraft", "chests/village/village_snowy_house"),
-			new Identifier("minecraft", "chests/village/village_desert_house"),
-			new Identifier("minecraft", "chests/village/village_taiga_house"),
-			new Identifier("minecraft", "chests/village/village_fisher"),
-			new Identifier("minecraft", "chests/village/village_armorer"),
-			new Identifier("minecraft", "chests/village/village_butcher"),
-			new Identifier("minecraft", "chests/village/village_cartographer"),
-			new Identifier("minecraft", "chests/village/village_mason"),
-			new Identifier("minecraft", "chests/village/village_shepherd"),
-			new Identifier("minecraft", "chests/village/village_tannery"),
-			new Identifier("minecraft", "chests/village/village_temple"),
-			new Identifier("minecraft", "chests/village/village_toolsmith"),
-			new Identifier("minecraft", "chests/village/village_weaponsmith"),
+			Identifier.of("minecraft", "chests/village/village_plains_house"),
+			Identifier.of("minecraft", "chests/village/village_savanna_house"),
+			Identifier.of("minecraft", "chests/village/village_snowy_house"),
+			Identifier.of("minecraft", "chests/village/village_desert_house"),
+			Identifier.of("minecraft", "chests/village/village_taiga_house"),
+			Identifier.of("minecraft", "chests/village/village_fisher"),
+			Identifier.of("minecraft", "chests/village/village_armorer"),
+			Identifier.of("minecraft", "chests/village/village_butcher"),
+			Identifier.of("minecraft", "chests/village/village_cartographer"),
+			Identifier.of("minecraft", "chests/village/village_mason"),
+			Identifier.of("minecraft", "chests/village/village_shepherd"),
+			Identifier.of("minecraft", "chests/village/village_tannery"),
+			Identifier.of("minecraft", "chests/village/village_temple"),
+			Identifier.of("minecraft", "chests/village/village_toolsmith"),
+			Identifier.of("minecraft", "chests/village/village_weaponsmith"),
 			// 地下城 / 废弃矿井 / 雪屋 / 林地府邸 / 废弃传送门
-			new Identifier("minecraft", "chests/simple_dungeon"),
-			new Identifier("minecraft", "chests/abandoned_mineshaft"),
-			new Identifier("minecraft", "chests/igloo_chest"),
-			new Identifier("minecraft", "chests/woodland_mansion"),
-			new Identifier("minecraft", "chests/ruined_portal"),
+			Identifier.of("minecraft", "chests/simple_dungeon"),
+			Identifier.of("minecraft", "chests/abandoned_mineshaft"),
+			Identifier.of("minecraft", "chests/igloo_chest"),
+			Identifier.of("minecraft", "chests/woodland_mansion"),
+			Identifier.of("minecraft", "chests/ruined_portal"),
 			// 沉船 / 埋藏的宝藏 / 水下遗迹
-			new Identifier("minecraft", "chests/shipwreck_supply"),
-			new Identifier("minecraft", "chests/shipwreck_treasure"),
-			new Identifier("minecraft", "chests/buried_treasure"),
-			new Identifier("minecraft", "chests/underwater_ruin_small"),
-			new Identifier("minecraft", "chests/underwater_ruin_big"),
+			Identifier.of("minecraft", "chests/shipwreck_supply"),
+			Identifier.of("minecraft", "chests/shipwreck_treasure"),
+			Identifier.of("minecraft", "chests/buried_treasure"),
+			Identifier.of("minecraft", "chests/underwater_ruin_small"),
+			Identifier.of("minecraft", "chests/underwater_ruin_big"),
 			// 要塞 / 古城 / 堡垒遗迹 / 末地城
-			new Identifier("minecraft", "chests/stronghold_library"),
-			new Identifier("minecraft", "chests/stronghold_corridor"),
-			new Identifier("minecraft", "chests/stronghold_crossing"),
-			new Identifier("minecraft", "chests/ancient_city"),
-			new Identifier("minecraft", "chests/bastion_other"),
-			new Identifier("minecraft", "chests/end_city_treasure")
+			Identifier.of("minecraft", "chests/stronghold_library"),
+			Identifier.of("minecraft", "chests/stronghold_corridor"),
+			Identifier.of("minecraft", "chests/stronghold_crossing"),
+			Identifier.of("minecraft", "chests/ancient_city"),
+			Identifier.of("minecraft", "chests/bastion_other"),
+			Identifier.of("minecraft", "chests/end_city_treasure")
 	};
 
 	public static void register() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!isTargetChest(id)) {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (!isTargetChest(key.getValue())) {
 				return;
 			}
 			// 5% 概率触发；触发后按权重在冰锥 1-5 级卷轴中抽一张（等级写死进 NBT）
@@ -86,14 +87,14 @@ public final class MagicScrollLoot {
 
 	// 1.20.1 中 SetNbtLootFunction.builder(NbtCompound) 是唯一可用重载（@Deprecated 但无替代，同 StoryBookLoot）
 	@SuppressWarnings("deprecation")
-	private static net.minecraft.loot.entry.LootPoolEntry.Builder<?> scrollEntry(int level, int weight) {
+	private static LootPoolEntry.Builder<?> scrollEntry(int level, int weight) {
 		NbtCompound nbt = new NbtCompound();
 		nbt.putString(ScrollData.NBT_SPELL, "frost_spike");
 		// 单独使用次数按等级对应品质上限（冰锥：白8/绿6/蓝4/紫2/橙1）
 		nbt.putInt(ScrollData.NBT_USES, SpellRegistry.get("frost_spike").getRarity(level).soloUses);
 		nbt.putInt(ScrollData.NBT_LEVEL, level);
 		return ItemEntry.builder(SscAddon.MAGIC_SCROLL)
-				.apply(SetNbtLootFunction.builder(nbt))
+				.apply(SetCustomDataLootFunction.builder(nbt))
 				.weight(weight);
 	}
 

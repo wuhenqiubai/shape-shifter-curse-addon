@@ -502,7 +502,7 @@ public class SscAddonClient implements ClientModInitializer {
 		ModelPredicateProviderRegistry.register(SscAddon.INFINITE_ENERGY_POTION_LINGERING, Identifier.of("ssc_addon", "empty"), infiniteEnergyEmptyPredicate);
 
 		// 魔法卷轴：ice 谓词（1=冰系魔法卷轴，切换为冰锥卷轴贴图；HUD 魔法图标不受影响，仍用 spell_icons）
-		ModelPredicateProviderRegistry.register(SscAddon.MAGIC_SCROLL, new Identifier("ssc_addon", "ice"),
+		ModelPredicateProviderRegistry.register(SscAddon.MAGIC_SCROLL, Identifier.of("ssc_addon", "ice"),
 				(stack, world, entity, seed) -> {
 					net.jackcooper.shapeShifterCurseAddon.spell.Spell s =
 							net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.getSpell(stack);

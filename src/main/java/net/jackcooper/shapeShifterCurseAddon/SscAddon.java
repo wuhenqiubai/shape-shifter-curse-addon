@@ -8,12 +8,14 @@ import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks;
 import net.jackcooper.shapeShifterCurseAddon.criteria.OnTransformAddonForm;
 import net.jackcooper.shapeShifterCurseAddon.item.PsionicOrbItem;
 import net.jackcooper.shapeShifterCurseAddon.item.SeaCrystalPendantItem;
-import net.jackcooper.shapeShifterCurseAddon.loot.EvolutionItemsLoot;
 import net.jackcooper.shapeShifterCurseAddon.recipe.*;
+import net.jackcooper.shapeShifterCurseAddon.screen.SpellbookScreenData;
+import net.jackcooper.shapeShifterCurseAddon.screen.SpellbookScreenHandler;
 import net.minecraft.block.jukebox.JukeboxSong;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityDimensions;
@@ -63,8 +65,7 @@ import net.jackcooper.shapeShifterCurseAddon.ability.GoldenSandstormRegen;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import net.jackcooper.shapeShifterCurseAddon.entity.ThrownWaterSpearEntity;
 import net.jackcooper.shapeShifterCurseAddon.entity.FoxFireballEntity;
 import net.jackcooper.shapeShifterCurseAddon.entity.ParasiticSeedProjectile;
@@ -211,8 +212,8 @@ public class SscAddon implements ModInitializer {
 			registerEntity("parasitic_seed", SpawnGroup.MISC, ParasiticSeedProjectile::new, 0.25f, 0.25f, 64, 10);
 	public static final ScreenHandlerType<PotionBagScreenHandler> POTION_BAG_SCREEN_HANDLER = new ScreenHandlerType<>(PotionBagScreenHandler::new, FeatureSet.empty());
 	// 月尘魔法书配置界面（ExtendedScreenHandler：把卷轴槽数与等级/法力快照传给客户端）
-	public static final ScreenHandlerType<net.jackcooper.shapeShifterCurseAddon.screen.SpellbookScreenHandler> SPELLBOOK_SCREEN_HANDLER =
-			new net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType<>((syncId, inv, buf) -> new net.jackcooper.shapeShifterCurseAddon.screen.SpellbookScreenHandler(syncId, inv, buf));
+	public static final ScreenHandlerType<SpellbookScreenHandler> SPELLBOOK_SCREEN_HANDLER =
+			new ExtendedScreenHandlerType<>((syncId, inv, data) -> new SpellbookScreenHandler(syncId, inv, data), SpellbookScreenData.PACKET_CODEC);
 	public static final EntityType<FrostStormEntity> FROST_STORM_ENTITY =
 			registerEntity("frost_storm", SpawnGroup.MISC, FrostStormEntity::new, 1.0f, 2.0f, 64, 10);
 	// 荧光幼灵 - 潮汐波动粒子球实体

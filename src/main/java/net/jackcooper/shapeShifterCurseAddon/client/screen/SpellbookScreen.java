@@ -14,8 +14,8 @@ import net.minecraft.util.Identifier;
  */
 public class SpellbookScreen extends HandledScreen<SpellbookScreenHandler> {
 
-	private static final Identifier TEXTURE = new Identifier("ssc_addon", "textures/gui/moon_dust_spellbook.png");
-	private static final Identifier SLOT_CELL = new Identifier("ssc_addon", "textures/gui/spellbook_slot.png");
+	private static final Identifier TEXTURE = Identifier.of("ssc_addon", "textures/gui/moon_dust_spellbook.png");
+	private static final Identifier SLOT_CELL = Identifier.of("ssc_addon", "textures/gui/spellbook_slot.png");
 
 	public SpellbookScreen(SpellbookScreenHandler handler, PlayerInventory inventory, Text title) {
 		super(handler, inventory, title);
@@ -49,7 +49,7 @@ public class SpellbookScreen extends HandledScreen<SpellbookScreenHandler> {
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		this.renderBackground(context);
+		this.renderBackground(context, mouseX, mouseY, delta);
 		super.render(context, mouseX, mouseY, delta);
 		this.drawMouseoverTooltip(context, mouseX, mouseY);
 	}

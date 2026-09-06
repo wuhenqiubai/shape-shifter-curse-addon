@@ -8,6 +8,7 @@ import me.shedaniel.rei.api.common.util.EntryStacks;
 import me.shedaniel.rei.plugin.common.displays.crafting.DefaultCraftingDisplay;
 import me.shedaniel.rei.plugin.common.displays.brewing.DefaultBrewingDisplay;
 import net.minecraft.component.type.PotionContentsComponent;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Potions;
 import net.minecraft.registry.Registries;
@@ -54,13 +55,13 @@ public class SSCA_REIPlugin implements REIClientPlugin {
 	/**
 	 * 毒液腺体配方卡片：8 蜘蛛眼环绕 + 中心剧毒药水（三种瓶型可切换）。
 	 * 使用 SscSpecialCraftingDisplay 以获得支持 NBT 药水的快速转移。
-	 */
-	/** 毒液腺体配方网格：8 蜘蛛眼环绕 + 中心剧毒药水（三种瓶型）。 */
+	 *毒液腺体配方网格：8 蜘蛛眼环绕 + 中心剧毒药水（三种瓶型）。
+	 **/
 	static ItemStack[][] venomGlandGrid() {
 		ItemStack[] poisonAlts = new ItemStack[]{
-				PotionUtil.setPotion(new ItemStack(Items.POTION), Potions.POISON),
-				PotionUtil.setPotion(new ItemStack(Items.SPLASH_POTION), Potions.POISON),
-				PotionUtil.setPotion(new ItemStack(Items.LINGERING_POTION), Potions.POISON)};
+				PotionContentsComponent.createStack(Items.POTION, Potions.POISON),
+				PotionContentsComponent.createStack(Items.SPLASH_POTION, Potions.POISON),
+				PotionContentsComponent.createStack(Items.LINGERING_POTION, Potions.POISON)};
 		ItemStack[][] grid = new ItemStack[9][];
 		for (int i = 0; i < 9; i++) {
 			grid[i] = (i == 4) ? poisonAlts : new ItemStack[]{new ItemStack(Items.SPIDER_EYE)};
@@ -92,13 +93,13 @@ public class SSCA_REIPlugin implements REIClientPlugin {
 	/**
 	 * 无限压缩能量药水配方卡片：上中月髓环 + 中间行 附魔金苹果/压缩能量药水（三种瓶型）/附魔金苹果。
 	 * 使用 SscSpecialCraftingDisplay 以获得支持 NBT 药水的快速转移。
-	 */
-	/** 无限压缩能量药水配方网格：上中月髓环 + 中间行 附魔金苹果/压缩能量药水（三种瓶型）/附魔金苹果。 */
+	 * 无限压缩能量药水配方网格：上中月髓环 + 中间行 附魔金苹果/压缩能量药水（三种瓶型）/附魔金苹果。
+	 **/
 	static ItemStack[][] infiniteEnergyPotionGrid() {
 		ItemStack[] feedAlts = new ItemStack[]{
-				PotionUtil.setPotion(new ItemStack(Items.POTION), RegCustomPotions.FEED_POTION),
-				PotionUtil.setPotion(new ItemStack(Items.SPLASH_POTION), RegCustomPotions.FEED_POTION),
-				PotionUtil.setPotion(new ItemStack(Items.LINGERING_POTION), RegCustomPotions.FEED_POTION)};
+				PotionContentsComponent.createStack(Items.POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION)),
+				PotionContentsComponent.createStack(Items.SPLASH_POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION)),
+				PotionContentsComponent.createStack(Items.LINGERING_POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION))};
 		ItemStack[] moonRing = new ItemStack[]{new ItemStack(SscAddon.SP_UPGRADE_THING)};
 		ItemStack[] apple = new ItemStack[]{new ItemStack(Items.ENCHANTED_GOLDEN_APPLE)};
 		ItemStack[][] grid = new ItemStack[9][];

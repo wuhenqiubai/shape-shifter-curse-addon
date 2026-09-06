@@ -182,9 +182,9 @@ public class SSCA_JEIPlugin implements IModPlugin {
 			// 3×3：上中=月髓环，中间行=附魔金苹果 / 压缩能量药水（三种瓶型可循环）/ 附魔金苹果，其余为空槽
 			ItemStack moonRing = new ItemStack(SscAddon.SP_UPGRADE_THING);
 			ItemStack apple = new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
-			ItemStack feedDrink = PotionUtil.setPotion(new ItemStack(Items.POTION), RegCustomPotions.FEED_POTION);
-			ItemStack feedSplash = PotionUtil.setPotion(new ItemStack(Items.SPLASH_POTION), RegCustomPotions.FEED_POTION);
-			ItemStack feedLingering = PotionUtil.setPotion(new ItemStack(Items.LINGERING_POTION), RegCustomPotions.FEED_POTION);
+			ItemStack feedDrink = PotionContentsComponent.createStack(Items.POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION));
+			ItemStack feedSplash = PotionContentsComponent.createStack(Items.SPLASH_POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION));
+			ItemStack feedLingering = PotionContentsComponent.createStack(Items.LINGERING_POTION, Registries.POTION.getEntry(RegCustomPotions.FEED_POTION));
 			for (int row = 0; row < 3; row++) {
 				for (int col = 0; col < 3; col++) {
 					int idx = row * 3 + col;

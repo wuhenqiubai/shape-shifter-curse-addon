@@ -11,7 +11,7 @@
     "S": { "item": "minecraft:smooth_stone" }
   },
   "result": {
-    "item": "ssc_addon:infusion_altar",
+    "id": "ssc_addon:infusion_altar",
     "count": 1
   }
 }

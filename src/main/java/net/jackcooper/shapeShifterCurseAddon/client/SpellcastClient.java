@@ -14,6 +14,7 @@ import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.spell.SpellbookData;
 import net.jackcooper.shapeShifterCurseAddon.util.TrinketUtils;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 
 /**
  * 月尘魔法书施法客户端检测器（jackcooper）。仅在佩戴魔法书时生效。
@@ -122,12 +123,12 @@ public final class SpellcastClient {
 	private static void sendCast(int slot) {
 		PacketByteBuf buf = PacketByteBufs.create();
 		buf.writeVarInt(slot);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_SPELL_CAST, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SPELL_CAST), buf));
 	}
 
 	private static void sendSelect(int slot) {
 		PacketByteBuf buf = PacketByteBufs.create();
 		buf.writeVarInt(slot);
-		ClientPlayNetworking.send(SscAddonNetworking.PACKET_SPELL_SELECT, buf);
+		ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_SPELL_SELECT), buf));
 	}
 }

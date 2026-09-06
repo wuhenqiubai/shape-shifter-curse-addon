@@ -1,12 +1,12 @@
 package net.jackcooper.shapeShifterCurseAddon.item;
 
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.jackcooper.shapeShifterCurseAddon.screen.SpellbookScreenData;
 import net.jackcooper.shapeShifterCurseAddon.screen.SpellbookScreenHandler;
 import net.jackcooper.shapeShifterCurseAddon.spell.SpellbookData;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -16,7 +16,6 @@ import net.minecraft.util.TypedActionResult;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import net.onixary.shapeShifterCurseFabric.items.accessory.AccessoryItem;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -44,7 +43,7 @@ public class MoonDustSpellbookItem extends AccessoryItem {
 		// 潜行 + 右键：打开魔法书配置界面
 		if (user.isSneaking()) {
 			if (!world.isClient) {
-				user.openHandledScreen(new ExtendedScreenHandlerFactory() {
+				user.openHandledScreen(new ExtendedScreenHandlerFactory<SpellbookScreenData>() {
 					@Override
 					public Text getDisplayName() {
 						return stack.getName();
@@ -56,12 +55,13 @@ public class MoonDustSpellbookItem extends AccessoryItem {
 					}
 
 					@Override
-					public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
-						buf.writeInt(SpellbookData.getSlotCount(stack));
-						buf.writeInt(SpellbookData.getLevel(stack));
-						buf.writeInt(SpellbookData.getExp(stack));
-						buf.writeInt(SpellbookData.getMana(stack));
-						buf.writeInt(SpellbookData.getMaxMana(stack));
+					public SpellbookScreenData getScreenOpeningData(ServerPlayerEntity player) {
+						return new SpellbookScreenData(
+								SpellbookData.getSlotCount(stack),
+								SpellbookData.getLevel(stack),
+								SpellbookData.getExp(stack),
+								SpellbookData.getMana(stack),
+								SpellbookData.getMaxMana(stack));
 					}
 				});
 			}
@@ -71,7 +71,7 @@ public class MoonDustSpellbookItem extends AccessoryItem {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		int level = SpellbookData.getLevel(stack);
 		int slots = SpellbookData.getSlotCount(stack);
 		int mana = SpellbookData.getMana(stack);
@@ -84,6 +84,6 @@ public class MoonDustSpellbookItem extends AccessoryItem {
 					SpellbookData.getExp(stack), need).formatted(Formatting.GRAY));
 		}
 		tooltip.add(Text.translatable("item.ssc_addon.moon_dust_spellbook.tip_hint").formatted(Formatting.DARK_GRAY));
-		super.appendTooltip(stack, world, tooltip, context);
+		super.appendTooltip(stack, context, tooltip, type);
 	}
 }
