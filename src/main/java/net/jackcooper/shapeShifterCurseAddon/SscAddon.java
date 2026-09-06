@@ -282,10 +282,12 @@ public class SscAddon implements ModInitializer {
 					.entries((displayContext, entries) -> {
 						entries.add(SP_UPGRADE_THING);
 						entries.add(MOON_DUST_SPELLBOOK);
-						// 每个已注册魔法生成一张满次数的绑定卷轴（空白卷轴无法放入魔法书）
-						for (net.jackcooper.shapeShifterCurseAddon.spell.Spell spell :
-								net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry.all()) {
-							entries.add(net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.create(spell.getId().getPath()));
+					// 每个已注册魔法生成全套等级卷轴（冰锥 1-5 级对应白/绿/蓝/紫/橙品质；空白卷轴无法放入魔法书）
+					for (net.jackcooper.shapeShifterCurseAddon.spell.Spell spell :
+							net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry.all()) {
+						for (int lv = 1; lv <= net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.MAX_SPELL_LEVEL; lv++) {
+							entries.add(net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.create(spell.getId().getPath(), lv));
+						}
 						}
 						entries.add(EVOLUTION_STONE);
 						entries.add(PSIONIC_ORB);
@@ -547,6 +549,7 @@ public class SscAddon implements ModInitializer {
 		HumusRingItem.registerLootTable();
 		net.jackcooper.shapeShifterCurseAddon.item.SeaCrystalPendantItem.registerLootTable();
 		net.jackcooper.shapeShifterCurseAddon.loot.EvolutionItemsLoot.register();
+		net.jackcooper.shapeShifterCurseAddon.loot.MagicScrollLoot.register();
 	}
 
 	private void registerCommands() {

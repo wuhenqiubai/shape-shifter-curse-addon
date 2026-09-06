@@ -31,6 +31,14 @@ public abstract class Spell {
 		return rarity;
 	}
 
+	/**
+	 * 指定等级下的有效品质（默认恒为构造时品质；「等级对应品质」的魔法如冰锥覆写）。
+	 * 品质决定：单独使用次数上限、名称颜色、HUD 品质覆盖层颜色。
+	 */
+	public SpellRarity getRarity(int level) {
+		return rarity;
+	}
+
 	/** 基础伤害（装书内、卷轴满次数时）。无伤害类魔法可返回 0。 */
 	public abstract float getBaseDamage();
 
@@ -58,6 +66,21 @@ public abstract class Spell {
 		return 2.0f;
 	}
 
+	/** 指定等级的伤害倍率（相对基础值；默认全等级 1.0，有等级成长的魔法覆写）。 */
+	public float getDamageMultiplier(int level) {
+		return 1.0f;
+	}
+
+	/** 指定等级的冷却倍率（相对基础值；默认全等级 1.0，有等级成长的魔法覆写）。 */
+	public float getCooldownMultiplier(int level) {
+		return 1.0f;
+	}
+
+	/** 指定等级的飞行速度倍率（相对基础值；默认全等级 1.0，无投射物魔法不受影响）。 */
+	public float getSpeedMultiplier(int level) {
+		return 1.0f;
+	}
+
 	/**
 	 * 释放魔法（服务端权威）。伤害/范围等已由调用方按耐久与单独/装书惩罚算好，通过 {@code power} 传入。
 	 *
@@ -75,6 +98,14 @@ public abstract class Spell {
 	/** 魔法描述 lang key。 */
 	public String getDescKey() {
 		return "spell.ssc_addon." + id.getPath() + ".description";
+	}
+
+	/**
+	 * 是否为冰系魔法（决定卷轴物品外观：冰系魔法卷轴用冰锥卷轴贴图；HUD 魔法图标不受影响）。
+	 * 默认 false，冰系魔法子类覆写。
+	 */
+	public boolean isIceSpell() {
+		return false;
 	}
 
 	/**

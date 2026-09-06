@@ -50,11 +50,16 @@ public final class SpellCastManager {
 		}
 
 		float ratio = ScrollData.getDurabilityRatio(scroll);   // 1=满次数, 越低惩罚越大
-		float damage = spell.getBaseDamage() * ratio;
-		int cd = Math.round(spell.getBaseCooldownTicks() * (2.0f - ratio));
+		int level = ScrollData.getLevel(scroll);              // 魔法等级（1-5，开箱固定）
+		float damage = spell.getBaseDamage() * ratio * spell.getDamageMultiplier(level);
+		int cd = Math.round(spell.getBaseCooldownTicks() * (2.0f - ratio) * spell.getCooldownMultiplier(level));
 
 		SpellbookData.consumeMana(book, manaCost);
-		spell.cast(player, damage, false);
+		if (spell instanceof net.jackcooper.shapeShifterCurseAddon.spell.spells.FrostSpikeSpell frostSpike) {
+			frostSpike.cast(player, damage, false, level); // 冰锥：速度与投射物外观也按等级缩放
+		} else {
+			spell.cast(player, damage, false);
+		}
 		SpellbookData.setCooldownEnd(book, slot, world.getTime() + cd);
 		SpellbookData.addExp(book, 1);
 	}

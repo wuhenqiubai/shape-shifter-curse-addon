@@ -1033,7 +1033,7 @@
   "item.ssc_addon.moon_dust_spellbook.tip_exp": "经验 %1$s / %2$s（可在注魔台升级）",
   "item.ssc_addon.moon_dust_spellbook.tip_hint": "潜行+右键 打开配置界面 · 装入饰品槽后可施法",
   "item.ssc_addon.magic_scroll": "魔法卷轴",
-  "item.ssc_addon.magic_scroll.format": "%s卷轴",
+  "item.ssc_addon.magic_scroll.format": "%s 卷轴",
   "item.ssc_addon.magic_scroll.tip_in_book": "装书内：%1$s 点伤害 · 冷却 %2$s 秒 · 耗法力 %3$s",
   "item.ssc_addon.magic_scroll.tip_uses": "单独使用次数：%1$s / %2$s",
   "item.ssc_addon.magic_scroll.tip_solo": "单独使用：%1$s 点伤害 · 冷却 %2$s 秒",
@@ -1063,5 +1063,6 @@
   "message.ssc_addon.spellbook.no_mana": "法力不足",
   "block.ssc_addon.infusion_altar": "注魔台",
   "item.ssc_addon.magic_scroll.tip_empty": "空白卷轴（未绑定魔法，无法放入魔法书）",
+  "item.ssc_addon.magic_scroll.level": "魔法等级 %s",
   "gui.ssc_addon.infusion_altar.upgrade": "升级"
 }

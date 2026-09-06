@@ -1063,5 +1063,6 @@
   "message.ssc_addon.spellbook.no_mana": "Not enough mana",
   "block.ssc_addon.infusion_altar": "Infusion Altar",
   "item.ssc_addon.magic_scroll.tip_empty": "Blank Scroll (no spell bound; can't be placed in a spellbook)",
+  "item.ssc_addon.magic_scroll.level": "Spell Level %s",
   "gui.ssc_addon.infusion_altar.upgrade": "Upgrade"
 }
