@@ -52,7 +52,8 @@
     ],
     "cardinal-components-entity": [
       "net.jackcooper.shapeShifterCurseAddon.evolution.RegEvolutionComponent",
-      "net.jackcooper.shapeShifterCurseAddon.state.RegSpiderMoonWeaverStateComponent"
+      "net.jackcooper.shapeShifterCurseAddon.state.RegSpiderMoonWeaverStateComponent",
+      "net.jackcooper.shapeShifterCurseAddon.spell.RegFormationKnowledgeComponent"
     ]
   },
   "mixins": [
@@ -75,7 +76,8 @@
   "custom": {
     "cardinal-components": [
       "ssc_addon:evolution",
-      "ssc_addon:spider_moon_weaver_state"
+      "ssc_addon:spider_moon_weaver_state",
+      "ssc_addon:formation_knowledge"
     ]
   }
 }

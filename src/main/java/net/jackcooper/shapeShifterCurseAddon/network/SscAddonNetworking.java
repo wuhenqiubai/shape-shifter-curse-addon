@@ -118,6 +118,10 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_SPOOK_GHOST = Identifier.of("my_addon", "spook_ghost");
 	/** C2S：注魔台 - 点击「升级」按钮请求升级魔法书。无 payload，服务端重验条件后扣材料。 */
 	public static final Identifier PACKET_INFUSION_ALTAR_UPGRADE = Identifier.of("my_addon", "infusion_altar_upgrade");
+	/** C2S：法术研究台 - 抄写法阵。payload: String elementId + varint level。服务端重验：已学习+纸+对应系墨×等级。 */
+	public static final Identifier PACKET_FORMATION_SCRIBE = Identifier.of("my_addon", "formation_scribe");
+	/** C2S：法术研究台 - 学习法阵。payload: String elementId + varint level。服务端重验：已记录+月尘够。 */
+	public static final Identifier PACKET_FORMATION_LEARN = Identifier.of("my_addon", "formation_learn");
 
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
 	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
@@ -157,6 +161,10 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_BROADCAST_FORMS = Identifier.of("my_addon", "broadcast_forms");
 	/** S2C：把所有 SSCA 进化路线定义（JSON）同步给客户端，供进化树 UI 渲染。payload: int count + count*(routeId + rawJson) */
 	public static final Identifier PACKET_EVO_ROUTES_SYNC = Identifier.of("my_addon", "evo_routes_sync");
+	public static final Identifier PACKET_EVO_ROUTES_SYNC = Identifier.of("my_addon", "evo_routes_sync");
+	/** S2C：把服务端的法术数值配置（JSON）同步给客机（多人环境客户端无 datapack 数据，tooltip/HUD 数值需一致）。
+	 *  payload: int count + count*(spellPath + rawJson) */
+	public static final Identifier PACKET_SPELL_CONFIG_SYNC = Identifier.of("my_addon", "spell_config_sync");
 	/** S2C：灵能宝珠长按成功后，让客户端打开「转职选择形态」界面。无 payload。 */
 	public static final Identifier PACKET_OPEN_JOB_CHANGE = Identifier.of("my_addon", "open_job_change");
 	/** C2S：玩家在转职界面选定目标进化形态并确认。payload: String formId */
@@ -509,6 +517,26 @@ public class SscAddonNetworking {
 			});
 		});
 
+		// SSCA 法术研究台 - 抄写法阵（服务端权威重验：已学习 + 纸 + 对应系墨×等级）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_FORMATION_SCRIBE, (server, player, handler, buf, responseSender) -> {
+			String elementId = buf.readString(64);
+			int level = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.scribe(player, elementId, level);
+			});
+		});
+
+		// SSCA 法术研究台 - 学习法阵（服务端权威重验：已记录 + 月尘够；discount 预留小游戏接口当前恒 0）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_FORMATION_LEARN, (server, player, handler, buf, responseSender) -> {
+			String elementId = buf.readString(64);
+			int level = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.learn(player, elementId, level, 0);
+			});
+		});
+
 		// SSCA 月织蛛「织网术」- 切换模式 / 开始蓄力 / 释放
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPIDER_MOON_WEAVER_TOGGLE), (BytePayload payload, ServerPlayNetworking.Context ctx) ->
 				ctx.server().execute(() -> SpiderMoonWeaverWebManager.toggleMode(ctx.player())));
@@ -709,6 +737,15 @@ public class SscAddonNetworking {
 					routesOut.writeString(e.getValue(), 2000000);
 				}
 				ServerPlayNetworking.send(ctx.player(), new BytePayload(BytePayload.id(PACKET_EVO_ROUTES_SYNC), routesOut));
+				// 同步法术数值配置（卷轴 tooltip / HUD 显示的数值须与服务端施法判定一致）
+				PacketByteBuf spellsOut = PacketByteBufs.create();
+				Map<String, String> rawSpells = SpellRegistry.INSTANCE.getRawJson();
+				spellsOut.writeInt(rawSpells.size());
+				for (Map.Entry<String, String> e : rawSpells.entrySet()) {
+					spellsOut.writeString(e.getKey(), 256);
+					spellsOut.writeString(e.getValue(), 2000000);
+				}
+				ServerPlayNetworking.send(ctx.player(), new BytePayload(BytePayload.id(PACKET_SPELL_CONFIG_SYNC), spellsOut));
 			});
 		});
 	}
