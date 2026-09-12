@@ -435,7 +435,6 @@ public class SscAddon implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		registerConfig();
-		registerStatusEffects();
 		registerItems();
 		// 月尘魔法系统：注册所有内置魔法
 		net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry.init();
@@ -506,31 +505,6 @@ public class SscAddon implements ModInitializer {
 		} catch (RuntimeException e) {
 			if (e.getMessage() == null || !e.getMessage().contains("already registered")) throw e;
 		}
-	}
-
-	private void registerStatusEffects() {
-		registerEffect("fox_fire_burn", FOX_FIRE_BURN);
-		registerEffect("playing_dead", PLAYING_DEAD);
-		registerEffect("blue_fire_ring", BLUE_FIRE_RING);
-		registerEffect("true_invisibility", TRUE_INVISIBILITY);
-		registerEffect("pre_invisibility", PRE_INVISIBILITY);
-		registerEffect("stun", STUN);
-		registerEffect("rooted", ROOTED);
-		registerEffect("guaranteed_crit", GUARANTEED_CRIT);
-		registerEffect("frost_freeze", FROST_FREEZE);
-		registerEffect("frost_fall", FROST_FALL);
-		registerEffect("purified", PURIFIED);
-		registerEffect("bat_regen", BAT_REGEN);
-		registerEffect("bat_poison", BAT_POISON);
-		registerEffect("bat_absorption", BAT_ABSORPTION);
-		registerEffect("mist_form", MIST_FORM);
-		registerEffect("mist_charging", MIST_CHARGING);
-		registerEffect("sand_blind", SAND_BLIND);
-		registerEffect("deafen", DEAFEN);
-		registerEffect("erosion_brand_marker_1", EROSION_BRAND_MARKER_1);
-		registerEffect("erosion_brand_marker_2", EROSION_BRAND_MARKER_2);
-		registerEffect("erosion_brand_marker_3", EROSION_BRAND_MARKER_3);
-		registerEffect("tidal_slow", TIDAL_SLOW);
 	}
 
 	private void registerItems() {
@@ -630,10 +604,6 @@ public class SscAddon implements ModInitializer {
 
 	private static void registerItem(String id, Item item) {
 		Registry.register(Registries.ITEM, Identifier.of("ssc_addon", id), item);
-	}
-
-	private static void registerEffect(String id, StatusEffect effect) {
-		Registry.register(Registries.STATUS_EFFECT, Identifier.of("ssc_addon", id), effect);
 	}
 
 	private void registerApoliSystems() {
