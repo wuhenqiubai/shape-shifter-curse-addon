@@ -44,7 +44,7 @@ public final class SpellCastManager {
 			return;
 		}
 		// 法阵加成：耗蓝倍率（全魔法每级 +10%）
-		int manaCost = Math.round(spell.getManaCost() * FormationData.sumManaCostMultiplier(book));
+		int manaCost = Math.round(spell.getManaCost() * FormationData.sumManaCostMultiplier(world.getRegistryManager(), book));
 		if (SpellbookData.getMana(book) < manaCost) {
 			player.sendMessage(Text.translatable("message.ssc_addon.spellbook.no_mana").formatted(Formatting.RED), true);
 			return;
@@ -55,9 +55,9 @@ public final class SpellCastManager {
 		int level = ScrollData.getLevel(scroll);              // 魔法等级（1-5，开箱固定）
 		// 法阵加成：同系伤 +12%/级、对立系伤 -12%/级；同系 cd -5%/级
 		float damage = spell.getBaseDamage() * ratio * spell.getDamageMultiplier(level)
-				* FormationData.sumDamageMultiplier(book, spellIsIce);
+				* FormationData.sumDamageMultiplier(world.getRegistryManager(), book, spellIsIce);
 		int cd = Math.round(spell.getBaseCooldownTicks() * (2.0f - ratio) * spell.getCooldownMultiplier(level)
-				* FormationData.sumCooldownMultiplier(book, spellIsIce));
+				* FormationData.sumCooldownMultiplier(world.getRegistryManager(), book, spellIsIce));
 
 		SpellbookData.consumeMana(book, manaCost);
 		// 统一四参入口：法术内部自行决定是否按等级缩放速度/外观/范围（无 instanceof 特判）

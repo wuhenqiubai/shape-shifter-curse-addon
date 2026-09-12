@@ -8,6 +8,7 @@ import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverDoubleJumpManager;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverSwingManager;
 import net.jackcooper.shapeShifterCurseAddon.ability.SpiderMoonWeaverWebManager;
+import net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
 import net.minecraft.entity.EntityPose;
@@ -160,7 +161,6 @@ public class SscAddonNetworking {
 	/** S2C：服务端广播所有在场玩家的形态 ID。payload: int count + count*(UUID + String formId) */
 	public static final Identifier PACKET_BROADCAST_FORMS = Identifier.of("my_addon", "broadcast_forms");
 	/** S2C：把所有 SSCA 进化路线定义（JSON）同步给客户端，供进化树 UI 渲染。payload: int count + count*(routeId + rawJson) */
-	public static final Identifier PACKET_EVO_ROUTES_SYNC = Identifier.of("my_addon", "evo_routes_sync");
 	public static final Identifier PACKET_EVO_ROUTES_SYNC = Identifier.of("my_addon", "evo_routes_sync");
 	/** S2C：把服务端的法术数值配置（JSON）同步给客机（多人环境客户端无 datapack 数据，tooltip/HUD 数值需一致）。
 	 *  payload: int count + count*(spellPath + rawJson) */
@@ -518,22 +518,22 @@ public class SscAddonNetworking {
 		});
 
 		// SSCA 法术研究台 - 抄写法阵（服务端权威重验：已学习 + 纸 + 对应系墨×等级）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FORMATION_SCRIBE, (server, player, handler, buf, responseSender) -> {
-			String elementId = buf.readString(64);
-			int level = buf.readVarInt();
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.scribe(player, elementId, level);
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FORMATION_SCRIBE), (bp, ctx) -> {
+			String elementId = bp.data().readString(64);
+			int level = bp.data().readVarInt();
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.scribe(ctx.player(), elementId, level);
 			});
 		});
 
 		// SSCA 法术研究台 - 学习法阵（服务端权威重验：已记录 + 月尘够；discount 预留小游戏接口当前恒 0）
-		ServerPlayNetworking.registerGlobalReceiver(PACKET_FORMATION_LEARN, (server, player, handler, buf, responseSender) -> {
-			String elementId = buf.readString(64);
-			int level = buf.readVarInt();
-			server.execute(() -> {
-				if (isRateLimited(player)) return;
-				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.learn(player, elementId, level, 0);
+		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FORMATION_LEARN), (bp, ctx) -> {
+			String elementId = bp.data().readString(64);
+			int level = bp.data().readVarInt();
+			ctx.server().execute(() -> {
+				if (isRateLimited(ctx.player())) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.learn(ctx.player(), elementId, level, 0);
 			});
 		});
 

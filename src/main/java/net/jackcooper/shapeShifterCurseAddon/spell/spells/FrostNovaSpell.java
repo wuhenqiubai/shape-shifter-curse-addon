@@ -29,7 +29,7 @@ public class FrostNovaSpell extends Spell {
 	private static final double BASE_RADIUS = 4.0;
 
 	public FrostNovaSpell() {
-		super(new Identifier("ssc_addon", "frost_nova"), SpellRarity.GREEN);
+		super(Identifier.of("ssc_addon", "frost_nova"), SpellRarity.GREEN);
 	}
 
 	@Override

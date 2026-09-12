@@ -1,5 +1,7 @@
 package net.jackcooper.shapeShifterCurseAddon.ability;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
@@ -102,11 +104,13 @@ public final class RedFormTickManager {
 			for (int i = 0; i < player.getInventory().size(); ++i) {
 				ItemStack stack = player.getInventory().getStack(i);
 				if (stack.isOf(net.jackcooper.shapeShifterCurseAddon.SscAddon.POTION_BAG)) {
-					if (stack.getNbt() != null && stack.hasNbt() && stack.getNbt().contains("Items", 9)) {
-						NbtList list = stack.getNbt().getList("Items", 10);
+					NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
+					NbtCompound nbt = component == null ? null : component.copyNbt();
+					if (nbt != null && nbt.contains("Items", 9)) {
+						NbtList list = nbt.getList("Items", 10);
 						for (int j = 0; j < list.size(); ++j) {
 							NbtCompound itemTag = list.getCompound(j);
-							ItemStack contentStack = ItemStack.fromNbt(itemTag);
+							ItemStack contentStack = ItemStack.fromNbtOrEmpty(player.getWorld().getRegistryManager(), itemTag);
 							if (!contentStack.isEmpty()) {
 								player.dropItem(contentStack, false, true);
 							}
@@ -183,7 +187,7 @@ public final class RedFormTickManager {
 				if (i == targetSlot) continue;
 				ItemStack slotStack = inv.main.get(i);
 				if (slotStack.isEmpty()) continue;
-				if (!ItemStack.canCombine(slotStack, moved)) continue;
+				if (!ItemStack.areItemsAndComponentsEqual(slotStack, moved)) continue;
 				int room = slotStack.getMaxCount() - slotStack.getCount();
 				if (room <= 0) continue;
 				int merge = Math.min(room, moved.getCount());

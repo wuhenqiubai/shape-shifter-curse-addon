@@ -1,13 +1,13 @@
 package net.jackcooper.shapeShifterCurseAddon.loot;
 
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationData;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationElement;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
-import net.minecraft.loot.function.SetNbtLootFunction;
+import net.minecraft.loot.function.SetCustomDataLootFunction;
 import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.util.Identifier;
 import net.minecraft.nbt.NbtCompound;
@@ -29,26 +29,26 @@ public final class FormationLoot {
 
 	/** 目标原版结构箱子战利品表（与魔法卷轴同域）。 */
 	private static final Identifier[] TARGET_CHESTS = {
-			new Identifier("minecraft", "chests/simple_dungeon"),
-			new Identifier("minecraft", "chests/abandoned_mineshaft"),
-			new Identifier("minecraft", "chests/igloo_chest"),
-			new Identifier("minecraft", "chests/woodland_mansion"),
-			new Identifier("minecraft", "chests/ruined_portal"),
-			new Identifier("minecraft", "chests/shipwreck_treasure"),
-			new Identifier("minecraft", "chests/buried_treasure"),
-			new Identifier("minecraft", "chests/underwater_ruin_small"),
-			new Identifier("minecraft", "chests/underwater_ruin_big"),
-			new Identifier("minecraft", "chests/stronghold_library"),
-			new Identifier("minecraft", "chests/stronghold_corridor"),
-			new Identifier("minecraft", "chests/stronghold_crossing"),
-			new Identifier("minecraft", "chests/ancient_city"),
-			new Identifier("minecraft", "chests/bastion_other"),
-			new Identifier("minecraft", "chests/end_city_treasure")
+			Identifier.of("minecraft", "chests/simple_dungeon"),
+			Identifier.of("minecraft", "chests/abandoned_mineshaft"),
+			Identifier.of("minecraft", "chests/igloo_chest"),
+			Identifier.of("minecraft", "chests/woodland_mansion"),
+			Identifier.of("minecraft", "chests/ruined_portal"),
+			Identifier.of("minecraft", "chests/shipwreck_treasure"),
+			Identifier.of("minecraft", "chests/buried_treasure"),
+			Identifier.of("minecraft", "chests/underwater_ruin_small"),
+			Identifier.of("minecraft", "chests/underwater_ruin_big"),
+			Identifier.of("minecraft", "chests/stronghold_library"),
+			Identifier.of("minecraft", "chests/stronghold_corridor"),
+			Identifier.of("minecraft", "chests/stronghold_crossing"),
+			Identifier.of("minecraft", "chests/ancient_city"),
+			Identifier.of("minecraft", "chests/bastion_other"),
+			Identifier.of("minecraft", "chests/end_city_treasure")
 	};
 
 	public static void register() {
-		LootTableEvents.MODIFY.register((resourceManager, lootManager, id, tableBuilder, source) -> {
-			if (!isTargetChest(id)) {
+		LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+			if (!isTargetChest(key.getValue())) {
 				return;
 			}
 			// 3% 概率触发；触发后在火/冰 × 1-3 级法阵中按权重抽一张
@@ -64,14 +64,14 @@ public final class FormationLoot {
 		});
 	}
 
-	// 1.20.1 中 SetNbtLootFunction.builder(NbtCompound) 是唯一可用重载（@Deprecated 但无替代，同 MagicScrollLoot）
+	// 1.21.1：SetNbtLootFunction 已移除 → SetCustomDataLootFunction（set_custom_data，同为 @Deprecated builder）
 	@SuppressWarnings("deprecation")
 	private static net.minecraft.loot.entry.LootPoolEntry.Builder<?> formationEntry(FormationElement element, int level, int weight) {
 		NbtCompound nbt = new NbtCompound();
 		nbt.putString(FormationData.NBT_ELEMENT, element.id);
 		nbt.putInt(FormationData.NBT_LEVEL, level);
 		return ItemEntry.builder(SscAddon.FORMATION)
-				.apply(SetNbtLootFunction.builder(nbt))
+				.apply(SetCustomDataLootFunction.builder(nbt))
 				.weight(weight);
 	}
 

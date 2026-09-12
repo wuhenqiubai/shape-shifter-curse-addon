@@ -1,10 +1,10 @@
 package net.jackcooper.shapeShifterCurseAddon.spell;
 
-import dev.onyxstudios.cca.api.v3.component.ComponentKey;
-import dev.onyxstudios.cca.api.v3.component.ComponentRegistry;
-import dev.onyxstudios.cca.api.v3.entity.EntityComponentFactoryRegistry;
-import dev.onyxstudios.cca.api.v3.entity.EntityComponentInitializer;
-import dev.onyxstudios.cca.api.v3.entity.RespawnCopyStrategy;
+import org.ladysnake.cca.api.v3.component.ComponentKey;
+import org.ladysnake.cca.api.v3.component.ComponentRegistry;
+import org.ladysnake.cca.api.v3.entity.EntityComponentFactoryRegistry;
+import org.ladysnake.cca.api.v3.entity.EntityComponentInitializer;
+import org.ladysnake.cca.api.v3.entity.RespawnCopyStrategy;
 import net.minecraft.util.Identifier;
 
 /**
@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
  */
 public class RegFormationKnowledgeComponent implements EntityComponentInitializer {
 	public static final ComponentKey<FormationKnowledgeComponent> FORMATION_KNOWLEDGE =
-			ComponentRegistry.getOrCreate(new Identifier("ssc_addon", "formation_knowledge"), FormationKnowledgeComponent.class);
+			ComponentRegistry.getOrCreate(Identifier.of("ssc_addon", "formation_knowledge"), FormationKnowledgeComponent.class);
 
 	@Override
 	public void registerEntityComponentFactories(EntityComponentFactoryRegistry registry) {

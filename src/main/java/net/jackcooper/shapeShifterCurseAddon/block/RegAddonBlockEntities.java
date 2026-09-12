@@ -86,11 +86,11 @@ public final class RegAddonBlockEntities {
 
 		SPELL_RESEARCH_TABLE_BE = Registry.register(
 				Registries.BLOCK_ENTITY_TYPE,
-				new Identifier(NAMESPACE, "spell_research_table"),
+				Identifier.of(NAMESPACE, "spell_research_table"),
 				FabricBlockEntityTypeBuilder.create(SpellResearchTableBlockEntity::new, RegAddonBlocks.SPELL_RESEARCH_TABLE).build());
 		SPELL_RESEARCH_TABLE_SH = Registry.register(
 				Registries.SCREEN_HANDLER,
-				new Identifier(NAMESPACE, "spell_research_table"),
+				Identifier.of(NAMESPACE, "spell_research_table"),
 				new ScreenHandlerType<>(net.jackcooper.shapeShifterCurseAddon.screen.SpellResearchTableScreenHandler::new, FeatureSet.empty()));
 	}
 }

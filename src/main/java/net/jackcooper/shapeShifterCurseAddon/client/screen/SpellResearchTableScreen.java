@@ -3,8 +3,8 @@ package net.jackcooper.shapeShifterCurseAddon.client.screen;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
-import net.minecraft.client.item.TooltipContext;
 import net.jackcooper.shapeShifterCurseAddon.screen.SpellResearchTableScreenHandler;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationData;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationElement;
@@ -13,9 +13,11 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -30,15 +32,15 @@ import org.lwjgl.glfw.GLFW;
  */
 public class SpellResearchTableScreen extends HandledScreen<SpellResearchTableScreenHandler> {
 
-	private static final Identifier TEXTURE = new Identifier("ssc_addon", "textures/gui/spell_research_table.png");
+	private static final Identifier TEXTURE = Identifier.of("ssc_addon", "textures/gui/spell_research_table.png");
 	/** 槽位凹槽材质（18×18，与注魔台/魔法书同款）。 */
-	private static final Identifier SLOT_CELL = new Identifier("ssc_addon", "textures/gui/spellbook_slot.png");
+	private static final Identifier SLOT_CELL = Identifier.of("ssc_addon", "textures/gui/spellbook_slot.png");
 	/** 魔法槽位列表面板（131×72：5×3 网格区 + 右侧滚动轨道，无指示位干净版）。 */
-	private static final Identifier LIST_PANEL = new Identifier("ssc_addon", "textures/gui/magic_slot_panel.png");
+	private static final Identifier LIST_PANEL = Identifier.of("ssc_addon", "textures/gui/magic_slot_panel.png");
 	/** 显示包框（20×20，内部 16×16 显示法阵图标）。 */
-	private static final Identifier FRAME = new Identifier("ssc_addon", "textures/gui/formation_frame.png");
+	private static final Identifier FRAME = Identifier.of("ssc_addon", "textures/gui/formation_frame.png");
 	/** 滚动滑块（8×13，与轨道等宽）。 */
-	private static final Identifier SCROLL_THUMB = new Identifier("ssc_addon", "textures/gui/scroll_thumb.png");
+	private static final Identifier SCROLL_THUMB = Identifier.of("ssc_addon", "textures/gui/scroll_thumb.png");
 
 	/** 当前页签：0=法阵抄写，1=法术学习。 */
 	private int tab = 0;
@@ -114,14 +116,14 @@ public class SpellResearchTableScreen extends HandledScreen<SpellResearchTableSc
 			}
 			buf.writeString(scribeEntries()[this.scribeSelected].id);
 			buf.writeVarInt(scribeEntries()[this.scribeSelected].level);
-			ClientPlayNetworking.send(SscAddonNetworking.PACKET_FORMATION_SCRIBE, buf);
+			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_FORMATION_SCRIBE), buf));
 		} else {
 			if (this.learnSelected < 0) {
 				return;
 			}
 			buf.writeString(learnEntries()[this.learnSelected].id);
 			buf.writeVarInt(learnEntries()[this.learnSelected].level);
-			ClientPlayNetworking.send(SscAddonNetworking.PACKET_FORMATION_LEARN, buf);
+			ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_FORMATION_LEARN), buf));
 		}
 	}
 
@@ -226,19 +228,19 @@ public class SpellResearchTableScreen extends HandledScreen<SpellResearchTableSc
 	}
 
 	@Override
-	public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
 		int px = (int) mouseX - this.x;
 		int py = (int) mouseY - this.y;
 		// 面板区域滚轮：一次滚一行，滑块直接跳到对应行档位；≤3 行锁定不动
 		if (px >= PANEL_X && px < PANEL_X + PANEL_W && py >= PANEL_Y && py < PANEL_Y + PANEL_H) {
 			int maxScroll = maxScroll();
 			if (maxScroll > 0) {
-				setCurrentScroll(Math.max(0, Math.min(maxScroll, currentScroll() - (int) Math.signum(amount))));
+				setCurrentScroll(Math.max(0, Math.min(maxScroll, currentScroll() - (int) Math.signum(horizontalAmount))));
 				syncThumbFromScroll();
 			}
 			return true;
 		}
-		return super.mouseScrolled(mouseX, mouseY, amount);
+		return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
 	}
 
 	/** 最大滚动偏移（总行数 - 可见 3 行；≤0 表示无需滚动）。 */
@@ -422,9 +424,9 @@ public class SpellResearchTableScreen extends HandledScreen<SpellResearchTableSc
 			FormationElement element = FormationElement.byId(entries[hover].id);
 			if (element != null) {
 				ItemStack stack = FormationData.create(element, entries[hover].level);
-				TooltipContext tipType = this.client.options.advancedItemTooltips
-						? TooltipContext.ADVANCED : TooltipContext.BASIC;
-				ctx.drawTooltip(this.textRenderer, stack.getTooltip(this.client.player, tipType), mouseX, mouseY);
+				TooltipType tipType = this.client.options.advancedItemTooltips
+						? TooltipType.ADVANCED : TooltipType.BASIC;
+				ctx.drawTooltip(this.textRenderer, stack.getTooltip(net.minecraft.item.Item.TooltipContext.create(this.client.world), this.client.player, tipType), mouseX, mouseY);
 			}
 		}
 	}

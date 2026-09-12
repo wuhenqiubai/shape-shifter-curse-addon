@@ -3,11 +3,11 @@ package net.jackcooper.shapeShifterCurseAddon.item;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationData;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationElement;
 import net.jackcooper.shapeShifterCurseAddon.spell.FormationKnowledgeComponent;
-import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.util.UseAction;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
@@ -61,7 +61,7 @@ public class FormationItem extends Item {
 	}
 
 	@Override
-	public int getMaxUseTime(ItemStack stack) {
+	public int getMaxUseTime(ItemStack stack, net.minecraft.entity.LivingEntity user) {
 		return CHARGE_TICKS;
 	}
 
@@ -111,7 +111,7 @@ public class FormationItem extends Item {
 	}
 
 	@Override
-	public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		FormationElement element = FormationData.getElement(stack);
 		if (element == null) {
 			tooltip.add(Text.translatable("item.ssc_addon.formation.tip_empty").formatted(Formatting.DARK_GRAY));

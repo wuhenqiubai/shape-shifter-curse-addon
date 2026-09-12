@@ -1,6 +1,7 @@
 package net.jackcooper.shapeShifterCurseAddon.spell;
 
-import dev.onyxstudios.cca.api.v3.component.sync.AutoSyncedComponent;
+import net.minecraft.registry.RegistryWrapper;
+import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -81,7 +82,7 @@ public class FormationKnowledgeComponent implements AutoSyncedComponent {
 	}
 
 	@Override
-	public void readFromNbt(NbtCompound nbt) {
+	public void readFromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		recorded.clear();
 		NbtList list = nbt.getList("recorded", NbtElement.STRING_TYPE);
 		for (int i = 0; i < list.size(); i++) {
@@ -94,7 +95,7 @@ public class FormationKnowledgeComponent implements AutoSyncedComponent {
 	}
 
 	@Override
-	public void writeToNbt(NbtCompound nbt) {
+	public void writeToNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		NbtList list = new NbtList();
 		for (String key : recorded) {
 			list.add(NbtString.of(key));

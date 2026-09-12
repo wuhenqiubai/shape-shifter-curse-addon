@@ -30,7 +30,7 @@ public class FrostArmorSpell extends Spell {
 	private static final int MAX_ABSORPTION_AMPLIFIER = 4;
 
 	public FrostArmorSpell() {
-		super(new Identifier("ssc_addon", "frost_armor"), SpellRarity.BLUE);
+		super(Identifier.of("ssc_addon", "frost_armor"), SpellRarity.BLUE);
 	}
 
 	@Override

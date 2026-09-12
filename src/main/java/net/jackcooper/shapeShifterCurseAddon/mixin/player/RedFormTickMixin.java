@@ -1,6 +1,6 @@
 package net.jackcooper.shapeShifterCurseAddon.mixin.player;
 
-import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
+import net.minecraft.network.packet.c2s.common.SyncedClientOptions;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.jackcooper.shapeShifterCurseAddon.SscAddon;
 import org.spongepowered.asm.mixin.Mixin;

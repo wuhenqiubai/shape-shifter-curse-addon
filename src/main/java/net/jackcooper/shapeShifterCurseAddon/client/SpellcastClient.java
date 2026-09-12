@@ -106,7 +106,7 @@ public final class SpellcastClient {
 		if (castPressed) {
 			updateAimPreview(client, player, book, selectedSlot);
 		}
-		boolean isAimSpell = isAimSpell(book, selectedSlot);
+		boolean isAimSpell = isAimSpell(client, book, selectedSlot);
 		boolean sendNow = isAimSpell ? (!castPressed && wasCastPressed) : (castPressed && !wasCastPressed);
 		if (sendNow) {
 			sendCast(selectedSlot);
@@ -132,8 +132,8 @@ public final class SpellcastClient {
 	}
 
 	/** 当前槽是否为按住瞄准型法术（getAimMaxRange>0，如陨火术）。 */
-	private static boolean isAimSpell(ItemStack book, int slot) {
-		Spell spell = ScrollData.getSpell(SpellbookData.getScroll(book, slot));
+	private static boolean isAimSpell(MinecraftClient client, ItemStack book, int slot) {
+		Spell spell = ScrollData.getSpell(SpellbookData.getScroll(client.world.getRegistryManager(), book, slot));
 		return spell != null && spell.getAimMaxRange() > 0;
 	}
 
@@ -149,7 +149,7 @@ public final class SpellcastClient {
 		if (SpellbookData.isOnCooldown(book, slot, client.world)) {
 			return;
 		}
-		ItemStack scroll = SpellbookData.getScroll(book, slot);
+		ItemStack scroll = SpellbookData.getScroll(client.world.getRegistryManager(), book, slot);
 		Spell spell = ScrollData.getSpell(scroll);
 		if (spell == null) {
 			return;

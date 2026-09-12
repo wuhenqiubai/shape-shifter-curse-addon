@@ -1,7 +1,10 @@
 package net.jackcooper.shapeShifterCurseAddon.spell;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.RegistryWrapper;
 
 /**
  * 增强法阵物品的 NBT 数据读写工具（jackcooper）。法阵 NBT：
@@ -30,9 +33,15 @@ public final class FormationData {
 	private FormationData() {
 	}
 
+	/** 读取法阵组件里的自定义 NBT（无组件返回 null）。 */
+	private static NbtCompound getNbt(ItemStack stack) {
+		NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
+		return component == null ? null : component.copyNbt();
+	}
+
 	/** 读取法阵系别（无绑定返回 null）。 */
 	public static FormationElement getElement(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtCompound nbt = getNbt(stack);
 		if (nbt == null || !nbt.contains(NBT_ELEMENT)) {
 			return null;
 		}
@@ -46,7 +55,7 @@ public final class FormationData {
 
 	/** 法阵等级（1-5；缺省 1，兼容旧存档）。 */
 	public static int getLevel(ItemStack stack) {
-		NbtCompound nbt = stack.getNbt();
+		NbtCompound nbt = getNbt(stack);
 		if (nbt != null && nbt.contains(NBT_LEVEL)) {
 			return Math.max(1, Math.min(MAX_FORMATION_LEVEL, nbt.getInt(NBT_LEVEL)));
 		}
@@ -55,7 +64,7 @@ public final class FormationData {
 
 	/** 写入法阵等级。 */
 	public static void setLevel(ItemStack stack, int level) {
-		stack.getOrCreateNbt().putInt(NBT_LEVEL, Math.max(1, Math.min(MAX_FORMATION_LEVEL, level)));
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.putInt(NBT_LEVEL, Math.max(1, Math.min(MAX_FORMATION_LEVEL, level))));
 	}
 
 	/** 等级对应品质（与卷轴一致：白/绿/蓝/紫/橙）。 */
@@ -72,9 +81,11 @@ public final class FormationData {
 	/** 新建一个指定系别、等级的法阵（用于创造物品栏 / 抄写产出）。 */
 	public static ItemStack create(FormationElement element, int level) {
 		ItemStack stack = new ItemStack(net.jackcooper.shapeShifterCurseAddon.SscAddon.FORMATION);
-		stack.getOrCreateNbt().putString(NBT_ELEMENT, element.id);
 		int lv = Math.max(1, Math.min(MAX_FORMATION_LEVEL, level == 0 ? 1 : level));
-		stack.getOrCreateNbt().putInt(NBT_LEVEL, lv);
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+			nbt.putString(NBT_ELEMENT, element.id);
+			nbt.putInt(NBT_LEVEL, lv);
+		});
 		return stack;
 	}
 
@@ -84,9 +95,9 @@ public final class FormationData {
 	 * 汇总魔法书内全部法阵对「指定系别魔法」的伤害倍率。
 	 * 同系每级 +12%、对立系每级 -12%，正负抵消后总体 clamp ≥ 0。
 	 */
-	public static float sumDamageMultiplier(ItemStack book, boolean spellIsIce) {
+	public static float sumDamageMultiplier(RegistryWrapper.WrapperLookup lookup, ItemStack book, boolean spellIsIce) {
 		float total = 0f;
-		for (ItemStack formation : SpellbookData.getFormations(book)) {
+		for (ItemStack formation : SpellbookData.getFormations(lookup, book)) {
 			FormationElement element = getElement(formation);
 			if (element == null) {
 				continue;
@@ -102,9 +113,9 @@ public final class FormationData {
 	}
 
 	/** 汇总全部法阵对「指定系别魔法」的冷却倍率（同系每级 -5%，最低 0.2 倍防极端）。 */
-	public static float sumCooldownMultiplier(ItemStack book, boolean spellIsIce) {
+	public static float sumCooldownMultiplier(RegistryWrapper.WrapperLookup lookup, ItemStack book, boolean spellIsIce) {
 		float total = 0f;
-		for (ItemStack formation : SpellbookData.getFormations(book)) {
+		for (ItemStack formation : SpellbookData.getFormations(lookup, book)) {
 			FormationElement element = getElement(formation);
 			if (element == null) {
 				continue;
@@ -118,9 +129,9 @@ public final class FormationData {
 	}
 
 	/** 汇总全部法阵对「全魔法」的法力消耗倍率（每级 +10%，不封顶——这就是叠加的代价）。 */
-	public static float sumManaCostMultiplier(ItemStack book) {
+	public static float sumManaCostMultiplier(RegistryWrapper.WrapperLookup lookup, ItemStack book) {
 		float total = 0f;
-		for (ItemStack formation : SpellbookData.getFormations(book)) {
+		for (ItemStack formation : SpellbookData.getFormations(lookup, book)) {
 			FormationElement element = getElement(formation);
 			if (element == null) {
 				continue;

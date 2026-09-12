@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking;
 import net.jackcooper.shapeShifterCurseAddon.particle.client.InwardIceParticle;
+import net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry;
 import net.minecraft.client.gui.screen.ingame.HandledScreens;
 import net.minecraft.client.item.ModelPredicateProviderRegistry;
 import net.minecraft.client.render.entity.EmptyEntityRenderer;
@@ -40,7 +41,9 @@ import net.onixary.shapeShifterCurseFabric.networking.BytePayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class SscAddonClient implements ClientModInitializer {
@@ -231,17 +234,17 @@ public class SscAddonClient implements ClientModInitializer {
 		// 注册「法术数值配置同步」接收器：服务端把 spells JSON 同步过来（多人环境客户端无 datapack），
 		// 保证卷轴 tooltip / HUD 数值与服务端施法判定一致。
 		ClientPlayNetworking.registerGlobalReceiver(
-				net.jackcooper.shapeShifterCurseAddon.network.SscAddonNetworking.PACKET_SPELL_CONFIG_SYNC,
-				(client, handler, buf, responseSender) -> {
-					int count = buf.readInt();
+				BytePayload.id(SscAddonNetworking.PACKET_SPELL_CONFIG_SYNC),
+				(bp, ctx) -> {
+					int count = bp.data().readInt();
 					if (count < 0 || count > 1000) return; // 防恶意服务端 OOM
-					java.util.Map<String, String> raw = new java.util.LinkedHashMap<>();
+					Map<String, String> raw = new LinkedHashMap<>();
 					for (int i = 0; i < count; i++) {
-						String spellPath = buf.readString(256);
-						String json = buf.readString(2000000);
+						String spellPath = bp.data().readString(256);
+						String json = bp.data().readString(2000000);
 						raw.put(spellPath, json);
 					}
-					client.execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry.INSTANCE.applyClientSync(raw));
+					ctx.client().execute(() -> SpellRegistry.INSTANCE.applyClientSync(raw));
 				});
 		// 注册「广播所有玩家形态」接收器：服务端把在场玩家的 formID + 皮肤数据直接广播过来，
 		// 客机按 UUID 直接写入其它玩家的 nowForm/nowFormID 与 PlayerSkinComponent（颜色/是否启用形态颜色等），

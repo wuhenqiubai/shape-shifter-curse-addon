@@ -63,9 +63,9 @@ public class SpellMeteorEntity extends ProjectileEntity implements FlyingItemEnt
 	}
 
 	@Override
-	protected void initDataTracker() {
+	protected void initDataTracker(DataTracker.Builder builder) {
 		// 不调 super（同冰锥写法：dataTracker 由 Entity 构造器初始化）
-		this.dataTracker.startTracking(LEVEL, 1);
+		this.dataTracker.set(LEVEL, 1);
 	}
 
 	/** 设置陨火 AOE 伤害。 */

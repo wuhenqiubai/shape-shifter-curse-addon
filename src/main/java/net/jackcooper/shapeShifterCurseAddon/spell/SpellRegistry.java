@@ -39,7 +39,7 @@ public final class SpellRegistry implements SimpleSynchronousResourceReloadListe
 	private final Map<String, String> rawJson = new LinkedHashMap<>();
 
 	public static final SpellRegistry INSTANCE = new SpellRegistry();
-	private static final Identifier LISTENER_ID = new Identifier("ssc_addon", "spell_configs");
+	private static final Identifier LISTENER_ID = Identifier.of("ssc_addon", "spell_configs");
 	private static final String DIR = "spells";
 
 	private SpellRegistry() {

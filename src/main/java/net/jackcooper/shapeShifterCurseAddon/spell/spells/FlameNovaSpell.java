@@ -29,7 +29,7 @@ public class FlameNovaSpell extends Spell {
 	private static final int FIRE_TICKS = 40;
 
 	public FlameNovaSpell() {
-		super(new Identifier("ssc_addon", "flame_nova"), SpellRarity.GREEN);
+		super(Identifier.of("ssc_addon", "flame_nova"), SpellRarity.GREEN);
 	}
 
 	@Override

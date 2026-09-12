@@ -26,7 +26,7 @@ public class MeteorSpell extends Spell {
 	private static final double BASE_RADIUS = 3.0;
 
 	public MeteorSpell() {
-		super(new Identifier("ssc_addon", "meteor"), SpellRarity.PURPLE);
+		super(Identifier.of("ssc_addon", "meteor"), SpellRarity.PURPLE);
 	}
 
 	/** 按住瞄准型：最大施法距离 32 格（客户端按住施法键显示落点预览圈，松开施放）。 */

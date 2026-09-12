@@ -23,7 +23,7 @@ public class FireBoltSpell extends Spell {
 	private static final int FIRE_TICKS_HIGH = 100;
 
 	public FireBoltSpell() {
-		super(new Identifier("ssc_addon", "fire_bolt"), SpellRarity.WHITE);
+		super(Identifier.of("ssc_addon", "fire_bolt"), SpellRarity.WHITE);
 	}
 
 	@Override

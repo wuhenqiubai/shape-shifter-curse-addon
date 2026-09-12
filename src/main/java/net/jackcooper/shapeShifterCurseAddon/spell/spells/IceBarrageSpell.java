@@ -24,7 +24,7 @@ public class IceBarrageSpell extends Spell {
 	private static final float SPREAD_DEG = 12.0f;
 
 	public IceBarrageSpell() {
-		super(new Identifier("ssc_addon", "ice_barrage"), SpellRarity.GREEN);
+		super(Identifier.of("ssc_addon", "ice_barrage"), SpellRarity.GREEN);
 	}
 
 	@Override

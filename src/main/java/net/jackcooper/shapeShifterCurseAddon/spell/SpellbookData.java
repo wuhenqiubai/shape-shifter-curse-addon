@@ -261,15 +261,15 @@ public final class SpellbookData {
 	// ---- 增强法阵槽读写（五角星，与 Items 同构的 NbtList） ----
 
 	/** 读取书内全部法阵（跳过无效条目；无数据返回空列表）。 */
-	public static java.util.List<ItemStack> getFormations(ItemStack book) {
+	public static java.util.List<ItemStack> getFormations(RegistryWrapper.WrapperLookup lookup, ItemStack book) {
 		java.util.List<ItemStack> result = new java.util.ArrayList<>();
-		NbtCompound nbt = book.getNbt();
+		NbtCompound nbt = getNbt(book);
 		if (nbt == null || !nbt.contains(NBT_FORMATIONS, 9)) {
 			return result;
 		}
 		NbtList list = nbt.getList(NBT_FORMATIONS, 10);
 		for (int i = 0; i < list.size(); ++i) {
-			ItemStack stack = ItemStack.fromNbt(list.getCompound(i));
+			ItemStack stack = ItemStack.fromNbtOrEmpty(lookup, list.getCompound(i));
 			if (!stack.isEmpty()) {
 				result.add(stack);
 			}
@@ -278,8 +278,8 @@ public final class SpellbookData {
 	}
 
 	/** 读取指定法阵槽（空返回 EMPTY）。 */
-	public static ItemStack getFormation(ItemStack book, int slot) {
-		NbtCompound nbt = book.getNbt();
+	public static ItemStack getFormation(RegistryWrapper.WrapperLookup lookup, ItemStack book, int slot) {
+		NbtCompound nbt = getNbt(book);
 		if (nbt == null || !nbt.contains(NBT_FORMATIONS, 9)) {
 			return ItemStack.EMPTY;
 		}
@@ -287,27 +287,28 @@ public final class SpellbookData {
 		for (int i = 0; i < list.size(); ++i) {
 			NbtCompound tag = list.getCompound(i);
 			if ((tag.getByte("Slot") & 255) == slot) {
-				return ItemStack.fromNbt(tag);
+				return ItemStack.fromNbtOrEmpty(lookup, tag);
 			}
 		}
 		return ItemStack.EMPTY;
 	}
 
 	/** 写入指定法阵槽（空 stack = 移除该槽）。 */
-	public static void setFormation(ItemStack book, int slot, ItemStack formation) {
-		NbtCompound nbt = book.getOrCreateNbt();
-		NbtList list = nbt.contains(NBT_FORMATIONS, 9) ? nbt.getList(NBT_FORMATIONS, 10) : new NbtList();
-		for (int i = list.size() - 1; i >= 0; --i) {
-			if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
-				list.remove(i);
+	public static void setFormation(RegistryWrapper.WrapperLookup lookup, ItemStack book, int slot, ItemStack formation) {
+		NbtComponent.set(DataComponentTypes.CUSTOM_DATA, book, nbt -> {
+			NbtList list = nbt.contains(NBT_FORMATIONS, 9) ? nbt.getList(NBT_FORMATIONS, 10) : new NbtList();
+			for (int i = list.size() - 1; i >= 0; --i) {
+				if ((list.getCompound(i).getByte("Slot") & 255) == slot) {
+					list.remove(i);
+				}
 			}
-		}
-		if (!formation.isEmpty()) {
-			NbtCompound tag = new NbtCompound();
-			tag.putByte("Slot", (byte) slot);
-			formation.writeNbt(tag);
-			list.add(tag);
-		}
-		nbt.put(NBT_FORMATIONS, list);
+			if (!formation.isEmpty()) {
+				NbtCompound tag = new NbtCompound();
+				tag.putByte("Slot", (byte) slot);
+				tag = (NbtCompound) formation.encode(lookup, tag);
+				list.add(tag);
+			}
+			nbt.put(NBT_FORMATIONS, list);
+		});
 	}
 }

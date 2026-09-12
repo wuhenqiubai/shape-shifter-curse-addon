@@ -123,6 +123,11 @@ public class InfusionAltarBlockEntity extends BlockEntity implements NamedScreen
 		}
 	}
 
+	/** 本 BE 世界的 lookup（ItemStack 反序列化用；调用点均在世界非 null 的上下文）。 */
+	private RegistryWrapper.WrapperLookup lookup() {
+		return this.world.getRegistryManager();
+	}
+
 	// ---- 五角星三态同步 ----
 
 	/**
@@ -161,7 +166,7 @@ public class InfusionAltarBlockEntity extends BlockEntity implements NamedScreen
 			// 槽 → 书（玩家在角槽放/取了法阵）
 			for (int slot = 0; slot < SpellbookData.MAX_FORMATION_SLOTS; slot++) {
 				ItemStack stack = items.get(3 + slot);
-				SpellbookData.setFormation(book, slot,
+				SpellbookData.setFormation(lookup(), book, slot,
 						(!stack.isEmpty() && FormationData.isFormation(stack)) ? stack : ItemStack.EMPTY);
 			}
 			this.lastSyncedFormations = bookSnapshotOf(book);
@@ -177,7 +182,7 @@ public class InfusionAltarBlockEntity extends BlockEntity implements NamedScreen
 	private void loadFromBook() {
 		ItemStack book = items.get(0);
 		for (int slot = 0; slot < SpellbookData.MAX_FORMATION_SLOTS; slot++) {
-			items.set(3 + slot, SpellbookData.getFormation(book, slot).copy());
+			items.set(3 + slot, SpellbookData.getFormation(lookup(), book, slot).copy());
 		}
 		this.lastSyncedFormations = bookSnapshotOf(book);
 		markDirty();
@@ -191,7 +196,7 @@ public class InfusionAltarBlockEntity extends BlockEntity implements NamedScreen
 			if (!stack.isEmpty() && FormationData.isFormation(stack)) {
 				NbtCompound tag = new NbtCompound();
 				tag.putByte("Slot", (byte) slot);
-				stack.writeNbt(tag);
+				tag = (NbtCompound) stack.encode(lookup(), tag);
 				snapshot.put(String.valueOf(slot), tag);
 			}
 		}
@@ -199,14 +204,14 @@ public class InfusionAltarBlockEntity extends BlockEntity implements NamedScreen
 	}
 
 	/** 书 NBT Formations 的快照（供对比）。 */
-	private static NbtCompound bookSnapshotOf(ItemStack book) {
+	private NbtCompound bookSnapshotOf(ItemStack book) {
 		NbtCompound snapshot = new NbtCompound();
 		for (int slot = 0; slot < SpellbookData.MAX_FORMATION_SLOTS; slot++) {
-			ItemStack stack = SpellbookData.getFormation(book, slot);
+			ItemStack stack = SpellbookData.getFormation(lookup(), book, slot);
 			if (!stack.isEmpty()) {
 				NbtCompound tag = new NbtCompound();
 				tag.putByte("Slot", (byte) slot);
-				stack.writeNbt(tag);
+				tag = (NbtCompound) stack.encode(lookup(), tag);
 				snapshot.put(String.valueOf(slot), tag);
 			}
 		}
@@ -235,7 +240,7 @@ public class InfusionAltarBlockEntity extends BlockEntity implements NamedScreen
 	public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 		super.readNbt(nbt, registryLookup);
 		items.clear();
-		Inventories.readNbt(nbt, items);
+		Inventories.readNbt(nbt, items, registryLookup);
 		// 读档后快照失效，首次 tick 重新加载
 		this.lastSyncedFormations = null;
 	}

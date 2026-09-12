@@ -47,7 +47,7 @@ public class InfusionAltarScreen extends HandledScreen<InfusionAltarScreenHandle
 		// 右下角，不压五角星连线
 		this.upgradeButton = this.addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.ssc_addon.infusion_altar.upgrade"),
-				b -> ClientPlayNetworking.send(SscAddonNetworking.PACKET_INFUSION_ALTAR_UPGRADE, PacketByteBufs.empty()))
+				b -> ClientPlayNetworking.send(new BytePayload(BytePayload.id(SscAddonNetworking.PACKET_INFUSION_ALTAR_UPGRADE), PacketByteBufs.empty())))
 				.dimensions(this.x + 119, this.y + 92, 46, 20).build());
 		this.upgradeButton.visible = false;
 	}
@@ -131,9 +131,9 @@ public class InfusionAltarScreen extends HandledScreen<InfusionAltarScreenHandle
 			String expStr = need > 0 ? ("EXP " + exp + "/" + need) : "MAX";
 			ctx.drawText(this.textRenderer, Text.literal(expStr), 8, 77, 0x9A88CC, false);
 			// 已装法阵加成汇总（展示冰伤/冰cd/耗蓝三项；耗蓝对全魔法同一倍率）
-			float iceDmg = FormationData.sumDamageMultiplier(book, true);
-			float iceCd = FormationData.sumCooldownMultiplier(book, true);
-			float manaMul = FormationData.sumManaCostMultiplier(book);
+			float iceDmg = FormationData.sumDamageMultiplier(lookup(), book, true);
+			float iceCd = FormationData.sumCooldownMultiplier(lookup(), book, true);
+			float manaMul = FormationData.sumManaCostMultiplier(lookup(), book);
 			ctx.drawText(this.textRenderer, Text.literal(String.format("法阵 %d/%d", countFormations(book), formationSlots)), 8, 87, 0x9A88CC, false);
 			ctx.drawText(this.textRenderer, Text.literal(String.format("冰伤×%.2f CD×%.2f 蓝耗×%.2f", iceDmg, iceCd, manaMul)), 8, 97, 0x8090C8, false);
 		}
@@ -141,10 +141,15 @@ public class InfusionAltarScreen extends HandledScreen<InfusionAltarScreenHandle
 				this.playerInventoryTitleX, this.playerInventoryTitleY, 0x404040, false);
 	}
 
+	/** 客户端 lookup（ItemStack 反序列化用）。 */
+	private net.minecraft.registry.RegistryWrapper.WrapperLookup lookup() {
+		return this.client.world.getRegistryManager();
+	}
+
 	private int countFormations(ItemStack book) {
 		int count = 0;
 		for (int i = 0; i < SpellbookData.MAX_FORMATION_SLOTS; i++) {
-			if (!SpellbookData.getFormation(book, i).isEmpty()) {
+			if (!SpellbookData.getFormation(lookup(), book, i).isEmpty()) {
 				count++;
 			}
 		}
