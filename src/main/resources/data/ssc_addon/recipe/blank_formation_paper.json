@@ -10,7 +10,7 @@
     "P": { "item": "minecraft:paper" }
   },
   "result": {
-    "item": "ssc_addon:blank_formation_paper",
+    "id": "ssc_addon:blank_formation_paper",
     "count": 1
   }
 }

@@ -6,7 +6,7 @@
     { "item": "shape-shifter-curse:moondust_crystal_shard" }
   ],
   "result": {
-    "item": "ssc_addon:formation_ink_normal",
+    "id": "ssc_addon:formation_ink_normal",
     "count": 1
   }
 }

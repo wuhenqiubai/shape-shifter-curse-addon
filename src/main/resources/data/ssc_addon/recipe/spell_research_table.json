@@ -11,7 +11,7 @@
     "P": { "item": "shape-shifter-curse:moondust_crystal_shard" }
   },
   "result": {
-    "item": "ssc_addon:spell_research_table",
+    "id": "ssc_addon:spell_research_table",
     "count": 1
   }
 }

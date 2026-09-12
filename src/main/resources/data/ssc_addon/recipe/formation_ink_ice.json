@@ -5,7 +5,7 @@
     { "item": "minecraft:snowball" }
   ],
   "result": {
-    "item": "ssc_addon:formation_ink_ice",
+    "id": "ssc_addon:formation_ink_ice",
     "count": 1
   }
 }
