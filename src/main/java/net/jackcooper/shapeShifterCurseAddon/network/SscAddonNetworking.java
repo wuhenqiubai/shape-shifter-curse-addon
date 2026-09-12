@@ -367,6 +367,7 @@ public class SscAddonNetworking {
 		BytePayload.registerS2C(PACKET_SPIDER_MOON_WEAVER_SWING_STATE);
 		BytePayload.registerS2C(net.jackcooper.shapeShifterCurseAddon.ability.GoldenSandstormErosionBrand.PACKET_BRAND_SYNC);
 		BytePayload.registerS2C(net.jackcooper.shapeShifterCurseAddon.ability.MancianimaMarkManager.PACKET_MARK_SYNC);
+		BytePayload.registerS2C(PACKET_SPELL_CONFIG_SYNC);
 	}
 
 	public static void registerServerReceivers() {
@@ -414,6 +415,8 @@ public class SscAddonNetworking {
         BytePayload.registerC2S(PACKET_SPELL_CAST);
         BytePayload.registerC2S(PACKET_SPELL_SELECT);
         BytePayload.registerC2S(PACKET_INFUSION_ALTAR_UPGRADE);
+        BytePayload.registerC2S(PACKET_FORMATION_SCRIBE);
+        BytePayload.registerC2S(PACKET_FORMATION_LEARN);
 
         ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_MANCIANIMA_TELEPORT), (bp, ctx) -> {
 			byte mode = bp.data().readByte();
