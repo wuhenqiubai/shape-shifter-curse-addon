@@ -280,6 +280,11 @@ public class SscAddonClient implements ClientModInitializer {
 						for (int i = 0; i < uuids.size(); i++) {
 							net.minecraft.entity.player.PlayerEntity p = ctx.client().world.getPlayerByUuid(uuids.get(i));
 							if (p == null) continue;
+							// 【修复】必须跳过本地玩家：本段是为「其它玩家」在客机重建 origin 以正确渲染模型，
+							// 而 OriginComponent.setOrigin 内部会 removeAllPowersFromSource —— 对自己调用会把
+							// 服务端刚同步来的 power 全部清空（表现为氧气/游泳姿态等批量失效，且不会再自动恢复，
+							// 只有重进存档或下次全量同步才回来）。自己的 origin/power 本就由服务端权威同步，无需重建。
+							if (p == ctx.client().player) continue;
 							// 形态
 							String fidStr = formIds.get(i);
 							if (!fidStr.isEmpty()) {
