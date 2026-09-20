@@ -67,6 +67,7 @@ repositories {
     }
 
     // Others
+    maven { url "https://jitpack.io" }
     maven { url "https://maven.quiltmc.org/repository/release" }
     maven { url "https://maven.ladysnake.org/releases" }
     maven {
@@ -82,7 +83,6 @@ repositories {
         url = "https://repo.redlance.org/public"
     }
     maven { url "https://masa.dy.fi/maven" }
-    maven { url "https://jitpack.io" }
     maven { url "https://maven.shedaniel.me" }
     maven { url "https://maven.terraformersmc.com" }
     maven {url "https://repo.spongepowered.org/maven/"}
@@ -98,7 +98,9 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     // Shape Shifter Curse-Unofficial Port
-    modImplementation "maven.modrinth:shape-shifter-curse-unofficial-port:1.10.0-dev-hf3+build.24+1.21.1"
+    implementation platform( 'com.github.wuhenqiubai.Shape-Shifter-Curse_Unofficial-Port:shape-shifter-curse-bom:ver~1.21.1_main-65d2b4d2db-1')
+    implementation 'com.github.wuhenqiubai.Shape-Shifter-Curse_Unofficial-Port:Apoli-Legacy'
+    implementation 'com.github.wuhenqiubai.Shape-Shifter-Curse_Unofficial-Port:shape-shifter-curse-unofficial'
     
     // Team Reborn Energy API（TechReborn 等工业模组通用能量 API；3.0.0 适用 MC 1.19.4~1.20.4）
     // JiJ 打包进附属 jar：未安装任何工业模组时也能安全加载，能量转变器仅在检测到相邻能量方块时工作
@@ -107,8 +109,7 @@ dependencies {
     // Player Animation Library
     modImplementation "com.zigythebird.playeranim:PlayerAnimationLibFabric:${project.pal_version}"
 
-    // Apoli & Dependencies
-    modImplementation "io.github.apace100:Apoli-Legacy:${project.apoli_version}"
+    // 依赖（Apoli 不再单独声明：它已并入 SSCU 仓库，由上面 SSCU 的 compile 作用域依赖传递进来）
     modImplementation "software.bernie.geckolib:geckolib-fabric-${project.minecraft_version}:${project.geckolib_version}"
     modImplementation "dev.emi:trinkets:${project.trinkets_version}"
 
