@@ -60,11 +60,11 @@
     "my_addon.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.1",
+    "fabricloader": ">=0.14.1",
     "minecraft": "1.21.1",
     "java": ">=21",
     "fabric": ">=0.110.0",
-    "shape-shifter-curse-unofficial": ">=1.10.0-dev",
+    "shape-shifter-curse-unofficial": ">=1.10.0",
     "geckolib": ">=4.7.0"
   },
   "suggests": {

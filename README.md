@@ -44,6 +44,7 @@
 -  Onixary 如果不是他，那这个模组将会永不存在，感谢他提供的源代码以及帮助。 
 -  wuhenqiubai 感谢他为我的模组进行bug修复、代码优化以及帮助。
 -  xu233333 感谢他为我的模组进行bug修复以及帮助。
+-  尼古莉娜 感谢他为SSCA绘制魔法材质。
 -  以及所有为这个模组提供过帮助的人们，包括但不限于游玩、推荐、提供bug反馈、测试、建议等的玩家们，感谢你游玩我的模组。
 
 ## 许可协议 / License
@@ -51,17 +52,41 @@
 - **代码部分**：采用 [AGPL-3.0-or-later License](LICENSE) 进行许可。
 - **故事内容**（包括 `story/` 目录、游戏内书籍、Codex 叙事文本）：采用 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) 进行许可。
   - 可自由转发，不得商用，不得修改内容。文本须按原样提供，但允许更改字体和字号。
+- **基于 SSC 制作的模型资产**：所有基于幻形者诅咒（SSC）制作的模型资产采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) 进行许可。
+  - 可自由使用与修改，须署名，不得商用。
+- **SSCA 自制资产**：SSCA 自制（原创）的模型与美术资产（含贴图、图标、动画等，如月灵模型）采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) 进行许可。
+  - 可自由使用与修改，须署名，不得商用；再创作后的作品须以相同协议（CC BY-NC-SA）共享。
+
+  本模组基于 SSC 制作的模型资产示例（均适用于上述 CC BY-NC 4.0 协议）：
+
+  ![模型资产示例 1](images/model_asset_showcase_1.png)
+
+  ![模型资产示例 2](images/model_asset_showcase_3.png)
+
+  ![模型资产示例 3](images/model_asset_showcase_2.png)
 
 - **Code**: Licensed under [AGPL-3.0-or-later License](LICENSE).
 - **Story Content** (including `story/` directory, in-game books, and Codex narrative text): Licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
   - Free to share, no commercial use, no modifications. Text must be provided as-is, but font and font size changes are permitted.
+- **SSC-Based Model Assets**: All model assets created based on Shape Shifter's Curse (SSC) are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
+  - Free to use and adapt with attribution, no commercial use.
+- **SSCA Original Assets**: SSCA's original (self-made) models and art assets (including textures, icons, animations, etc., e.g. the Lunar Spirit model) are licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+  - Free to use and adapt with attribution, no commercial use; adaptations must be shared under the same license (CC BY-NC-SA).
+
+  Examples of model assets created based on SSC (all covered by the CC BY-NC 4.0 license above):
+
+  ![Model asset showcase 1](images/model_asset_showcase_1.png)
+
+  ![Model asset showcase 2](images/model_asset_showcase_3.png)
+
+  ![Model asset showcase 3](images/model_asset_showcase_2.png)
 
 ## 赞助说明 / Support
 
-- 本模组的开发耗费了作者大量的时间与心血。如果您愿意支持我继续把它做下去，欢迎通过 **Patreon** 或 **爱发电** 赞助我，在此提前感谢每一位支持者！
+- 本模组的开发耗费了作者大量的时间与心血。如果您愿意支持我继续把它做下去，欢迎通过 [Patreon](https://www.patreon.com/cw/JackCooper120) 或 [爱发电](https://ifdian.net/a/jackcooper120) 赞助我，在此提前感谢每一位支持者！
 - 赞助完全自愿。赞助者与非赞助者获得的游戏内容**完全一致**——赞助不会带来任何额外功能或特权，也不会对游戏的平衡性和内容产生任何影响。
 
-- The development of this mod has taken a great deal of my time and effort. If you'd like to support me in keeping it going, feel free to sponsor me via **Patreon** or **Afdian (爱发电)**. Thank you in advance to everyone who supports me!
+- The development of this mod has taken a great deal of my time and effort. If you'd like to support me in keeping it going, feel free to sponsor me via [Patreon](https://www.patreon.com/cw/JackCooper120) or [Afdian (爱发电)](https://ifdian.net/a/jackcooper120). Thank you in advance to everyone who supports me!
 - Sponsorship is entirely voluntary. Sponsors and non-sponsors receive **exactly the same** in-game content — sponsoring does not grant any additional features or privileges, nor does it have any effect on game balance or content.
 
 ---

@@ -68,6 +68,10 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_SPELL_CAST = Identifier.of("my_addon", "spell_cast");
 	/** C2S：月尘魔法书 - 更新当前选中槽（滚轮切换）。payload: varint slot。 */
 	public static final Identifier PACKET_SPELL_SELECT = Identifier.of("my_addon", "spell_select");
+	/** C2S：月尘魔法书 - 设置卷轴施放档位（低阶选档，阶段 C §6.4）。payload: varint slot + varint castLevel(0=跟随卷轴等级)。 */
+	public static final Identifier PACKET_SPELL_SET_CAST_LEVEL = Identifier.of("my_addon", "spell_set_cast_level");
+	/** C2S：月尘魔法书 - 法力不足三连击触发的临时降档施放（自动选付得起的最高档，本次 CD ×1.2）。payload: varint slot。 */
+	public static final Identifier PACKET_SPELL_CAST_DOWNGRADED = Identifier.of("my_addon", "spell_cast_downgraded");
 	/** C2S：月织蛛织网术 - 潜行双击主键切换 搭路/攻击 模式。无 payload。 */
 	public static final Identifier PACKET_SPIDER_MOON_WEAVER_TOGGLE = Identifier.of("my_addon", "spider_moon_weaver_toggle");
 	/** C2S：月织蛛织网术 - 主键按下开始蓄力。无 payload。 */
@@ -123,6 +127,15 @@ public class SscAddonNetworking {
 	public static final Identifier PACKET_FORMATION_SCRIBE = Identifier.of("my_addon", "formation_scribe");
 	/** C2S：法术研究台 - 学习法阵。payload: String elementId + varint level。服务端重验：已记录+月尘够。 */
 	public static final Identifier PACKET_FORMATION_LEARN = Identifier.of("my_addon", "formation_learn");
+	public static final Identifier PACKET_FORMATION_LEARN = Identifier.of("my_addon", "formation_learn");
+	/** C2S：卷轴工坊 - 定向制作卷轴（阶段 C）。payload: String spellPath + varint level。重验：图谱+纸+墨+尘。 */
+	public static final Identifier PACKET_SCROLL_CRAFT = Identifier.of("my_addon", "scroll_craft");
+	/** C2S：卷轴工坊 - 升级主卷轴（阶段 C）。payload: String spellPath + varint targetLevel。重验：图谱+主卷轴+墨+触媒。 */
+	public static final Identifier PACKET_SCROLL_UPGRADE = Identifier.of("my_addon", "scroll_upgrade");
+	/** C2S：卷轴工坊 - 修复卷轴（阶段 C）。无 payload。重验：产出槽卷轴未满+墨×1+尘×2。 */
+	public static final Identifier PACKET_SCROLL_REPAIR = Identifier.of("my_addon", "scroll_repair");
+	/** C2S：卷轴工坊 - 拆解卷轴（阶段 C）。无 payload。重验：产出槽有卷轴。 */
+	public static final Identifier PACKET_SCROLL_SALVAGE = Identifier.of("my_addon", "scroll_salvage");
 
 	/** C2S：进化美西螈主技能「投掷水矛」按键。无 payload。 */
 	public static final Identifier PACKET_UPGRADE_AXOLOTL_SPEAR = Identifier.of("my_addon", "upgrade_axolotl_spear");
@@ -501,13 +514,31 @@ public class SscAddonNetworking {
 		});
 
 		// SSCA 月尘魔法书 - 施法 / 切换选中槽
-		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPELL_CAST), (bp, ctx) -> {
-			int slot = bp.data().readVarInt();
-			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.cast(ctx.player(), slot));
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_CAST, (server, player, handler, buf, responseSender) -> {
+			int slot = buf.readVarInt();
+			server.execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.cast(player, slot));
 		});
 		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_SPELL_SELECT), (bp, ctx) -> {
 			int slot = bp.data().readVarInt();
 			ctx.server().execute(() -> net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.setSelected(ctx.player(), slot));
+		});
+		// 月尘魔法书 - 设置卷轴施放档位（低阶选档，阶段 C §6.4）：服务端权威校验并写卷轴 NBT（经饰品同步）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_SET_CAST_LEVEL, (server, player, handler, buf, responseSender) -> {
+			int slot = buf.readVarInt();
+			int castLevel = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.setCastLevel(player, slot, castLevel);
+			});
+		});
+		// 月尘魔法书 - 临时降档施放（法力不足三连击触发）：服务端自动选付得起的最高档，本次 CD ×1.2
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SPELL_CAST_DOWNGRADED, (server, player, handler, buf, responseSender) -> {
+			int slot = buf.readVarInt();
+			int token = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.SpellCastManager.castDowngraded(player, slot, token);
+			});
 		});
 
 		// SSCA 注魔台 - 点击「升级」按钮（服务端权威重验：书可升级 + 催化超核 + 燃料纯晶）
@@ -520,23 +551,55 @@ public class SscAddonNetworking {
 			});
 		});
 
-		// SSCA 法术研究台 - 抄写法阵（服务端权威重验：已学习 + 纸 + 对应系墨×等级）
-		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FORMATION_SCRIBE), (bp, ctx) -> {
-			String elementId = bp.data().readString(64);
-			int level = bp.data().readVarInt();
-			ctx.server().execute(() -> {
-				if (isRateLimited(ctx.player())) return;
-				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.scribe(ctx.player(), elementId, level);
+		// SSCA 法术研究台 - 抄写法阵（服务端权威重验：已学习 + 纸 + 对应系墨×等级；variant 仅通用系有效）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_FORMATION_SCRIBE, (server, player, handler, buf, responseSender) -> {
+			String elementId = buf.readString(64);
+			String variant = buf.readString(16);
+			int level = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.scribe(player, elementId, variant, level);
 			});
 		});
 
 		// SSCA 法术研究台 - 学习法阵（服务端权威重验：已记录 + 月尘够；discount 预留小游戏接口当前恒 0）
-		ServerPlayNetworking.registerGlobalReceiver(BytePayload.id(PACKET_FORMATION_LEARN), (bp, ctx) -> {
-			String elementId = bp.data().readString(64);
-			int level = bp.data().readVarInt();
-			ctx.server().execute(() -> {
-				if (isRateLimited(ctx.player())) return;
-				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.learn(ctx.player(), elementId, level, 0);
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_FORMATION_LEARN, (server, player, handler, buf, responseSender) -> {
+			String elementId = buf.readString(64);
+			String variant = buf.readString(16);
+			int level = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ResearchTableManager.learn(player, elementId, variant, level, 0);
+			});
+		});
+
+		// SSCA 卷轴工坊四包（阶段 C，服务端权威重验 ScrollWorkshopManager）
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SCROLL_CRAFT, (server, player, handler, buf, responseSender) -> {
+			String spellPath = buf.readString(64);
+			int level = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ScrollWorkshopManager.craft(player, spellPath, level);
+			});
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SCROLL_UPGRADE, (server, player, handler, buf, responseSender) -> {
+			String spellPath = buf.readString(64);
+			int targetLevel = buf.readVarInt();
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ScrollWorkshopManager.upgrade(player, spellPath, targetLevel);
+			});
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SCROLL_REPAIR, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ScrollWorkshopManager.repair(player);
+			});
+		});
+		ServerPlayNetworking.registerGlobalReceiver(PACKET_SCROLL_SALVAGE, (server, player, handler, buf, responseSender) -> {
+			server.execute(() -> {
+				if (isRateLimited(player)) return;
+				net.jackcooper.shapeShifterCurseAddon.spell.ScrollWorkshopManager.salvage(player);
 			});
 		});
 

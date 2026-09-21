@@ -25,6 +25,7 @@ import net.onixary.shapeShifterCurseFabric.player_form.IForm;
 import net.jackcooper.shapeShifterCurseAddon.util.FormIdentifiers;
 import net.jackcooper.shapeShifterCurseAddon.util.FormUtils;
 import net.jackcooper.shapeShifterCurseAddon.util.PowerUtils;
+import net.jackcooper.shapeShifterCurseAddon.spell.UniversalFormationManager;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -265,6 +266,11 @@ public final class MancianimaMarkManager {
 			if (!valid || !targetAlive) {
 				cit.remove();
 				marker.sendMessage(net.minecraft.text.Text.translatable("message.ssc_addon.mancianima.channel_fail"), true);
+				// 引导中断 = 联动失败：次技能引导（type=2）进入 3.5s 失败 CD；主技能引导（type=1）维持原行为不设 CD
+				if (cs.type == 2) {
+					PowerUtils.setResourceValueAndSync(marker, FormIdentifiers.SP_SECONDARY_CD,
+							MancianimaTeleport.RED_FAIL_CD_TICKS);
+				}
 				continue;
 			}
 			marker.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 5, 3, false, false, false));
@@ -338,6 +344,7 @@ public final class MancianimaMarkManager {
 				LAST_REGEN.put(id, now);
 			} else if (FormIdentifiers.UPGRADE_FAMILIAR_FOX.equals(formId)) {
 				// 进化使魔脱战 mana 回复：脱战 5s 后每 1s 回 1 点 mana（需已解锁 mana_system 节点）
+				if (UniversalFormationManager.isCharging(sp)) continue;
 				// 仅在已解锁 mana_system 节点时生效（mana 条显示门控一致）
 				if (!net.jackcooper.shapeShifterCurseAddon.evolution.RegEvolutionComponent.EVOLUTION
 						.get(sp).isUnlocked(net.jackcooper.shapeShifterCurseAddon.evolution.FamiliarFoxTree.NODE_MANA)) continue;
@@ -403,6 +410,8 @@ public final class MancianimaMarkManager {
 			buf.writeUuid(m.targetUuid);
 			buf.writeString(colorString(m.color));
 		}
+		buf.writeInt(m == null ? 0 : (int) Math.max(0,
+				STAGE_GATE_TICKS - (player.getWorld().getTime() - m.colorSetTick)));
 		try {
 			ServerPlayNetworking.send(player, new BytePayload(BytePayload.id(PACKET_MARK_SYNC), buf));
 		} catch (Exception ignored) {}

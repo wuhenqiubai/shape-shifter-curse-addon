@@ -150,20 +150,24 @@ public class SscAddon implements ModInitializer {
 	// 存储玩家客户端语言设置，用于发送正确语言的消息
 	public static final ConcurrentHashMap<UUID, String> PLAYER_LANGUAGES = new ConcurrentHashMap<>();
 
-	public static final StatusEffect FOX_FIRE_BURN = FOX_FIRE_BURN_ENTRY.value();
-	public static final StatusEffect BLUE_FIRE_RING = BLUE_FIRE_RING_ENTRY.value();
-	public static final StatusEffect PLAYING_DEAD = PLAYING_DEAD_ENTRY.value();
-	public static final StatusEffect TRUE_INVISIBILITY = TRUE_INVISIBILITY_ENTRY.value();
-	public static final StatusEffect PRE_INVISIBILITY = PRE_INVISIBILITY_ENTRY.value();
-	public static final StatusEffect STUN = STUN_ENTRY.value();
-	public static final StatusEffect ROOTED = ROOTED_ENTRY.value();
-	public static final StatusEffect GUARANTEED_CRIT = GUARANTEED_CRIT_ENTRY.value();
-	public static final StatusEffect FROST_FREEZE = FROST_FREEZE_ENTRY.value();
-	public static final StatusEffect FROST_FALL = FROST_FALL_ENTRY.value();
-	public static final StatusEffect PURIFIED = PURIFIED_ENTRY.value();
-	public static final StatusEffect BAT_REGEN = BAT_REGEN_ENTRY.value();
-	public static final StatusEffect BAT_POISON = BAT_POISON_ENTRY.value();
-	public static final StatusEffect BAT_ABSORPTION = BAT_ABSORPTION_ENTRY.value();
+	public static final StatusEffect FOX_FIRE_BURN = new FoxFireBurnEffect();
+	public static final StatusEffect BLUE_FIRE_RING = new BlueFireRingEffect();
+	public static final StatusEffect PLAYING_DEAD = new PlayingDeadEffect();
+	public static final StatusEffect TRUE_INVISIBILITY = new TrueInvisibilityEffect();
+	public static final StatusEffect PRE_INVISIBILITY = new PreInvisibilityEffect();
+	public static final StatusEffect STUN = new StunEffect();
+	// 诅咒标记（诅咒系法术：标记期间受伤 +20%，mixin 内结算；月辉系可净化）
+	public static final StatusEffect CURSE_MARK = new net.jackcooper.shapeShifterCurseAddon.effect.CurseMarkEffect();
+	// 霜碎（寒霜系法术·冰霜新星附加：护甲 -50%，与缓速同步；jackcooper）
+	public static final StatusEffect FROST_SHATTER = new net.jackcooper.shapeShifterCurseAddon.effect.FrostShatterEffect();
+	public static final StatusEffect ROOTED = new RootedEffect();
+	public static final StatusEffect GUARANTEED_CRIT = new GuaranteedCritEffect();
+	public static final StatusEffect FROST_FREEZE = new FrostFreezeEffect();
+	public static final StatusEffect FROST_FALL = new FrostFallEffect();
+	public static final StatusEffect PURIFIED = new PurifiedEffect();
+	public static final StatusEffect BAT_REGEN = new BatRegenEffect();
+	public static final StatusEffect BAT_POISON = new BatPoisonEffect();
+	public static final StatusEffect BAT_ABSORPTION = new BatAbsorptionEffect();
 	// 幽雾化形 - 雾化状态标记效果
 	public static final StatusEffect MIST_FORM = MIST_FORM_ENTRY.value();
 	// 幽雾化形 - 凝聚爆破蓄力标记效果（客户端据此减速 50%）
@@ -184,6 +188,8 @@ public class SscAddon implements ModInitializer {
 	public static final Item MOON_DUST_SPELLBOOK = new MoonDustSpellbookItem(new Item.Settings().maxCount(1));
 	// 魔法卷轴（通用物品，NBT 绑定具体魔法与稀有度）
 	public static final Item MAGIC_SCROLL = new MagicScrollItem(new Item.Settings().maxCount(16));
+	// 月光箭渲染专用物品（3D 光灵箭模型，仅投射物渲染用；不进创造栏不可获取）
+	public static final Item MOONLIGHT_ARROW_RENDER = new Item(new Item.Settings());
 	// 增强法阵（NBT 绑定系别+等级；右键记录魔法进玩家数据，jackcooper）
 	public static final Item FORMATION = new net.jackcooper.shapeShifterCurseAddon.item.FormationItem(new Item.Settings().maxCount(16));
 	// 空白法阵纸（研究台抄写耗材）
@@ -195,6 +201,17 @@ public class SscAddon implements ModInitializer {
 			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.ICE);
 	public static final Item FORMATION_INK_FIRE = new net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem(
 			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.FIRE);
+	// 2026-09 新五系油墨：月辉/诅咒/召唤/虚无/空间（抄写对应系法阵耗材）
+	public static final Item FORMATION_INK_LUNAR = new net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem(
+			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.LUNAR);
+	public static final Item FORMATION_INK_CURSE = new net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem(
+			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.CURSE);
+	public static final Item FORMATION_INK_SUMMON = new net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem(
+			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.SUMMON);
+	public static final Item FORMATION_INK_VOID = new net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem(
+			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.VOID);
+	public static final Item FORMATION_INK_SPACE = new net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem(
+			new Item.Settings().maxCount(16), net.jackcooper.shapeShifterCurseAddon.item.FormationInkItem.Type.SPACE);
 	public static final EntityType<FrostBallEntity> FROST_BALL_ENTITY =
 			registerEntity("frost_ball", SpawnGroup.MISC, FrostBallEntity::new, 0.25f, 0.25f, 64, 10);
 	// 月尘魔法·冰锥投射物（独立于雪狐 SP 冰球，供魔法书「冰锥」魔法使用，jackcooper）
@@ -206,6 +223,18 @@ public class SscAddon implements ModInitializer {
 	// 月尘魔法·陨火实体（落点预警圈 + 天降火球 AOE，jackcooper）
 	public static final EntityType<net.jackcooper.shapeShifterCurseAddon.entity.SpellMeteorEntity> SPELL_METEOR_ENTITY =
 			registerEntity("spell_meteor", SpawnGroup.MISC, net.jackcooper.shapeShifterCurseAddon.entity.SpellMeteorEntity::new, 0.5f, 0.5f, 64, 10);
+	// 月尘魔法·月光箭投射物（月辉系单体直线，对亡灵 +50%，jackcooper）
+	public static final EntityType<net.jackcooper.shapeShifterCurseAddon.entity.SpellMoonlightArrowEntity> SPELL_MOONLIGHT_ARROW_ENTITY =
+			registerEntity("spell_moonlight_arrow", SpawnGroup.MISC, net.jackcooper.shapeShifterCurseAddon.entity.SpellMoonlightArrowEntity::new, 0.25f, 0.25f, 64, 10);
+	// 月尘魔法·诅咒标记投射物（诅咒系单体，命中挂受伤加深，jackcooper）
+	public static final EntityType<net.jackcooper.shapeShifterCurseAddon.entity.SpellCurseMarkEntity> SPELL_CURSE_MARK_ENTITY =
+			registerEntity("spell_curse_mark", SpawnGroup.MISC, net.jackcooper.shapeShifterCurseAddon.entity.SpellCurseMarkEntity::new, 0.25f, 0.25f, 64, 10);
+	// 月灵（召唤系法术的协战飞行生物，有限寿命，jackcooper）。同步频率 1t：LivingEntity 客户端不自算位移，投射物模板的 10t 会一顿一顿
+	public static final EntityType<net.jackcooper.shapeShifterCurseAddon.entity.LunarSpiritEntity> LUNAR_SPIRIT_ENTITY =
+			registerEntity("lunar_spirit", SpawnGroup.MISC, net.jackcooper.shapeShifterCurseAddon.entity.LunarSpiritEntity::new, 0.4f, 0.6f, 64, 1);
+	// 月灵光弹（远程曲线光弹：偏 ±45° 射出 + 逐 tick 转向，不穿墙，jackcooper）
+	public static final EntityType<net.jackcooper.shapeShifterCurseAddon.entity.LunarSpiritBoltEntity> LUNAR_SPIRIT_BOLT_ENTITY =
+			registerEntity("lunar_spirit_bolt", SpawnGroup.MISC, net.jackcooper.shapeShifterCurseAddon.entity.LunarSpiritBoltEntity::new, 0.2f, 0.2f, 64, 10);
 	// 进化美西螈「投掷水矛」直线水矛投射物（无重力匀速）
 	public static final EntityType<ThrownWaterSpearEntity> THROWN_WATER_SPEAR_ENTITY =
 			registerEntity("thrown_water_spear", SpawnGroup.MISC, ThrownWaterSpearEntity::new, 0.4f, 0.4f, 64, 10);	// 寒棘狐「冰刺」冰锥投射物（环绕态 HOVER + 飞行态 FLY 双态；最远飞 128 格，trackRange 同步 128 防提前消失）
@@ -324,10 +353,17 @@ public class SscAddon implements ModInitializer {
 			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.SPLASH);
 	public static final Item INFINITE_ENERGY_POTION_LINGERING = new InfiniteEnergyPotionItem(
 			new Item.Settings().maxCount(1), InfiniteEnergyPotionItem.Type.LINGERING);
-	// 通用能量药水（能量装瓶器产出：饮用回 25 能量/魔力，判定同压缩能量药水）
+	// 通用能量药水（能量装瓶器产出：饮用回 25 能量/魔力，判定同压缩能量药水；喷溅/滞留由酿造台转换）
 	// 堆叠：默认不可叠(maxCount 1)；持有 modify_potion_stack 类 power 的形态可叠 N（由 WitherPotionStackMixin 抬升）
 	public static final Item UNIVERSAL_ENERGY_POTION = new net.jackcooper.shapeShifterCurseAddon.item.UniversalEnergyPotionItem(
-			new Item.Settings().maxCount(1));
+			new Item.Settings().maxCount(1), net.jackcooper.shapeShifterCurseAddon.item.UniversalEnergyPotionItem.Type.DRINK);
+	public static final Item UNIVERSAL_ENERGY_POTION_SPLASH = new net.jackcooper.shapeShifterCurseAddon.item.UniversalEnergyPotionItem(
+			new Item.Settings().maxCount(1), net.jackcooper.shapeShifterCurseAddon.item.UniversalEnergyPotionItem.Type.SPLASH);
+	public static final Item UNIVERSAL_ENERGY_POTION_LINGERING = new net.jackcooper.shapeShifterCurseAddon.item.UniversalEnergyPotionItem(
+			new Item.Settings().maxCount(1), net.jackcooper.shapeShifterCurseAddon.item.UniversalEnergyPotionItem.Type.LINGERING);
+	/** 通用能量 Potion（喷溅/滞留投掷载体，见 RegAddonEffects）——供 PotionUtil.setPotion 引用。 */
+	public static final net.minecraft.potion.Potion UNIVERSAL_ENERGY_POTION_TYPE =
+			net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects.UNIVERSAL_ENERGY_POTION;
 	// 凋零药水（饮用/喷溅/滞留三型，任何人可用，凋零II 20秒；瓶身附魔光效）
 	// 堆叠：默认不可叠(maxCount 1)；使魔系叠8 / SP阿努比斯叠3（由 WitherPotionStackMixin 按形态抬高）
 	public static final Item WITHER_POTION = new WitherPotionItem(
@@ -357,6 +393,11 @@ public class SscAddon implements ModInitializer {
 					entries.add(FORMATION_INK_NORMAL);
 					entries.add(FORMATION_INK_ICE);
 					entries.add(FORMATION_INK_FIRE);
+					entries.add(FORMATION_INK_LUNAR);
+					entries.add(FORMATION_INK_CURSE);
+					entries.add(FORMATION_INK_SUMMON);
+					entries.add(FORMATION_INK_VOID);
+					entries.add(FORMATION_INK_SPACE);
 					entries.add(BLANK_FORMATION_PAPER);						entries.add(EVOLUTION_STONE);
 						entries.add(PSIONIC_ORB);
 						entries.add(LIFESAVING_CAT_TAIL);
@@ -390,7 +431,9 @@ public class SscAddon implements ModInitializer {
 					entries.add(AXOLOTL_SHIFTER_SPAWN_EGG);
 						entries.add(INFINITE_ENERGY_POTION);
 						entries.add(INFINITE_ENERGY_POTION_SPLASH);
-						entries.add(INFINITE_ENERGY_POTION_LINGERING);					entries.add(UNIVERSAL_ENERGY_POTION);						// 凋零药水（饮用/喷溅/滞留）
+					entries.add(INFINITE_ENERGY_POTION_LINGERING);					entries.add(UNIVERSAL_ENERGY_POTION);
+					entries.add(UNIVERSAL_ENERGY_POTION_SPLASH);
+					entries.add(UNIVERSAL_ENERGY_POTION_LINGERING);						// 凋零药水（饮用/喷溅/滞留）
 						entries.add(WITHER_POTION);
 						entries.add(WITHER_POTION_SPLASH);
 						entries.add(WITHER_POTION_LINGERING);
@@ -413,12 +456,19 @@ public class SscAddon implements ModInitializer {
 								entries.add(net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.create(spell.getId().getPath(), lv));
 							}
 						}
-						// 增强法阵全套（火/冰两系×5 级）
+						// 增强法阵全套（各系×5 级；通用系含三变体 regen/mana/exp）
 						for (net.jackcooper.shapeShifterCurseAddon.spell.FormationElement element : net.jackcooper.shapeShifterCurseAddon.spell.FormationElement.values()) {
-							for (int lv = 1; lv <= net.jackcooper.shapeShifterCurseAddon.spell.FormationData.MAX_FORMATION_LEVEL; lv++) {
-								entries.add(net.jackcooper.shapeShifterCurseAddon.spell.FormationData.create(element, lv));
+							for (String variant : element == net.jackcooper.shapeShifterCurseAddon.spell.FormationElement.UNIVERSAL
+									? new String[]{net.jackcooper.shapeShifterCurseAddon.spell.FormationData.VARIANT_REGEN,
+											net.jackcooper.shapeShifterCurseAddon.spell.FormationData.VARIANT_MANA,
+										net.jackcooper.shapeShifterCurseAddon.spell.FormationData.VARIANT_EXP,
+										net.jackcooper.shapeShifterCurseAddon.spell.FormationData.VARIANT_RECOVERY}
+									: new String[]{null}) {
+								for (int lv = 1; lv <= net.jackcooper.shapeShifterCurseAddon.spell.FormationData.MAX_FORMATION_LEVEL; lv++) {
+									entries.add(net.jackcooper.shapeShifterCurseAddon.spell.FormationData.create(element, lv, variant));
+								}
+								}
 							}
-						}
 					})
 					.build());
 	// SP Allay sound events
@@ -438,13 +488,17 @@ public class SscAddon implements ModInitializer {
 		registerItems();
 		// 月尘魔法系统：注册所有内置魔法
 		net.jackcooper.shapeShifterCurseAddon.spell.SpellRegistry.init();
+		// 通用增强法阵：形态能量 → 书法术值转化 tick（jackcooper）
+		net.jackcooper.shapeShifterCurseAddon.spell.UniversalFormationManager.init();
+		// 形态施法流派：分担支付 / 命中返还 / 持续回复（jackcooper，2026-09-17）
+		net.jackcooper.shapeShifterCurseAddon.spell.FormCastingStyle.init();
 		// 附属方块注册（蛛网膜等，jackcooper）
 		net.jackcooper.shapeShifterCurseAddon.block.RegAddonBlocks.init();
 			// 附属实体注册（月织蛛蓄力蛛丝弹，jackcooper）
 		net.jackcooper.shapeShifterCurseAddon.entity.RegAddonEntities.init();
 		// 附属状态效果注册（蜘网缠身，jackcooper）
-		net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects.init();
-		registerRecipeSerializers();
+		net.jackcooper.shapeShifterCurseAddon.effect.RegAddonEffects.init();		// 附属附魔注册（法术抗性，jackcooper）
+		net.jackcooper.shapeShifterCurseAddon.enchantment.RegAddonEnchantments.init();		registerRecipeSerializers();
 		registerSoundEvents();
 		registerEntityAttributes();
 		registerApoliSystems();
@@ -489,22 +543,36 @@ public class SscAddon implements ModInitializer {
 
 
 
-	/**
-	 * 注册 Cloth Config。改为 public static 并幂等：main（onInitialize）与 client（onInitializeClient）
-	 * 两个入口都会调用，而 AutoConfig.register 对重复注册会抛 "already registered"，
-	 * 因此这里只忽略该种异常，保证双入口（含 SinytraConnector 下客户端先于 main 初始化）安全。
-	 */
-	public static void registerConfig() {
-		try {
-			AutoConfig.register(SSCAddonClientConfig.class, GsonConfigSerializer::new);
-		} catch (RuntimeException e) {
-			if (e.getMessage() == null || !e.getMessage().contains("already registered")) throw e;
-		}
-		try {
-			AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
-		} catch (RuntimeException e) {
-			if (e.getMessage() == null || !e.getMessage().contains("already registered")) throw e;
-		}
+	private void registerConfig() {
+		AutoConfig.register(SSCAddonClientConfig.class, GsonConfigSerializer::new);
+		AutoConfig.register(SSCAddonServerConfig.class, GsonConfigSerializer::new);
+	}
+
+	private void registerStatusEffects() {
+		registerEffect("fox_fire_burn", FOX_FIRE_BURN);
+		registerEffect("playing_dead", PLAYING_DEAD);
+		registerEffect("blue_fire_ring", BLUE_FIRE_RING);
+		registerEffect("true_invisibility", TRUE_INVISIBILITY);
+		registerEffect("pre_invisibility", PRE_INVISIBILITY);
+		registerEffect("stun", STUN);
+		registerEffect("rooted", ROOTED);
+		registerEffect("guaranteed_crit", GUARANTEED_CRIT);
+		registerEffect("frost_freeze", FROST_FREEZE);
+		registerEffect("frost_fall", FROST_FALL);
+		registerEffect("purified", PURIFIED);
+		registerEffect("bat_regen", BAT_REGEN);
+		registerEffect("bat_poison", BAT_POISON);
+		registerEffect("bat_absorption", BAT_ABSORPTION);
+		registerEffect("mist_form", MIST_FORM);
+		registerEffect("mist_charging", MIST_CHARGING);
+		registerEffect("sand_blind", SAND_BLIND);
+		registerEffect("deafen", DEAFEN);
+		registerEffect("erosion_brand_marker_1", EROSION_BRAND_MARKER_1);
+		registerEffect("erosion_brand_marker_2", EROSION_BRAND_MARKER_2);
+		registerEffect("erosion_brand_marker_3", EROSION_BRAND_MARKER_3);
+		registerEffect("tidal_slow", TIDAL_SLOW);
+		registerEffect("curse_mark", CURSE_MARK);
+		registerEffect("frost_shatter", FROST_SHATTER);
 	}
 
 	private void registerItems() {
@@ -527,11 +595,17 @@ public class SscAddon implements ModInitializer {
 		Registry.register(Registries.SCREEN_HANDLER, Identifier.of("ssc_addon", "potion_bag"), POTION_BAG_SCREEN_HANDLER);
 		registerItem("moon_dust_spellbook", MOON_DUST_SPELLBOOK);
 		registerItem("magic_scroll", MAGIC_SCROLL);
+		registerItem("moonlight_arrow_render", MOONLIGHT_ARROW_RENDER);
 		registerItem("formation", FORMATION);
 		registerItem("blank_formation_paper", BLANK_FORMATION_PAPER);
 		registerItem("formation_ink_normal", FORMATION_INK_NORMAL);
 		registerItem("formation_ink_ice", FORMATION_INK_ICE);
 		registerItem("formation_ink_fire", FORMATION_INK_FIRE);
+		registerItem("formation_ink_lunar", FORMATION_INK_LUNAR);
+		registerItem("formation_ink_curse", FORMATION_INK_CURSE);
+		registerItem("formation_ink_summon", FORMATION_INK_SUMMON);
+		registerItem("formation_ink_void", FORMATION_INK_VOID);
+		registerItem("formation_ink_space", FORMATION_INK_SPACE);
 		Registry.register(Registries.SCREEN_HANDLER, Identifier.of("ssc_addon", "spellbook"), SPELLBOOK_SCREEN_HANDLER);
 		registerItem("evolution_stone", EVOLUTION_STONE);
 		registerItem("psionic_orb", PSIONIC_ORB);
@@ -559,6 +633,8 @@ public class SscAddon implements ModInitializer {
 		registerItem("infinite_energy_potion_splash", INFINITE_ENERGY_POTION_SPLASH);
 		registerItem("infinite_energy_potion_lingering", INFINITE_ENERGY_POTION_LINGERING);
 		registerItem("universal_energy_potion", UNIVERSAL_ENERGY_POTION);
+		registerItem("universal_energy_potion_splash", UNIVERSAL_ENERGY_POTION_SPLASH);
+		registerItem("universal_energy_potion_lingering", UNIVERSAL_ENERGY_POTION_LINGERING);
 		registerItem("wither_potion", WITHER_POTION);
 		registerItem("wither_potion_splash", WITHER_POTION_SPLASH);
 		registerItem("wither_potion_lingering", WITHER_POTION_LINGERING);
@@ -590,6 +666,7 @@ public class SscAddon implements ModInitializer {
 		FabricDefaultAttributeRegistry.register(WITCH_FAMILIAR_ENTITY, WitchFamiliarEntity.createWitchFamiliarAttributes());
 		FabricDefaultAttributeRegistry.register(AXOLOTL_SHIFTER_ENTITY, AxolotlShifterEntity.createAxolotlShifterAttributes());
 		FabricDefaultAttributeRegistry.register(GHOST_CAT_ENTITY, net.jackcooper.shapeShifterCurseAddon.entity.GhostCatEntity.createGhostCatAttributes());
+		FabricDefaultAttributeRegistry.register(LUNAR_SPIRIT_ENTITY, net.jackcooper.shapeShifterCurseAddon.entity.LunarSpiritEntity.createLunarSpiritAttributes());
 	}
 
 	// 注册辅助方法（消除重复的 Registry.register 样板）
@@ -623,6 +700,11 @@ public class SscAddon implements ModInitializer {
 		ParasiticSeedEnergyRegen.init();
 		NineLivesManager.init();
 		NovaSkillManager.init();
+		net.jackcooper.shapeShifterCurseAddon.ability.CorruptMistManager.init(); // 腐蚀之雾持续区域结算（诅咒系法术；归途传送结算 SpaceRecallManager 已无 tick，不需 init）
+		net.jackcooper.shapeShifterCurseAddon.spell.pocket.PocketSpaceManager.init();
+		net.jackcooper.shapeShifterCurseAddon.spell.SpellChannelManager.init();
+		net.jackcooper.shapeShifterCurseAddon.ability.LunarSpiritTargetLink.init(); // 月灵目标联动（主人打谁月灵打谁，召唤系）
+		net.jackcooper.shapeShifterCurseAddon.ability.CompanionResonanceManager.init(); // 伙伴共鸣伤害增益到期清理（召唤系）
 		SeedEnergyEatingHandler.register();
 		LifesavingCatTailItem.registerLootTable();
 		AnkhStoneItem.registerLootTable();

@@ -78,6 +78,59 @@ public abstract class Spell implements SpellRegistry.SpellConfigInjector {
 		return config.baseCastTimeTicks;
 	}
 
+	public SpellCastingRules.Profile getCastingProfile(ServerPlayerEntity caster, int level, boolean solo) {
+		return config.spellTier == SpellCastingRules.Tier.CUSTOM
+				? getCustomCastingProfile(caster, level, solo) : config.spellTier.profile;
+	}
+
+	protected SpellCastingRules.Profile getCustomCastingProfile(ServerPlayerEntity caster, int level, boolean solo) {
+		return new SpellCastingRules.Profile(getBaseCastTimeTicks() > 0 ? getBaseCastTimeTicks() : 20, 0.8, false);
+	}
+
+	public SpellCastingRules.Mode getCastingMode() {
+		return getAimMaxRange() > 0 ? SpellCastingRules.Mode.RELEASE : SpellCastingRules.Mode.AUTOMATIC;
+	}
+
+	public Vec3d captureCastTarget(ServerPlayerEntity caster, int level) {
+		return getAimMaxRange() > 0 ? computeAimImpact(caster, getAimMaxRange()) : null;
+	}
+
+	private Vec3d lockedCastTarget;
+
+	protected Vec3d getCastTarget(ServerPlayerEntity caster, int level) {
+		return lockedCastTarget == null ? captureCastTarget(caster, level) : lockedCastTarget;
+	}
+
+	public void castAtTarget(ServerPlayerEntity caster, float power, boolean solo, int level,
+				net.minecraft.item.ItemStack scroll, Vec3d target) {
+		Vec3d previousTarget = this.lockedCastTarget;
+		this.lockedCastTarget = target;
+		try {
+			cast(caster, power, solo, level, scroll);
+		} finally {
+			this.lockedCastTarget = previousTarget;
+		}
+	}
+
+	public boolean readyToRelease(ServerPlayerEntity caster, net.minecraft.item.ItemStack scroll) {
+		return true;
+	}
+
+	public boolean canContinueCasting(ServerPlayerEntity caster, net.minecraft.item.ItemStack scroll) {
+		return true;
+	}
+
+	public boolean tickContinuousCast(ServerPlayerEntity caster, int level, net.minecraft.item.ItemStack scroll, int ticks) {
+		return false;
+	}
+
+	public void endContinuousCast(ServerPlayerEntity caster, int level, boolean interrupted) {}
+
+	/** 冷却绝对下限（tick；0 = 无绝对下限，仅受相对下限 0.2×C_L 约束。阶段 B / 计划书 §6.2）。 */
+	public int getCooldownFloorTicks() {
+		return config.cooldownFloorTicks;
+	}
+
 	/** 每次施法消耗的魔法书法力。 */
 	public int getManaCost() {
 		return config.manaCost;
@@ -131,9 +184,9 @@ public abstract class Spell implements SpellRegistry.SpellConfigInjector {
 	}
 
 	/**
-	 * 准星落点几何（双端一致）：眼位出发沿视向 raycast（含方块），命中取命中点，
-	 * 未命中取 maxRange 截断点（准星指天时落在空中）。客户端预览圈与服务端施法共用
-	 * 本方法，保证所见即所得。
+	 * 准星落点几何（双端一致）：眼位出发沿视向 raycast（含方块），命中取命中点；
+	 * <b>未命中（准星指天/最大距离内无方块命中）返回 null</b>——落点必须在方块上（仿契灵传送）；
+	 * 双端调用方都需判空：服务端拒绝施法（不耗法力/CD），客户端不显示预览。
 	 */
 	public static Vec3d computeAimImpact(LivingEntity caster, double maxRange) {
 		Vec3d eye = caster.getEyePos();
@@ -141,7 +194,26 @@ public abstract class Spell implements SpellRegistry.SpellConfigInjector {
 		Vec3d end = eye.add(look.multiply(maxRange));
 		HitResult hit = caster.getWorld().raycast(new RaycastContext(eye, end,
 				RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, caster));
-		return hit.getType() != HitResult.Type.MISS ? hit.getPos() : end;
+		return hit.getType() == HitResult.Type.MISS ? null : hit.getPos();
+	}
+
+	/**
+	 * 施法前置校验（服务端权威）：当前是否允许施法。默认恒允许；
+	 * 瞄准型法术可覆写（如陨火要求准星命中方块）。返回 false = 拒绝施法且不消耗法力/CD
+	 * （仿契灵传送失败不消耗语义），由调用方显示红字提示。
+	 */
+	public boolean canCast(ServerPlayerEntity caster) {
+		return true;
+	}
+
+	public boolean prepareScroll(ServerPlayerEntity caster, net.minecraft.item.ItemStack scroll) {
+		return true;
+	}
+
+	public void onCooldownStarted(ServerPlayerEntity caster, Runnable cancelRefund) {}
+
+	public void cast(ServerPlayerEntity caster, float power, boolean solo, int level, net.minecraft.item.ItemStack scroll) {
+		cast(caster, power, solo, level);
 	}
 
 	/**
@@ -182,7 +254,15 @@ public abstract class Spell implements SpellRegistry.SpellConfigInjector {
 	}
 
 	/**
-	 * 是否为冰系魔法（决定卷轴物品外观：冰系魔法卷轴用冰锥卷轴贴图；HUD 魔法图标不受影响）。
+	 * 魔法系别（来自 spells JSON {@code element} 字段，解析为 FormationElement）。
+	 * 2026-09 起支持 fire/ice/lunar/curse/summon/void/space 七系；无系别或非法 id 返回 null（结算安全降级）。
+	 */
+	public FormationElement getElement() {
+		return FormationElement.byId(config.element);
+	}
+
+	/**
+	 * 是否为冰系魔法（历史方法：决定卷轴外观染色等。新代码请用 {@link #getElement()}）。
 	 * 数值化系别来自 JSON {@code element: "ice"}；本方法 = JSON 标记为 ice 时为 true。
 	 */
 	public boolean isIceSpell() {
@@ -196,5 +276,56 @@ public abstract class Spell implements SpellRegistry.SpellConfigInjector {
 	 */
 	public Identifier getIconTexture() {
 		return Identifier.of("ssc_addon", "textures/gui/spell_icons/" + id.getPath() + ".png");
+	}
+
+	// ---- 经验机制桥（2026-09-15：exp_mode 0=释放即得 / 1=命中才得 / 2=释放 20%+命中补到 100%） ----
+
+	/**
+	 * 本次施法待补发的经验（×10 整数）。服务端逻辑单线程：SpellCastManager 在调用
+	 * {@code cast()} 前设置、同一次调用栈内由法术实体/局部变量取走，调用返回后由施法管理器清零——
+	 * set→read 之间不会插入其它玩家的施法，无竞态。solo 使用不进本体系（恒 0）。
+	 */
+	private int pendingExpTen = 0;
+
+	/** 经验机制模式（JSON {@code exp_mode}；缺省 0）。 */
+	public int getExpMode() {
+		return config.expMode;
+	}
+
+	/** 施法管理器专用：设置本次施法的待补发经验（仅服务端调用栈内有效）。 */
+	public void ssc_addon$setPendingExp(int expTen) {
+		this.pendingExpTen = expTen;
+	}
+
+	/** 法术实体 / AOE 循环取走并清零待补发经验（取走后再调用返回 0）。 */
+	public int ssc_addon$takePendingExp() {
+		int v = pendingExpTen;
+		pendingExpTen = 0;
+		return v;
+	}
+
+	/** 施法管理器专用：cast 返回后强制清桥（防子类忘取走导致泄漏到下次施法）。 */
+	public void ssc_addon$clearPendingExp() {
+		pendingExpTen = 0;
+	}
+
+	// ---- 施法编号桥：同次弹丸、范围和持续效果共用服务端返还额度 ----
+
+	/** 施法管理器在同步 cast 调用前装入、返回后清除；异步效果保存编号，solo 为 null。 */
+	private java.util.UUID refundCastId;
+
+	/** 施法管理器专用：设置本次书内施法编号。 */
+	public void ssc_addon$setRefundCastId(java.util.UUID castId) {
+		this.refundCastId = castId;
+	}
+
+	/** 读取但不清除编号，确保同次施法的所有效果共享额度。 */
+	public java.util.UUID ssc_addon$getRefundCastId() {
+		return refundCastId;
+	}
+
+	/** 施法管理器专用：cast 返回后强制清桥（防泄漏到下次施法）。 */
+	public void ssc_addon$clearRefundCastId() {
+		refundCastId = null;
 	}
 }

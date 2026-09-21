@@ -13,7 +13,7 @@ import net.minecraft.util.math.Vec3d;
  * 火球术（火系，白色基底，jackcooper）：朝准星射出一枚火球，命中造成魔法伤害并点燃目标。
  *
  * <p>数值外置 {@code data/ssc_addon/spells/fire_bolt.json}：
- * 基准 5 伤 + 点燃 3s（L3+ 5s）/ cd 4s / 耗蓝 15 / 单独惩罚 0.5×伤 2×cd；
+ * 基准 5 伤 + 点燃 3s（L3+ 5s）/ cd 10s（L5 3s） / 耗蓝 15 / 单独惩罚 0.5×伤 2×cd；
  * 点燃时长不随伤害缩放（固定附加效果），L3 起提升到 5s。</p>
  */
 public class FireBoltSpell extends Spell {
@@ -36,6 +36,8 @@ public class FireBoltSpell extends Spell {
 		SpellFireBoltEntity bolt = new SpellFireBoltEntity(caster.getWorld(), caster);
 		bolt.setDamage(power);
 		bolt.setLevel(level);
+		bolt.setExpBountyTen(solo ? 0 : ssc_addon$takePendingExp()); // exp_mode 1/2 挂起经验随弹射物走
+		bolt.setRefundCastId(solo ? null : ssc_addon$getRefundCastId());
 		bolt.setFireTicks(level >= 3 ? FIRE_TICKS_HIGH : FIRE_TICKS_LOW);
 		Vec3d look = caster.getRotationVec(1.0F);
 		bolt.setDirection(look, getSpeedMultiplier(level));

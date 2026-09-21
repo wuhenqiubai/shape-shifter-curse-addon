@@ -40,34 +40,39 @@ public class MoonDustSpellbookItem extends AccessoryItem {
 	@Override
 	public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
 		ItemStack stack = user.getStackInHand(hand);
-		// 潜行 + 右键：打开魔法书配置界面
-		if (user.isSneaking()) {
-			if (!world.isClient) {
-				user.openHandledScreen(new ExtendedScreenHandlerFactory<SpellbookScreenData>() {
-					@Override
-					public Text getDisplayName() {
-						return stack.getName();
-					}
-
-					@Override
-					public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
-						return new SpellbookScreenHandler(syncId, inv, stack);
-					}
-
-					@Override
-					public SpellbookScreenData getScreenOpeningData(ServerPlayerEntity player) {
-						return new SpellbookScreenData(
-								SpellbookData.getSlotCount(stack),
-								SpellbookData.getLevel(stack),
-								SpellbookData.getExp(stack),
-								SpellbookData.getMana(stack),
-								SpellbookData.getMaxMana(stack));
-					}
-				});
-			}
+		// 潜行 + 右键：寄生果蝠「播种」优先（耗 1 种子回 10 书法术值；未命中条件回落开配置界面）
+		if (user.isSneaking() && !world.isClient && user instanceof ServerPlayerEntity sp
+				&& net.jackcooper.shapeShifterCurseAddon.spell.FormCastingStyle.trySeedSow(sp, stack)) {
 			return TypedActionResult.success(stack);
 		}
-		return TypedActionResult.pass(stack);
+		// 潜行 + 右键：播种未触发（非寄生果蝠/无种子/书满）时不回落开界面，保留潜行手势语义干净
+		if (user.isSneaking()) {
+			return TypedActionResult.pass(stack);
+		}
+		// 普通右键：打开魔法书配置界面（2026-09-17 由潜行右键改为右键，用户指定）
+		if (!world.isClient) {
+			user.openHandledScreen(new ExtendedScreenHandlerFactory() {
+				@Override
+				public Text getDisplayName() {
+					return stack.getName();
+				}
+
+				@Override
+				public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
+					return new SpellbookScreenHandler(syncId, inv, stack);
+				}
+
+				@Override
+				public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
+					buf.writeInt(SpellbookData.getSlotCount(stack));
+					buf.writeInt(SpellbookData.getLevel(stack));
+					buf.writeInt(SpellbookData.getExpTen(stack));
+					buf.writeInt(SpellbookData.getMana(stack));
+					buf.writeInt(SpellbookData.getMaxMana(stack));
+				}
+			});
+		}
+		return TypedActionResult.success(stack);
 	}
 
 	@Override
@@ -80,8 +85,24 @@ public class MoonDustSpellbookItem extends AccessoryItem {
 		tooltip.add(Text.translatable("item.ssc_addon.moon_dust_spellbook.tip_mana", mana, maxMana).formatted(Formatting.BLUE));
 		int need = SpellbookData.getExpToNext(stack);
 		if (need > 0) {
+			// 未满级：显示升级进度（1 位小数）
 			tooltip.add(Text.translatable("item.ssc_addon.moon_dust_spellbook.tip_exp",
-					SpellbookData.getExp(stack), need).formatted(Formatting.GRAY));
+					String.format(java.util.Locale.ROOT, "%.1f", SpellbookData.getExpFloat(stack)),
+					String.format(java.util.Locale.ROOT, "%.1f", need / 10.0f)).formatted(Formatting.GRAY));
+		} else {
+			// 满级：显示精通档（法力上限成长）进度
+			int masteryNeed = SpellbookData.getMasteryExpToNextTier(stack);
+			int tier = SpellbookData.getMasteryTier(stack);
+			if (masteryNeed > 0) {
+				// 当前档内进度：从 ×10 整数取模折算（避免浮点 % 精度误差）
+				float tierProgress = (SpellbookData.getExpTen(stack) % SpellbookData.MASTERY_EXP_PER_TIER) / 10.0f;
+				tooltip.add(Text.translatable("item.ssc_addon.moon_dust_spellbook.tip_mastery",
+						tier + 1, String.format(java.util.Locale.ROOT, "%.1f", tierProgress),
+						String.format(java.util.Locale.ROOT, "%.1f", masteryNeed / 10.0f)).formatted(Formatting.GOLD));
+			} else {
+				tooltip.add(Text.translatable("item.ssc_addon.moon_dust_spellbook.tip_mastery_max",
+						tier, SpellbookData.getMasteryManaBonus(stack)).formatted(Formatting.GOLD));
+			}
 		}
 		tooltip.add(Text.translatable("item.ssc_addon.moon_dust_spellbook.tip_hint").formatted(Formatting.DARK_GRAY));
 		super.appendTooltip(stack, context, tooltip, type);

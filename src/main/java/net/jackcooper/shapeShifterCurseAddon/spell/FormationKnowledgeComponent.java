@@ -9,7 +9,9 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.server.network.ServerPlayerEntity;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -17,97 +19,184 @@ import java.util.Set;
  *
  * <p>两级数据（都跟随玩家、多人各自独立）：</p>
  * <ul>
- *   <li><b>已记录（recorded）</b>：右键使用法阵物品获得，格式 {@code element:level}；
- *       同系各等级独立记录（高等级不覆盖低等级，学习时自选等级）；</li>
+ *   <li><b>已记录（recorded）</b>：右键使用法阵物品获得，格式 {@code element[/variant]:level}；
+ *       同系各等级独立记录（高等级不覆盖低等级，学习时自选等级）；通用系三变体
+ *       （regen/mana/exp）各自独立记录；</li>
  *   <li><b>已学习（learned）</b>：研究台消耗月尘学习后获得，只存最高等级（低等级自动包含）；
- *       学习后才能在研究台抄写对应等级的法阵。</li>
+ *       学习后才能在研究台抄写对应等级的法阵。存储键 {@code element[/variant]}。</li>
  * </ul>
+ *
+ * <p><b>旧档迁移（2026-09-15 变体拆分）</b>：旧记录键 {@code universal:N} 归为回能变体
+ * {@code universal/regen:N}；旧学习键 {@code learned_universal} 归为
+ * {@code learned_universal/regen}——旧通用法阵物品缺省变体即回能，读写一致。</p>
  */
 public class FormationKnowledgeComponent implements AutoSyncedComponent {
-	/** 已记录的法阵（element:level 集合，如 ice:3、fire:2）。 */
-	private final Set<String> recorded = new HashSet<>();
-	/** 已学习的法阵系别 → 最高等级（0 = 未学习）。 */
-	private final int[] learnedLevels = new int[FormationElement.values().length];
+/** 已记录的法阵（element[/variant]:level 集合，如 ice:3、universal/regen:2）。 */
+private final Set<String> recorded = new HashSet<>();
+/** 已学习的法阵 → 最高等级（0 = 未学习）。键：element id 或 universal/<variant>。 */
+private final Map<String, Integer> learned = new HashMap<>();
+/**
+ * 已记录的法术图谱（阶段 C / 计划书 §8.1：法术卷轴右键记录，解锁定向制作；不消耗卷轴）。
+ * 键：法术 id path（如 fire_bolt）。记录知识不能免费复制实体卷轴——定向制作仍需材料。
+ */
+private final Set<String> spellAtlas = new HashSet<>();
+/** 入门三选一是否已领取（每玩家一次；阶段 C / 计划书 §5 入门阶段）。 */
+private boolean starterClaimed = false;
 
-	public static FormationKnowledgeComponent get(PlayerEntity player) {
-		return RegFormationKnowledgeComponent.FORMATION_KNOWLEDGE.get(player);
-	}
+public static FormationKnowledgeComponent get(PlayerEntity player) {
+return RegFormationKnowledgeComponent.FORMATION_KNOWLEDGE.get(player);
+}
 
-	// ---- 已记录 ----
+// ---- 存储键 ----
 
-	/** 是否已记录指定系别 + 等级的法阵。 */
-	public boolean hasRecorded(FormationElement element, int level) {
-		return recorded.contains(key(element, level));
-	}
+/** 学习等级存储键：非通用系 = element id；通用系 = universal/<variant>（非法变体归 regen）。 */
+private static String storageKey(FormationElement element, String variant) {
+if (element == FormationElement.UNIVERSAL) {
+String v = FormationData.normalizeVariant(variant);
+return element.id + "/" + (v != null ? v : FormationData.VARIANT_REGEN);
+}
+return element.id;
+}
 
-	/** 记录指定法阵（幂等）。 */
-	public void record(FormationElement element, int level) {
-		recorded.add(key(element, level));
-	}
+/** 记录条目键：element[/variant]:level。 */
+private static String key(FormationElement element, String variant, int level) {
+return storageKey(element, variant) + ":" + level;
+}
 
-	/** 指定系别已记录的最高等级（0 = 从未记录）。 */
-	public int getMaxRecordedLevel(FormationElement element) {
-		int max = 0;
-		for (int lv = 1; lv <= FormationData.MAX_FORMATION_LEVEL; lv++) {
-			if (hasRecorded(element, lv)) {
-				max = lv;
-			}
-		}
-		return max;
-	}
+// ---- 已记录 ----
 
-	// ---- 已学习 ----
+/** 是否已记录指定系别（+变体）+ 等级的法阵。variant 仅通用系有效，传 null 归 regen。 */
+public boolean hasRecorded(FormationElement element, String variant, int level) {
+return recorded.contains(key(element, variant, level));
+}
 
-	/** 指定系别已学习到的最高等级（0 = 未学习）。 */
-	public int getLearnedLevel(FormationElement element) {
-		return learnedLevels[element.ordinal()];
-	}
+/** 记录指定法阵（幂等）。variant 仅通用系有效，传 null 归 regen。 */
+public void record(FormationElement element, String variant, int level) {
+recorded.add(key(element, variant, level));
+}
 
-	/** 是否已学习指定系别至少到指定等级。 */
-	public boolean hasLearned(FormationElement element, int level) {
-		return getLearnedLevel(element) >= level;
-	}
+// ---- 已学习 ----
 
-	/** 学习指定系别到指定等级（只升不降）。 */
-	public void learn(FormationElement element, int level) {
-		if (level > learnedLevels[element.ordinal()]) {
-			learnedLevels[element.ordinal()] = level;
-		}
-	}
+/** 指定系别（+变体）已学习到的最高等级（0 = 未学习）。variant 仅通用系有效。 */
+public int getLearnedLevel(FormationElement element, String variant) {
+return learned.getOrDefault(storageKey(element, variant), 0);
+}
 
-	// ---- 持久化 / 同步 ----
+/** 是否已学习指定系别（+变体）至少到指定等级。 */
+public boolean hasLearned(FormationElement element, String variant, int level) {
+return getLearnedLevel(element, variant) >= level;
+}
 
-	private static String key(FormationElement element, int level) {
-		return element.id + ":" + level;
-	}
+/** 学习指定系别（+变体）到指定等级（只升不降）。 */
+public void learn(FormationElement element, String variant, int level) {
+String k = storageKey(element, variant);
+if (level > learned.getOrDefault(k, 0)) {
+learned.put(k, level);
+}
+}
 
-	@Override
-	public void readFromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
-		recorded.clear();
-		NbtList list = nbt.getList("recorded", NbtElement.STRING_TYPE);
-		for (int i = 0; i < list.size(); i++) {
-			recorded.add(list.getString(i));
-		}
-		for (FormationElement element : FormationElement.values()) {
-			learnedLevels[element.ordinal()] = Math.max(0,
-					Math.min(FormationData.MAX_FORMATION_LEVEL, nbt.getInt("learned_" + element.id)));
-		}
-	}
+// ---- 法术图谱（阶段 C / 计划书 §8.1） ----
 
-	@Override
-	public void writeToNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
-		NbtList list = new NbtList();
-		for (String key : recorded) {
-			list.add(NbtString.of(key));
-		}
-		nbt.put("recorded", list);
-		for (FormationElement element : FormationElement.values()) {
-			nbt.putInt("learned_" + element.id, learnedLevels[element.ordinal()]);
-		}
-	}
+/** 是否已记录某法术图谱（键：法术 id path）。 */
+public boolean hasSpell(String spellPath) {
+return spellAtlas.contains(spellPath);
+}
 
-	/** 服务端变更后同步给客户端（研究台 GUI 需要实时读）。 */
-	public static void sync(ServerPlayerEntity player) {
-		RegFormationKnowledgeComponent.FORMATION_KNOWLEDGE.sync(player);
-	}
+/** 记录法术图谱（幂等）。 */
+public void recordSpell(String spellPath) {
+spellAtlas.add(spellPath);
+}
+
+/** 已记录的法术图谱数量。 */
+public int spellAtlasSize() {
+return spellAtlas.size();
+}
+
+// ---- 入门三选一（阶段 C / 计划书 §5） ----
+
+/** 入门三选一是否已领取。 */
+public boolean isStarterClaimed() {
+return starterClaimed;
+}
+
+/** 标记入门三选一已领取。 */
+public void claimStarter() {
+this.starterClaimed = true;
+}
+
+// ---- 持久化 / 同步 ----
+
+@Override
+public void readFromNbt(NbtCompound nbt) {
+recorded.clear();
+NbtList list = nbt.getList("recorded", NbtElement.STRING_TYPE);
+for (int i = 0; i < list.size(); i++) {
+String entry = list.getString(i);
+// 旧档迁移：universal:N → universal/regen:N（旧通用法阵一律视为回能变体）
+if (entry.startsWith("universal:")) {
+entry = "universal/" + FormationData.VARIANT_REGEN + ":" + entry.substring("universal:".length());
+}
+recorded.add(entry);
+}// 法术图谱 + 入门领取标记（阶段 C）
+spellAtlas.clear();
+NbtList atlas = nbt.getList("spell_atlas", NbtElement.STRING_TYPE);
+for (int i = 0; i < atlas.size(); i++) {
+spellAtlas.add(atlas.getString(i));
+}
+starterClaimed = nbt.getBoolean("starter_claimed");learned.clear();
+for (FormationElement element : FormationElement.values()) {
+if (element == FormationElement.UNIVERSAL) {
+// 通用系三变体独立读取
+for (String variant : new String[]{FormationData.VARIANT_REGEN, FormationData.VARIANT_MANA, FormationData.VARIANT_EXP, FormationData.VARIANT_RECOVERY}) {
+String nbtKey = "learned_" + storageKey(element, variant);
+if (nbt.contains(nbtKey)) {
+int lv = clampLevel(nbt.getInt(nbtKey));
+if (lv > 0) {
+learned.put(storageKey(element, variant), lv);
+}
+}
+}
+// 旧键迁移：learned_universal → learned_universal/regen（仅当新键不存在时）
+String regenKey = "learned_" + storageKey(element, FormationData.VARIANT_REGEN);
+if (!nbt.contains(regenKey) && nbt.contains("learned_universal")) {
+int legacy = clampLevel(nbt.getInt("learned_universal"));
+if (legacy > 0) {
+learned.put(storageKey(element, FormationData.VARIANT_REGEN), legacy);
+}
+}
+} else {
+int lv = clampLevel(nbt.getInt("learned_" + element.id));
+if (lv > 0) {
+learned.put(element.id, lv);
+}
+}
+}
+}
+
+@Override
+public void writeToNbt(NbtCompound nbt) {
+NbtList list = new NbtList();
+for (String entry : recorded) {
+list.add(NbtString.of(entry));
+}
+nbt.put("recorded", list);
+for (Map.Entry<String, Integer> e : learned.entrySet()) {
+nbt.putInt("learned_" + e.getKey(), e.getValue());
+}
+NbtList atlas = new NbtList();
+for (String entry : spellAtlas) {
+atlas.add(NbtString.of(entry));
+}
+nbt.put("spell_atlas", atlas);
+nbt.putBoolean("starter_claimed", starterClaimed);
+}
+
+/** 服务端变更后同步给客户端（研究台 GUI 需要实时读）。 */
+public static void sync(ServerPlayerEntity player) {
+RegFormationKnowledgeComponent.FORMATION_KNOWLEDGE.sync(player);
+}
+
+private static int clampLevel(int lv) {
+return Math.max(0, Math.min(FormationData.MAX_FORMATION_LEVEL, lv));
+}
 }

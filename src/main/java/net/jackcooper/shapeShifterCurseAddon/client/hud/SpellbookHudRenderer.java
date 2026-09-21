@@ -113,8 +113,8 @@ public class SpellbookHudRenderer implements HudRenderCallback {
 
 		RenderSystem.disableBlend();
 
-		// 当前魔法名（白色普通文字，三槽正下方居中显示，可左右超出范围）+ 剩余 cd
-		ItemStack scroll = SpellbookData.getScroll(mc.world.getRegistryManager(), book, sel);
+		// 当前魔法名（白色普通文字，三槽正下方居中显示，可左右超出范围）+ 剩余 cd + 施放档位
+		ItemStack scroll = SpellbookData.getScroll(book, sel);
 		Spell spell = ScrollData.getSpell(scroll);
 		if (spell != null) {
 			int centerX = baseX + 31; // 选择器中心（= 中槽中心）
@@ -123,11 +123,20 @@ public class SpellbookHudRenderer implements HudRenderCallback {
 			int nameW = mc.textRenderer.getWidth(name);
 			int nameX = centerX - nameW / 2; // 居中锚点，长名向左右自然溢出、不裁剪
 			ctx.drawText(mc.textRenderer, name, nameX, nameY, 0xFFFFFF, true);
-			long cdRem = SpellbookData.getCooldownRemaining(book, sel, mc.world);
+			int textEndX = nameX + nameW + 4;
+			// 降档时名字后追加蓝色「Lv档/级」角标（低阶施放可见性，阶段 C §6.4）
+			int castLevel = net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.getCastLevel(scroll);
+			int scrollLevel = net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.getLevel(scroll);
+			if (castLevel < scrollLevel) {
+				String tag = "Lv" + castLevel + "/" + scrollLevel;
+				ctx.drawText(mc.textRenderer, tag, textEndX, nameY, 0x2A7DFF, true);
+				textEndX += mc.textRenderer.getWidth(tag) + 4;
+			}
+			long cdRem = ScrollData.getCooldownEnd(scroll) - mc.world.getTime();
 			if (cdRem > 0) {
 				String cdStr = String.format("%.1fs", cdRem / 20.0);
 				ctx.drawText(mc.textRenderer, Text.literal(cdStr).formatted(Formatting.RED),
-						nameX + nameW + 4, nameY, 0xFFFFFF, true);
+						textEndX, nameY, 0xFFFFFF, true);
 			}
 		}
 	}
@@ -158,14 +167,21 @@ public class SpellbookHudRenderer implements HudRenderCallback {
 		// 顶层：品质覆盖层 + 冷却遮罩，都要压在图标上方，故整体抬高 z 再绘制
 		ctx.getMatrices().push();
 		ctx.getMatrices().translate(0, 0, 260);
-		// 冷却遮罩：三个槽各自独立显示（冷却是按槽存书 NBT 的，切槽后原槽 cd 仍在走，
-		// 切回/切走都应能看到对应槽的剩余冷却从上往下退去）
+		// 冷却遮罩：CD 跟卷轴走（存卷轴 NBT），三个槽各自读自己卷轴的剩余冷却从上往下退去
 		if (spell != null && spell.getBaseCooldownTicks() > 0) {
-			long cdRem = SpellbookData.getCooldownRemaining(book, slot, mc.world);
+			long cdRem = Math.max(0L, ScrollData.getCooldownEnd(scroll) - mc.world.getTime());
 			if (cdRem > 0) {
-				// 分母用等级后实际 CD（等级 CD 缩减后若仍用基础 CD，遮罩比例会偏小、退得比真实慢）
-				int level = ScrollData.getLevel(scroll);
-				int totalCd = Math.round(spell.getBaseCooldownTicks() * spell.getCooldownMultiplier(level));
+				// 分母用等级后实际 CD（等级 CD 缩减后若仍用基础 CD，遮罩比例会偏小、退得比真实慢）；
+			// 阶段 B：再乘法阵 CD 乘区与耐久比 ×(2−ratio)、叠加双层下限（与服务端实际写入的 CD 同式；
+			// 形态亲和乘区客户端不可读，为近似值——精确值由服务端权威结算）
+			int level = net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.getCastLevel(scroll);
+			float ratio = net.jackcooper.shapeShifterCurseAddon.spell.ScrollData.getDurabilityRatio(scroll);
+			float levelCd = spell.getBaseCooldownTicks() * spell.getCooldownMultiplier(level);
+			float formationCdMul = net.jackcooper.shapeShifterCurseAddon.spell.FormationData
+					.sumCooldownMultiplier(book, spell.getElement());
+			int totalCd = Math.max(Math.round(levelCd * (2.0f - ratio) * formationCdMul),
+					Math.max(spell.getCooldownFloorTicks(),
+						Math.round(levelCd * net.jackcooper.shapeShifterCurseAddon.spell.SpellNumbers.RELATIVE_CD_FLOOR)));
 				float frac = totalCd > 0 ? Math.min(1f, cdRem / (float) totalCd) : 1f;
 				int maskH = Math.round(size * frac);
 				ctx.fill(x, y + size - maskH, x + size, y + size, 0x99000000);
